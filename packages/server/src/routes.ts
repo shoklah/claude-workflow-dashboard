@@ -1,8 +1,9 @@
 import type { Context, Hono } from 'hono';
-import type { StatusResponse } from '@cwd/shared';
+import type { RunsQuery, StatusResponse } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings, setSeenAt } from './db/read.ts';
 import { homeView } from './views/home.ts';
+import { runView, runsList } from './views/runs.ts';
 
 // The folders of an absolute path: from a `/` that starts a word up to its last `/`. A folder name may hold a space,
 // but not a space before a `/`, which starts the next path; quotes, `:` and `;` end the path. Text after a path
@@ -54,4 +55,21 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       }),
     ),
   );
+
+  // Task 7: the Runs list and one run.
+  app.get('/api/runs', (c) => {
+    const weeks = Number(c.req.query('weeks') ?? 4);
+    const query: RunsQuery = {
+      path: (['small', 'full', 'plan'] as const).find((p) => p === c.req.query('path')),
+      project: c.req.query('project') || undefined,
+      weeks: Number.isInteger(weeks) && weeks > 0 ? weeks : 4,
+      warnings: c.req.query('warnings') === '1',
+    };
+    return c.json(runsList(listUnits(deps.db, 'run'), listWarnings(deps.db), query, deps.now()));
+  });
+  app.get('/api/runs/:key', (c) => {
+    const run = listUnits(deps.db, 'run').find((unit) => unit.key === c.req.param('key'));
+    if (!run) return c.notFound();
+    return c.json(runView(run, listWarnings(deps.db)));
+  });
 }
