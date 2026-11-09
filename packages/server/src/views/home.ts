@@ -83,7 +83,7 @@ export function homeView(input: {
   const warnings = currentWarnings(input.runs, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
   const runs: Run[] = input.runs.map((unit) => {
-    const facts = runFacts(unit.merged);
+    const facts = { ...runFacts(unit.merged), key: unit.key };
     return { unit, facts, finished: parseTime(facts.finishedAt!) };
   });
   const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;

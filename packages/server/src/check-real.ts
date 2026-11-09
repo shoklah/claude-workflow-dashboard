@@ -2,8 +2,9 @@
 // paths, the run key counts, and the weeks whose sums differ from the reporter's totals. It prints no value from the
 // data but those weeks' dates. Usage: `pnpm --filter @cwd/server check:real
 // [dataDir]`; the data dir defaults to the real one.
-import { loadReport, PATHS, runKey, type RunEntry } from '@cwd/shared';
+import { loadReport, PATHS, type RunEntry } from '@cwd/shared';
 import { loadConfig } from './config.ts';
+import { runKey } from './keys.ts';
 import { runReporter } from './reporter.ts';
 import { weekSums } from './views/home.ts';
 

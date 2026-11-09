@@ -56,15 +56,9 @@ describe('runFacts', () => {
     expect(runFacts(run('small')).waves).toBe(0);
   });
 
-  test('a run with no date has no facts', () => {
-    const full = run('full');
-    expect(() => runFacts({ ...full, record: { ...full.record, date: undefined } })).toThrow('no key');
-  });
-
   test('the record and the entry give the rest', () => {
     const full = run('full');
     expect(runFacts(full)).toMatchObject({
-      key: expect.stringMatching(/^[0-9a-f]{16}$/),
       branch: 'feature/offline-sync',
       path: 'full',
       stage: '2',
