@@ -1,5 +1,5 @@
 import { runKey } from './keys.ts';
-import type { Outcome, RunEntry, Step } from './report.ts';
+import { PATHS, type Outcome, type Path, type RunEntry, type Step } from './report.ts';
 
 export type FindingSplit = { total: number; actedOn: number; notActedOn: number; open: number };
 
@@ -7,7 +7,7 @@ export type RunFacts = {
   key: string;
   project: string;
   branch: string | null;
-  path: 'small' | 'full' | 'plan' | null;
+  path: Path | null;
   stage: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -23,7 +23,6 @@ export type RunFacts = {
 
 const ACTED_ON: readonly Outcome[] = ['fixed', 'applied'];
 const NOT_ACTED_ON: readonly Outcome[] = ['declined', 'deferred', 'ruled', 'to_owner'];
-export const PATHS = ['small', 'full', 'plan'] as const;
 
 // A session transcript's file name, as the reporter writes it in a session warning.
 const SESSION_FILE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl/i;

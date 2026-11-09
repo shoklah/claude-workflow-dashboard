@@ -13,6 +13,7 @@ export const STEP_KINDS = [
   'final_fix_check',
 ] as const;
 export const OUTCOMES = ['fixed', 'applied', 'declined', 'deferred', 'ruled', 'open', 'to_owner'] as const;
+export const PATHS = ['small', 'full', 'plan'] as const;
 
 const str = z.string().nullish();
 const num = z.number().nullish();
@@ -169,3 +170,4 @@ export type SessionEntry = z.infer<typeof SessionEntrySchema>;
 export type Totals = z.infer<typeof TotalsSchema>;
 export type StepKind = (typeof STEP_KINDS)[number];
 export type Outcome = (typeof OUTCOMES)[number];
+export type Path = (typeof PATHS)[number];

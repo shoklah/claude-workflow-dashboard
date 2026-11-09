@@ -1,8 +1,8 @@
 import type { RunFacts } from '../facts.ts';
-import type { Outcome, StepKind } from '../report.ts';
+import type { Outcome, Path, StepKind } from '../report.ts';
 
 /** `GET /api/runs`'s query: `path`, `project` (a project's name), `weeks` (default 4) and `warnings=1`. */
-export type RunsQuery = { path?: 'small' | 'full' | 'plan'; project?: string; weeks: number; warnings: boolean };
+export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings: boolean };
 
 export type RunRow = RunFacts;
 

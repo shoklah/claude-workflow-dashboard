@@ -1,13 +1,8 @@
 import { useState } from 'react';
 import type { RunsQuery, RunsResponse } from '@cwd/shared';
+import { PATHS } from '../../../shared/src/report.ts';
 import { useLiveQuery } from '../api.ts';
 import { RunsTable } from './RunsTable.tsx';
-
-type Path = NonNullable<RunsQuery['path']>;
-
-// The paths to filter by. Written here, since the web app imports only types from @cwd/shared (its values pull in
-// node:crypto); `satisfies` keeps the list in step with the API's type.
-const PATHS = Object.keys({ small: 0, full: 0, plan: 0 } satisfies Record<Path, 0>) as Path[];
 
 const PERIODS = [
   { weeks: 1, label: 'This week' },
