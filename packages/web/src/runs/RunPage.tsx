@@ -5,7 +5,7 @@ import { WarningText } from '../components/WarningText.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
-import { NONE, dollars, duration, findingsLabel, runName } from './format.ts';
+import { NONE, findingsLabel, formatCost, formatMinutes, runName } from '../lib/format.ts';
 
 /** A titled list of the run's facts, "None" when it has none. */
 function Section({ title, children }: { title: string; children: ReactNode[] }) {
@@ -20,8 +20,8 @@ function Section({ title, children }: { title: string; children: ReactNode[] }) 
 function Header({ run }: { run: RunResponse['facts'] }) {
   const facts = [
     ['Path · stage', `${run.path ?? NONE} · ${run.stage ?? NONE}`],
-    ['Time', duration(run.minutes)],
-    ['Est. cost', dollars(run.cost)],
+    ['Time', formatMinutes(run.minutes)],
+    ['Est. cost', formatCost(run.cost)],
     ['Findings', findingsLabel(run)],
     ['Warnings', String(run.warnings)],
   ];
@@ -76,7 +76,7 @@ export function RunPage({ runKey }: { runKey: string }) {
           <Section title="Models">
             {models.map((model) => (
               <li key={model.model}>
-                {model.model} <span className="text-muted-foreground">{dollars(model.cost)}</span>
+                {model.model} <span className="text-muted-foreground">{formatCost(model.cost)}</span>
               </li>
             ))}
           </Section>

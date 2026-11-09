@@ -1,7 +1,7 @@
 import type { FindingRow, TimelineGroup, TimelineStep } from '@cwd/shared';
 import { Badge } from '../components/ui/badge.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { stepLabel } from './format.ts';
+import { STEP_LABELS, countLabel } from '../lib/format.ts';
 
 function FindingItem({ finding }: { finding: FindingRow }) {
   return (
@@ -19,8 +19,8 @@ function FindingItem({ finding }: { finding: FindingRow }) {
 function Step({ step }: { step: TimelineStep }) {
   const counts = Object.entries(step.counts)
     .filter(([, n]) => n > 0)
-    .map(([name, n]) => `${n} ${stepLabel(name)}`);
-  const label = [stepLabel(step.step), step.round ? `round ${step.round}` : null, ...counts].filter(Boolean).join(' · ');
+    .map(([name, n]) => `${n} ${countLabel(name)}`);
+  const label = [STEP_LABELS[step.step], step.round ? `round ${step.round}` : null, ...counts].filter(Boolean).join(' · ');
   if (step.findings.length === 0) return <div>{label}</div>;
   return (
     <details>

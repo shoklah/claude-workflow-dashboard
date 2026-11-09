@@ -23,7 +23,7 @@ test('runs list and run page have no axe violations', async ({ page }) => {
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await openFullRun(page);
-  await page.getByText('task review · 1 important · 1 minor').click();
+  await page.getByText('Task review · 1 important · 1 minor').click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await page.getByRole('tab', { name: 'Findings' }).click();
@@ -50,7 +50,7 @@ test('a branch with HTML shows as text', async ({ page }) => {
 
   // A finding's summary on the Full run, in the timeline and in the findings table.
   await openFullRun(page);
-  await page.getByRole('group', { name: 'Task 2' }).getByText(/task review/).click();
+  await page.getByRole('group', { name: 'Task 2' }).getByText(/Task review/).click();
   await expect(page.getByText(HTML_TEXT)).toBeVisible();
   await page.getByRole('tab', { name: 'Findings' }).click();
   await expect(page.getByRole('cell', { name: HTML_TEXT })).toBeVisible();

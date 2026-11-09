@@ -3,15 +3,10 @@ import type { FeedItem } from '@cwd/shared';
 import { markSeen } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
 import { WarningText } from '../components/WarningText.tsx';
-import { actedOnSplit, formatCost, formatMinutes, plural } from '../lib/format.ts';
-
-/** The parts of a line that are known, joined: "atlas · feat/search · full". */
-function joined(parts: (string | null)[]): string {
-  return parts.filter((part) => part !== null).join(' · ');
-}
+import { actedOnSplit, formatCost, formatMinutes, joined, plural, runName } from '../lib/format.ts';
 
 function Item({ item }: { item: FeedItem }) {
-  const where = joined([item.project, item.branch, item.path]);
+  const where = joined([runName(item), item.path]);
   if (item.type === 'warning') {
     return (
       <li className="border-l-3 border-amber-600 py-0.5 pl-2">

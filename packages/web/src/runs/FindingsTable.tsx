@@ -6,10 +6,10 @@ import {
   tableFeatures,
   useTable,
 } from '@tanstack/react-table';
-import type { FindingRow } from '@cwd/shared';
+import type { FindingRow, StepKind } from '@cwd/shared';
 import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { NONE, stepLabel } from './format.ts';
+import { NONE, STEP_LABELS } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -19,7 +19,7 @@ const features = tableFeatures({
 const helper = createColumnHelper<typeof features, FindingRow>();
 const columns = helper.columns([
   helper.accessor('id', { header: '#', cell: (c) => c.getValue() ?? NONE }),
-  helper.accessor('step', { header: 'Step', filterFn: 'equalsString', cell: (c) => stepLabel(c.getValue()) }),
+  helper.accessor('step', { header: 'Step', filterFn: 'equalsString', cell: (c) => STEP_LABELS[c.getValue()] }),
   helper.accessor((f) => (f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : NONE), {
     id: 'task',
     header: 'Task',
@@ -40,7 +40,7 @@ const columns = helper.columns([
 
 // The filters: each lists the values its column holds, in order, labelled as the column shows them.
 const FILTERS = [
-  { id: 'step', label: 'Step', show: stepLabel },
+  { id: 'step', label: 'Step', show: (v: string) => STEP_LABELS[v as StepKind] },
   { id: 'severity', label: 'Severity', show: (v: string) => v },
   { id: 'outcome', label: 'Outcome', show: (v: string) => v },
 ] as const;

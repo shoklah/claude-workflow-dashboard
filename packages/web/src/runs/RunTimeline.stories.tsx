@@ -33,16 +33,16 @@ export const Full: Story = {
     const finding = 'Search drops the last page on exact multiples';
     await expect(canvas.getByText(finding)).not.toBeVisible();
     const inTask1 = within(canvas.getByRole('group', { name: 'Task 1' }));
-    await userEvent.click(inTask1.getByText('task review · 1 important · 1 minor'));
+    await userEvent.click(inTask1.getByText('Task review · 1 important · 1 minor'));
     await expect(canvas.getByText(finding)).toBeVisible();
     await expect(inTask1.getByText("Test name doesn't say what it checks")).toBeVisible();
 
     // The wave check's ruled finding shows its reason.
-    await userEvent.click(within(canvas.getByRole('group', { name: 'Wave check' })).getByText(/task review/));
+    await userEvent.click(within(canvas.getByRole('group', { name: 'Wave check' })).getByText(/Task review/));
     await expect(canvas.getByText('One index per run is intended')).toBeVisible();
 
     // A finding's free text with HTML in it shows as text.
-    await userEvent.click(within(canvas.getByRole('group', { name: 'Task 2' })).getByText(/task review/));
+    await userEvent.click(within(canvas.getByRole('group', { name: 'Task 2' })).getByText(/Task review/));
     await expect(canvas.getByText(HTML_TEXT)).toBeVisible();
     await expect(canvasElement.querySelector('img')).toBeNull();
 

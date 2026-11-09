@@ -3,7 +3,7 @@ import type { RunRow } from '@cwd/shared';
 import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { NONE, dollars, duration, findingsLabel, runName } from './format.ts';
+import { NONE, findingsLabel, formatCost, formatMinutes, runName } from '../lib/format.ts';
 
 const COLUMNS = ['Finished', 'Project · branch', 'Path', 'Time', 'Tasks', 'Findings', 'Stops', 'Est. cost', 'Warnings'];
 
@@ -45,11 +45,11 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
               )}
             </TableCell>
             <TableCell>{run.path ?? NONE}</TableCell>
-            <TableCell>{duration(run.minutes)}</TableCell>
+            <TableCell>{formatMinutes(run.minutes)}</TableCell>
             <TableCell>{tasksLabel(run)}</TableCell>
             <TableCell>{findingsLabel(run)}</TableCell>
             <TableCell>{run.stops ?? NONE}</TableCell>
-            <TableCell>{dollars(run.cost)}</TableCell>
+            <TableCell>{formatCost(run.cost)}</TableCell>
             <TableCell>{run.warnings}</TableCell>
           </TableRow>
         ))}

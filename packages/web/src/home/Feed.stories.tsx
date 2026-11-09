@@ -30,7 +30,7 @@ export const Full: Story = {
     const items = within(canvas.getByRole('list')).getAllByRole('listitem');
     await expect(items).toHaveLength(4);
     await expect(items[0]).toHaveTextContent('Run finished · atlas · feat/search · full');
-    await expect(items[0]).toHaveTextContent('6 findings · 5 acted on · 0 open · 2 h 10 min · $7.10');
+    await expect(items[0]).toHaveTextContent('6 findings · 5 acted on · 0 open · 2 h 10 · $7.10');
     await expect(items[1]).toHaveTextContent('New warning');
     await expect(within(items[1]).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
     await expect(items[1]).toHaveTextContent('typed "grill me" but grill-me never loaded');
