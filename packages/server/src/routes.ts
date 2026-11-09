@@ -1,5 +1,5 @@
 import type { Context, Hono } from 'hono';
-import type { RunsQuery, StatusResponse } from '@cwd/shared';
+import { PATHS, type RunsQuery, type StatusResponse } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings, setSeenAt } from './db/read.ts';
 import { homeView } from './views/home.ts';
@@ -60,7 +60,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   app.get('/api/runs', (c) => {
     const weeks = Number(c.req.query('weeks') ?? 4);
     const query: RunsQuery = {
-      path: (['small', 'full', 'plan'] as const).find((p) => p === c.req.query('path')),
+      path: PATHS.find((p) => p === c.req.query('path')),
       project: c.req.query('project') || undefined,
       weeks: Number.isInteger(weeks) && weeks > 0 ? weeks : 4,
       warnings: c.req.query('warnings') === '1',

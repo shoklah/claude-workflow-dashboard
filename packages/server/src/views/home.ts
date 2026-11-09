@@ -27,6 +27,8 @@ const FEED_SIZE = 50;
 const FULL_STEPS: StepKind[] = ['plan_simplify', 'plan_review', 'task_review', 'simplify', 'final_review'];
 const SMALL_STEPS: StepKind[] = ['task_review', 'simplify', 'final_review'];
 const FIX_CHECKS: StepKind[] = ['fix_check', 'final_fix_check'];
+// No runs on any path, a fresh object each time since weekSums adds to it.
+const noRuns = (): WeekSum['runs'] => ({ small: 0, full: 0, plan: 0 });
 
 /** A time's week, as the date its week starts. */
 function weekOf(t: Date): string {
@@ -43,7 +45,7 @@ export function weekSums(runs: RunEntry[]): Map<string, WeekSum> {
     if (!run.record?.date) continue;
     const facts = runFacts(run);
     const week = weekOf(new Date(run.record.date));
-    const sum = sums.get(week) ?? { runs: { small: 0, full: 0, plan: 0 }, cost: null };
+    const sum = sums.get(week) ?? { runs: noRuns(), cost: null };
     if (facts.path) sum.runs[facts.path] += 1;
     if (facts.cost !== null) sum.cost = (sum.cost ?? 0) + facts.cost;
     sums.set(week, sum);
@@ -105,7 +107,7 @@ export function homeView(input: {
       (w) => w.kind === 'run' && isNew(w.firstSeenAt) && inWeek.some((r) => r.unit.key === w.key),
     );
     return {
-      runs: sum?.runs ?? { small: 0, full: 0, plan: 0 },
+      runs: sum?.runs ?? noRuns(),
       // findings: every finding of the week's runs' steps, the sum of their RunFacts.findings.
       findings: splitFindings(stepsOf(inWeek)),
       cost,

@@ -23,7 +23,7 @@ export type RunFacts = {
 
 const ACTED_ON: readonly Outcome[] = ['fixed', 'applied'];
 const NOT_ACTED_ON: readonly Outcome[] = ['declined', 'deferred', 'ruled', 'to_owner'];
-const PATHS = ['small', 'full', 'plan'] as const;
+export const PATHS = ['small', 'full', 'plan'] as const;
 
 // A session transcript's file name, as the reporter writes it in a session warning.
 const SESSION_FILE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl/i;

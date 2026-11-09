@@ -2,7 +2,7 @@
 // paths, the run key counts, and the weeks whose sums differ from the reporter's totals. It prints no value from the
 // data but those weeks' dates. Usage: `pnpm --filter @cwd/server check:real
 // [dataDir]`; the data dir defaults to the real one.
-import { loadReport, runKey, type RunEntry } from '@cwd/shared';
+import { loadReport, PATHS, runKey, type RunEntry } from '@cwd/shared';
 import { loadConfig } from './config.ts';
 import { runReporter } from './reporter.ts';
 import { weekSums } from './views/home.ts';
@@ -37,7 +37,7 @@ else {
     const sum = sums.get(week.week ?? '');
     return (
       !sum ||
-      (['small', 'full', 'plan'] as const).some((path) => sum.runs[path] !== (week.runs?.[path] ?? 0)) ||
+      PATHS.some((path) => sum.runs[path] !== (week.runs?.[path] ?? 0)) ||
       cents(sum.cost) !== cents(week.cost)
     );
   });
