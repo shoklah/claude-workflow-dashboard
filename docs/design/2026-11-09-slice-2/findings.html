@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slice 2 mockup: Findings</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --page: #f3f3f1; --border: #dcdbd6;
+    --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+    --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #2a78d6; --seq-5: #184f95;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.45 system-ui, -apple-system, sans-serif; background: var(--page); color: var(--text); }
+  .note { max-width: 1180px; margin: 16px auto 8px; padding: 0 16px; color: var(--text-2); }
+  h1 { font-size: 17px; margin: 0 0 4px; color: var(--text); }
+  h2 { font-size: 14px; margin: 26px auto 6px; max-width: 1180px; padding: 0 16px; }
+  .shell { display: flex; max-width: 1180px; margin: 0 auto 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .menu { width: 150px; flex: none; padding: 12px 10px; border-right: 1px solid var(--border); line-height: 2; color: var(--text-2); }
+  .menu .on { color: var(--text); font-weight: 600; }
+  .menu .new::after { content: " new"; font-size: 10px; color: var(--s1); }
+  .main { flex: 1; padding: 14px 16px; min-width: 0; }
+  .side { width: 270px; flex: none; border-left: 1px solid var(--border); padding: 14px 12px; }
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); border-radius: 14px; padding: 2px 10px; background: #fff; }
+  .chip.on { background: var(--seq-1); border-color: var(--seq-3); }
+  .muted { color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #ecebe7; vertical-align: middle; }
+  th { font-weight: 500; color: var(--text-2); font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.area td { background: #f7f7f5; font-weight: 600; color: var(--text-2); font-size: 12px; }
+  .seg { display: flex; height: 8px; width: 140px; gap: 2px; }
+  .seg span { display: block; height: 8px; }
+  .seg span:first-child { border-radius: 4px 0 0 4px; } .seg span:last-child { border-radius: 0 4px 4px 0; }
+  .a { background: var(--s1); } .d { background: var(--s2); } .o { background: var(--s3); }
+  .legend { display: flex; gap: 14px; color: var(--text-2); font-size: 12px; margin: 4px 0 10px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .spark { display: flex; align-items: flex-end; gap: 2px; height: 18px; width: 72px; }
+  .spark span { flex: 1; background: var(--seq-3); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .flag { color: #b2541f; }
+  .card { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
+  .card b { display: block; font-size: 18px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; }
+  .heat td.c { width: 46px; height: 26px; text-align: center; font-size: 11px; border: 2px solid var(--surface); }
+  .l1 { background: var(--seq-1); } .l2 { background: var(--seq-2); } .l3 { background: var(--seq-3); }
+  .l4 { background: var(--seq-4); color: #fff; } .l5 { background: var(--seq-5); color: #fff; } .l0 { background: #f1f1ee; color: var(--muted); }
+  .tag { font-size: 11px; border-radius: 3px; padding: 0 5px; border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
+  .tag.app { border-style: dashed; }
+  .finding { border-left: 3px solid var(--border); padding: 4px 8px; margin-bottom: 8px; }
+  .finding.inv { border-left-color: var(--s2); }
+  .strength { border-left: 3px solid var(--s3); padding: 4px 8px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <h1>Slice 2 mockup: findings assessment</h1>
+  Invented data. Two layouts for the new Findings page (A: table first, B: heatmap first; the owner chose B on 2026-11-09), then the run page's findings table with the new columns. Category labels come from the workflow when it recorded them, otherwise from the app's labeller; a dashed tag marks the app's own label. "Valid" is the session's call when it applied or declined the finding.
+</div>
+
+<h2>A · Table first: one row per category, grouped by area</h2>
+<div class="shell">
+  <div class="menu">
+    <div>Home</div><div>Runs</div><div class="on new">Findings</div><div>Sessions</div><div>Compliance</div>
+    <div>Steps and rules</div><div>Skills</div><div>Models and advisor</div><div>Weeks</div>
+  </div>
+  <div class="main">
+    <div class="filters">
+      <span class="chip on">Last 4 weeks</span><span class="chip">Path: all</span><span class="chip">Project: all</span>
+      <span class="chip">Labels: workflow + app</span>
+      <span class="muted">142 findings in 9 runs · 61 labelled by the workflow, 81 by the app</span>
+    </div>
+    <div class="legend"><span><i class="a"></i>acted on</span><span><i class="d"></i>not acted on</span><span><i class="o"></i>open</span></div>
+    <table>
+      <thead><tr><th>Category</th><th class="n">Raised</th><th>Outcome</th><th class="n">Valid</th><th class="n">App differs</th><th class="n">Strengths</th><th>8 weeks</th></tr></thead>
+      <tbody>
+        <tr class="area"><td colspan="7">Plan · plan simplify and plan review</td></tr>
+        <tr><td>scope (missing or extra work)</td><td class="n">11</td><td><div class="seg"><span class="a" style="width:64%"></span><span class="d" style="width:36%"></span></div></td><td class="n">9 / 11</td><td class="n">1</td><td class="n">2</td><td><div class="spark"><span style="height:30%"></span><span style="height:50%"></span><span style="height:20%"></span><span style="height:70%"></span><span style="height:40%"></span><span style="height:60%"></span><span style="height:90%"></span><span style="height:50%"></span></div></td></tr>
+        <tr><td>task split and order</td><td class="n">6</td><td><div class="seg"><span class="a" style="width:83%"></span><span class="d" style="width:17%"></span></div></td><td class="n">6 / 6</td><td class="n">0</td><td class="n">3</td><td><div class="spark"><span style="height:20%"></span><span style="height:40%"></span><span style="height:30%"></span><span style="height:10%"></span><span style="height:50%"></span><span style="height:30%"></span><span style="height:40%"></span><span style="height:20%"></span></div></td></tr>
+        <tr><td>spec gap</td><td class="n">5</td><td><div class="seg"><span class="a" style="width:60%"></span><span class="d" style="width:20%"></span><span class="o" style="width:20%"></span></div></td><td class="n">4 / 5</td><td class="n">0</td><td class="n">–</td><td><div class="spark"><span style="height:10%"></span><span style="height:20%"></span><span style="height:40%"></span><span style="height:30%"></span><span style="height:20%"></span><span style="height:50%"></span><span style="height:30%"></span><span style="height:40%"></span></div></td></tr>
+        <tr class="area"><td colspan="7">Implementation · task reviews, fix-checks, final review</td></tr>
+        <tr><td>reuse and duplication</td><td class="n">24</td><td><div class="seg"><span class="a" style="width:92%"></span><span class="d" style="width:8%"></span></div></td><td class="n">22 / 24</td><td class="n">1</td><td class="n">4</td><td><div class="spark"><span style="height:60%"></span><span style="height:70%"></span><span style="height:90%"></span><span style="height:80%"></span><span style="height:60%"></span><span style="height:50%"></span><span style="height:40%"></span><span style="height:35%"></span></div></td></tr>
+        <tr><td>correctness</td><td class="n">19</td><td><div class="seg"><span class="a" style="width:84%"></span><span class="d" style="width:11%"></span><span class="o" style="width:5%"></span></div></td><td class="n">17 / 19</td><td class="n">0</td><td class="n">2</td><td><div class="spark"><span style="height:40%"></span><span style="height:50%"></span><span style="height:45%"></span><span style="height:60%"></span><span style="height:55%"></span><span style="height:70%"></span><span style="height:50%"></span><span style="height:65%"></span></div></td></tr>
+        <tr><td>conventions</td><td class="n">17</td><td><div class="seg"><span class="a" style="width:88%"></span><span class="d" style="width:12%"></span></div></td><td class="n">16 / 17</td><td class="n">2</td><td class="n">–</td><td><div class="spark"><span style="height:20%"></span><span style="height:30%"></span><span style="height:50%"></span><span style="height:70%"></span><span style="height:60%"></span><span style="height:40%"></span><span style="height:45%"></span><span style="height:30%"></span></div></td></tr>
+        <tr><td>tests</td><td class="n">14</td><td><div class="seg"><span class="a" style="width:57%"></span><span class="d" style="width:43%"></span></div></td><td class="n">8 / 14</td><td class="n flag">4</td><td class="n">1</td><td><div class="spark"><span style="height:30%"></span><span style="height:30%"></span><span style="height:40%"></span><span style="height:50%"></span><span style="height:45%"></span><span style="height:60%"></span><span style="height:55%"></span><span style="height:70%"></span></div></td></tr>
+        <tr><td>error handling</td><td class="n">12</td><td><div class="seg"><span class="a" style="width:75%"></span><span class="d" style="width:25%"></span></div></td><td class="n">10 / 12</td><td class="n">1</td><td class="n">–</td><td><div class="spark"><span style="height:50%"></span><span style="height:40%"></span><span style="height:30%"></span><span style="height:35%"></span><span style="height:20%"></span><span style="height:30%"></span><span style="height:25%"></span><span style="height:20%"></span></div></td></tr>
+        <tr><td>security and privacy</td><td class="n">7</td><td><div class="seg"><span class="a" style="width:100%"></span></div></td><td class="n">7 / 7</td><td class="n">0</td><td class="n">1</td><td><div class="spark"><span style="height:10%"></span><span style="height:30%"></span><span style="height:20%"></span><span style="height:40%"></span><span style="height:10%"></span><span style="height:20%"></span><span style="height:30%"></span><span style="height:20%"></span></div></td></tr>
+        <tr><td>simplicity (over-building)</td><td class="n">9</td><td><div class="seg"><span class="a" style="width:44%"></span><span class="d" style="width:56%"></span></div></td><td class="n">5 / 9</td><td class="n flag">3</td><td class="n">–</td><td><div class="spark"><span style="height:20%"></span><span style="height:20%"></span><span style="height:30%"></span><span style="height:20%"></span><span style="height:40%"></span><span style="height:30%"></span><span style="height:50%"></span><span style="height:40%"></span></div></td></tr>
+        <tr class="area"><td colspan="7">Cleanup · simplify</td></tr>
+        <tr><td>reuse and duplication</td><td class="n">10</td><td><div class="seg"><span class="a" style="width:30%"></span><span class="d" style="width:70%"></span></div></td><td class="n muted">–</td><td class="n">–</td><td class="n">–</td><td><div class="spark"><span style="height:40%"></span><span style="height:20%"></span><span style="height:60%"></span><span style="height:30%"></span><span style="height:50%"></span><span style="height:40%"></span><span style="height:30%"></span><span style="height:50%"></span></div></td></tr>
+      </tbody>
+    </table>
+    <p class="muted">A row opens its findings (right panel). "Valid" counts only findings the session judged; "App differs" counts findings where the app's label or relevance call disagrees with the workflow's. Strengths come from reviewers once the workflow records them (new runs only). A table view of the sparklines' numbers sits under a disclosure.</p>
+  </div>
+  <div class="side">
+    <div class="label">Relevance signals · last 4 weeks</div>
+    <div class="card"><b>3</b>fix commits within 14 days of a run, after its reviews passed</div>
+    <div class="card"><b>5</b>final-review findings on runs whose task reviews came back clean</div>
+    <div class="card"><b>4</b>fixes judged "fixed, not proportionate"</div>
+    <div class="card"><b>18</b>declined or ruled · 6 judged invalid by the session</div>
+    <div class="label" style="margin-top:14px">tests · implementation</div>
+    <div class="finding inv"><span class="tag">declined · invalid</span> <span class="tag app">app: valid</span><br>No test covers the empty export case · <span class="muted">lantern-notes · task 4 review</span></div>
+    <div class="finding"><span class="tag">fixed · valid</span><br>Story for the error state is missing · <span class="muted">tidepool-api · wave A check</span></div>
+    <div class="strength"><span class="tag">strength</span><br>Each view tested on both fixtures, null facts included · <span class="muted">lantern-notes · final review</span></div>
+  </div>
+</div>
+
+<h2>B · Heatmap first: category by week, then the selected cell's findings</h2>
+<div class="shell">
+  <div class="menu">
+    <div>Home</div><div>Runs</div><div class="on new">Findings</div><div>Sessions</div><div>Compliance</div>
+    <div>Steps and rules</div><div>Skills</div><div>Models and advisor</div><div>Weeks</div>
+  </div>
+  <div class="main">
+    <div class="filters">
+      <span class="chip on">Raised</span><span class="chip">Share acted on</span><span class="chip">Share invalid</span><span class="chip">App differs</span>
+      <span class="muted">· area:</span><span class="chip on">Implementation</span><span class="chip">Plan</span><span class="chip">Cleanup</span>
+    </div>
+    <table class="heat" style="width:auto">
+      <thead><tr><th></th><th>Sep 20</th><th>Sep 27</th><th>Oct 4</th><th>Oct 11</th><th>Oct 18</th><th>Oct 25</th><th>Nov 1</th><th>Nov 8</th></tr></thead>
+      <tbody>
+        <tr><th>reuse and duplication</th><td class="c l3">6</td><td class="c l4">8</td><td class="c l5">11</td><td class="c l4">9</td><td class="c l3">6</td><td class="c l3">5</td><td class="c l2">4</td><td class="c l2">3</td></tr>
+        <tr><th>correctness</th><td class="c l2">4</td><td class="c l3">5</td><td class="c l2">4</td><td class="c l3">6</td><td class="c l3">5</td><td class="c l3">7</td><td class="c l3">5</td><td class="c l3">6</td></tr>
+        <tr><th>conventions</th><td class="c l1">2</td><td class="c l2">3</td><td class="c l3">5</td><td class="c l3">7</td><td class="c l3">6</td><td class="c l2">4</td><td class="c l2">4</td><td class="c l2">3</td></tr>
+        <tr><th>tests</th><td class="c l2">3</td><td class="c l2">3</td><td class="c l2">4</td><td class="c l3">5</td><td class="c l2">4</td><td class="c l3">6</td><td class="c l3">5</td><td class="c l3" style="outline:2px solid var(--text)">7</td></tr>
+        <tr><th>error handling</th><td class="c l3">5</td><td class="c l2">4</td><td class="c l2">3</td><td class="c l2">3</td><td class="c l1">2</td><td class="c l2">3</td><td class="c l1">2</td><td class="c l1">2</td></tr>
+        <tr><th>security and privacy</th><td class="c l1">1</td><td class="c l2">3</td><td class="c l1">2</td><td class="c l2">4</td><td class="c l1">1</td><td class="c l1">2</td><td class="c l2">3</td><td class="c l1">2</td></tr>
+        <tr><th>simplicity (over-building)</th><td class="c l1">2</td><td class="c l1">2</td><td class="c l2">3</td><td class="c l1">2</td><td class="c l2">4</td><td class="c l2">3</td><td class="c l3">5</td><td class="c l2">4</td></tr>
+        <tr><th>performance</th><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">One hue, light to dark, for the count; the numbers sit in the cells, so no legend ramp is needed. A cell opens its findings below; the table view is the same grid.</p>
+    <div class="label" style="margin-top:12px">tests · week of Nov 8 · 7 findings</div>
+    <div class="finding inv"><span class="tag">declined · invalid</span> <span class="tag app">app: valid</span> No test covers the empty export case · <span class="muted">lantern-notes · task 4 review</span></div>
+    <div class="finding"><span class="tag">fixed · valid</span> Story for the error state is missing · <span class="muted">tidepool-api · wave A check</span></div>
+    <div class="finding"><span class="tag">fixed · valid</span> The retry path has no test · <span class="muted">tidepool-api · final review</span></div>
+  </div>
+</div>
+
+<h2>One run's findings table, with the new columns</h2>
+<div class="shell">
+  <div class="main">
+    <div class="filters"><span class="chip">Timeline</span><span class="chip on">Findings</span><span class="muted">lantern-notes · feature/offline-sync · full · 12 findings · 3 strengths</span></div>
+    <table>
+      <thead><tr><th>Id</th><th>Step</th><th>Severity</th><th>Category</th><th>Summary</th><th>Outcome</th><th>Valid</th><th>App</th></tr></thead>
+      <tbody>
+        <tr><td>F3</td><td>task review · T2</td><td>Important</td><td><span class="tag">reuse and duplication</span></td><td>Week arithmetic restated instead of using the shared helper</td><td>fixed (round 1)</td><td>valid</td><td class="muted">agrees</td></tr>
+        <tr><td>F7</td><td>task review · T4</td><td>Minor</td><td><span class="tag">tests</span></td><td>No test covers the empty export case</td><td>declined: out of scope for this task</td><td>invalid</td><td class="flag">valid · minor gap</td></tr>
+        <tr><td>F9</td><td>wave A check</td><td>Important</td><td><span class="tag app">conventions</span></td><td>Two tasks wrote contradicting convention lines</td><td>fixed (round 1)</td><td>valid</td><td class="muted">agrees</td></tr>
+        <tr><td>F12</td><td>final review</td><td>Minor</td><td><span class="tag">simplicity (over-building)</span></td><td>Config option nothing reads</td><td>deferred</td><td>unclear</td><td class="muted">agrees</td></tr>
+      </tbody>
+    </table>
+    <div class="label" style="margin-top:12px">Strengths · from the reviewers</div>
+    <div class="strength"><span class="tag">tests</span> Each view tested on both fixtures, null facts included · <span class="muted">final review</span></div>
+    <div class="strength"><span class="tag">reuse and duplication</span> New page reuses the shared table and format helpers · <span class="muted">task review · T6</span></div>
+    <p class="muted">The Category, Valid and strength data come from the workflow on runs after its change; on older runs Category is the app's label (dashed) and Valid shows "–".</p>
+  </div>
+</div>
+
+</body>
+</html>
