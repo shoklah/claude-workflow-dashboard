@@ -18,6 +18,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - **TypeScript end to end** (backend, frontend, import validation): one set of types runs from checking the reporter's JSON on import through the API to the charts, which guards "facts agree". The reporter itself stays Python, run as a separate process.
 - **Final:** Node LTS, Hono, Drizzle over SQLite (`better-sqlite3`) with its migrations, zod, React with Vite, TanStack Query and Router, Tailwind, Vitest, Storybook, Playwright, pnpm workspaces (`shared`, `server`, `web`), GitHub Actions on fixtures only.
 - **Evolving, current choice:** shadcn/ui for components (its Radix base, lucide icons and `cn` come with it), React Flow for the workflow diagram, ECharts for charts (through `echarts-for-react`), TanStack Table for tables (headless, so it renders into shadcn/ui's table with the API's own row types), `@axe-core/playwright` for the accessibility checks.
+- **Labeller:** `@anthropic-ai/sdk` for the labeller's calls, through the official SDK.
 
 ## Design conventions
 
@@ -39,11 +40,12 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - `units.missing_since`, `imports`, `state`, the app's finding labels (`finding_labels`) and the labeller's batches (`label_batches`) are stored facts, not derived: nothing in `unit_versions` can rebuild them, so a migration that drops or recreates their tables carries their values over.
 - The Anthropic API key and the labeller's settings live only in the data folder's `.env`, which the committed `.env.example` names and `process.loadEnvFile` loads. The key never reaches the repo, a fixture, a log or an error text. No test calls the API: the client is injected and stubbed. With no key, the labeller stays off.
 - The app's finding labels show as the app's judgment, never as the reporter's facts. A workflow label, from the reporter, wins wherever both exist.
-- Showing mode's scope is server state. Every view applies it through one shared helper, and a route never does. Each view's tests check that a showing-mode response holds no hidden project's name, path or branch, and no session ID.
+- Showing mode's scope is server state. Every view applies it through `scopeOf` and `maskText` in `packages/server/src/views/scope.ts` (with `showFacts` and `showWarning`), and a route never does. Each view's tests check with the leak check `leaks`, beside them, that a showing-mode response holds no hidden project's name, path or branch, and no session ID.
+- `projectNames` in `packages/shared/src/projects.ts` is the one place a project's display name is made, with the config's `aliases` when given.
 - Migrations are generated with `drizzle-kit generate` from `packages/server/src/db/schema.ts` into `packages/server/drizzle/` and never hand-edited; SQL names are snake_case, times are `timestamp_ms` integers and JSON is `text` in `json` mode.
 - Tests in any package read the invented fixtures, their JSON (`fixture`) or their file path (`fixturePath`), through `packages/shared/test/fixture.ts`, and every database test opens a fresh file in its own temp folder.
 - A failure's error text (the reporter's, an import's) never quotes the reporter's stdout, which holds the data: it names the command, the exit and stderr's last line, or a fixed message.
-- Background work (imports) runs through `createQueue` in `packages/server/src/queue.ts`, which logs a failing job instead of rejecting, so a background error never crashes the server.
+- Background work runs through `createQueue` in `packages/server/src/queue.ts`, one queue per job named by its second argument (`import`, `label`), which logs a failing job under that name instead of rejecting, so a background error never crashes the server.
 - A test that waits on an `fs.watch` event repeats the change inside `vi.waitFor`, since macOS can drop a change made right after the watch starts.
 - Node runs the TypeScript sources directly with its built-in type stripping (Node >= 22.18, the `engines` floor), as in `check:real`: code stays erasable-only TypeScript (`erasableSyntaxOnly` in `tsconfig.base.json`), with no enums, namespaces or parameter properties.
 - The server's request rules (the `Host` check, and for any method but GET and HEAD the `X-Dashboard-Refresh: 1` header and an allowed `Origin`) live only in `createApp`'s one middleware in `packages/server/src/app.ts`, which runs before every route; a route never checks them itself, and nothing sets an `Access-Control-*` header.
