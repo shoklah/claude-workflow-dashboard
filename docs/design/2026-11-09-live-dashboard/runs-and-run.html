@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Superpowers Brainstorming</title>
+  <style>
+    /*
+     * BRAINSTORM COMPANION FRAME TEMPLATE
+     *
+     * This template provides a consistent frame with:
+     * - OS-aware light/dark theming
+     * - Header branding and connection status
+     * - Scrollable main content area
+     * - CSS helpers for common UI patterns
+     *
+     * Content is injected via placeholder comment in #frame-content.
+     */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    /* ===== THEME VARIABLES ===== */
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* ===== FRAME STRUCTURE ===== */
+    .brand { display: flex; align-items: center; min-width: 0; overflow: hidden; color: var(--text-secondary); line-height: 1; }
+    .brand a { color: inherit; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; min-width: 0; max-width: 100%; line-height: 1; }
+    .brand-copy { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1; transform: translateY(-1px); }
+    .brand-logo { display: block; height: 1em; width: auto; max-width: 180px; flex-shrink: 0; filter: invert(1); }
+    @media (prefers-color-scheme: dark) {
+      .brand-logo { filter: none; }
+    }
+    .status { font-size: 0.7rem; color: var(--status-color, var(--success)); display: flex; align-items: center; gap: 0.4rem; justify-self: end; white-space: nowrap; line-height: 1; }
+    .status::before { content: ''; width: 6px; height: 6px; background: var(--status-color, var(--success)); border-radius: 50%; }
+
+    .main { flex: 1; overflow-y: auto; }
+    #frame-content { padding: 2rem; min-height: 100%; }
+
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1.5rem;
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 1rem;
+      min-height: 42px;
+    }
+    .header .brand { justify-self: start; width: 100%; font-size: 0.75rem; line-height: 1; }
+    .header .status { grid-column: 2; line-height: 1; }
+    .header span {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .header .selected-text {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    /* ===== OPTIONS (for A/B/C choices) ===== */
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    /* ===== CARDS (for showing designs/mockups) ===== */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    /* ===== MOCKUP CONTAINER ===== */
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    /* ===== SPLIT VIEW (side-by-side comparison) ===== */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    /* ===== PROS/CONS ===== */
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    /* ===== PLACEHOLDER (for mockup areas) ===== */
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    /* ===== INLINE MOCKUP ELEMENTS ===== */
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- BRANDING -->
+    <div class="status">Connecting…</div>
+  </div>
+
+  <div class="main">
+    <div id="frame-content">
+      <h2>Slice 1's other screens: the Runs list and one run</h2>
+<p class="subtitle">Invented data. The Runs list is one proposal; the run itself has three layouts to choose from. Click one, or tell me what to mix.</p>
+
+<style>
+  .box { border: 1px solid rgba(127,127,127,.4); border-radius: 8px; padding: 12px; font-size: 12px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.t th { text-align: left; opacity: .6; font-weight: 500; border-bottom: 1px solid rgba(127,127,127,.35); padding: 4px 6px; }
+  table.t td { border-bottom: 1px solid rgba(127,127,127,.15); padding: 4px 6px; }
+  .chip { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: 11px; border: 1px solid rgba(127,127,127,.4); margin-right: 3px; }
+  .fixed { border-color: #3a8f5a; color: #4fb276; }
+  .ruled { border-color: #8a6bd1; color: #a58ae6; }
+  .open { border-color: #d9822b; color: #e39a4c; }
+  .deferred { opacity: .6; }
+  .filters span { display: inline-block; padding: 2px 9px; border: 1px solid rgba(127,127,127,.35); border-radius: 12px; margin-right: 4px; }
+  .head { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .head div i { font-style: normal; opacity: .6; display: block; font-size: 11px; }
+  .head div b { font-size: 14px; }
+  .tl { border-left: 2px solid rgba(127,127,127,.4); margin-left: 6px; padding-left: 14px; }
+  .tl .ev { position: relative; margin-bottom: 9px; }
+  .tl .ev:before { content: ""; position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: rgba(90,120,220,.8); }
+  .tl .ev.warn:before { background: #d9822b; }
+  .wave { display: flex; gap: 8px; }
+  .wave > div { flex: 1; border: 1px dashed rgba(127,127,127,.4); border-radius: 6px; padding: 5px 7px; }
+  .muted { opacity: .6; }
+  .tabs span { display: inline-block; padding: 3px 11px; border-bottom: 2px solid transparent; margin-right: 6px; }
+  .tabs .on { border-bottom-color: rgba(90,120,220,.9); font-weight: 600; }
+  .strip { display: flex; gap: 4px; margin: 6px 0 10px; }
+  .strip div { flex: 1; text-align: center; border-radius: 4px; padding: 3px; background: rgba(90,120,220,.18); font-size: 11px; }
+</style>
+
+<div class="section">
+  <h3>The Runs list (one proposal)</h3>
+  <div class="box">
+    <div class="filters" style="margin-bottom:8px"><span>Path: all</span><span>Project: all</span><span>Last 4 weeks</span><span>Has warnings</span></div>
+    <table class="t">
+      <tr><th>Finished</th><th>Project · branch</th><th>Path</th><th>Time</th><th>Tasks</th><th>Findings</th><th>Stops</th><th>Est. cost</th><th>Warnings</th></tr>
+      <tr><td>Mon 11:22</td><td>atlas · feat/search</td><td>full</td><td>2 h 10</td><td>4 in 2 waves</td><td>14 · 12 closed</td><td>0</td><td>$7.10</td><td>1</td></tr>
+      <tr><td>Mon 09:40</td><td>harbor · fix/login</td><td>small</td><td>25 min</td><td>–</td><td>1 · 1 closed</td><td>0</td><td>$1.20</td><td>0</td></tr>
+      <tr><td>Sun 17:05</td><td>atlas · plan/export</td><td>plan</td><td>50 min</td><td>–</td><td>8 · 8 closed</td><td>0</td><td>$2.30</td><td>0</td></tr>
+      <tr><td>Fri 15:31</td><td>quarry · feat/import</td><td>full</td><td>3 h 45</td><td>7 in 3 waves</td><td>22 · 19 closed</td><td>1</td><td>$11.80</td><td>2</td></tr>
+    </table>
+    <p class="muted">A record written before steps were recorded shows "–" where it can't fill a column, with a "before steps" mark, as on the static page.</p>
+  </div>
+</div>
+
+<h3>One run: which layout?</h3>
+<div class="cards" style="display:flex; flex-direction:column; gap:18px">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="box">
+        <div class="head">
+          <div><i>Run</i><b>atlas · feat/search</b></div><div><i>Path · stage</i><b>full · 1</b></div><div><i>Time</i><b>2 h 10</b></div><div><i>Est. cost</i><b>$7.10</b></div><div><i>Findings</i><b>14 · 12 closed</b></div><div><i>Warnings</i><b>1</b></div>
+        </div>
+        <div class="tl">
+          <div class="ev"><b>09:12 Started</b> <span class="muted">· subagent-driven-development loaded</span></div>
+          <div class="ev"><b>Wave 1</b>
+            <div class="wave">
+              <div><b>Task 1</b> · implementer<br>task review: <span class="chip">I</span><span class="chip">M</span> → fix round 1 → <span class="chip fixed">fixed</span></div>
+              <div><b>Task 2</b> · implementer-copy<br>task review: clean</div>
+            </div>
+          </div>
+          <div class="ev"><b>Wave 2</b> <span class="muted">· tasks 3 and 4, 3 findings, all fixed</span></div>
+          <div class="ev"><b>10:48 simplify</b> · 4 applied, 1 declined</div>
+          <div class="ev warn"><b>10:57 Final review</b> · 5 findings: <span class="chip fixed">3 fixed</span><span class="chip ruled">1 ruled</span><span class="chip deferred">1 deferred</span><br><span style="color:#e39a4c">Warning: final-reviewer ran on another model than its pin</span></div>
+          <div class="ev"><b>11:22 Record written</b></div>
+        </div>
+        <p class="muted">Each step opens its findings, each finding its rounds and fix-checker verdicts. Skills, models and advisor notes appear on the step where they happened.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. A timeline</h3>
+      <p>The run as a story, from start to record, with waves side by side. The best for walking someone through a run.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="box">
+        <div class="head">
+          <div><i>Run</i><b>atlas · feat/search</b></div><div><i>Path · stage</i><b>full · 1</b></div><div><i>Time</i><b>2 h 10</b></div><div><i>Est. cost</i><b>$7.10</b></div>
+        </div>
+        <div class="tabs"><span class="on">Steps and findings</span><span>Skills</span><span>Models and cost</span><span>Advisor</span><span>Warnings (1)</span></div>
+        <table class="t" style="margin-top:6px">
+          <tr><th>Step</th><th>Task</th><th>Round</th><th>Agent</th><th>Found</th><th>Outcome</th></tr>
+          <tr><td>task review</td><td>1</td><td>0</td><td>task-reviewer</td><td>1 I · 1 M</td><td><span class="chip fixed">fixed</span><span class="chip deferred">deferred</span></td></tr>
+          <tr><td>fix-check</td><td>1</td><td>1</td><td>fix-checker</td><td>fixed 1</td><td></td></tr>
+          <tr><td>simplify</td><td>–</td><td>–</td><td>simplify</td><td>5</td><td>4 applied · 1 declined</td></tr>
+          <tr><td>final review</td><td>–</td><td>0</td><td>final-reviewer</td><td>5</td><td><span class="chip fixed">3 fixed</span><span class="chip ruled">1 ruled</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Tabs</h3>
+      <p>A header, then one tab per kind of fact. Dense and familiar, closest to the static page's run detail; weaker at showing order and waves.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="box">
+        <div class="head">
+          <div><i>Run</i><b>atlas · feat/search</b></div><div><i>Path · stage</i><b>full · 1</b></div><div><i>Time</i><b>2 h 10</b></div><div><i>Est. cost</i><b>$7.10</b></div>
+        </div>
+        <div class="strip"><div>wave 1</div><div>wave 2</div><div>simplify</div><div style="background:rgba(217,130,43,.3)">final review</div></div>
+        <div class="filters" style="margin-bottom:6px"><span>All steps</span><span>Severity: all</span><span>Outcome: not fixed</span></div>
+        <table class="t">
+          <tr><th>#</th><th>Step</th><th>Sev.</th><th>Summary</th><th>Outcome</th><th>Verdicts</th></tr>
+          <tr><td>F9</td><td>final review</td><td>Important</td><td>Pagination drops the last page on exact multiples</td><td><span class="chip ruled">ruled</span></td><td>open, open, open</td></tr>
+          <tr><td>F11</td><td>final review</td><td>Minor</td><td>Error text not localized</td><td><span class="chip deferred">deferred</span></td><td>–</td></tr>
+          <tr><td>F2</td><td>task review</td><td>Minor</td><td>Test name doesn't say what it checks</td><td><span class="chip deferred">deferred</span></td><td>–</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Findings first</h3>
+      <p>Every finding of the run in one filterable table, the steps as a strip on top. The fastest to audit what got through.</p>
+    </div>
+  </div>
+
+</div>
+
+    </div>
+  </div>
+
+</body>
+</html>
