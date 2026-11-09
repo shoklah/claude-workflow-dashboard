@@ -58,6 +58,8 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - Home's week sums (runs by path, cost) come only from `weekSums` in `packages/server/src/views/home.ts`, which check:real also compares with the reporter's `totals.weeks`; a new weekly sum goes there with its check.
 - A skill's outcome leaves the backend only as `skillOutcomeLabel`'s label in `packages/server/src/views/runs.ts`, since a string outcome is a file path.
 - A run's warnings, wherever they show, are the texts in its latest merged `warns` (`currentWarnings` in `views/runs.ts`); the stored `warnings` table only supplies first-seen times.
+- A finding leaves the backend only as `runView` in `views/runs.ts` builds it, with its label and, with a scope, its masking; the Findings page's list included.
+- A list's `path`, `project` (a key) and `weeks` (default 4) query params are parsed only by `periodQuery` in `packages/server/src/routes.ts`.
 - The web app reads the API only through `src/api.ts` in `packages/web`: `useStatus` for the import's status, `useLiveQuery` for every page's data (its key holds the last good import's time, so data refetches in place when an import lands), and `refresh`, `markSeen` and `showProjects` for the POSTs, which share its one `post` helper.
 - shadcn/ui components are added with its CLI (`packages/web/components.json`) into `src/components/ui/`; its `@/` alias is for the CLI and the files it writes, and the app's own code imports them relatively, with their extension.
 - shadcn's `Table` forwards `containerProps` to its scroll container, the one hand edit in `src/components/ui/`; a table that scrolls sideways passes `tabIndex: 0`, `role: 'region'` and an `aria-label` through it.

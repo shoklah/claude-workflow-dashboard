@@ -40,4 +40,5 @@ serveApp({
   webDist: builtWebDist(),
   now: () => NOW,
   aliases: config.aliases,
+  labeller: null,
 });

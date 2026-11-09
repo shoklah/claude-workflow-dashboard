@@ -50,6 +50,7 @@ async function get(path: string): Promise<Response> {
     webDist: null,
     now: () => NOW,
     aliases: {},
+    labeller: null,
   });
   return app.request(path, { headers: { Host: `localhost:${PORT}` } });
 }

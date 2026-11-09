@@ -71,6 +71,7 @@ function app() {
     webDist: null,
     now: () => NOW,
     aliases: { [WORK]: 'Notes app' },
+    labeller: null,
   });
 }
 
@@ -106,6 +107,7 @@ test("with showing on, no response holds a path, a session ID or a hidden projec
   );
   const list = await get<RunsResponse>('/api/runs?weeks=52');
   const bodies: unknown[] = [list, await get('/api/home'), await get('/api/showing'), await get('/api/status')];
+  bodies.push(await get('/api/findings?weeks=52'));
   for (const row of list.runs) bodies.push(await get(`/api/runs/${row.key}`));
   expect(list.runs).toHaveLength(2);
   for (const body of bodies) expect(leaks(body, FORBIDDEN)).toEqual([]);

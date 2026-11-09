@@ -8,3 +8,4 @@ export * from './projects.ts';
 export * from './api/runs.ts';
 export * from './categories.ts';
 export * from './api/showing.ts';
+export * from './api/findings.ts';

@@ -42,6 +42,7 @@ function app(overrides: Partial<AppDeps> = {}) {
     webDist,
     now: () => NOW,
     aliases: {},
+    labeller: null,
     ...overrides,
   });
 }

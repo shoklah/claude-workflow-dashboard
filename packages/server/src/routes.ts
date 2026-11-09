@@ -1,7 +1,7 @@
 import type { Context, Hono } from 'hono';
-import { toPath, type RunEntry, type RunsQuery } from '@cwd/shared';
+import { toPath, weekStart, type FindingsQuery, type RunEntry, type RunsQuery } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
-import { currentLabels, labelInputs } from './db/labels.ts';
+import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
 import {
   getRun,
   getSeenAt,
@@ -15,6 +15,7 @@ import {
   type StoredUnit,
 } from './db/read.ts';
 import { projectKey } from './keys.ts';
+import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
 import { rootOf, runView, runsList, storedBranches, storedNames } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
@@ -24,6 +25,16 @@ import { statusView } from './views/status.ts';
 /** The answer to any method but POST on a POST-only route. */
 function postOnly(c: Context): Response {
   return c.body(null, 405, { Allow: 'POST' });
+}
+
+/** A list's `path`, `project` (a project's key) and `weeks` (a positive whole number, default 4) query params. */
+function periodQuery(c: Context): FindingsQuery {
+  const weeks = Number(c.req.query('weeks'));
+  return {
+    path: toPath(c.req.query('path')),
+    project: c.req.query('project') || undefined,
+    weeks: Number.isInteger(weeks) && weeks > 0 ? weeks : 4,
+  };
 }
 
 /** The API routes, one block per task. The request rules (Host, the POST header and Origin) are app.ts's middleware. */
@@ -65,13 +76,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
 
   // Task 7: the Runs list and one run.
   app.get('/api/runs', (c) => {
-    const weeks = Number(c.req.query('weeks'));
-    const query: RunsQuery = {
-      path: toPath(c.req.query('path')),
-      project: c.req.query('project') || undefined,
-      weeks: Number.isInteger(weeks) && weeks > 0 ? weeks : 4,
-      warnings: c.req.query('warnings') === '1',
-    };
+    const query: RunsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
     const runs = listUnits(deps.db, 'run');
     return c.json(runsList(runs, listWarnings(deps.db), query, deps.now(), scopeFor(runs)));
   });
@@ -99,5 +104,20 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     }
     setShowing(deps.db, projects.length > 0 ? [...new Set(projects as string[])] : null);
     return c.body(null, 204);
+  });
+
+  // Slice 2a, task 7: the Findings page, with the labeller's state.
+  app.get('/api/findings', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    const inputs = labelInputs(runs);
+    const labels = currentLabels(deps.db, inputs);
+    const now = deps.now();
+    const labeller = {
+      on: deps.labeller !== null,
+      labelled: labels.size,
+      waiting: deps.labeller ? pendingInputs(deps.db, inputs, deps.labeller.model).length : 0,
+      tokensThisWeek: tokensSince(deps.db, weekStart(now)),
+    };
+    return c.json(findingsView({ runs, labels, query: periodQuery(c), now, scope: scopeFor(runs), labeller }));
   });
 }

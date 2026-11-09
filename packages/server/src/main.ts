@@ -36,4 +36,5 @@ serveApp({
   webDist: builtWebDist(),
   now,
   aliases: config.aliases,
+  labeller: settings,
 });
