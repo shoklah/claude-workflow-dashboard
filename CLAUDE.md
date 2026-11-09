@@ -38,3 +38,6 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - `units.missing_since`, `imports` and `state` are stored facts, not derived: nothing in `unit_versions` can rebuild them, so a migration that drops or recreates their tables carries their values over.
 - Migrations are generated with `drizzle-kit generate` from `packages/server/src/db/schema.ts` into `packages/server/drizzle/` and never hand-edited; SQL names are snake_case, times are `timestamp_ms` integers and JSON is `text` in `json` mode.
 - Tests in any package read the invented fixtures through `packages/shared/test/fixture.ts`, and every database test opens a fresh file in its own temp folder.
+- A failure's error text (the reporter's, an import's) never quotes the reporter's stdout, which holds the data: it names the command, the exit and stderr's last line, or a fixed message.
+- Background work (imports) runs through `createQueue` in `packages/server/src/queue.ts`, which logs a failing job instead of rejecting, so a background error never crashes the server.
+- A test that waits on an `fs.watch` event repeats the change inside `vi.waitFor`, since macOS can drop a change made right after the watch starts.
