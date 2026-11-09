@@ -28,7 +28,7 @@ afterEach(() => {
 describe('check:real', () => {
   test('prints version, fields and key counts only', () => {
     const { stdout, status } = checkReal(['cat', fixturePath('report-full')]);
-    expect(stdout).toBe('version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\n');
+    expect(stdout).toBe('version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n');
     expect(status).toBe(0);
   });
 
@@ -46,7 +46,23 @@ describe('check:real', () => {
     dirs.push(dir);
     const file = join(dir, 'report keys.json');
     writeFileSync(file, JSON.stringify(report));
-    expect(checkReal(['cat', file]).stdout).toBe('version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\n');
+    // The extra run and the one with no date also change their weeks' sums.
+    expect(checkReal(['cat', file]).stdout).toBe(
+      'version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\nweeks: 4 compared, 2 differ\n2026-10-04\n2026-10-18\n',
+    );
+  });
+
+  test('check:real reports a differing week', () => {
+    const report = fixture('report-full');
+    const week = report.totals.weeks.find((w: { week: string }) => w.week === '2026-11-01');
+    week.cost += 0.01;
+    const dir = mkdtempSync(join(tmpdir(), 'cwd check real '));
+    dirs.push(dir);
+    const file = join(dir, 'report weeks.json');
+    writeFileSync(file, JSON.stringify(report));
+    const { stdout, status } = checkReal(['cat', file]);
+    expect(stdout).toBe('version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 1 differ\n2026-11-01\n');
+    expect(status).toBe(0);
   });
 
   test("a failing reporter's stderr is never printed", () => {

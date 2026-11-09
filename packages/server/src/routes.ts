@@ -1,7 +1,8 @@
 import type { Context, Hono } from 'hono';
 import type { StatusResponse } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
-import { lastGoodImport, lastImport, setSeenAt } from './db/read.ts';
+import { getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings, setSeenAt } from './db/read.ts';
+import { homeView } from './views/home.ts';
 
 // The folders of an absolute path: from a `/` that starts a word up to its last `/`. A folder name may hold a space,
 // but not a space before a `/`, which starts the next path; quotes, `:` and `;` end the path. Text after a path
@@ -41,4 +42,16 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     return c.body(null, 204);
   });
   app.all('/api/seen', postOnly);
+
+  // Task 6: the home screen.
+  app.get('/api/home', (c) =>
+    c.json(
+      homeView({
+        runs: listUnits(deps.db, 'run'),
+        warnings: listWarnings(deps.db),
+        seenAt: getSeenAt(deps.db),
+        now: deps.now(),
+      }),
+    ),
+  );
 }
