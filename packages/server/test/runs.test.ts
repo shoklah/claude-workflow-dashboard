@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadReport, runKey, type RunResponse, type RunsResponse } from '@cwd/shared';
+import { loadReport, runKey, type HomeResponse, type RunResponse, type RunsResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -83,6 +83,28 @@ test('filters by project name', async () => {
 
 test('filters to runs with warnings', async () => {
   expect((await runs('?warnings=1')).runs.map((r) => r.key)).toEqual([FULL, RETRY_BACKOFF]);
+});
+
+test("a run's warnings are those in its latest warns", async () => {
+  const W = 'WARN: feature/planner (2026-11-08): no session transcript found';
+  const importPlanWarns = (warns: string[], at: Date) => {
+    const raw = fixture('report-full');
+    raw.runs[3].warns = warns;
+    const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+    if (!loaded.ok) throw new Error('the changed fixture does not load');
+    importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, at);
+  };
+  const feedTexts = async () => ((await (await get('/api/home')).json()) as HomeResponse).feed.map((f) => f.text);
+
+  importPlanWarns([W], new Date('2026-11-12T13:00:00Z'));
+  expect((await runs('?warnings=1')).runs.map((r) => r.key)).toContain(PLAN);
+  expect((await run(PLAN)).warnings).toEqual([{ text: W, sessionId: null }]);
+  expect(await feedTexts()).toContain(W);
+
+  importPlanWarns([], new Date('2026-11-12T14:00:00Z'));
+  expect((await runs('?warnings=1')).runs.map((r) => r.key)).not.toContain(PLAN);
+  expect((await run(PLAN)).warnings).toEqual([]);
+  expect(await feedTexts()).not.toContain(W);
 });
 
 test('keeps the last 4 weeks by default', async () => {
@@ -230,6 +252,8 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
   // The reporter's run warnings carry no session file name, so this test makes one up.
   const stored = listUnits(db, 'run').find((u) => u.key === FULL)!;
   const text = 'WARN: feature/offline-sync (2026-11-10): 7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c.jsonl ended early';
+  // A run's warnings are the texts in its latest warns; the other two are left out by run and by kind.
+  stored.merged.warns = [text, 'WARN: another run', 'WARN: a session'];
   const view = runView(stored, [
     { kind: 'run', key: FULL, text, firstSeenAt: NOW },
     { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW },

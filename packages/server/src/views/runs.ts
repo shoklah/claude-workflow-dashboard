@@ -35,8 +35,17 @@ export function skillOutcomeLabel(outcome: unknown): string {
 }
 
 /**
+ * The stored warnings that are current: every session warning, and a run's warnings, the texts in its latest merged
+ * `warns`; the store only gives their first-seen times.
+ */
+export function currentWarnings(runs: StoredUnit<RunEntry>[], warnings: StoredWarning[]): StoredWarning[] {
+  const warns = new Map(runs.map((run) => [run.key, run.merged.warns ?? []]));
+  return warnings.filter((w) => w.kind === 'session' || (warns.get(w.key)?.includes(w.text) ?? false));
+}
+
+/**
  * The runs finished in the query's last `weeks` weeks (this week and the ones before it, weeks starting Sunday
- * 07:00 UTC) that match its path, project and "has warnings" (a stored run warning), newest first.
+ * 07:00 UTC) that match its path, project and "has warnings" (a current run warning), newest first.
  */
 export function runsList(
   runs: StoredUnit<RunEntry>[],
@@ -46,7 +55,7 @@ export function runsList(
 ): RunsResponse {
   const rows = runs.map((run) => runFacts(run.merged));
   const from = weekStart(now).getTime() - (query.weeks - 1) * WEEK;
-  const warned = new Set(warnings.filter((w) => w.kind === 'run').map((w) => w.key));
+  const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
   // A stored run always has its finish time (finishedAt), the date its key is made from.
   const finished = (row: { finishedAt: string | null }) => Date.parse(row.finishedAt ?? '');
   return {
@@ -120,7 +129,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts): TimelineG
   ].filter((g) => !['plan', 'simplify', 'final'].includes(g.kind) || g.steps.length > 0);
 }
 
-/** One run: its facts, timeline and findings, its skills, models and advisor notes, and its stored warnings. */
+/** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings. */
 export function runView(run: StoredUnit<RunEntry>, warnings: StoredWarning[]): RunResponse {
   const entry = run.merged;
   const facts = runFacts(entry);
@@ -134,8 +143,8 @@ export function runView(run: StoredUnit<RunEntry>, warnings: StoredWarning[]): R
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
-    warnings: warnings
-      .filter((w) => w.kind === 'run' && w.key === run.key)
+    warnings: currentWarnings([run], warnings)
+      .filter((w) => w.kind === 'run')
       .map((w) => splitSessionId(w.text)),
   };
 }

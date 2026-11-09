@@ -15,6 +15,7 @@ import {
   type WeekNumbers,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
+import { currentWarnings } from './runs.ts';
 
 type WeekSum = { runs: { small: number; full: number; plan: number }; cost: number | null };
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
@@ -76,7 +77,9 @@ export function homeView(input: {
   seenAt: Date | null;
   now: Date;
 }): HomeResponse {
-  const { warnings, seenAt, now } = input;
+  const { seenAt, now } = input;
+  // Only the current warnings show: a run's are the texts in its latest warns.
+  const warnings = currentWarnings(input.runs, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
   const runs: Run[] = input.runs.map((unit) => ({
     unit,
@@ -98,10 +101,9 @@ export function homeView(input: {
     const sum = sums.get(week);
     const cost = sum?.cost ?? null;
     const sessionWarnings = warnings.filter((w) => w.kind === 'session' && weekOf(w.firstSeenAt) === week);
-    const newRunWarnings = warnings.filter((w) => {
-      const run = inWeek.find((r) => w.kind === 'run' && r.unit.key === w.key);
-      return run !== undefined && isNew(w.firstSeenAt) && (run.unit.merged.warns ?? []).includes(w.text);
-    });
+    const newRunWarnings = warnings.filter(
+      (w) => w.kind === 'run' && isNew(w.firstSeenAt) && inWeek.some((r) => r.unit.key === w.key),
+    );
     return {
       runs: sum?.runs ?? { small: 0, full: 0, plan: 0 },
       // findings: every finding of the week's runs' steps, the sum of their RunFacts.findings.
