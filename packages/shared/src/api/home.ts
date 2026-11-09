@@ -1,9 +1,9 @@
 import type { FindingSplit } from '../facts.ts';
-import type { StepKind } from '../report.ts';
+import type { Path, StepKind } from '../report.ts';
 
 /** One week's numbers on the home screen's tiles; each is a plain sum over the week's stored runs. */
 export type WeekNumbers = {
-  runs: { small: number; full: number; plan: number };
+  runs: Record<Path, number>;
   findings: FindingSplit;
   cost: number | null;
   costPerRun: number | null;

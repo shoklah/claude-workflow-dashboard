@@ -1,7 +1,7 @@
 import type { Context, Hono } from 'hono';
-import { PATHS, type RunsQuery, type StatusResponse } from '@cwd/shared';
+import { toPath, type RunsQuery, type StatusResponse } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
-import { getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings, setSeenAt } from './db/read.ts';
+import { getRun, getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings, setSeenAt } from './db/read.ts';
 import { homeView } from './views/home.ts';
 import { runView, runsList } from './views/runs.ts';
 
@@ -58,9 +58,9 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
 
   // Task 7: the Runs list and one run.
   app.get('/api/runs', (c) => {
-    const weeks = Number(c.req.query('weeks') ?? 4);
+    const weeks = Number(c.req.query('weeks'));
     const query: RunsQuery = {
-      path: PATHS.find((p) => p === c.req.query('path')),
+      path: toPath(c.req.query('path')),
       project: c.req.query('project') || undefined,
       weeks: Number.isInteger(weeks) && weeks > 0 ? weeks : 4,
       warnings: c.req.query('warnings') === '1',
@@ -68,7 +68,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     return c.json(runsList(listUnits(deps.db, 'run'), listWarnings(deps.db), query, deps.now()));
   });
   app.get('/api/runs/:key', (c) => {
-    const run = listUnits(deps.db, 'run').find((unit) => unit.key === c.req.param('key'));
+    const run = getRun(deps.db, c.req.param('key'));
     if (!run) return c.notFound();
     return c.json(runView(run, listWarnings(deps.db)));
   });

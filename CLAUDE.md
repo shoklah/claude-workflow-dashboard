@@ -46,7 +46,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - API routes are added in `registerRoutes` in `packages/server/src/routes.ts`, one block per task; a POST-only route answers any other method with `postOnly` (405), and the server listens only through `serveApp`, on 127.0.0.1.
 - Error text sent to the page goes through `trimPaths` in `packages/server/src/routes.ts`, which cuts each absolute path to its last segment; the stored text stays whole.
 - A page's API response is built by a pure function in `packages/server/src/views/<page>.ts` of the stored units, warnings, seen time and `now`, into its response type in `packages/shared/src/api/<page>.ts`; its route block only reads the database (`listUnits`, `listWarnings`, `getSeenAt`, `deps.now()`), parses the query and calls it.
-- A week is named by its start date, `weekStart(t).toISOString().slice(0, 10)`, as the reporter's `totals.weeks[].week`.
+- A week is named by its start date through `weekOf` in `packages/shared/src/week.ts`, as the reporter's `totals.weeks[].week`.
 - Home's week sums (runs by path, cost) come only from `weekSums` in `packages/server/src/views/home.ts`, which check:real also compares with the reporter's `totals.weeks`; a new weekly sum goes there with its check.
 - A skill's outcome leaves the backend only as `skillOutcomeLabel`'s label in `packages/server/src/views/runs.ts`, since a string outcome is a file path.
 - A run's warnings, wherever they show, are the texts in its latest merged `warns` (`currentWarnings` in `views/runs.ts`); the stored `warnings` table only supplies first-seen times.

@@ -1,7 +1,7 @@
 import ReactECharts from 'echarts-for-react';
 import type { HomeResponse, StepKind } from '@cwd/shared';
 // By path: the package's entry also loads Node-only code (keys.ts imports node:crypto), which a browser can't run.
-import { weekStart } from '../../../shared/src/week.ts';
+import { weekOf } from '../../../shared/src/week.ts';
 import { STEP_LABELS, formatCost } from '../lib/format.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
@@ -126,7 +126,7 @@ function ChartsTable({ charts }: { charts: Charts }) {
  * coverage starts after the first of them (the earlier weeks hold only what was stored).
  */
 export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverageFrom: string | null }) {
-  const coverageWeek = coverageFrom === null ? null : weekStart(new Date(coverageFrom)).toISOString().slice(0, 10);
+  const coverageWeek = coverageFrom === null ? null : weekOf(new Date(coverageFrom));
   return (
     <section aria-label="Weekly charts" className="flex flex-col gap-2">
       <div className="flex gap-3">

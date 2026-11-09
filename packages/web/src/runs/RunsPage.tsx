@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { RunsQuery, RunsResponse } from '@cwd/shared';
-import { PATHS } from '../../../shared/src/report.ts';
+import { PATHS, toPath } from '../../../shared/src/report.ts';
 import { useLiveQuery } from '../api.ts';
 import { RunsTable } from './RunsTable.tsx';
 
@@ -37,7 +37,7 @@ export function RunsPage() {
           <select
             className={SELECT}
             value={query.path ?? ''}
-            onChange={(e) => set({ path: PATHS.find((p) => p === e.target.value) })}
+            onChange={(e) => set({ path: toPath(e.target.value) })}
           >
             <option value="">All</option>
             {PATHS.map((path) => (

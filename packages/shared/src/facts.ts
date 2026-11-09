@@ -1,5 +1,5 @@
 import { runKey } from './keys.ts';
-import { PATHS, type Outcome, type Path, type RunEntry, type Step } from './report.ts';
+import { toPath, type Outcome, type Path, type RunEntry, type Step } from './report.ts';
 
 export type FindingSplit = { total: number; actedOn: number; notActedOn: number; open: number };
 
@@ -55,7 +55,7 @@ export function runFacts(run: RunEntry): RunFacts {
   const key = runKey(run);
   // A run with no date has no key, and the import never stores one.
   if (key === null) throw new Error('a run with no date has no key');
-  const path = PATHS.find((p) => p === record?.path) ?? null;
+  const path = toPath(record?.path) ?? null;
   return {
     key,
     // project: the last segment of record.project, so no path leaves the backend.

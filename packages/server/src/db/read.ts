@@ -1,4 +1,4 @@
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import { RunEntrySchema, SessionEntrySchema, type RunEntry, type SessionEntry } from '@cwd/shared';
 import type { Db, Tx } from './open.ts';
 import { imports, state, units, warnings } from './schema.ts';
@@ -19,13 +19,23 @@ export function listUnits(db: Db, kind: 'run' | 'session'): StoredUnit<RunEntry 
     .where(eq(units.kind, kind))
     .orderBy(asc(units.key))
     .all()
-    .map((row) => ({
-      key: row.key,
-      merged: schema.parse(row.merged),
-      firstSeenAt: row.firstSeenAt,
-      missingSince: row.missingSince,
-      readable: row.readable,
-    }));
+    .map((row) => stored(row, schema));
+}
+
+/** One stored run by its key, or null: a primary-key read, for the run page. */
+export function getRun(db: Db, key: string): StoredUnit<RunEntry> | null {
+  const row = db.select().from(units).where(and(eq(units.kind, 'run'), eq(units.key, key))).get();
+  return row ? stored(row, RunEntrySchema) : null;
+}
+
+function stored<T>(row: typeof units.$inferSelect, schema: { parse(value: unknown): T }): StoredUnit<T> {
+  return {
+    key: row.key,
+    merged: schema.parse(row.merged),
+    firstSeenAt: row.firstSeenAt,
+    missingSince: row.missingSince,
+    readable: row.readable,
+  };
 }
 
 export function listWarnings(db: Db): StoredWarning[] {

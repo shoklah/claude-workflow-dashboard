@@ -18,8 +18,6 @@ const homeRoute = createRoute({
   component: HomePage,
 });
 
-// Placeholder: Task 10 replaces it with the Runs list.
-
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/runs',

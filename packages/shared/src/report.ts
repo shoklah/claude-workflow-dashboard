@@ -171,3 +171,8 @@ export type Totals = z.infer<typeof TotalsSchema>;
 export type StepKind = (typeof STEP_KINDS)[number];
 export type Outcome = (typeof OUTCOMES)[number];
 export type Path = (typeof PATHS)[number];
+
+/** A value as a run path, or undefined when it isn't one. */
+export function toPath(value: unknown): Path | undefined {
+  return PATHS.find((p) => p === value);
+}

@@ -1,9 +1,12 @@
 import {
+  PATHS,
   runFacts,
   splitFindings,
   splitSessionId,
   STEP_KINDS,
+  weekOf,
   weekStart,
+  type Path,
   type DiagramStep,
   type FeedItem,
   type FixLine,
@@ -17,7 +20,7 @@ import {
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { currentWarnings } from './runs.ts';
 
-type WeekSum = { runs: { small: number; full: number; plan: number }; cost: number | null };
+type WeekSum = { runs: WeekNumbers['runs']; cost: number | null };
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -28,12 +31,7 @@ const FULL_STEPS: StepKind[] = ['plan_simplify', 'plan_review', 'task_review', '
 const SMALL_STEPS: StepKind[] = ['task_review', 'simplify', 'final_review'];
 const FIX_CHECKS: StepKind[] = ['fix_check', 'final_fix_check'];
 // No runs on any path, a fresh object each time since weekSums adds to it.
-const noRuns = (): WeekSum['runs'] => ({ small: 0, full: 0, plan: 0 });
-
-/** A time's week, as the date its week starts. */
-function weekOf(t: Date): string {
-  return weekStart(t).toISOString().slice(0, 10);
-}
+const noRuns = (): WeekSum['runs'] => Object.fromEntries(PATHS.map((p) => [p, 0])) as Record<Path, number>;
 
 /**
  * Per week start date, over the runs with a date, as the reporter's week_rows: `runs`, the runs by path; `cost`, the
@@ -83,11 +81,10 @@ export function homeView(input: {
   // Only the current warnings show: a run's are the texts in its latest warns.
   const warnings = currentWarnings(input.runs, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
-  const runs: Run[] = input.runs.map((unit) => ({
-    unit,
-    facts: runFacts(unit.merged),
-    finished: new Date(unit.merged.record!.date!),
-  }));
+  const runs: Run[] = input.runs.map((unit) => {
+    const facts = runFacts(unit.merged);
+    return { unit, facts, finished: new Date(facts.finishedAt!) };
+  });
   const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;
   const sums = weekSums(runs.map((r) => r.unit.merged));
   const stepsOf = (of: Run[]) => of.flatMap((r) => r.unit.merged.steps ?? []);
@@ -188,6 +185,6 @@ export function homeView(input: {
     // The feed: the runs and warnings first seen after seenAt, newest first; a run at its finish time.
     feed: [...runItems, ...warningItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, FEED_SIZE),
     // coverageFrom: the earliest finish time of the runs whose transcript the reporter could read.
-    coverageFrom: readable[0]?.unit.merged.record?.date ?? null,
+    coverageFrom: readable[0]?.facts.finishedAt ?? null,
   };
 }
