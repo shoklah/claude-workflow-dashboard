@@ -1,15 +1,13 @@
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, test } from 'vitest';
-import { fixture } from '../../shared/test/fixture.ts';
+import { fixture, fixturePath } from '../../shared/test/fixture.ts';
 import type { Config } from '../src/config.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { lastGoodImport, lastImport, listUnits } from '../src/db/read.ts';
 import { importOnce, runReporter } from '../src/reporter.ts';
 
-const FIXTURES = fileURLToPath(new URL('../../shared/fixtures/', import.meta.url));
 const AT = new Date('2026-11-10T18:00:00Z');
 const TIMEOUT = 10_000;
 
@@ -35,13 +33,13 @@ afterEach(() => {
 
 describe('runReporter', () => {
   test('returns the parsed JSON', async () => {
-    const result = await runReporter(['cat', join(FIXTURES, 'report-full.json')], TIMEOUT);
+    const result = await runReporter(['cat', fixturePath('report-full')], TIMEOUT);
     expect(result).toEqual({ ok: true, json: fixture('report-full') });
   });
 
   test('a fixture path with a space works', async () => {
     const file = join(tempDir(), 'report full.json');
-    copyFileSync(join(FIXTURES, 'report-full.json'), file);
+    copyFileSync(fixturePath('report-full'), file);
     const result = await runReporter(['cat', file], TIMEOUT);
     expect(result).toEqual({ ok: true, json: fixture('report-full') });
   });
@@ -53,6 +51,7 @@ describe('runReporter', () => {
     if (result.ok) return;
     expect(result.error).toContain(command);
     expect(result.error).toContain('ENOENT');
+    expect(result.summary).toBe('reporter command failed to start (ENOENT)');
   });
 
   test("a non-zero exit is an error with its stderr's last line", async () => {
@@ -65,11 +64,13 @@ describe('runReporter', () => {
     expect(result.error).toContain('3');
     expect(result.error).toContain('the last line');
     expect(result.error).not.toContain('first line');
+    expect(result.summary).toBe('reporter exited with 3');
   });
 
   test('exit 0 with empty output is an error "reporter printed no JSON"', async () => {
     expect(await runReporter(nodeScript('process.stdout.write("  \\n")'), TIMEOUT)).toEqual({
       ok: false,
+      summary: 'reporter printed no JSON',
       error: 'reporter printed no JSON',
     });
   });
@@ -109,10 +110,19 @@ describe('importOnce', () => {
   }
 
   test('imports the report', async () => {
-    const { db, config } = setup(['cat', join(FIXTURES, 'report-full.json')]);
+    const { db, config } = setup(['cat', fixturePath('report-full')]);
     await importOnce(db, config, () => AT);
     expect(lastGoodImport(db)).toEqual({ at: AT, totals: fixture('report-full').totals });
     expect(listUnits(db, 'run')).toHaveLength(5);
+  });
+
+  test('the import is timed before the reporter runs', async () => {
+    // The reporter leaves a marker before printing, so a time taken after it ran would be LATER.
+    const marker = join(tempDir(), 'reporter ran');
+    const { db, config } = setup(['sh', '-c', 'touch "$1" && cat "$0"', fixturePath('report-full'), marker]);
+    const LATER = new Date(AT.getTime() + 60_000);
+    await importOnce(db, config, () => (existsSync(marker) ? LATER : AT));
+    expect(lastGoodImport(db)?.at).toEqual(AT);
   });
 
   test("a reporter error is recorded with its text", async () => {
@@ -133,7 +143,7 @@ describe('importOnce', () => {
   });
 
   test("a bad shape is recorded with its field paths", async () => {
-    const { db, config } = setup(['cat', join(FIXTURES, 'report-shape.json')]);
+    const { db, config } = setup(['cat', fixturePath('report-shape')]);
     await importOnce(db, config, () => AT);
     const last = lastImport(db);
     expect(last).toMatchObject({ at: AT, ok: false });

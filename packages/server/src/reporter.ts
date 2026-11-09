@@ -4,7 +4,13 @@ import type { Config } from './config.ts';
 import type { Db } from './db/open.ts';
 import { importReport, recordImportFailure } from './db/import.ts';
 
-export type ReporterResult = { ok: true; json: unknown } | { ok: false; error: string };
+// On failure, `summary` is a fixed message for the kind of failure (no command, no stderr); `error` adds the command or
+// stderr's last line, which may hold a path or session ID.
+export type ReporterResult = { ok: true; json: unknown } | { ok: false; summary: string; error: string };
+
+function failure(summary: string, detail = ''): ReporterResult {
+  return { ok: false, summary, error: detail ? `${summary}: ${detail}` : summary };
+}
 
 /**
  * Runs the reporter and parses its whole output as JSON. Every failure is a result, never a throw: a command that
@@ -21,43 +27,47 @@ export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterR
     child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
     const timer = setTimeout(() => {
       child.kill();
-      resolve({ ok: false, error: `reporter took longer than ${timeoutMs} ms and was stopped` });
+      resolve(failure(`reporter took longer than ${timeoutMs} ms and was stopped`));
     }, timeoutMs);
     child.on('error', (error: NodeJS.ErrnoException) => {
       clearTimeout(timer);
-      resolve({ ok: false, error: `reporter command failed to start (${error.code}): ${command}` });
+      resolve(failure(`reporter command failed to start (${error.code})`, command));
     });
     child.on('close', (code, signal) => {
       clearTimeout(timer);
       if (code !== 0) {
         const last = stderr.trim().split('\n').at(-1) ?? '';
-        resolve({ ok: false, error: `reporter exited with ${code ?? signal}${last ? `: ${last}` : ''}` });
+        resolve(failure(`reporter exited with ${code ?? signal}`, last));
         return;
       }
       const text = stdout.trim();
       if (!text) {
-        resolve({ ok: false, error: 'reporter printed no JSON' });
+        resolve(failure('reporter printed no JSON'));
         return;
       }
       try {
         resolve({ ok: true, json: JSON.parse(text) });
       } catch {
-        resolve({ ok: false, error: 'reporter output is not JSON' });
+        resolve(failure('reporter output is not JSON'));
       }
     });
   });
 }
 
-/** Runs the reporter once and imports its report, or records the failure with its error text. */
+/**
+ * Runs the reporter once and imports its report, or records the failure with its error text. The import is timed
+ * before the reporter runs, so a transcript that changes during the run is still newer than the import.
+ */
 export async function importOnce(db: Db, config: Config, now: () => Date): Promise<void> {
+  const at = now();
   const result = await runReporter(config.reporterCommand, config.reporterTimeoutMs);
-  if (!result.ok) return recordImportFailure(db, result.error, now());
+  if (!result.ok) return recordImportFailure(db, result.error, at);
   const loaded = loadReport(result.json);
   if (!loaded.ok) {
     const error =
       loaded.reason === 'version' ? 'report version is not 1' : `report fields don't match: ${loaded.fields.join(', ')}`;
-    return recordImportFailure(db, error, now());
+    return recordImportFailure(db, error, at);
   }
   const { runs, sessions, totals } = result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
-  importReport(db, loaded.report, { runs, sessions, totals }, now());
+  importReport(db, loaded.report, { runs, sessions, totals }, at);
 }

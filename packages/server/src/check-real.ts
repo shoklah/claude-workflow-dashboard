@@ -8,7 +8,8 @@ import { runReporter } from './reporter.ts';
 const config = loadConfig(process.argv[2]);
 const result = await runReporter(config.reporterCommand, config.reporterTimeoutMs);
 if (!result.ok) {
-  console.error(result.error);
+  // The summary only: the full error can hold stderr's last line, which may name a path or session ID.
+  console.error(result.summary);
   process.exit(1);
 }
 
