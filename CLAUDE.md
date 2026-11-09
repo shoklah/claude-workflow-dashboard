@@ -41,3 +41,4 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - A failure's error text (the reporter's, an import's) never quotes the reporter's stdout, which holds the data: it names the command, the exit and stderr's last line, or a fixed message.
 - Background work (imports) runs through `createQueue` in `packages/server/src/queue.ts`, which logs a failing job instead of rejecting, so a background error never crashes the server.
 - A test that waits on an `fs.watch` event repeats the change inside `vi.waitFor`, since macOS can drop a change made right after the watch starts.
+- Node runs the TypeScript sources directly with its built-in type stripping (Node >= 22.18, the `engines` floor), as in `check:real`: code stays erasable-only TypeScript (`erasableSyntaxOnly` in `tsconfig.base.json`), with no enums, namespaces or parameter properties.
