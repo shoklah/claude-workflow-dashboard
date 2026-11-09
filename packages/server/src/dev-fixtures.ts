@@ -32,4 +32,12 @@ for (const [i, file] of files.entries()) {
 const config = { ...base, reporterCommand: ['cat', files.at(-1)!] };
 const queue = createQueue(() => importOnce(db, config, () => NOW));
 const port = process.env.PORT ? Number(process.env.PORT) : config.port;
-serveApp({ db, port, requestImport: queue.request, importing: queue.busy, webDist: builtWebDist(), now: () => NOW });
+serveApp({
+  db,
+  port,
+  requestImport: queue.request,
+  importing: queue.busy,
+  webDist: builtWebDist(),
+  now: () => NOW,
+  aliases: config.aliases,
+});

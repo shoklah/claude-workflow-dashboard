@@ -31,6 +31,7 @@ describe('loadConfig', () => {
       runLog: join(home, '.claude', 'workflow-log.jsonl'),
       projectsDir: join(home, '.claude', 'projects'),
       reporterTimeoutMs: 120000,
+      aliases: {},
     });
   });
 

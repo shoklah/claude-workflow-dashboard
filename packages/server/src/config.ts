@@ -9,6 +9,8 @@ export type Config = {
   runLog: string;
   projectsDir: string;
   reporterTimeoutMs: number;
+  // Showing mode's display names, by project root path.
+  aliases: Record<string, string>;
 };
 
 /**
@@ -25,6 +27,7 @@ export function loadConfig(dataDir = join(homedir(), 'Library', 'Application Sup
     runLog: join(claude, 'workflow-log.jsonl'),
     projectsDir: join(claude, 'projects'),
     reporterTimeoutMs: 120_000,
+    aliases: {},
   };
   const file = join(dataDir, 'config.json');
   const overrides = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as Partial<Config>) : {};

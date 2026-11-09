@@ -16,4 +16,12 @@ const queue = createQueue(() => importOnce(db, config, now));
 // The last good import, not the last attempt, so a failed import doesn't hold back the transcript timer.
 startTriggers(config, queue.request, () => lastGoodImport(db)?.at ?? null);
 queue.request();
-serveApp({ db, port: config.port, requestImport: queue.request, importing: queue.busy, webDist: builtWebDist(), now });
+serveApp({
+  db,
+  port: config.port,
+  requestImport: queue.request,
+  importing: queue.busy,
+  webDist: builtWebDist(),
+  now,
+  aliases: config.aliases,
+});

@@ -22,6 +22,7 @@ function tempConfig(): Config {
     runLog: join(dir, 'claude dir', 'workflow-log.jsonl'),
     projectsDir: join(dir, 'claude dir', 'projects'),
     reporterTimeoutMs: 1000,
+    aliases: {},
   };
 }
 

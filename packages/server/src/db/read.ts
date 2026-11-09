@@ -7,6 +7,7 @@ export type StoredUnit<T> = { key: string; merged: T; firstSeenAt: Date; missing
 export type StoredWarning = { kind: 'run' | 'session'; key: string; text: string; firstSeenAt: Date };
 
 const SEEN_AT = 'seenAt';
+const SHOWING = 'showing';
 
 /** Every stored run or session, its merged facts parsed with the loader's schema. */
 export function listUnits(db: Db, kind: 'run'): StoredUnit<RunEntry>[];
@@ -57,6 +58,22 @@ export function setSeenAt(db: Db | Tx, at: Date): void {
     .values({ name: SEEN_AT, value: at.toISOString() })
     .onConflictDoUpdate({ target: state.name, set: { value: at.toISOString() } })
     .run();
+}
+
+/** Showing mode's picked project keys, or null while it is off. */
+export function getShowing(db: Db): string[] | null {
+  const row = db.select().from(state).where(eq(state.name, SHOWING)).get();
+  return row ? (JSON.parse(row.value) as string[]) : null;
+}
+
+/** Turns showing mode on with the given project keys, or off with null. */
+export function setShowing(db: Db, projects: string[] | null): void {
+  if (projects === null) {
+    db.delete(state).where(eq(state.name, SHOWING)).run();
+    return;
+  }
+  const value = JSON.stringify(projects);
+  db.insert(state).values({ name: SHOWING, value }).onConflictDoUpdate({ target: state.name, set: { value } }).run();
 }
 
 export function lastImport(db: Db): { at: Date; ok: boolean; error: string | null } | null {

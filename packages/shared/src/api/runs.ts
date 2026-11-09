@@ -6,9 +6,9 @@ export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings
 
 export type RunRow = RunFacts;
 
-/** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, and the key and
- * name of every stored run's project, by name. */
-export type RunsResponse = { runs: RunRow[]; projects: { key: string; name: string }[] };
+/** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, the key and
+ * name of every stored run's project, by name, and how many matching runs showing mode left out. */
+export type RunsResponse = { runs: RunRow[]; projects: { key: string; name: string }[]; hidden: number };
 
 /** A finding of a step, with that step's kind, task, wave and round. */
 export type FindingRow = {

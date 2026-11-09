@@ -105,6 +105,7 @@ describe('importOnce', () => {
       runLog: join(dataDir, 'workflow-log.jsonl'),
       projectsDir: join(dataDir, 'projects'),
       reporterTimeoutMs: TIMEOUT,
+      aliases: {},
     };
     return { db, config };
   }

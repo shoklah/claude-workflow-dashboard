@@ -25,7 +25,7 @@ const ACTED_ON: readonly Outcome[] = ['fixed', 'applied'];
 const NOT_ACTED_ON: readonly Outcome[] = ['declined', 'deferred', 'ruled', 'to_owner'];
 
 // A session transcript's file name, as the reporter writes it in a session warning.
-const SESSION_FILE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl/i;
+export const SESSION_FILE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl/i;
 
 /** Every finding of every step: acted on = fixed or applied, not acted on = declined, deferred, ruled or to_owner,
  * open = open; a finding with no outcome counts in total only. */
