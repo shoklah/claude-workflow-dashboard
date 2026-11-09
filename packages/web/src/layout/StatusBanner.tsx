@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { StatusResponse } from '@cwd/shared';
 
-function Time({ iso }: { iso: string }) {
+/** A time in the reader's locale and time zone, its ISO value in `datetime`. */
+export function Time({ iso }: { iso: string }) {
   return <time dateTime={iso}>{new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</time>;
 }
 

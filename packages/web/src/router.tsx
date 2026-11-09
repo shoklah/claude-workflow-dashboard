@@ -1,5 +1,7 @@
 import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { Shell } from './layout/Shell.tsx';
+import { RunPage } from './runs/RunPage.tsx';
+import { RunsPage } from './runs/RunsPage.tsx';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -19,10 +21,18 @@ const homeRoute = createRoute({
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/runs',
-  component: () => <h1 className="text-xl font-semibold">Runs</h1>,
+  component: RunsPage,
 });
 
-export const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute, runsRoute]) });
+const runRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/runs/$key',
+  component: function Run() {
+    return <RunPage runKey={runRoute.useParams().key} />;
+  },
+});
+
+export const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute]) });
 
 declare module '@tanstack/react-router' {
   interface Register {
