@@ -43,9 +43,11 @@ beforeEach(() => {
   file = join(dir, 'dashboard.sqlite');
   db = openDb(file);
   const raw = fixture('report-projects');
-  // A shown run whose finding and warning name the hidden tidepool-api, its path and a session file.
+  // A shown run whose finding and warning name the hidden tidepool-api, its path and branch, and a session.
   const shown = raw.runs[2];
-  shown.steps[0].findings[0].summary += ' (as tidepool-api does in /Users/example/Work/tidepool-api/src/retry.ts)';
+  shown.steps[0].findings[0].summary +=
+    ' (as tidepool-api does on fix/retry-backoff in /Users/example/Work/tidepool-api/src/retry.ts,' +
+    ' session 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35)';
   shown.warns = ['WARN: chore/tidy-imports (2026-11-03): 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35.jsonl ended early'];
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
   if (!loaded.ok) throw new Error('report-projects does not load');
@@ -98,7 +100,8 @@ test('the leak check looks for the hidden names, branches and session IDs, not t
 test("with showing on, no response holds a path, a session ID or a hidden project's name or branch", async () => {
   recordImportFailure(
     db,
-    'reporter failed: /Users/example/Work/tidepool-api/x.py: 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35.jsonl unreadable',
+    'reporter failed: /Users/example/Work/tidepool-api/x.py: 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35.jsonl unreadable' +
+      " in '/Users/example/.claude/projects/-Users-example-Work-tidepool-api'",
     NOW,
   );
   const list = await get<RunsResponse>('/api/runs?weeks=52');
@@ -121,7 +124,7 @@ test("a hidden run's page is a 404", async () => {
 });
 
 test("maskText masks a hidden project's name and path inside a shown project's text", () => {
-  const scope = scopeOf([projectKey(TIDEPOOL)], ROOTS, {})!;
+  const scope = scopeOf([projectKey(TIDEPOOL)], BRANCHES, {})!;
   const summary: string = RAW.runs[1].steps[2].findings[0].summary;
   expect(summary).toContain('lantern-notes');
   const masked = maskText(scope, summary);
@@ -131,19 +134,34 @@ test("maskText masks a hidden project's name and path inside a shown project's t
 });
 
 test('maskText replaces only whole words', () => {
-  const scope = { shown: new Set<string>(), names: new Map<string, string>(), hidden: ['api'] };
+  const scope = { shown: new Set<string>(), names: new Map<string, string>(), hidden: ['api'], branches: [] };
   expect(maskText(scope, 'rapid api')).toBe('rapid another project');
+  expect(maskText(scope, 'rapid-api')).toBe('rapid-another project');
+});
+
+test("maskText masks a hidden name that '-' joins to other words", () => {
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
+  expect(maskText(scope, 'bump tidepool-api-client to 2')).toBe('bump another project-client to 2');
+  // A Claude Code transcript folder, as trimPaths leaves it.
+  expect(maskText(scope, 'folder -Users-example-Work-tidepool-api')).toBe('folder -Users-example-Work-another project');
 });
 
 test('maskText turns a session file into "a session"', () => {
-  const scope = scopeOf([projectKey(WORK)], ROOTS, {})!;
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
   expect(maskText(scope, 'WARN: 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35.jsonl ended early')).toBe(
     'WARN: a session ended early',
   );
 });
 
+test("maskText masks a hidden run's branch and a bare session ID, not a shown run's branch", () => {
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
+  expect(
+    maskText(scope, 'as on fix/retry-backoff and chore/tidy-imports, see 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35'),
+  ).toBe('as on another branch and chore/tidy-imports, see a session');
+});
+
 test('a folder name a shown project also has is not hidden', () => {
-  const scope = scopeOf([projectKey(ARCHIVE)], ROOTS, {})!;
+  const scope = scopeOf([projectKey(ARCHIVE)], BRANCHES, {})!;
   expect(scope.hidden).not.toContain('lantern-notes');
   expect(scope.hidden).toContain('tidepool-api');
 });

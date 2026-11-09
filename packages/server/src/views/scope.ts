@@ -4,37 +4,53 @@ import { trimPaths } from '../text.ts';
 
 /**
  * Showing mode's scope: the shown project keys, each one's display name (its alias, else its folder name), and the
- * hidden projects' folder names, minus any a shown project also has, since those reveal nothing.
+ * hidden projects' folder names and branches, minus any string a shown project also has (as forbiddenStrings), since
+ * those reveal nothing.
  */
-export type Scope = { shown: Set<string>; names: Map<string, string>; hidden: string[] };
+export type Scope = { shown: Set<string>; names: Map<string, string>; hidden: string[]; branches: string[] };
 
-const SESSION_FILES = new RegExp(SESSION_FILE.source, 'gi');
+// A session ID, bare or as its `<uuid>.jsonl` file.
+const SESSION_IDS = new RegExp(`${SESSION_FILE.source.replace('\\.jsonl', '')}(?:\\.jsonl)?`, 'gi');
 
-/** The scope of showing mode's picked keys over the stored runs' roots, or null while showing mode is off. */
-export function scopeOf(showing: string[] | null, roots: string[], aliases: Record<string, string>): Scope | null {
+/** The scope of showing mode's picked keys over the stored runs' branches by root; null while showing mode is off. */
+export function scopeOf(
+  showing: string[] | null,
+  branches: Map<string, string[]>,
+  aliases: Record<string, string>,
+): Scope | null {
   if (showing === null) return null;
-  const unique = [...new Set(roots)];
+  const roots = [...branches.keys()];
   const isShown = (root: string) => showing.includes(projectKey(root));
-  const shownRoots = unique.filter(isShown);
+  const shownRoots = roots.filter(isShown);
+  const hiddenRoots = roots.filter((root) => !isShown(root));
   const names = projectNames(shownRoots, aliases);
-  const shownFolders = new Set(shownRoots.map(folderName));
-  const hidden = unique.filter((root) => !isShown(root)).map(folderName);
+  const forbidden = new Set(forbiddenStrings(roots, branches, shownRoots, []));
+  const hiddenOnly = (strings: string[]) => [...new Set(strings)].filter((s) => forbidden.has(s));
   return {
     shown: new Set(shownRoots.map(projectKey)),
     names: new Map(shownRoots.map((root) => [projectKey(root), names.get(root)!])),
-    hidden: [...new Set(hidden)].filter((name) => name && !shownFolders.has(name)),
+    hidden: hiddenOnly(hiddenRoots.map(folderName)),
+    branches: hiddenOnly(hiddenRoots.flatMap((root) => branches.get(root) ?? [])),
   };
 }
 
 /**
- * A text as showing mode lets it out: its paths trimmed (trimPaths), each `<uuid>.jsonl` written "a session", and each
- * whole-word hidden project name, in any case, written "another project". A word holds letters, digits, `_` and `-`.
+ * A text as showing mode lets it out: its paths trimmed (trimPaths), each session ID, bare or as `<uuid>.jsonl`,
+ * written "a session", and each whole-word hidden branch and project name, in any case, written "another branch" and
+ * "another project". A word holds letters, digits and `_`, so `-` ends one, as in a transcript folder's
+ * `-Users-me-Work-<name>`.
  */
 export function maskText(scope: Scope, text: string): string {
-  let masked = trimPaths(text).replace(SESSION_FILES, 'a session');
-  for (const name of scope.hidden) {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    masked = masked.replace(new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, 'gi'), 'another project');
+  let masked = trimPaths(text).replace(SESSION_IDS, 'a session');
+  const masks: [string[], string][] = [
+    [scope.branches, 'another branch'],
+    [scope.hidden, 'another project'],
+  ];
+  for (const [words, mask] of masks) {
+    for (const word of words) {
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      masked = masked.replace(new RegExp(`(?<!\\w)${escaped}(?!\\w)`, 'gi'), mask);
+    }
   }
   return masked;
 }

@@ -1,5 +1,5 @@
 import type { Context, Hono } from 'hono';
-import { toPath, type RunEntry, type RunsQuery, type StatusResponse } from '@cwd/shared';
+import { toPath, type RunEntry, type RunsQuery } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import {
   getRun,
@@ -14,11 +14,11 @@ import {
   type StoredUnit,
 } from './db/read.ts';
 import { projectKey } from './keys.ts';
-import { trimPaths } from './text.ts';
 import { homeView } from './views/home.ts';
-import { rootOf, runView, runsList, storedNames } from './views/runs.ts';
-import { maskText, scopeOf, type Scope } from './views/scope.ts';
+import { rootOf, runView, runsList, storedBranches, storedNames } from './views/runs.ts';
+import { scopeOf, type Scope } from './views/scope.ts';
 import { showingView } from './views/showing.ts';
+import { statusView } from './views/status.ts';
 
 /** The answer to any method but POST on a POST-only route. */
 function postOnly(c: Context): Response {
@@ -29,20 +29,14 @@ function postOnly(c: Context): Response {
 export function registerRoutes(app: Hono, deps: AppDeps): void {
   // Showing mode's scope over the stored runs, null while it is off.
   const scopeFor = (runs: StoredUnit<RunEntry>[]): Scope | null =>
-    scopeOf(getShowing(deps.db), runs.map(rootOf), deps.aliases);
+    scopeOf(getShowing(deps.db), storedBranches(runs), deps.aliases);
 
   // Task 4: the import's status, the refresh and "mark all seen".
-  app.get('/api/status', (c) => {
-    const last = lastImport(deps.db);
-    const scope = scopeFor(listUnits(deps.db, 'run'));
-    const status: StatusResponse = {
-      lastImportAt: last?.at.toISOString() ?? null,
-      lastGoodImportAt: lastGoodImport(deps.db)?.at.toISOString() ?? null,
-      error: last?.error ? (scope ? maskText(scope, last.error) : trimPaths(last.error)) : null,
-      importing: deps.importing(),
-    };
-    return c.json(status);
-  });
+  app.get('/api/status', (c) =>
+    c.json(
+      statusView(lastImport(deps.db), lastGoodImport(deps.db), deps.importing(), scopeFor(listUnits(deps.db, 'run'))),
+    ),
+  );
   app.post('/api/refresh', (c) => {
     deps.requestImport();
     return c.body(null, 202);

@@ -48,6 +48,16 @@ export function storedNames(runs: StoredUnit<RunEntry>[]): Map<string, string> {
   return projectNames(runs.map(rootOf));
 }
 
+/** Every stored run's branch, by its project root. */
+export function storedBranches(runs: StoredUnit<RunEntry>[]): Map<string, string[]> {
+  const branches = new Map<string, string[]>();
+  for (const run of runs) {
+    const root = rootOf(run);
+    branches.set(root, [...(branches.get(root) ?? []), run.merged.record?.branch ?? '']);
+  }
+  return branches;
+}
+
 /** A stored run's facts: runFacts plus its stored key, its project's key and its project's name from `names`. */
 export function storedFacts(unit: StoredUnit<RunEntry>, names: Map<string, string>): RunFacts {
   const root = rootOf(unit);
