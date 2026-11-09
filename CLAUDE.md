@@ -17,7 +17,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 
 - **TypeScript end to end** (backend, frontend, import validation): one set of types runs from checking the reporter's JSON on import through the API to the charts, which guards "facts agree". The reporter itself stays Python, run as a separate process.
 - **Final:** Node LTS, Hono, Drizzle over SQLite (`better-sqlite3`) with its migrations, zod, React with Vite, TanStack Query and Router, Tailwind, Vitest, Storybook, Playwright, pnpm workspaces (`shared`, `server`, `web`), GitHub Actions on fixtures only.
-- **Evolving, current choice:** shadcn/ui for components, React Flow for the workflow diagram, ECharts for charts.
+- **Evolving, current choice:** shadcn/ui for components (its Radix base, lucide icons and `cn` come with it), React Flow for the workflow diagram, ECharts for charts (through `echarts-for-react`), TanStack Table for tables (headless, so it renders into shadcn/ui's table with the API's own row types), `@axe-core/playwright` for the accessibility checks.
 
 ## Design conventions
 
@@ -50,3 +50,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - Home's week sums (runs by path, cost) come only from `weekSums` in `packages/server/src/views/home.ts`, which check:real also compares with the reporter's `totals.weeks`; a new weekly sum goes there with its check.
 - A skill's outcome leaves the backend only as `skillOutcomeLabel`'s label in `packages/server/src/views/runs.ts`, since a string outcome is a file path.
 - A run's warnings, wherever they show, are the texts in its latest merged `warns` (`currentWarnings` in `views/runs.ts`); the stored `warnings` table only supplies first-seen times.
+- The web app reads the API only through `src/api.ts` in `packages/web`: `useStatus` for the import's status, `useLiveQuery` for every page's data (its key holds the last good import's time, so data refetches in place when an import lands), `refresh` for the POST.
+- shadcn/ui components are added with its CLI (`packages/web/components.json`) into `src/components/ui/`; its `@/` alias is for the CLI and the files it writes, and the app's own code imports them relatively, with their extension.
+- Stories get the app's providers (a query cache without retries, tooltips, a memory router) from `.storybook/preview.tsx`, and stub the API with `mockApi` from `src/test/mock-api.ts` in their `beforeEach`; the web package's other tests are `src/**/*.test.tsx`, run in chromium like the stories.
+- Playwright's `checks` are `packages/web/e2e/*.spec.ts` (axe and behaviour, anywhere); its `screens` are `e2e/*.screens.ts`, run only by `pnpm test:screens` in the container, with their baselines committed; every e2e test pins the browser clock with `pinClock` to dev:fixtures' time.

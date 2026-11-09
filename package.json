@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test:screens": "docker run --rm --ipc=host -v \"$PWD\":/work -v /work/node_modules -v /work/packages/shared/node_modules -v /work/packages/server/node_modules -v /work/packages/web/node_modules -w /work -e PLAYWRIGHT_SCREENS=1 mcr.microsoft.com/playwright:v$(node -p \"require('./packages/web/node_modules/@playwright/test/package.json').version\")-noble sh -c 'npm install -g --silent $(node -p \"require(\\\"./package.json\\\").packageManager\") && pnpm install --frozen-lockfile --store-dir /tmp/pnpm-store && pnpm --filter @cwd/web exec playwright test --project screens \"$@\"' sh"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

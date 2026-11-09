@@ -1,0 +1,16 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect } from 'storybook/test';
+import { Menu } from './Menu.tsx';
+
+const meta = { component: Menu } satisfies Meta<typeof Menu>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/** The menu holds no data, so it has one state: slice 1's entries only, later ones hidden. */
+export const Default: Story = {
+  play: async ({ canvas }) => {
+    const links = await canvas.findAllByRole('link');
+    await expect(links.map((link) => link.textContent)).toEqual(['Home', 'Runs']);
+    await expect(canvas.getByRole('link', { name: 'Runs' })).toHaveAttribute('href', '/runs');
+  },
+};
