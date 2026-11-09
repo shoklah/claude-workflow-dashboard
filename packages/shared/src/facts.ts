@@ -1,4 +1,3 @@
-import { runKey } from './keys.ts';
 import { toPath, type Outcome, type Path, type RunEntry, type Step } from './report.ts';
 
 export type FindingSplit = { total: number; actedOn: number; notActedOn: number; open: number };
@@ -49,12 +48,9 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
 }
 
-/** A run's facts, each taken from its run entry as the reporter gives it. */
-export function runFacts(run: RunEntry): RunFacts {
+/** A run's facts, each taken from its run entry as the reporter gives it, with the key it is stored under. */
+export function runFacts(run: RunEntry, key: string): RunFacts {
   const record = run.record;
-  const key = runKey(run);
-  // A run with no date has no key, and the import never stores one.
-  if (key === null) throw new Error('a run with no date has no key');
   const path = toPath(record?.path) ?? null;
   return {
     key,

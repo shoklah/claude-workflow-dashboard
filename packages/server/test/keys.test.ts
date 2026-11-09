@@ -1,8 +1,7 @@
 import { describe, expect, test } from 'vitest';
+import { loadReport, type Report } from '@cwd/shared';
+import { fixture } from '../../shared/test/fixture.ts';
 import { runKey, sessionKey } from '../src/keys.ts';
-import { loadReport } from '../src/load.ts';
-import type { Report } from '../src/report.ts';
-import { fixture } from './fixture.ts';
 
 function report(): Report {
   const result = loadReport(fixture('report-full'));

@@ -10,6 +10,8 @@ function report(): Report {
   return result.report;
 }
 
+const KEY = 'a1b2c3d4e5f60718';
+
 function run(path: string, schema = 2): RunEntry {
   const found = report().runs.findLast((r) => r.record?.path === path && r.schema === schema);
   if (!found) throw new Error(`no ${path} run with schema ${schema} in the fixture`);
@@ -18,53 +20,51 @@ function run(path: string, schema = 2): RunEntry {
 
 describe('runFacts', () => {
   test('project is the last path segment', () => {
-    const facts = runFacts(run('full'));
+    const facts = runFacts(run('full'), KEY);
     expect(facts.project).toBe('lantern-notes');
     expect(facts.project).not.toContain('/');
   });
 
   test('cost sums the priced models', () => {
-    expect(runFacts(run('full')).cost).toBeCloseTo(9.52 + 4.275, 10);
+    expect(runFacts(run('full'), KEY).cost).toBeCloseTo(9.52 + 4.275, 10);
   });
 
   test('cost is null with no models', () => {
     const noWindow = report().runs.find((r) => r.record?.branch === 'fix/retry-backoff')!;
-    expect(runFacts(noWindow).cost).toBeNull();
+    expect(runFacts(noWindow, KEY).cost).toBeNull();
   });
 
   test('cost is 0 when no model is priced', () => {
-    expect(runFacts(run('plan')).cost).toBe(0);
+    expect(runFacts(run('plan'), KEY).cost).toBe(0);
   });
 
   test('stops comes from the record', () => {
     const full = run('full');
-    expect(runFacts({ ...full, record: { ...full.record, stops: 2 } }).stops).toBe(2);
-    expect(runFacts({ ...full, record: { ...full.record, stops: undefined } }).stops).toBeNull();
+    expect(runFacts({ ...full, record: { ...full.record, stops: 2 } }, KEY).stops).toBe(2);
+    expect(runFacts({ ...full, record: { ...full.record, stops: undefined } }, KEY).stops).toBeNull();
   });
 
   test('findings split by outcome', () => {
-    expect(runFacts(run('full')).findings).toEqual({ total: 12, actedOn: 5, notActedOn: 5, open: 1 });
+    expect(runFacts(run('full'), KEY).findings).toEqual({ total: 12, actedOn: 5, notActedOn: 5, open: 1 });
   });
 
   test('a schema 1 run is before steps', () => {
-    expect(runFacts(run('full', 1)).beforeSteps).toBe(true);
-    expect(runFacts(run('full')).beforeSteps).toBe(false);
+    expect(runFacts(run('full', 1), KEY).beforeSteps).toBe(true);
+    expect(runFacts(run('full'), KEY).beforeSteps).toBe(false);
   });
 
   test('waves counts the run\'s waves', () => {
-    expect(runFacts(run('full')).waves).toBe(2);
-    expect(runFacts(run('small')).waves).toBe(0);
+    expect(runFacts(run('full'), KEY).waves).toBe(2);
+    expect(runFacts(run('small'), KEY).waves).toBe(0);
   });
 
-  test('a run with no date has no facts', () => {
-    const full = run('full');
-    expect(() => runFacts({ ...full, record: { ...full.record, date: undefined } })).toThrow('no key');
+  test('key is the stored key it is given', () => {
+    expect(runFacts(run('full'), 'stored-key').key).toBe('stored-key');
   });
 
   test('the record and the entry give the rest', () => {
     const full = run('full');
-    expect(runFacts(full)).toMatchObject({
-      key: expect.stringMatching(/^[0-9a-f]{16}$/),
+    expect(runFacts(full, KEY)).toMatchObject({
       branch: 'feature/offline-sync',
       path: 'full',
       stage: '2',

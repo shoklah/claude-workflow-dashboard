@@ -1,7 +1,5 @@
 import ReactECharts from 'echarts-for-react';
-import type { HomeResponse, StepKind } from '@cwd/shared';
-// By path: the package's entry also loads Node-only code (keys.ts imports node:crypto), which a browser can't run.
-import { parseTime, weekOf } from '../../../shared/src/week.ts';
+import { parseTime, weekOf, type HomeResponse, type StepKind } from '@cwd/shared';
 import { STEP_LABELS, formatCost } from '../lib/format.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 

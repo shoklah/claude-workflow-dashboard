@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { RunEntry, SessionEntry } from './report.ts';
+import type { RunEntry, SessionEntry } from '@cwd/shared';
 
 /** The first 16 hex characters of the text's SHA-256: a key that holds no path, for URLs and API responses. */
 function hash(text: string): string {

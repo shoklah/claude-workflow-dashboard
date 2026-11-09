@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadReport, runKey, type HomeResponse, type RunResponse, type RunsResponse } from '@cwd/shared';
+import { loadReport, type HomeResponse, type RunResponse, type RunsResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
+import { runKey } from '../src/keys.ts';
 import { listUnits } from '../src/db/read.ts';
 import { runView, skillOutcomeLabel } from '../src/views/runs.ts';
 

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import type { RunsQuery, RunsResponse } from '@cwd/shared';
-import { PATHS, toPath } from '../../../shared/src/report.ts';
+import { PATHS, toPath, type RunsQuery, type RunsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { RunsTable } from './RunsTable.tsx';
 

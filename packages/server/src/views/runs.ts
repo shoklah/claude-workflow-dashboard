@@ -54,7 +54,7 @@ export function runsList(
   query: RunsQuery,
   now: Date,
 ): RunsResponse {
-  const rows = runs.map((run) => runFacts(run.merged));
+  const rows = runs.map((run) => runFacts(run.merged, run.key));
   const from = weekStart(now).getTime() - (query.weeks - 1) * WEEK;
   const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
   // A stored run always has its finish time (finishedAt), the date its key is made from.
@@ -133,7 +133,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts): TimelineG
 /** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings. */
 export function runView(run: StoredUnit<RunEntry>, warnings: StoredWarning[]): RunResponse {
   const entry = run.merged;
-  const facts = runFacts(entry);
+  const facts = runFacts(entry, run.key);
   const steps = (entry.steps ?? []).filter((s): s is KnownStep => s.step != null);
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;

@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react';
-import type { StatusResponse } from '@cwd/shared';
-// By path: the package's entry also loads Node-only code (keys.ts imports node:crypto), which a browser can't run.
-import { parseTime } from '../../../shared/src/week.ts';
+import { parseTime, type StatusResponse } from '@cwd/shared';
 
 /** A time in the reader's locale and time zone, its ISO value in `datetime`. */
 export function Time({ iso }: { iso: string }) {
