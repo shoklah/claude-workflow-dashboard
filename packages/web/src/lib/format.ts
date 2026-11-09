@@ -19,6 +19,17 @@ export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
 }
 
+// The categories whose display label adds the spec's parentheses; the others show as they are stored.
+const CATEGORY_LABELS: Record<string, string> = {
+  scope: 'scope (missing or extra work)',
+  simplicity: 'simplicity (over-building)',
+};
+
+/** A finding's category as the app's label shows it, or "unlabelled" while it has none. */
+export function categoryLabel(category: string | null): string {
+  return category === null ? 'unlabelled' : (CATEGORY_LABELS[category] ?? category);
+}
+
 /** A cost in dollars, or a dash when it isn't known. */
 export function formatCost(cost: number | null): string {
   return cost === null ? NONE : `$${cost.toFixed(2)}`;

@@ -1,6 +1,7 @@
 import type { Context, Hono } from 'hono';
 import { toPath, type RunEntry, type RunsQuery } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
+import { currentLabels, labelInputs } from './db/labels.ts';
 import {
   getRun,
   getSeenAt,
@@ -78,7 +79,8 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const run = getRun(deps.db, c.req.param('key'));
     if (!run) return c.notFound();
     const runs = listUnits(deps.db, 'run');
-    const view = runView(run, listWarnings(deps.db), storedNames(runs), scopeFor(runs));
+    const labels = currentLabels(deps.db, labelInputs([run]));
+    const view = runView(run, listWarnings(deps.db), storedNames(runs), scopeFor(runs), labels);
     // A hidden project's run is a 404, as if it weren't stored.
     return view ? c.json(view) : c.notFound();
   });

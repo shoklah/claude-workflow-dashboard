@@ -15,6 +15,7 @@ import {
   type TimelineGroup,
   type TimelineStep,
 } from '@cwd/shared';
+import { findingKey, type StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { projectKey } from '../keys.ts';
 import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
@@ -23,6 +24,9 @@ const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 // A logged step whose kind the reporter gave; it always gives one.
 type KnownStep = Step & { step: StepKind };
+
+// A finding's label fields, by its id.
+type LabelOf = (id: string | null | undefined) => Pick<FindingRow, 'category' | 'relevance' | 'labelReason'>;
 
 /** What a skill's outcome says, never the outcome itself: a string other than 'ran' is a file path. */
 export function skillOutcomeLabel(outcome: unknown): string {
@@ -108,7 +112,7 @@ export function runsList(
   };
 }
 
-function findingRows(step: KnownStep): FindingRow[] {
+function findingRows(step: KnownStep, labelOf: LabelOf): FindingRow[] {
   return (step.findings ?? []).map((f) => ({
     id: f.id ?? null,
     step: step.step,
@@ -122,22 +126,29 @@ function findingRows(step: KnownStep): FindingRow[] {
     outcome: f.outcome ?? null,
     reason: f.reason ?? null,
     verdicts: f.verdicts ?? [],
+    ...labelOf(f.id),
   }));
 }
 
-function timelineSteps(steps: KnownStep[]): TimelineStep[] {
+function timelineSteps(steps: KnownStep[], labelOf: LabelOf): TimelineStep[] {
   return steps.map((step) => ({
     step: step.step,
     round: step.round ?? null,
     agent: step.agent ?? null,
     counts: step.counts ?? {},
-    findings: findingRows(step),
+    findings: findingRows(step, labelOf),
   }));
 }
 
 /** A group with no tasks; `at` only for start and end. */
-function group(kind: TimelineGroup['kind'], label: string, steps: KnownStep[] = [], at: string | null = null) {
-  return { kind, label, at, tasks: [], steps: timelineSteps(steps) };
+function group(
+  kind: TimelineGroup['kind'],
+  label: string,
+  labelOf: LabelOf,
+  steps: KnownStep[] = [],
+  at: string | null = null,
+) {
+  return { kind, label, at, tasks: [], steps: timelineSteps(steps, labelOf) };
 }
 
 /**
@@ -145,37 +156,41 @@ function group(kind: TimelineGroup['kind'], label: string, steps: KnownStep[] = 
  * check's steps), a group per task in no wave, simplify, final review, end. A plan, simplify or final group with no
  * steps is left out, except a run from before steps, which gets an empty final group between start and end.
  */
-function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts): TimelineGroup[] {
-  const start = group('start', 'Start', [], facts.startedAt);
-  const end = group('end', 'End', [], facts.finishedAt);
-  if (facts.beforeSteps) return [start, group('final', 'Final review'), end];
+function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: LabelOf): TimelineGroup[] {
+  const start = group('start', 'Start', labelOf, [], facts.startedAt);
+  const end = group('end', 'End', labelOf, [], facts.finishedAt);
+  if (facts.beforeSteps) return [start, group('final', 'Final review', labelOf), end];
   const kinds = (...k: StepKind[]) => steps.filter((s) => k.includes(s.step));
-  const ofTask = (task: number) => ({ task, steps: timelineSteps(steps.filter((s) => s.task === task)) });
+  const ofTask = (task: number) => ({ task, steps: timelineSteps(steps.filter((s) => s.task === task), labelOf) });
   const waves = run.waves ?? [];
   const inWave = new Set(waves.flatMap((w) => w.tasks ?? []));
   const loose = [...new Set(steps.map((s) => s.task).filter((t) => t != null && !inWave.has(t)))] as number[];
   return [
     start,
-    group('plan', 'Plan', kinds('plan_simplify', 'plan_review')),
+    group('plan', 'Plan', labelOf, kinds('plan_simplify', 'plan_review')),
     ...waves.map((w) => ({
-      ...group('wave', `Wave ${w.wave ?? ''}`, steps.filter((s) => s.wave != null && s.wave === w.wave)),
+      ...group('wave', `Wave ${w.wave ?? ''}`, labelOf, steps.filter((s) => s.wave != null && s.wave === w.wave)),
       tasks: (w.tasks ?? []).map(ofTask),
     })),
-    ...loose.sort((a, b) => a - b).map((task) => ({ ...group('task', `Task ${task}`), tasks: [ofTask(task)] })),
-    group('simplify', 'Simplify', kinds('simplify')),
-    group('final', 'Final review', kinds('final_review', 'final_fix_check')),
+    ...loose
+      .sort((a, b) => a - b)
+      .map((task) => ({ ...group('task', `Task ${task}`, labelOf), tasks: [ofTask(task)] })),
+    group('simplify', 'Simplify', labelOf, kinds('simplify')),
+    group('final', 'Final review', labelOf, kinds('final_review', 'final_fix_check')),
     end,
   ].filter((g) => !['plan', 'simplify', 'final'].includes(g.kind) || g.steps.length > 0);
 }
 
-/** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings; its
- * project's name from `names`, every stored run's (storedNames), so it agrees with the Runs list. With a scope, null
- * for a hidden project's run, else its project named by the scope and its findings' texts masked (maskText). */
+/** One run: its facts, timeline and findings, each with the app's label from `labels` (currentLabels), its skills,
+ * models and advisor notes, and its current warnings; its project's name from `names`, every stored run's
+ * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
+ * named by the scope and its findings' texts and label reasons masked (maskText). */
 export function runView(
   run: StoredUnit<RunEntry>,
   warnings: StoredWarning[],
   names: Map<string, string>,
   scope: Scope | null,
+  labels: Map<string, StoredLabel>,
 ): RunResponse | null {
   const entry = run.merged;
   const facts = showFacts(scope, storedFacts(run, names));
@@ -193,12 +208,20 @@ export function runView(
         verdicts: f.verdicts?.map((v) => mask(v) ?? v),
       })),
     }));
+  const labelOf: LabelOf = (id) => {
+    const label = id ? labels.get(findingKey(run.key, id)) : undefined;
+    return {
+      category: label?.category ?? null,
+      relevance: label?.relevance ?? null,
+      labelReason: mask(label?.reason) ?? null,
+    };
+  };
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;
   return {
     facts,
-    timeline: timeline(entry, steps, facts),
-    findings: steps.flatMap(findingRows),
+    timeline: timeline(entry, steps, facts, labelOf),
+    findings: steps.flatMap((step) => findingRows(step, labelOf)),
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,

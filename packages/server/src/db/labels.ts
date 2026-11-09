@@ -22,7 +22,8 @@ export type StoredLabel = {
 
 const DAY = 24 * 60 * 60 * 1000;
 
-const findingKey = (runKey: string, findingId: string) => `${runKey} ${findingId}`;
+/** The key currentLabels gives a finding's label under. */
+export const findingKey = (runKey: string, findingId: string) => `${runKey} ${findingId}`;
 
 /**
  * Every stored run's findings that have an id, from steps that have a kind. The text holds the finding's facts with

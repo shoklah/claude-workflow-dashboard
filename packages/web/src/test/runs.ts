@@ -84,15 +84,18 @@ function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' | 'summ
     outcome: null,
     reason: null,
     verdicts: [],
+    category: null,
+    relevance: null,
+    labelReason: null,
     ...f,
   };
 }
 
-const F1 = finding({ id: 'F1', step: 'task_review', task: 1, severity: 'important', summary: 'Search drops the last page on exact multiples', outcome: 'fixed', closedRound: 1, verdicts: ['fixed'] });
-const F2 = finding({ id: 'F2', step: 'task_review', task: 1, severity: 'minor', summary: "Test name doesn't say what it checks", outcome: 'deferred' });
-const F3 = finding({ id: 'F3', step: 'task_review', task: 2, severity: 'critical', summary: HTML_TEXT, outcome: 'fixed', closedRound: 1, verdicts: ['fixed'] });
-const F4 = finding({ id: 'F4', step: 'task_review', wave: 'A', severity: 'important', summary: 'Both tasks write the same index file', outcome: 'ruled', reason: 'One index per run is intended', closedRound: 3, verdicts: ['open', 'open', 'open'] });
-const F5 = finding({ id: 'F5', step: 'simplify', summary: 'Merge the two query builders', outcome: 'applied' });
+const F1 = finding({ id: 'F1', step: 'task_review', task: 1, severity: 'important', summary: 'Search drops the last page on exact multiples', outcome: 'fixed', closedRound: 1, verdicts: ['fixed'], category: 'correctness', relevance: 'valid', labelReason: 'Results on the last page are lost' });
+const F2 = finding({ id: 'F2', step: 'task_review', task: 1, severity: 'minor', summary: "Test name doesn't say what it checks", outcome: 'deferred', category: 'naming and clarity', relevance: 'unclear', labelReason: 'The name is short but not wrong' });
+const F3 = finding({ id: 'F3', step: 'task_review', task: 2, severity: 'critical', summary: HTML_TEXT, outcome: 'fixed', closedRound: 1, verdicts: ['fixed'], category: 'security and privacy', relevance: 'valid', labelReason: HTML_TEXT });
+const F4 = finding({ id: 'F4', step: 'task_review', wave: 'A', severity: 'important', summary: 'Both tasks write the same index file', outcome: 'ruled', reason: 'One index per run is intended', closedRound: 3, verdicts: ['open', 'open', 'open'], category: 'data safety', relevance: 'invalid', labelReason: 'The run means both tasks to share the index' });
+const F5 = finding({ id: 'F5', step: 'simplify', summary: 'Merge the two query builders', outcome: 'applied', category: 'simplicity', relevance: 'valid', labelReason: 'Two builders do the same work' });
 const F6 = finding({ id: 'F6', step: 'final_review', severity: 'minor', summary: 'Error text not localized', outcome: 'open' });
 
 function step(s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep {

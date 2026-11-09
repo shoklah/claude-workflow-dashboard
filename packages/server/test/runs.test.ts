@@ -8,7 +8,8 @@ import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { projectKey, runKey } from '../src/keys.ts';
-import { listUnits } from '../src/db/read.ts';
+import { listUnits, setShowing } from '../src/db/read.ts';
+import { labelInputs, saveBatch } from '../src/db/labels.ts';
 import { runView, skillOutcomeLabel } from '../src/views/runs.ts';
 
 const PORT = 4317;
@@ -63,6 +64,16 @@ async function run(key: string): Promise<RunResponse> {
   const res = await get(`/api/runs/${encodeURIComponent(key)}`);
   expect(res.status).toBe(200);
   return res.json();
+}
+
+/** Stores the app's label of a run's finding, for its current text. */
+function label(key: string, findingId: string, reason: string): void {
+  const input = labelInputs(listUnits(db, 'run')).find((i) => i.runKey === key && i.findingId === findingId)!;
+  saveBatch(
+    db,
+    [{ ...input, model: 'claude-haiku-5-5', category: 'conventions', relevance: 'invalid', reason, labelledAt: NOW }],
+    { at: NOW, inputTokens: 100, outputTokens: 20 },
+  );
 }
 
 test('lists runs newest first', async () => {
@@ -197,10 +208,27 @@ test("the findings table flattens every step's findings", async () => {
     outcome: 'ruled',
     reason: 'The shared key is intended: both tasks read the same snapshot',
     verdicts: ['open', 'open', 'open'],
+    category: null,
+    relevance: null,
+    labelReason: null,
   });
   expect(findings[0]).toMatchObject({ step: 'task_review', task: 1, wave: null, outcome: 'fixed', closedRound: 1 });
   expect(findings[5]).toMatchObject({ id: 'F6', task: 4, outcome: null });
   expect(findings[9]).toMatchObject({ id: 'F10', step: 'final_review', task: null });
+});
+
+test("a labelled finding carries the app's category, relevance and reason, an unlabelled one nulls", async () => {
+  label(FULL, 'F4', 'An invented reason for the label.');
+  const { findings, timeline } = await run(FULL);
+  expect(findings[3]).toMatchObject({
+    id: 'F4',
+    reason: 'The shared key is intended: both tasks read the same snapshot',
+    category: 'conventions',
+    relevance: 'invalid',
+    labelReason: 'An invented reason for the label.',
+  });
+  expect(timeline[1].steps[0].findings[0]).toMatchObject({ id: 'F4', category: 'conventions' });
+  expect(findings[0]).toMatchObject({ id: 'F1', category: null, relevance: null, labelReason: null });
 });
 
 test('a schema 1 run has empty groups and beforeSteps', async () => {
@@ -274,6 +302,7 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
     ],
     new Map(),
     null,
+    new Map(),
   );
   expect(view!.warnings).toEqual([
     { text: 'WARN: feature/offline-sync (2026-11-10): {session} ended early', sessionId: '7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c' },
@@ -324,5 +353,11 @@ describe('projects', () => {
     expect(projects).toHaveLength(3);
     expect(new Set(projects.map((p) => p.name)).size).toBe(3);
     expect(projects).toContainEqual({ key: LANTERN, name: 'lantern-notes (Work)' });
+  });
+
+  test("with showing on, a label's reason is masked as the finding's text is", async () => {
+    label(MAIN, 'F1', 'tidepool-api keeps the same import in /Users/example/Work/tidepool-api/src/x.ts');
+    setShowing(db, [LANTERN]);
+    expect((await run(MAIN)).findings[0].labelReason).toBe('another project keeps the same import in x.ts');
   });
 });
