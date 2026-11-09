@@ -56,6 +56,6 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - The web app imports no runtime value from `@cwd/shared`'s entry, which loads Node-only `keys.ts`: types come from `@cwd/shared`, and a value comes by relative path to its module under `packages/shared/src`, never restated.
 - A page that fetches takes what its route gives it (a run's key) as a prop, so its stories render it without route params.
 - Story fixtures a screen's stories share are invented API responses in `packages/web/src/test/<screen>.ts`.
-- The web app's display formatting (costs, durations, plurals, step names) lives in `packages/web/src/lib/format.ts`; a cost that isn't known shows as "–".
+- The web app's display formatting (costs, durations, plurals, step names, "project · branch") lives in `packages/web/src/lib/format.ts`, one function or map per fact on every screen (`STEP_LABELS` for step kinds); a fact that isn't known shows as its `NONE`, "–", and a duration is rounded to whole minutes first, then shown as "25 min" or "2 h 10".
 - Charts use ECharts with the SVG renderer and no animation, the dataviz reference palette's light slots in fixed order, a `role="img"` container with an aria-label, and a table view of their numbers.
 - Playwright's `checks` are `packages/web/e2e/*.spec.ts` (axe and behaviour, anywhere); its `screens` are `e2e/*.screens.ts`, run only by `pnpm test:screens` in the container, with their baselines committed; every e2e test pins the browser clock with `pinClock` to dev:fixtures' time.
