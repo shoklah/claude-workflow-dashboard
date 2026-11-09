@@ -38,6 +38,11 @@ export const Full: Story = {
     await expect(items[3]).toHaveTextContent('Run finished · harbor · <img src=x onerror=alert(1)> · small');
     await expect(items[3]).toHaveTextContent('1 finding · 1 acted on · 0 open · 25 min · $1.20');
     await expect(canvasElement.querySelector('img')).toBeNull();
+    // Each item opens its run: a run, and a warning that belongs to one; a session's warning has no run to open.
+    await expect(within(items[0]).getByRole('link')).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(within(items[1]).queryByRole('link')).toBeNull();
+    await expect(within(items[2]).getByRole('link')).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(within(items[3]).getByRole('link')).toHaveAttribute('href', '/runs/0f1e2d3c4b5a6978');
   },
 };
 

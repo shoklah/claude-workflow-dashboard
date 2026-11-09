@@ -1,17 +1,33 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import type { FeedItem } from '@cwd/shared';
 import { markSeen } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { actedOnSplit, formatCost, formatMinutes, joined, plural, runName } from '../lib/format.ts';
 
-function Item({ item }: { item: FeedItem }) {
+/** An item's first line, "Run finished · atlas · feat/search · full", opening its run when it has one. */
+function Headline({ item, title }: { item: FeedItem; title: string }) {
   const where = joined([runName(item), item.path]);
+  const text = (
+    <>
+      <b>{title}</b>
+      {where && ` · ${where}`}
+    </>
+  );
+  if (item.runKey === null) return text;
+  return (
+    <Link to="/runs/$key" params={{ key: item.runKey }} className="underline-offset-2 hover:underline">
+      {text}
+    </Link>
+  );
+}
+
+function Item({ item }: { item: FeedItem }) {
   if (item.type === 'warning') {
     return (
       <li className="border-l-3 border-amber-600 py-0.5 pl-2">
-        <b>New warning</b>
-        {where && ` · ${where}`}
+        <Headline item={item} title="New warning" />
         <div>{item.text !== null && <WarningText text={item.text} sessionId={item.sessionId} />}</div>
       </li>
     );
@@ -19,8 +35,7 @@ function Item({ item }: { item: FeedItem }) {
   const findings = item.findings && `${plural(item.findings.total, 'finding')} · ${actedOnSplit(item.findings)}`;
   return (
     <li className="border-l-3 border-green-700 py-0.5 pl-2">
-      <b>Run finished</b>
-      {where && ` · ${where}`}
+      <Headline item={item} title="Run finished" />
       <div>
         {joined([
           findings,
