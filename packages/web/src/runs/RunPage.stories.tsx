@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
-import { fullRun, oldRun, runBeforeSteps, runFull } from '../test/run-fixtures.ts';
+import { fullRun, oldRun, runBeforeSteps, runFull } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
 const meta = { component: RunPage, args: { runKey: fullRun.key } } satisfies Meta<typeof RunPage>;

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { HTML_TEXT, runFull } from '../test/run-fixtures.ts';
+import { HTML_TEXT, runFull } from '../test/runs.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
 const meta = { component: FindingsTable } satisfies Meta<typeof FindingsTable>;

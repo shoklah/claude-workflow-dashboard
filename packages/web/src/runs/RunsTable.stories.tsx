@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { HTML_TEXT, fullRun, runsFull } from '../test/run-fixtures.ts';
+import { HTML_TEXT, fullRun, runsFull } from '../test/runs.ts';
 import { RunsTable } from './RunsTable.tsx';
 
 const meta = { component: RunsTable } satisfies Meta<typeof RunsTable>;

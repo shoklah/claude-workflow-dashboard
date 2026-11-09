@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
-import { runsEmpty, runsFull, runsWarned } from '../test/run-fixtures.ts';
+import { runsEmpty, runsFull, runsWarned } from '../test/runs.ts';
 import { RunsPage } from './RunsPage.tsx';
 
 const meta = { component: RunsPage } satisfies Meta<typeof RunsPage>;

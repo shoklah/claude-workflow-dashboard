@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { HTML_TEXT, runBeforeSteps, runFull } from '../test/run-fixtures.ts';
+import { HTML_TEXT, runBeforeSteps, runFull } from '../test/runs.ts';
 import { RunTimeline } from './RunTimeline.tsx';
 
 const meta = { component: RunTimeline } satisfies Meta<typeof RunTimeline>;
