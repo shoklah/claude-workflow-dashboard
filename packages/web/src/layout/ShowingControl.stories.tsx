@@ -65,7 +65,8 @@ export const Picker: Story = {
       headers: { 'X-Dashboard-Refresh': '1', 'Content-Type': 'application/json' },
       body: `{"projects":["${ATLAS}"]}`,
     });
-    await waitFor(() => expect(showingReads()).toBe(2));
+    // Read again after the POST; the reset status read re-enables the query, so it can be read twice.
+    await waitFor(() => expect(showingReads()).toBeGreaterThanOrEqual(2));
     await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
   },
 };
@@ -84,7 +85,8 @@ export const On: Story = {
       headers: { 'X-Dashboard-Refresh': '1', 'Content-Type': 'application/json' },
       body: '{"projects":[]}',
     });
-    await waitFor(() => expect(showingReads()).toBe(2));
+    // Read again after the POST; the reset status read re-enables the query, so it can be read twice.
+    await waitFor(() => expect(showingReads()).toBeGreaterThanOrEqual(2));
   },
 };
 

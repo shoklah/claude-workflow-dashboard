@@ -45,6 +45,8 @@ export const Full: Story = {
       'App',
     ]);
     await expect(canvas.getAllByRole('row')).toHaveLength(7);
+    // It scrolls sideways: its container is a named tab stop.
+    await expect(canvas.getByRole('region', { name: 'Findings' })).toHaveAttribute('tabindex', '0');
     await expect(canvas.getAllByText(HTML_TEXT)).toHaveLength(1);
     await expect(canvas.getByText(HTML_TEXT)).toBeVisible();
     await expect(column(canvasElement, 'Category')).toEqual([

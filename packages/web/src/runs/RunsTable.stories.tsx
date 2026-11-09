@@ -33,6 +33,8 @@ export const Full: Story = {
     ]);
     const rows = canvas.getAllByRole('row').slice(1);
     await expect(rows).toHaveLength(3);
+    // A table is a tab stop only when it asks to be one.
+    await expect(canvasElement.querySelector('[data-slot="table-container"]')).not.toHaveAttribute('tabindex');
 
     const full = within(rows[1]);
     await expect(full.getByRole('link', { name: 'atlas · feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);

@@ -21,11 +21,12 @@ export function ShowingControl() {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
 
-  // The server filters every response by the mode, so every page's data is read again.
+  // The server filters every response by the mode, so every page's cached data is dropped and read again: no page
+  // shows, even for a moment or on Back, what the new mode hides.
   async function show(projects: string[]) {
     await showProjects(projects);
     setOpen(false);
-    await queryClient.invalidateQueries();
+    await queryClient.resetQueries();
   }
 
   if (showing.isError) return <p className="text-sm">Couldn't read showing mode.</p>;

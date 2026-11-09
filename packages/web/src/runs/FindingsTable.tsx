@@ -126,7 +126,8 @@ export function FindingsTable({ findings, run }: { findings: Row[]; run?: boolea
           );
         })}
       </div>
-      <Table>
+      {/* It scrolls sideways, so its container is a named tab stop for keyboard users. */}
+      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Findings' }}>
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>
