@@ -31,6 +31,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 
 - `dashboard.sqlite`: the imports and what was read from them.
 - `logs/`: the agent's `out.log` and `err.log`.
+- `.env` (optional): the Anthropic API key and the labeller's settings, as `.env.example` lists them; with no key, the labeller stays off.
 - `config.json` (optional): overrides any of the defaults below.
 
 | Key | Default |
