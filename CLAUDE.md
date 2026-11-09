@@ -31,3 +31,6 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - The data is personal (project paths, branch names, session IDs, costs, finding text): never commit real data, never put it in fixtures, never publish it publicly. Fixtures are invented.
 - `workflow-report.py` is the only parser of the run log and the transcripts: when the dashboard needs a new fact, it goes to the workflow repo as a change request, never parsed here.
 - This repo never edits the workflow repo or the template; they are a reference and the data source.
+- Relative imports carry their `.ts` extension and type-only imports use `import type`; packages export their TypeScript sources, with no build step.
+- The reporter's JSON schema lives in `packages/shared/src/report.ts`: every field is `.nullish()` (a `z.unknown()` one `.optional()`) unless the loader can't work without it, and a field the dashboard doesn't read is left out, so it is stripped.
+- A fixture's `totals.weeks` agrees with its runs by the reporter's `week_rows` rules: per week start date, `runs` by path and `cost` as the sum of the priced cost of the runs with `models`, null when none has them.
