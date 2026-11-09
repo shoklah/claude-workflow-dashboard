@@ -41,6 +41,10 @@ function transcript(config: Config, name: string, mtime: Date): void {
   utimesSync(file, mtime, mtime);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 afterEach(() => {
   vi.useRealTimers();
   for (const stop of stops.splice(0)) stop();
@@ -53,8 +57,10 @@ describe('startTriggers', () => {
     mkdirSync(join(config.runLog, '..'));
     writeFileSync(config.runLog, '{}\n');
     const request = start(config);
-    appendFileSync(config.runLog, '{}\n');
-    await vi.waitFor(() => expect(request).toHaveBeenCalled());
+    await vi.waitFor(() => {
+      appendFileSync(config.runLog, '{}\n');
+      expect(request).toHaveBeenCalled();
+    });
   });
 
   test('replacing the run log file requests an import', async () => {
@@ -63,17 +69,26 @@ describe('startTriggers', () => {
     writeFileSync(config.runLog, '{}\n');
     const request = start(config);
     const next = join(config.runLog, '..', 'next log.tmp');
-    writeFileSync(next, '{}\n{}\n');
-    renameSync(next, config.runLog);
-    await vi.waitFor(() => expect(request).toHaveBeenCalled());
+    await vi.waitFor(() => {
+      writeFileSync(next, '{}\n{}\n');
+      renameSync(next, config.runLog);
+      expect(request).toHaveBeenCalled();
+    });
   });
 
   test("a change to another file in the run log's folder doesn't request", async () => {
     const config = tempConfig();
     mkdirSync(join(config.runLog, '..'));
     const request = start(config);
+    // The watch is live once a run log change gets through; late events for it settle before the other file changes.
+    await vi.waitFor(() => {
+      appendFileSync(config.runLog, '{}\n');
+      expect(request).toHaveBeenCalled();
+    });
+    await sleep(300);
+    request.mockClear();
     writeFileSync(join(config.runLog, '..', 'other.json'), '{}');
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await sleep(300);
     expect(request).not.toHaveBeenCalled();
   });
 
