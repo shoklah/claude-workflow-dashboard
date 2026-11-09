@@ -264,11 +264,15 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
   const text = 'WARN: feature/offline-sync (2026-11-10): 7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c.jsonl ended early';
   // A run's warnings are the texts in its latest warns; the other two are left out by run and by kind.
   stored.merged.warns = [text, 'WARN: another run', 'WARN: a session'];
-  const view = runView(stored, [
-    { kind: 'run', key: FULL, text, firstSeenAt: NOW },
-    { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW },
-    { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW },
-  ]);
+  const view = runView(
+    stored,
+    [
+      { kind: 'run', key: FULL, text, firstSeenAt: NOW },
+      { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW },
+      { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW },
+    ],
+    new Map(),
+  );
   expect(view.warnings).toEqual([
     { text: 'WARN: feature/offline-sync (2026-11-10): {session} ended early', sessionId: '7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c' },
   ]);
@@ -305,6 +309,12 @@ describe('projects', () => {
   test("filters by project key: the root's runs and its worktree's", async () => {
     const list = await runs(`?project=${LANTERN}&weeks=52`);
     expect(list.runs.map((r) => r.key)).toEqual([WORKTREE, MAIN]);
+  });
+
+  test("the run page names the project as the Runs list does", async () => {
+    const row = (await runs('?weeks=52')).runs.find((r) => r.key === MAIN)!;
+    expect(row.project).toBe('lantern-notes (Work)');
+    expect((await run(MAIN)).facts.project).toBe(row.project);
   });
 
   test('lists each project once, by key, with distinct names', async () => {

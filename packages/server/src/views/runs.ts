@@ -153,10 +153,15 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts): TimelineG
   ].filter((g) => !['plan', 'simplify', 'final'].includes(g.kind) || g.steps.length > 0);
 }
 
-/** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings. */
-export function runView(run: StoredUnit<RunEntry>, warnings: StoredWarning[]): RunResponse {
+/** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings; its
+ * project's name from `names`, every stored run's (storedNames), so it agrees with the Runs list. */
+export function runView(
+  run: StoredUnit<RunEntry>,
+  warnings: StoredWarning[],
+  names: Map<string, string>,
+): RunResponse {
   const entry = run.merged;
-  const facts = storedFacts(run, storedNames([run]));
+  const facts = storedFacts(run, names);
   const steps = (entry.steps ?? []).filter((s): s is KnownStep => s.step != null);
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;
