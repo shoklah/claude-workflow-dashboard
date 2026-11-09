@@ -31,6 +31,8 @@ test('showing lantern-notes hides tidepool-api from the pages', async ({ page })
   await page.getByRole('switch', { name: 'Showing mode' }).click();
   const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
   await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
+  // The dialog fades in, and axe run mid-fade reads its colours half-transparent: wait for its animations to end.
+  await dialog.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await dialog.getByRole('button', { name: 'Start showing' }).click();
