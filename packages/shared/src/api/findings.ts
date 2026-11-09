@@ -9,10 +9,16 @@ export type FindingCell = { raised: number; actedOn: number; invalid: number };
 /** An area's category, by week; a null category is the area's unlabelled row. */
 export type FindingsRow = { area: Area; category: string | null; cells: FindingCell[] };
 
-/** A finding as the Findings page lists it: its run's key and name ("project · branch"), its week and area. */
-export type FindingItem = FindingRow & { runKey: string; run: string; week: string; area: Area };
+/** A finding as the Findings page lists it: its run's key, project name and branch, its week and area. */
+export type FindingItem = FindingRow & {
+  runKey: string;
+  project: string;
+  branch: string | null;
+  week: string;
+  area: Area;
+};
 
-/** `GET /api/findings`'s query: `weeks` (default 4), `path` and `project` (a project's key). */
+/** `GET /api/findings`'s query: `weeks` (default 4, at most 52), `path` and `project` (a project's key). */
 export type FindingsQuery = { weeks: number; path?: Path; project?: string };
 
 /**

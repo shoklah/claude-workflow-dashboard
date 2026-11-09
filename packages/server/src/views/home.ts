@@ -5,7 +5,6 @@ import {
   splitFindings,
   STEP_KINDS,
   weekOf,
-  weekStart,
   type Path,
   type DiagramStep,
   type FeedItem,
@@ -18,7 +17,7 @@ import {
   type WeekNumbers,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, storedFacts, storedNames } from './runs.ts';
+import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
 import { showFacts, showWarning, type Scope } from './scope.ts';
 
 type WeekSum = { runs: WeekNumbers['runs']; cost: number | null };
@@ -94,10 +93,7 @@ export function homeView(input: {
   const stepsOf = (of: Run[]) => of.flatMap((r) => r.unit.merged.steps ?? []);
 
   // The charts' weeks: this week and the 11 before it, oldest first.
-  const start = weekStart(now).getTime();
-  const weeks = Array.from({ length: CHART_WEEKS }, (_, i) =>
-    weekOf(new Date(start - (CHART_WEEKS - 1 - i) * 7 * DAY)),
-  );
+  const weeks = period({ weeks: CHART_WEEKS }, now).weeks;
   const byWeek = weeks.map((week) => runs.filter((r) => weekOf(r.finished) === week));
 
   function weekNumbers(week: string, inWeek: Run[]): WeekNumbers {

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { NONE, runName } from '../lib/format.ts';
+import { NONE } from '../lib/format.ts';
 import { HTML_TEXT, fullRun, runFull } from '../test/runs.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
@@ -120,7 +120,12 @@ export const Unlabelled: Story = {
 /** With `run`, the first column links each finding to its run's page, as the Findings page lists them. */
 export const WithRun: Story = {
   args: {
-    findings: runFull.findings.map((f) => ({ ...f, runKey: fullRun.key, run: runName(fullRun) })),
+    findings: runFull.findings.map((f) => ({
+      ...f,
+      runKey: fullRun.key,
+      project: fullRun.project,
+      branch: fullRun.branch,
+    })),
     run: true,
   },
   play: async ({ canvas, canvasElement }) => {

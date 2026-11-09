@@ -27,13 +27,17 @@ function postOnly(c: Context): Response {
   return c.body(null, 405, { Allow: 'POST' });
 }
 
-/** A list's `path`, `project` (a project's key) and `weeks` (a positive whole number, default 4) query params. */
+// The most weeks a list covers: the Runs page's longest period, so a huge `weeks` can't build a huge response.
+const MAX_WEEKS = 52;
+
+/** A list's `path`, `project` (a project's key) and `weeks` (a whole number from 1 to MAX_WEEKS, default 4) query
+ * params. */
 function periodQuery(c: Context): FindingsQuery {
   const weeks = Number(c.req.query('weeks'));
   return {
     path: toPath(c.req.query('path')),
     project: c.req.query('project') || undefined,
-    weeks: Number.isInteger(weeks) && weeks > 0 ? weeks : 4,
+    weeks: Number.isInteger(weeks) && weeks > 0 ? Math.min(weeks, MAX_WEEKS) : 4,
   };
 }
 

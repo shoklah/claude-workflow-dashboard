@@ -105,8 +105,10 @@ test("a labelled finding counts in its week's category cell", async () => {
     relevance: 'valid',
     week: '2026-11-01',
     area: 'implementation',
-    run: 'lantern-notes (Work) · chore/tidy-imports',
+    project: 'lantern-notes (Work)',
+    branch: 'chore/tidy-imports',
   });
+  expect(item).not.toHaveProperty('run');
 });
 
 test("unlabelled findings, and the finding with no id, land in their area's unlabelled row", async () => {
@@ -150,9 +152,16 @@ test('the signals count later fixes, final findings after clean task reviews and
 
 test('the weeks, path and project filters choose the runs counted', async () => {
   expect((await findings('?weeks=1')).findings.map((f) => f.week)).toEqual(Array(5).fill('2026-11-08'));
-  expect((await findings('?path=small')).findings.every((f) => f.runKey === TIDY)).toBe(true);
+  expect((await findings('?path=small')).findings.map((f) => f.runKey)).toEqual(Array(4).fill(TIDY));
   const tidepool = await findings(`?project=${projectKey('/Users/example/Work/tidepool-api')}`);
   expect(tidepool.findings.map((f) => f.runKey)).toEqual([TIDEPOOL, TIDEPOOL, TIDEPOOL]);
+});
+
+test("a weeks query past the Runs page's longest period is cut to 52 weeks", async () => {
+  const body = await findings('?weeks=100000000');
+  expect(body.weeks).toHaveLength(52);
+  expect(body.weeks.at(-1)).toBe('2026-11-08');
+  expect(body.rows[0].cells).toHaveLength(52);
 });
 
 test("with a scope, only the shown projects' findings are listed, masked; the cells count every project", async () => {

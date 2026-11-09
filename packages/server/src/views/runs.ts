@@ -3,6 +3,7 @@ import {
   projectNames,
   projectRoot,
   runFacts,
+  weekOf,
   weekStart,
   type FindingRow,
   type RunEntry,
@@ -78,10 +79,28 @@ export function currentWarnings(runs: StoredUnit<RunEntry>[], warnings: StoredWa
 }
 
 /**
- * The runs finished in the query's last `weeks` weeks (this week and the ones before it, weeks starting Sunday
- * 07:00 UTC) that match its path, project key and "has warnings" (a current run warning), newest first, and every
- * stored run's project, by name. With a scope, only the shown projects' runs and projects, and `hidden` counts the
- * matching runs it left out.
+ * A query's period: its last `weeks` weeks (this week and the ones before it, weeks starting Sunday 07:00 UTC), oldest
+ * first, each named by weekOf, and whether a run's facts are in it, finished in one of those weeks, and match the
+ * query's path and project key.
+ */
+export function period(
+  query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
+  now: Date,
+): { weeks: string[]; matches: (row: RunFacts) => boolean } {
+  const start = weekStart(now).getTime();
+  const weeks = Array.from({ length: query.weeks }, (_, i) => weekOf(new Date(start - (query.weeks - 1 - i) * WEEK)));
+  // A stored run always has its finish time (finishedAt), the date its key is made from.
+  const matches = (row: RunFacts) =>
+    weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) &&
+    (!query.path || row.path === query.path) &&
+    (!query.project || row.projectKey === query.project);
+  return { weeks, matches };
+}
+
+/**
+ * The runs in the query's period (period) that have a current run warning when it asks "has warnings", newest first,
+ * and every stored run's project, by name. With a scope, only the shown projects' runs and projects, and `hidden`
+ * counts the matching runs it left out.
  */
 export function runsList(
   runs: StoredUnit<RunEntry>[],
@@ -93,15 +112,10 @@ export function runsList(
   const names = storedNames(runs);
   const all = runs.map((run) => storedFacts(run, names));
   const rows = all.flatMap((row) => showFacts(scope, row) ?? []);
-  const from = weekStart(now).getTime() - (query.weeks - 1) * WEEK;
+  const inPeriod = period(query, now).matches;
   const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
-  // A stored run always has its finish time (finishedAt), the date its key is made from.
   const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
-  const matches = (row: RunFacts) =>
-    finished(row) >= from &&
-    (!query.path || row.path === query.path) &&
-    (!query.project || row.projectKey === query.project) &&
-    (!query.warnings || warned.has(row.key));
+  const matches = (row: RunFacts) => inPeriod(row) && (!query.warnings || warned.has(row.key));
   const shown = rows.filter(matches);
   return {
     runs: shown.sort((a, b) => finished(b) - finished(a)),
