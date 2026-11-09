@@ -24,4 +24,16 @@ describe('projectNames', () => {
     expect(names.get('/Users/example/Archive/lantern-notes')).toBe('lantern-notes (Archive)');
     expect(names.get('/Users/example/Work/tidepool-api')).toBe('tidepool-api');
   });
+
+  test('an alias replaces the folder name, with the parent folder where it collides', () => {
+    const names = projectNames(['/Users/example/Work/lantern-notes', '/Users/example/Work/notes'], {
+      '/Users/example/Work/lantern-notes': 'notes',
+    });
+    expect(names.get('/Users/example/Work/lantern-notes')).toBe('notes (Work)');
+    expect(names.get('/Users/example/Work/notes')).toBe('notes (Work)');
+    const alias = { '/Users/example/Work/lantern-notes': 'Notes app' };
+    expect(projectNames(['/Users/example/Work/lantern-notes'], alias).get('/Users/example/Work/lantern-notes')).toBe(
+      'Notes app',
+    );
+  });
 });

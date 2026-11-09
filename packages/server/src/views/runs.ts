@@ -3,7 +3,6 @@ import {
   projectNames,
   projectRoot,
   runFacts,
-  splitSessionId,
   weekStart,
   type FindingRow,
   type RunEntry,
@@ -18,6 +17,7 @@ import {
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { projectKey } from '../keys.ts';
+import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -39,7 +39,7 @@ export function skillOutcomeLabel(outcome: unknown): string {
 }
 
 /** A stored run's project root. */
-function rootOf(unit: StoredUnit<RunEntry>): string {
+export function rootOf(unit: StoredUnit<RunEntry>): string {
   return projectRoot(unit.merged.record?.project ?? '');
 }
 
@@ -66,30 +66,35 @@ export function currentWarnings(runs: StoredUnit<RunEntry>[], warnings: StoredWa
 /**
  * The runs finished in the query's last `weeks` weeks (this week and the ones before it, weeks starting Sunday
  * 07:00 UTC) that match its path, project key and "has warnings" (a current run warning), newest first, and every
- * stored run's project, by name.
+ * stored run's project, by name. With a scope, only the shown projects' runs and projects, and `hidden` counts the
+ * matching runs it left out.
  */
 export function runsList(
   runs: StoredUnit<RunEntry>[],
   warnings: StoredWarning[],
   query: RunsQuery,
   now: Date,
+  scope: Scope | null,
 ): RunsResponse {
   const names = storedNames(runs);
-  const rows = runs.map((run) => storedFacts(run, names));
+  const all = runs.map((run) => storedFacts(run, names));
+  const rows = all.flatMap((row) => showFacts(scope, row) ?? []);
   const from = weekStart(now).getTime() - (query.weeks - 1) * WEEK;
   const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
   // A stored run always has its finish time (finishedAt), the date its key is made from.
   const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
+  const matches = (row: RunFacts) =>
+    finished(row) >= from &&
+    (!query.path || row.path === query.path) &&
+    (!query.project || row.projectKey === query.project) &&
+    (!query.warnings || warned.has(row.key));
+  const shown = rows.filter(matches);
   return {
-    runs: rows
-      .filter((row) => finished(row) >= from)
-      .filter((row) => !query.path || row.path === query.path)
-      .filter((row) => !query.project || row.projectKey === query.project)
-      .filter((row) => !query.warnings || warned.has(row.key))
-      .sort((a, b) => finished(b) - finished(a)),
+    runs: shown.sort((a, b) => finished(b) - finished(a)),
     projects: [...new Map(rows.filter((row) => row.project).map((row) => [row.projectKey, row.project]))]
       .map(([key, name]) => ({ key, name }))
       .sort((a, b) => a.name.localeCompare(b.name)),
+    hidden: all.filter(matches).length - shown.length,
   };
 }
 
@@ -154,15 +159,30 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts): TimelineG
 }
 
 /** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings; its
- * project's name from `names`, every stored run's (storedNames), so it agrees with the Runs list. */
+ * project's name from `names`, every stored run's (storedNames), so it agrees with the Runs list. With a scope, null
+ * for a hidden project's run, else its project named by the scope and its findings' texts masked (maskText). */
 export function runView(
   run: StoredUnit<RunEntry>,
   warnings: StoredWarning[],
   names: Map<string, string>,
-): RunResponse {
+  scope: Scope | null,
+): RunResponse | null {
   const entry = run.merged;
-  const facts = storedFacts(run, names);
-  const steps = (entry.steps ?? []).filter((s): s is KnownStep => s.step != null);
+  const facts = showFacts(scope, storedFacts(run, names));
+  if (!facts) return null;
+  const mask = (text: string | null | undefined) => (scope && text ? maskText(scope, text) : text);
+  const steps = (entry.steps ?? [])
+    .filter((s): s is KnownStep => s.step != null)
+    .map((s) => ({
+      ...s,
+      findings: s.findings?.map((f) => ({
+        ...f,
+        kind: mask(f.kind),
+        summary: mask(f.summary),
+        reason: mask(f.reason),
+        verdicts: f.verdicts?.map((v) => mask(v) ?? v),
+      })),
+    }));
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;
   return {
@@ -174,6 +194,6 @@ export function runView(
     advisor: calls != null && notes != null ? { calls, notes } : null,
     warnings: currentWarnings([run], warnings)
       .filter((w) => w.kind === 'run')
-      .map((w) => splitSessionId(w.text)),
+      .map((w) => showWarning(scope, w.text)),
   };
 }

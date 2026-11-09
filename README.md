@@ -40,6 +40,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 | `runLog` | `~/.claude/workflow-log.jsonl` (an import runs when it changes) |
 | `projectsDir` | `~/.claude/projects` (the session transcripts, checked every 15 minutes) |
 | `reporterTimeoutMs` | `120000` |
+| `aliases` | `{}`: showing mode's display names, by project root path, e.g. `{"/Users/me/Work/app": "Notes app"}` |
 
 ## Checking your real data
 

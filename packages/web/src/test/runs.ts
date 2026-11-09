@@ -68,9 +68,10 @@ export const oldRun: RunFacts = {
 export const runsFull: RunsResponse = {
   runs: [smallRun, fullRun, oldRun],
   projects: [fullRun, smallRun, oldRun].map((run) => ({ key: run.projectKey, name: run.project })),
+  hidden: 0,
 };
-export const runsWarned: RunsResponse = { runs: [fullRun], projects: runsFull.projects };
-export const runsEmpty: RunsResponse = { runs: [], projects: [] };
+export const runsWarned: RunsResponse = { runs: [fullRun], projects: runsFull.projects, hidden: 0 };
+export const runsEmpty: RunsResponse = { runs: [], projects: [], hidden: 0 };
 
 function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' | 'summary'>): FindingRow {
   return {

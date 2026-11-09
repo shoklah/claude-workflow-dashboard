@@ -1,10 +1,24 @@
 import type { Context, Hono } from 'hono';
-import { toPath, type RunsQuery, type StatusResponse } from '@cwd/shared';
+import { toPath, type RunEntry, type RunsQuery, type StatusResponse } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
-import { getRun, getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings, setSeenAt } from './db/read.ts';
+import {
+  getRun,
+  getSeenAt,
+  getShowing,
+  lastGoodImport,
+  lastImport,
+  listUnits,
+  listWarnings,
+  setSeenAt,
+  setShowing,
+  type StoredUnit,
+} from './db/read.ts';
+import { projectKey } from './keys.ts';
 import { trimPaths } from './text.ts';
 import { homeView } from './views/home.ts';
-import { runView, runsList, storedNames } from './views/runs.ts';
+import { rootOf, runView, runsList, storedNames } from './views/runs.ts';
+import { maskText, scopeOf, type Scope } from './views/scope.ts';
+import { showingView } from './views/showing.ts';
 
 /** The answer to any method but POST on a POST-only route. */
 function postOnly(c: Context): Response {
@@ -13,13 +27,18 @@ function postOnly(c: Context): Response {
 
 /** The API routes, one block per task. The request rules (Host, the POST header and Origin) are app.ts's middleware. */
 export function registerRoutes(app: Hono, deps: AppDeps): void {
+  // Showing mode's scope over the stored runs, null while it is off.
+  const scopeFor = (runs: StoredUnit<RunEntry>[]): Scope | null =>
+    scopeOf(getShowing(deps.db), runs.map(rootOf), deps.aliases);
+
   // Task 4: the import's status, the refresh and "mark all seen".
   app.get('/api/status', (c) => {
     const last = lastImport(deps.db);
+    const scope = scopeFor(listUnits(deps.db, 'run'));
     const status: StatusResponse = {
       lastImportAt: last?.at.toISOString() ?? null,
       lastGoodImportAt: lastGoodImport(deps.db)?.at.toISOString() ?? null,
-      error: last?.error ? trimPaths(last.error) : null,
+      error: last?.error ? (scope ? maskText(scope, last.error) : trimPaths(last.error)) : null,
       importing: deps.importing(),
     };
     return c.json(status);
@@ -36,16 +55,18 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   app.all('/api/seen', postOnly);
 
   // Task 6: the home screen.
-  app.get('/api/home', (c) =>
-    c.json(
+  app.get('/api/home', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    return c.json(
       homeView({
-        runs: listUnits(deps.db, 'run'),
+        runs,
         warnings: listWarnings(deps.db),
         seenAt: getSeenAt(deps.db),
         now: deps.now(),
+        scope: scopeFor(runs),
       }),
-    ),
-  );
+    );
+  });
 
   // Task 7: the Runs list and one run.
   app.get('/api/runs', (c) => {
@@ -56,11 +77,31 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       weeks: Number.isInteger(weeks) && weeks > 0 ? weeks : 4,
       warnings: c.req.query('warnings') === '1',
     };
-    return c.json(runsList(listUnits(deps.db, 'run'), listWarnings(deps.db), query, deps.now()));
+    const runs = listUnits(deps.db, 'run');
+    return c.json(runsList(runs, listWarnings(deps.db), query, deps.now(), scopeFor(runs)));
   });
   app.get('/api/runs/:key', (c) => {
     const run = getRun(deps.db, c.req.param('key'));
     if (!run) return c.notFound();
-    return c.json(runView(run, listWarnings(deps.db), storedNames(listUnits(deps.db, 'run'))));
+    const runs = listUnits(deps.db, 'run');
+    const view = runView(run, listWarnings(deps.db), storedNames(runs), scopeFor(runs));
+    // A hidden project's run is a 404, as if it weren't stored.
+    return view ? c.json(view) : c.notFound();
+  });
+
+  // Slice 2a, task 3: showing mode. An empty list turns it off; a key no stored run's project has is a 400.
+  app.get('/api/showing', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    return c.json(showingView(runs, scopeFor(runs)));
+  });
+  app.post('/api/showing', async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const projects: unknown = body?.projects;
+    const stored = new Set(listUnits(deps.db, 'run').map((run) => projectKey(rootOf(run))));
+    if (!Array.isArray(projects) || !projects.every((key) => typeof key === 'string' && stored.has(key))) {
+      return c.body(null, 400);
+    }
+    setShowing(deps.db, projects.length > 0 ? [...new Set(projects as string[])] : null);
+    return c.body(null, 204);
   });
 }

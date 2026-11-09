@@ -48,6 +48,7 @@ async function get(path: string): Promise<Response> {
     importing: () => false,
     webDist: null,
     now: () => NOW,
+    aliases: {},
   });
   return app.request(path, { headers: { Host: `localhost:${PORT}` } });
 }
@@ -272,8 +273,9 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
       { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW },
     ],
     new Map(),
+    null,
   );
-  expect(view.warnings).toEqual([
+  expect(view!.warnings).toEqual([
     { text: 'WARN: feature/offline-sync (2026-11-10): {session} ended early', sessionId: '7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c' },
   ]);
 });
