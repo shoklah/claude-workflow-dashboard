@@ -19,7 +19,7 @@ import {
   type WeekNumbers,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings } from './runs.ts';
+import { currentWarnings, storedFacts, storedNames } from './runs.ts';
 
 type WeekSum = { runs: WeekNumbers['runs']; cost: number | null };
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
@@ -82,8 +82,9 @@ export function homeView(input: {
   // Only the current warnings show: a run's are the texts in its latest warns.
   const warnings = currentWarnings(input.runs, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
+  const names = storedNames(input.runs);
   const runs: Run[] = input.runs.map((unit) => {
-    const facts = { ...runFacts(unit.merged), key: unit.key };
+    const facts = storedFacts(unit, names);
     return { unit, facts, finished: parseTime(facts.finishedAt!) };
   });
   const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;

@@ -4,6 +4,7 @@ export type FindingSplit = { total: number; actedOn: number; notActedOn: number;
 
 export type RunFacts = {
   key: string;
+  projectKey: string;
   project: string;
   branch: string | null;
   path: Path | null;
@@ -48,8 +49,9 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
 }
 
-/** A run's facts but its key, each taken from its run entry as the reporter gives it; a view adds the stored key. */
-export function runFacts(run: RunEntry): Omit<RunFacts, 'key'> {
+/** A run's facts but its keys, each taken from its run entry as the reporter gives it; a view adds the stored key and
+ * the project's key and name. */
+export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
   const record = run.record;
   const path = toPath(record?.path) ?? null;
   return {

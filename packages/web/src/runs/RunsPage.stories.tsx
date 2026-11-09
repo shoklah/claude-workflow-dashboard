@@ -80,8 +80,8 @@ export const Filters: Story = {
       '/api/status': status,
       '/api/runs?weeks=4': runsFull,
       '/api/runs?path=full&weeks=4': runsWarned,
-      '/api/runs?path=full&project=atlas&weeks=4': runsWarned,
-      '/api/runs?path=full&project=atlas&weeks=12': runsWarned,
+      '/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=4': runsWarned,
+      '/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12': runsWarned,
     });
   },
   play: async ({ canvas, userEvent }) => {
@@ -89,6 +89,6 @@ export const Filters: Story = {
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Project' }), 'atlas');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '12');
-    await expect(fetch).toHaveBeenCalledWith('/api/runs?path=full&project=atlas&weeks=12');
+    await expect(fetch).toHaveBeenCalledWith('/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12');
   },
 };

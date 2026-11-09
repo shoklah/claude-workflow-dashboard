@@ -1,5 +1,7 @@
 import {
   parseTime,
+  projectNames,
+  projectRoot,
   runFacts,
   splitSessionId,
   weekStart,
@@ -15,6 +17,7 @@ import {
   type TimelineStep,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
+import { projectKey } from '../keys.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -35,6 +38,22 @@ export function skillOutcomeLabel(outcome: unknown): string {
   return '–';
 }
 
+/** A stored run's project root. */
+function rootOf(unit: StoredUnit<RunEntry>): string {
+  return projectRoot(unit.merged.record?.project ?? '');
+}
+
+/** The display name of every stored run's project, by root. */
+export function storedNames(runs: StoredUnit<RunEntry>[]): Map<string, string> {
+  return projectNames(runs.map(rootOf));
+}
+
+/** A stored run's facts: runFacts plus its stored key, its project's key and its project's name from `names`. */
+export function storedFacts(unit: StoredUnit<RunEntry>, names: Map<string, string>): RunFacts {
+  const root = rootOf(unit);
+  return { ...runFacts(unit.merged), key: unit.key, projectKey: projectKey(root), project: names.get(root) ?? '' };
+}
+
 /**
  * The stored warnings that are current: every session warning, and a run's warnings, the texts in its latest merged
  * `warns`; the store only gives their first-seen times.
@@ -46,7 +65,8 @@ export function currentWarnings(runs: StoredUnit<RunEntry>[], warnings: StoredWa
 
 /**
  * The runs finished in the query's last `weeks` weeks (this week and the ones before it, weeks starting Sunday
- * 07:00 UTC) that match its path, project and "has warnings" (a current run warning), newest first.
+ * 07:00 UTC) that match its path, project key and "has warnings" (a current run warning), newest first, and every
+ * stored run's project, by name.
  */
 export function runsList(
   runs: StoredUnit<RunEntry>[],
@@ -54,7 +74,8 @@ export function runsList(
   query: RunsQuery,
   now: Date,
 ): RunsResponse {
-  const rows = runs.map((run) => ({ ...runFacts(run.merged), key: run.key }));
+  const names = storedNames(runs);
+  const rows = runs.map((run) => storedFacts(run, names));
   const from = weekStart(now).getTime() - (query.weeks - 1) * WEEK;
   const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
   // A stored run always has its finish time (finishedAt), the date its key is made from.
@@ -63,10 +84,12 @@ export function runsList(
     runs: rows
       .filter((row) => finished(row) >= from)
       .filter((row) => !query.path || row.path === query.path)
-      .filter((row) => !query.project || row.project === query.project)
+      .filter((row) => !query.project || row.projectKey === query.project)
       .filter((row) => !query.warnings || warned.has(row.key))
       .sort((a, b) => finished(b) - finished(a)),
-    projects: [...new Set(rows.map((row) => row.project).filter(Boolean))].sort(),
+    projects: [...new Map(rows.filter((row) => row.project).map((row) => [row.projectKey, row.project]))]
+      .map(([key, name]) => ({ key, name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   };
 }
 
@@ -133,7 +156,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts): TimelineG
 /** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings. */
 export function runView(run: StoredUnit<RunEntry>, warnings: StoredWarning[]): RunResponse {
   const entry = run.merged;
-  const facts = { ...runFacts(entry), key: run.key };
+  const facts = storedFacts(run, storedNames([run]));
   const steps = (entry.steps ?? []).filter((s): s is KnownStep => s.step != null);
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;

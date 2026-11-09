@@ -1,13 +1,13 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadReport, type HomeResponse, type RunResponse, type RunsResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { runKey } from '../src/keys.ts';
+import { projectKey, runKey } from '../src/keys.ts';
 import { listUnits } from '../src/db/read.ts';
 import { runView, skillOutcomeLabel } from '../src/views/runs.ts';
 
@@ -20,13 +20,19 @@ const [RATE_LIMITS, RETRY_BACKOFF, , PLAN, FULL] = fixture('report-full').runs.m
 let dir: string;
 let db: Db;
 
+/** A fresh database in the test's folder, holding the fixture's import. */
+function dbWith(name: string): Db {
+  const fresh = openDb(join(dir, name, 'dashboard.sqlite'));
+  const raw = fixture(name);
+  const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+  if (!loaded.ok) throw new Error(`fixture ${name} does not load`);
+  importReport(fresh, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
+  return fresh;
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'cwd runs '));
-  db = openDb(join(dir, 'data dir', 'dashboard.sqlite'));
-  const raw = fixture('report-full');
-  const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
-  if (!loaded.ok) throw new Error('fixture report-full does not load');
-  importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
+  db = dbWith('report-full');
 });
 
 afterEach(() => {
@@ -68,7 +74,10 @@ test('lists runs newest first', async () => {
     '2026-10-06T15:20:00Z',
   ]);
   expect(list.runs[0]).toMatchObject({ key: FULL, project: 'lantern-notes', branch: 'feature/offline-sync' });
-  expect(list.projects).toEqual(['lantern-notes', 'tidepool-api']);
+  expect(list.projects).toEqual([
+    { key: projectKey('/Users/example/Work/lantern-notes'), name: 'lantern-notes' },
+    { key: projectKey('/Users/example/Work/tidepool-api'), name: 'tidepool-api' },
+  ]);
 });
 
 test('filters by path', async () => {
@@ -76,10 +85,10 @@ test('filters by path', async () => {
   expect((await runs('?weeks=12&path=plan')).runs.map((r) => r.key)).toEqual([PLAN]);
 });
 
-test('filters by project name', async () => {
-  const list = await runs('?weeks=12&project=tidepool-api');
+test('filters by project key', async () => {
+  const list = await runs(`?weeks=12&project=${projectKey('/Users/example/Work/tidepool-api')}`);
   expect(list.runs.map((r) => r.key)).toEqual([RETRY_BACKOFF, RATE_LIMITS]);
-  expect(list.projects).toEqual(['lantern-notes', 'tidepool-api']);
+  expect(list.projects.map((p) => p.name)).toEqual(['lantern-notes', 'tidepool-api']);
 });
 
 test('filters to runs with warnings', async () => {
@@ -276,4 +285,32 @@ test("no response holds a transcript path, a project path or the fixture's spec 
     expect(body).not.toContain('offline-sync-design.md');
     expect(body).not.toContain('docs/superpowers');
   }
+});
+
+describe('projects', () => {
+  // report-projects' runs, oldest first: Archive lantern-notes, tidepool-api, Work lantern-notes, its worktree.
+  const [, , MAIN, WORKTREE] = fixture('report-projects').runs.map(runKey) as string[];
+  const LANTERN = projectKey('/Users/example/Work/lantern-notes');
+
+  beforeEach(() => {
+    db.$client.close();
+    db = dbWith('report-projects');
+  });
+
+  test("a worktree's run has its main root's project key", async () => {
+    const row = (await runs('?weeks=52')).runs.find((r) => r.key === WORKTREE)!;
+    expect(row.projectKey).toBe(LANTERN);
+  });
+
+  test("filters by project key: the root's runs and its worktree's", async () => {
+    const list = await runs(`?project=${LANTERN}&weeks=52`);
+    expect(list.runs.map((r) => r.key)).toEqual([WORKTREE, MAIN]);
+  });
+
+  test('lists each project once, by key, with distinct names', async () => {
+    const { projects } = await runs('?weeks=52');
+    expect(projects).toHaveLength(3);
+    expect(new Set(projects.map((p) => p.name)).size).toBe(3);
+    expect(projects).toContainEqual({ key: LANTERN, name: 'lantern-notes (Work)' });
+  });
 });

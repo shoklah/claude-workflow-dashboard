@@ -1,14 +1,14 @@
 import type { RunFacts } from '../facts.ts';
 import type { Outcome, Path, StepKind } from '../report.ts';
 
-/** `GET /api/runs`'s query: `path`, `project` (a project's name), `weeks` (default 4) and `warnings=1`. */
+/** `GET /api/runs`'s query: `path`, `project` (a project's key), `weeks` (default 4) and `warnings=1`. */
 export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings: boolean };
 
 export type RunRow = RunFacts;
 
-/** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, and the name of
- * every stored run's project. */
-export type RunsResponse = { runs: RunRow[]; projects: string[] };
+/** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, and the key and
+ * name of every stored run's project, by name. */
+export type RunsResponse = { runs: RunRow[]; projects: { key: string; name: string }[] };
 
 /** A finding of a step, with that step's kind, task, wave and round. */
 export type FindingRow = {

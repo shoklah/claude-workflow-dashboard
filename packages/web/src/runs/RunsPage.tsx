@@ -53,7 +53,9 @@ export function RunsPage() {
           >
             <option value="">All</option>
             {runs.data?.projects.map((project) => (
-              <option key={project}>{project}</option>
+              <option key={project.key} value={project.key}>
+                {project.name}
+              </option>
             ))}
           </select>
         </label>

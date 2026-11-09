@@ -9,6 +9,7 @@ const NO_FINDINGS = { total: 0, actedOn: 0, notActedOn: 0, open: 0 };
 
 export const fullRun: RunFacts = {
   key: 'a1b2c3d4e5f60718',
+  projectKey: '1a2b3c4d5e6f7081',
   project: 'atlas',
   branch: 'feat/search',
   path: 'full',
@@ -27,6 +28,7 @@ export const fullRun: RunFacts = {
 
 export const smallRun: RunFacts = {
   key: 'b2c3d4e5f6071829',
+  projectKey: '2b3c4d5e6f708192',
   project: 'harbor',
   branch: HTML_TEXT,
   path: 'small',
@@ -46,6 +48,7 @@ export const smallRun: RunFacts = {
 /** A record from before steps were logged: what it can't give is null. */
 export const oldRun: RunFacts = {
   key: 'c3d4e5f607182930',
+  projectKey: '3c4d5e6f70819203',
   project: 'quarry',
   branch: 'feat/import',
   path: 'full',
@@ -62,7 +65,10 @@ export const oldRun: RunFacts = {
   beforeSteps: true,
 };
 
-export const runsFull: RunsResponse = { runs: [smallRun, fullRun, oldRun], projects: ['atlas', 'harbor', 'quarry'] };
+export const runsFull: RunsResponse = {
+  runs: [smallRun, fullRun, oldRun],
+  projects: [fullRun, smallRun, oldRun].map((run) => ({ key: run.projectKey, name: run.project })),
+};
 export const runsWarned: RunsResponse = { runs: [fullRun], projects: runsFull.projects };
 export const runsEmpty: RunsResponse = { runs: [], projects: [] };
 
