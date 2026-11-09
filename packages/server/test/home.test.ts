@@ -1,3 +1,6 @@
+// The owner's time zone, set before any date is built: a reporter time with no zone must still be UTC.
+process.env.TZ = 'Europe/Paris';
+
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -211,6 +214,10 @@ test("weekSums matches the fixture's totals.weeks", () => {
       else expect(sum?.cost).toBeCloseTo(week.cost, 10);
     }
   }
+});
+
+test('a run date with no zone is UTC, so Sunday 07:00 starts its week', () => {
+  expect([...weekSums([{ record: { date: '2026-11-08T07:00:00' } }]).keys()]).toEqual(['2026-11-08']);
 });
 
 test('no response field holds a slash-containing project or a transcript path', async () => {

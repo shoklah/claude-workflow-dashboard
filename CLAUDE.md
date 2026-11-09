@@ -33,6 +33,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - This repo never edits the workflow repo or the template; they are a reference and the data source.
 - Relative imports carry their `.ts` extension and type-only imports use `import type`; packages export their TypeScript sources, with no build step.
 - The reporter's JSON schema lives in `packages/shared/src/report.ts`: every field is `.nullish()` (a `z.unknown()` one `.optional()`) unless the loader can't work without it, and a field the dashboard doesn't read is left out, so it is stripped.
+- A time from the reporter becomes a `Date` only through `parseTime` in `packages/shared/src/week.ts`, which reads a zone-less time as UTC as the reporter does, never through `new Date` or `Date.parse`.
 - A fixture's `totals.weeks` agrees with its runs by the reporter's `week_rows` rules: per week start date, `runs` by path and `cost` as the sum of the priced cost of the runs with `models`, null when none has them.
 - Stored derived values (a unit's `merged`, `readable`, `firstSeenAt` and its warnings) are written only by `applyVersion` in `packages/server/src/db/import.ts`, which both the import and `rebuildDerived` call, so a rebuild from `unitVersions` always gives the same rows; a new derived value goes there.
 - `units.missing_since`, `imports` and `state` are stored facts, not derived: nothing in `unit_versions` can rebuild them, so a migration that drops or recreates their tables carries their values over.

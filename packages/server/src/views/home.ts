@@ -1,4 +1,5 @@
 import {
+  parseTime,
   PATHS,
   runFacts,
   splitFindings,
@@ -42,7 +43,7 @@ export function weekSums(runs: RunEntry[]): Map<string, WeekSum> {
   for (const run of runs) {
     if (!run.record?.date) continue;
     const facts = runFacts(run);
-    const week = weekOf(new Date(run.record.date));
+    const week = weekOf(parseTime(run.record.date));
     const sum = sums.get(week) ?? { runs: noRuns(), cost: null };
     if (facts.path) sum.runs[facts.path] += 1;
     if (facts.cost !== null) sum.cost = (sum.cost ?? 0) + facts.cost;
@@ -83,7 +84,7 @@ export function homeView(input: {
   // Stored runs always have a date: the import skips a run without one.
   const runs: Run[] = input.runs.map((unit) => {
     const facts = runFacts(unit.merged);
-    return { unit, facts, finished: new Date(facts.finishedAt!) };
+    return { unit, facts, finished: parseTime(facts.finishedAt!) };
   });
   const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;
   const sums = weekSums(runs.map((r) => r.unit.merged));

@@ -1,4 +1,5 @@
 import {
+  parseTime,
   runFacts,
   splitSessionId,
   weekStart,
@@ -57,7 +58,7 @@ export function runsList(
   const from = weekStart(now).getTime() - (query.weeks - 1) * WEEK;
   const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
   // A stored run always has its finish time (finishedAt), the date its key is made from.
-  const finished = (row: { finishedAt: string | null }) => Date.parse(row.finishedAt ?? '');
+  const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
   return {
     runs: rows
       .filter((row) => finished(row) >= from)

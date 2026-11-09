@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import type { StatusResponse } from '@cwd/shared';
+// By path: the package's entry also loads Node-only code (keys.ts imports node:crypto), which a browser can't run.
+import { parseTime } from '../../../shared/src/week.ts';
 
 /** A time in the reader's locale and time zone, its ISO value in `datetime`. */
 export function Time({ iso }: { iso: string }) {
-  return <time dateTime={iso}>{new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</time>;
+  return <time dateTime={iso}>{parseTime(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</time>;
 }
 
 /** A notice above the page, read out when it appears. */
