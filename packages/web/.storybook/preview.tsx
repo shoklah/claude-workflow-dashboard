@@ -5,14 +5,17 @@ import { RouterProvider, createMemoryHistory, createRootRoute, createRouter } fr
 import { TooltipProvider } from '../src/components/ui/tooltip.tsx';
 import '../src/index.css';
 
-// Every story gets the app's providers: a fresh query cache that never retries, the tooltips, and a router on `/` whose
-// only route is the story, so links render.
+// Every story gets the app's providers: a fresh query cache that never retries, the tooltips, and a router whose only
+// route is the story, so links render, on `/` or on the story's `parameters.path`.
 const preview: Preview = {
   decorators: [
-    (Story) => {
+    (Story, { parameters }) => {
       const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
       const [router] = useState(() =>
-        createRouter({ routeTree: createRootRoute({ component: Story }), history: createMemoryHistory() }),
+        createRouter({
+          routeTree: createRootRoute({ component: Story }),
+          history: createMemoryHistory({ initialEntries: [parameters.path ?? '/'] }),
+        }),
       );
       return (
         <QueryClientProvider client={queryClient}>

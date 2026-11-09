@@ -1,9 +1,10 @@
 import { Link } from '@tanstack/react-router';
 
-// Slice 1's pages only; the menu's later entries (decision 22) appear as their pages are built.
+// Slice 1's pages only; the menu's later entries (decision 22) appear as their pages are built. An entry is current on
+// its pages below it too (Runs on a run's page), except Home, which every path is below.
 const ENTRIES = [
-  { to: '/', label: 'Home' },
-  { to: '/runs', label: 'Runs' },
+  { to: '/', label: 'Home', exact: true },
+  { to: '/runs', label: 'Runs', exact: false },
 ] as const;
 
 export function Menu() {
@@ -13,7 +14,7 @@ export function Menu() {
         <Link
           key={entry.to}
           to={entry.to}
-          activeOptions={{ exact: true }}
+          activeOptions={{ exact: entry.exact }}
           className="rounded-md px-2 py-1 hover:bg-accent"
           activeProps={{ className: 'font-semibold' }}
         >
