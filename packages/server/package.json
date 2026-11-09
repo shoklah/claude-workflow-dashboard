@@ -5,12 +5,16 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "check:real": "node src/check-real.ts"
+    "check:real": "node src/check-real.ts",
+    "start": "node src/main.ts",
+    "dev:fixtures": "node src/dev-fixtures.ts"
   },
   "dependencies": {
     "@cwd/shared": "workspace:*",
+    "@hono/node-server": "2.1.6",
     "better-sqlite3": "13.0.3",
-    "drizzle-orm": "0.45.4"
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.17"
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",
