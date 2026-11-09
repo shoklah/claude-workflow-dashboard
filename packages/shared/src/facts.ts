@@ -48,12 +48,11 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
 }
 
-/** A run's facts, each taken from its run entry as the reporter gives it, with the key it is stored under. */
-export function runFacts(run: RunEntry, key: string): RunFacts {
+/** A run's facts but its key, each taken from its run entry as the reporter gives it; a view adds the stored key. */
+export function runFacts(run: RunEntry): Omit<RunFacts, 'key'> {
   const record = run.record;
   const path = toPath(record?.path) ?? null;
   return {
-    key,
     // project: the last segment of record.project, so no path leaves the backend.
     project: (record?.project ?? '').split('/').filter(Boolean).at(-1) ?? '',
     branch: record?.branch ?? null,

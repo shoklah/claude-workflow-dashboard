@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, isNull, notInArray } from 'drizzle-orm';
-import { type Report } from '@cwd/shared';
+import type { Report } from '@cwd/shared';
 import { runKey, sessionKey } from '../keys.ts';
 import { mergeKnown } from './merge.ts';
 import type { Db, Tx } from './open.ts';

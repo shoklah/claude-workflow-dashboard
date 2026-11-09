@@ -19,7 +19,6 @@ import {
   type WeekNumbers,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { runKey } from '../keys.ts';
 import { currentWarnings } from './runs.ts';
 
 type WeekSum = { runs: WeekNumbers['runs']; cost: number | null };
@@ -43,7 +42,7 @@ export function weekSums(runs: RunEntry[]): Map<string, WeekSum> {
   const sums = new Map<string, WeekSum>();
   for (const run of runs) {
     if (!run.record?.date) continue;
-    const facts = runFacts(run, runKey(run)!);
+    const facts = runFacts(run);
     const week = weekOf(parseTime(run.record.date));
     const sum = sums.get(week) ?? { runs: noRuns(), cost: null };
     if (facts.path) sum.runs[facts.path] += 1;
@@ -84,7 +83,7 @@ export function homeView(input: {
   const warnings = currentWarnings(input.runs, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
   const runs: Run[] = input.runs.map((unit) => {
-    const facts = runFacts(unit.merged, unit.key);
+    const facts = { ...runFacts(unit.merged), key: unit.key };
     return { unit, facts, finished: parseTime(facts.finishedAt!) };
   });
   const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;
