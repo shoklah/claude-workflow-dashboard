@@ -55,19 +55,24 @@ export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterR
 }
 
 /**
- * Runs the reporter once and imports its report, or records the failure with its error text. The import is timed
- * before the reporter runs, so a transcript that changes during the run is still newer than the import.
+ * Runs the reporter once and imports its report, or records the failure with its error text, a throw included (an
+ * empty command, a locked database). The import is timed before the reporter runs, so a transcript that changes
+ * during the run is still newer than the import.
  */
 export async function importOnce(db: Db, config: Config, now: () => Date): Promise<void> {
   const at = now();
-  const result = await runReporter(config.reporterCommand, config.reporterTimeoutMs);
-  if (!result.ok) return recordImportFailure(db, result.error, at);
-  const loaded = loadReport(result.json);
-  if (!loaded.ok) {
-    const error =
-      loaded.reason === 'version' ? 'report version is not 1' : `report fields don't match: ${loaded.fields.join(', ')}`;
-    return recordImportFailure(db, error, at);
+  try {
+    const result = await runReporter(config.reporterCommand, config.reporterTimeoutMs);
+    if (!result.ok) return recordImportFailure(db, result.error, at);
+    const loaded = loadReport(result.json);
+    if (!loaded.ok) {
+      const error =
+        loaded.reason === 'version' ? 'report version is not 1' : `report fields don't match: ${loaded.fields.join(', ')}`;
+      return recordImportFailure(db, error, at);
+    }
+    const { runs, sessions, totals } = result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
+    importReport(db, loaded.report, { runs, sessions, totals }, at);
+  } catch (error) {
+    recordImportFailure(db, `import failed: ${error instanceof Error ? error.message : String(error)}`, at);
   }
-  const { runs, sessions, totals } = result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
-  importReport(db, loaded.report, { runs, sessions, totals }, at);
 }

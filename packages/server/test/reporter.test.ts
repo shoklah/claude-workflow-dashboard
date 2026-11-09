@@ -149,4 +149,23 @@ describe('importOnce', () => {
     expect(last).toMatchObject({ at: AT, ok: false });
     expect(last?.error).toContain('runs[].steps');
   });
+
+  test('a store that throws during the import is a recorded failure', async () => {
+    const { db, config } = setup(['cat', fixturePath('report-full')]);
+    // Any write of a unit fails, as with SQLITE_BUSY when the database is open elsewhere; the failure row still writes.
+    db.$client.exec(
+      "CREATE TRIGGER fail_import BEFORE INSERT ON unit_versions BEGIN SELECT RAISE(ABORT, 'database is locked'); END",
+    );
+    await importOnce(db, config, () => AT);
+    expect(lastImport(db)).toEqual({ at: AT, ok: false, error: 'import failed: database is locked' });
+    expect(listUnits(db, 'run')).toEqual([]);
+  });
+
+  test('an empty reporter command is a recorded failure', async () => {
+    const { db, config } = setup([]);
+    await importOnce(db, config, () => AT);
+    const last = lastImport(db);
+    expect(last).toMatchObject({ at: AT, ok: false });
+    expect(last?.error).toMatch(/^import failed: /);
+  });
 });
