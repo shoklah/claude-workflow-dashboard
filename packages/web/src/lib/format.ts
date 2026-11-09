@@ -55,6 +55,11 @@ export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
+/** Showing mode's line for what it leaves out: "+ 2 runs in other projects, counted in totals and charts only". */
+export function hiddenLabel(count: number, noun: string): string {
+  return `+ ${plural(count, noun)} in other projects, counted in totals and charts only`;
+}
+
 /** The findings' split as the tiles and the feed read it: "13 acted on · 1 open". */
 export function actedOnSplit(findings: FindingSplit): string {
   return `${findings.actedOn} acted on · ${findings.open} open`;

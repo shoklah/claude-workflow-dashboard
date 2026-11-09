@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { PATHS, toPath, type RunsQuery, type RunsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { hiddenLabel } from '../lib/format.ts';
 import { RunsTable } from './RunsTable.tsx';
 
-const PERIODS = [
+export const PERIODS = [
   { weeks: 1, label: 'This week' },
   { weeks: 4, label: 'Last 4 weeks' },
   { weeks: 12, label: 'Last 12 weeks' },
@@ -20,7 +21,7 @@ function runsPath(query: RunsQuery): string {
   return `/api/runs?${params}`;
 }
 
-const SELECT = 'rounded-md border bg-background px-2 py-1';
+export const SELECT = 'rounded-md border bg-background px-2 py-1';
 
 /** The Runs list with its filters: path, project, period (the last 4 weeks by default) and "has warnings". */
 export function RunsPage() {
@@ -77,6 +78,9 @@ export function RunsPage() {
       {runs.isPending && <p className="text-sm text-muted-foreground">Loading the runs…</p>}
       {runs.isError && <p className="text-sm">Couldn't load the runs.</p>}
       {runs.data && <RunsTable runs={runs.data.runs} />}
+      {runs.data && runs.data.hidden > 0 && (
+        <p className="text-sm text-muted-foreground">{hiddenLabel(runs.data.hidden, 'run')}</p>
+      )}
     </div>
   );
 }
