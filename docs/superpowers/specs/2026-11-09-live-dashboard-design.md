@@ -164,7 +164,7 @@ This section describes where findings assessment ends up. What 2a itself builds 
 - **Labels are stored facts.**
   - Each label is keyed by run key, finding id, a hash of its input text, the list's version and the model, and stored with the time and its one-sentence reason.
   - Labels can't be rebuilt from `unit_versions`, so a migration carries them over, as it does `missing_since`.
-  - A finding gets labelled again when its text changes, the list gets a new version, or `LABELLER_MODEL` changes. Switching to a stronger model is how a doubtful labeller gets upgraded, with no code change. Old labels stay stored and are no longer shown.
+  - A finding gets labelled again when its text changes, the list gets a new version, or `LABELLER_MODEL` changes. Switching to a stronger model is how a doubtful labeller gets upgraded, with no code change. Old labels stay stored. After a model change, the old model's label shows until the new model's replaces it (decision 49).
   - Each app call's reason shows in the cell's findings list, so judging a pattern means reading the reasons behind it.
 - **Cost:** about 230 input and 150 output tokens per finding, at list prices on 2026-11-09. With about 250 findings in a busy week, Haiku 5.5 costs about $0.03 a week, and about $0.10 to label every finding already stored. The Anthropic workspace's spend limit is the hard ceiling (below).
 
@@ -188,7 +188,7 @@ This section describes where findings assessment ends up. What 2a itself builds 
   - declined or ruled findings, and, after CR10, how many the session judged invalid
 - **Strengths** by category become a measure of their own after CR10.
 - **Counting:** a finding counts in its run's week (`weekOf` on the run's finish time). Acted on and not acted on mean what slice 1 defines.
-- **Which judge a count uses.** A category or relevance count uses the workflow's call where one exists, otherwise the app's (decision 36: the app's is the only label on past runs). Where any part of a cell's count is the app's, the cell says how much ("7 · 5 by the app"), so an aggregate never passes for the reporter's facts. "App differs" appears once workflow labels exist.
+- **Which judge a count uses.** A category or relevance count uses the workflow's call where one exists, otherwise the app's (decision 36: the app's is the only label on past runs). Until CR10 every label is the app's, so one line on the page says so, and an aggregate never passes for the reporter's facts (decision 49). The per-cell split ("7 · 5 by the app") and "App differs" come with CR10's task.
 - **2a reads no CR10 field.** Its shape is still a draft, and fixtures that guess it could drift from the real output. Until CR10:
   - the Valid column shows "–"
   - no strengths show
@@ -225,7 +225,7 @@ After CR10, the table also lists the reviewers' strengths.
   - The API carries a project key, a hash like the run keys, never the path.
   - A project shows as its alias, otherwise its folder name, with the parent folder added when two shown projects share a name.
   - This changes slice 1's `project` fact (today the last path segment) and the Runs list's project filter (today by name) to the key, as part of 2a.
-- **A session's project** (for 2b and the feed): the reporter doesn't give one. Until CR11, the app encodes each stored project's path the way Claude Code names transcript folders.
+- **A session's project** (for 2b; decision 49): the reporter doesn't give one. In 2a, showing mode leaves out every session warning, which fails closed. Until CR11, the app encodes each stored project's path the way Claude Code names transcript folders.
   - A session belongs to a project when its folder equals that encoding, or starts with the encoding followed by `--claude-worktrees-`, and exactly one project matches.
   - With no match, or more than one, it is "other project" and stays hidden in showing mode, so the check fails closed.
 - **Text that names a hidden project.** A picked project's finding, warning or labeller reason can name a hidden project's folder or path. In showing mode, that name is replaced with "another project". The leak-check fixtures include such a text.
@@ -369,6 +369,13 @@ CR6 can land at any point without a visible change. To check in planning: that e
     - **The UX/UI slice** comes right after 2b.
 
     This replaces decision 23's slice 3 row.
+
+### 2026-11-09, the owner, slice 2a plan
+
+49. **The slice 2a plan is approved** (`docs/superpowers/plans/2026-11-09-live-dashboard-slice-2a.md`), with three changes to the design:
+    - Until CR10, one page line says every label is the app's, instead of a per-cell count.
+    - Matching sessions to projects moves to 2b, and 2a's showing mode leaves out every session warning.
+    - After a model change, the old model's labels show until the new model's replace them.
 
 ## Claude's calls, open to correction
 
