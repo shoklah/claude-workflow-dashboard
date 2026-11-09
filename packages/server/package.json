@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "check:real": "node src/check-real.ts"
   },
   "dependencies": {
     "@cwd/shared": "workspace:*",
