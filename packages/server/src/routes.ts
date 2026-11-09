@@ -2,18 +2,9 @@ import type { Context, Hono } from 'hono';
 import { toPath, type RunsQuery, type StatusResponse } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { getRun, getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings, setSeenAt } from './db/read.ts';
+import { trimPaths } from './text.ts';
 import { homeView } from './views/home.ts';
 import { runView, runsList, storedNames } from './views/runs.ts';
-
-// The folders of an absolute path: from a `/` that starts a word up to its last `/`. A folder name may hold a space,
-// but not a space before a `/`, which starts the next path; quotes, `:` and `;` end the path. Text after a path
-// that holds a space and then a `/` reads as more folders and is cut too: more is cut, never less.
-const PATH_FOLDERS = /(?<![\w.-])\/(?:(?:[^/'"\n:; ]| (?!\/))*\/)+/g;
-
-/** The text with every absolute path cut to its last segment, so the banner names the command and no path leaves. */
-function trimPaths(text: string): string {
-  return text.replace(PATH_FOLDERS, '');
-}
 
 /** The answer to any method but POST on a POST-only route. */
 function postOnly(c: Context): Response {

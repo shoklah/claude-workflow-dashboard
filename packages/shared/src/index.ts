@@ -6,3 +6,4 @@ export * from './api/home.ts';
 export * from './facts.ts';
 export * from './projects.ts';
 export * from './api/runs.ts';
+export * from './categories.ts';

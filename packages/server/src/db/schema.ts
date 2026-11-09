@@ -1,4 +1,5 @@
 import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { RELEVANCE } from '@cwd/shared';
 
 // unitVersions holds every raw JSON a run or session had, in order; units' merged, readable and firstSeenAt, and
 // the warnings table, are derived from it and can be rebuilt (rebuildDerived). missingSince is not derived: it
@@ -56,4 +57,29 @@ export const imports = sqliteTable('imports', {
 export const state = sqliteTable('state', {
   name: text('name').primaryKey(),
   value: text('value').notNull(),
+});
+
+// The app's finding labels and the labeller's batches are stored facts: nothing in unitVersions rebuilds them. A
+// label is keyed by its finding, the hash of the text it was given, the category list's version and the model.
+export const findingLabels = sqliteTable(
+  'finding_labels',
+  {
+    runKey: text('run_key').notNull(),
+    findingId: text('finding_id').notNull(),
+    inputHash: text('input_hash').notNull(),
+    listVersion: integer('list_version').notNull(),
+    model: text('model').notNull(),
+    category: text('category').notNull(),
+    relevance: text('relevance', { enum: RELEVANCE }).notNull(),
+    reason: text('reason').notNull(),
+    labelledAt: time('labelled_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.runKey, t.findingId, t.inputHash, t.listVersion, t.model] })],
+);
+
+export const labelBatches = sqliteTable('label_batches', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  at: time('at').notNull(),
+  inputTokens: integer('input_tokens').notNull(),
+  outputTokens: integer('output_tokens').notNull(),
 });
