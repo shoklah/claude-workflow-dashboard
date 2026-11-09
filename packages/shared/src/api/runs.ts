@@ -1,0 +1,56 @@
+import type { RunFacts } from '../facts.ts';
+import type { Outcome, StepKind } from '../report.ts';
+
+/** `GET /api/runs`'s query: `path`, `project` (a project's name), `weeks` (default 4) and `warnings=1`. */
+export type RunsQuery = { path?: 'small' | 'full' | 'plan'; project?: string; weeks: number; warnings: boolean };
+
+export type RunRow = RunFacts;
+
+/** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, and the name of
+ * every stored run's project. */
+export type RunsResponse = { runs: RunRow[]; projects: string[] };
+
+/** A finding of a step, with that step's kind, task, wave and round. */
+export type FindingRow = {
+  id: string | null;
+  step: StepKind;
+  task: number | null;
+  wave: string | null;
+  round: number | null;
+  closedRound: number | null;
+  severity: string | null;
+  kind: string | null;
+  summary: string | null;
+  outcome: Outcome | null;
+  reason: string | null;
+  verdicts: string[];
+};
+
+export type TimelineStep = {
+  step: StepKind;
+  round: number | null;
+  agent: string | null;
+  counts: Record<string, number>;
+  findings: FindingRow[];
+};
+
+/** A part of the untimed timeline: only `start` and `end` carry a time. A wave holds its tasks' steps and its wave
+ * check's steps; a task in no wave is a `task` group holding that one task. */
+export type TimelineGroup = {
+  kind: 'start' | 'plan' | 'wave' | 'task' | 'simplify' | 'final' | 'end';
+  label: string;
+  at: string | null;
+  tasks: { task: number; steps: TimelineStep[] }[];
+  steps: TimelineStep[];
+};
+
+/** `GET /api/runs/:key`: one run, its timeline, every finding, and its skills, models, advisor notes and warnings. */
+export type RunResponse = {
+  facts: RunFacts;
+  timeline: TimelineGroup[];
+  findings: FindingRow[];
+  skills: { name: string; outcome: string }[];
+  models: { model: string; cost: number | null }[];
+  advisor: { calls: number; notes: number } | null;
+  warnings: { text: string; sessionId: string | null }[];
+};
