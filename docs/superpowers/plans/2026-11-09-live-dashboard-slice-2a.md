@@ -41,7 +41,8 @@
   - A finding with no id is never labelled.
 - **Labels and label batches are stored facts.** A migration that drops or recreates their tables carries their rows over.
 - **Showing mode** lives in `state`, under the name `showing`, as a JSON array of project keys.
-  - With it on, no response holds an absolute path, a session ID, or a hidden project's name or branch.
+  - With it on, no response holds an absolute path, a session ID, or a hidden project's name or branch. That covers every response, `/api/status` and `/api/showing` included.
+  - A string that also belongs to a shown project is never treated as hidden. A shared folder name or a branch like `main` reveals nothing about the hidden project, so it is neither masked nor counted as a leak.
   - Hidden projects count only in sums.
   - Every session warning is left out, which fails closed. Session-to-project matching comes with 2b's Sessions page.
   - A picked project shows as its alias from `config.json`'s `aliases`, keyed by project root path, else its folder name. When two shown names are equal, each gets ` (<parent folder>)` appended.
@@ -226,10 +227,11 @@ Conventions line for the report: a project is its root behind `projectKey`, and 
   - `getShowing(db: Db): string[] | null` and `setShowing(db: Db, projects: string[] | null): void`, where null deletes the state row
   - `Config.aliases: Record<string, string>`, default `{}`
   - In `views/scope.ts`:
-    - `type Scope = { shown: Set<string>; names: Map<string, string>; hidden: string[] }`. `shown` holds the shown project keys, `names` maps each to its alias or name, and `hidden` holds the hidden projects' folder names.
+    - `type Scope = { shown: Set<string>; names: Map<string, string>; hidden: string[] }`. `shown` holds the shown project keys, and `names` maps each to its alias or name. `hidden` holds the hidden projects' folder names, minus any a shown project also has.
     - `scopeOf(showing: string[] | null, roots: string[], aliases: Record<string, string>): Scope | null`
     - `maskText(scope: Scope, text: string): string`. It runs `trimPaths`, turns each whole-word occurrence of a hidden name into `another project`, and turns each `<uuid>.jsonl` into `a session`.
     - `leaks(json: unknown, forbidden: string[]): string[]`: the forbidden strings found in `JSON.stringify(json)`. It is in `src` so that `check:real` can use it.
+    - `forbiddenStrings(roots: string[], branches: Map<string, string[]>, shownRoots: string[], sessionIds: string[]): string[]`. It lists the hidden roots, their folder names and their branches, minus any string a shown root or a shown run also has, plus the session IDs. Branches are keyed by root. Task 3's tests and check:real both use it.
 - Changes:
   - `homeView`'s input gains `scope: Scope | null`.
   - `runsList` gains a final `scope: Scope | null`.
@@ -239,20 +241,25 @@ Conventions line for the report: a project is its root behind `projectKey`, and 
 - Rows, feed items, run warnings and `RunsResponse.projects` keep only shown projects.
 - Every session warning is left out.
 - `project` is the scope's name.
-- Every text goes through `maskText`, and every `sessionId` is null.
+- Every text goes through `maskText` before anything else. A warning is built from its masked raw text, with no `splitSessionId` and `sessionId` null, so no `{session}` placeholder is left behind.
+- `/api/status`'s `error` goes through `maskText`.
 - `hidden` counts the period's runs that are left out.
 - Sums, tiles, charts and the diagram still count every run.
 
 **The showing block:**
-- `GET /api/showing` answers `ShowingResponse`, listing every stored project's key and name.
+- `GET /api/showing` answers `ShowingResponse`. While showing is off, it lists every stored project's key and name. While it is on, it lists only the picked projects.
 - `POST /api/showing` takes a `ShowingRequest`. An empty list stops showing. A key that isn't stored answers 400 and leaves the state unchanged.
 
 - [ ] **Step 1: Write the failing tests** in `showing.test.ts`, on `report-projects`, with showing set to the lantern-notes (Work) key and that root aliased `Notes app`:
-  - `leaks` finds nothing in `/api/home`, `/api/runs?weeks=52` or each shown run's `/api/runs/:key`, searching for: `/Users/example`, `tidepool-api`, the Archive lantern-notes run's branch, and every session UUID in the fixture.
+  - `leaks` finds nothing in the responses below, searching for `forbiddenStrings` of the fixture plus `/Users/example`:
+    - `/api/home`, `/api/runs?weeks=52` and each shown run's `/api/runs/:key`
+    - `/api/showing`
+    - `/api/status`, after a `recordImportFailure` whose text holds a path and a `<uuid>.jsonl`
   - `/api/runs` has `hidden` equal to 2, and every row's `project` is `Notes app`.
   - The tidepool run's page answers 404.
   - `maskText` on the tidepool finding's summary has `another project` and no `/Users/`.
   - `maskText` with a scope whose `hidden` is `['api']` turns `"rapid api"` into `"rapid another project"`.
+  - With the Archive lantern-notes root shown and the Work one hidden, `scopeOf`'s `hidden` doesn't hold `lantern-notes`.
   - The home tiles' run counts equal those with showing off.
   - `POST /api/showing` with an unknown key answers 400, and `getShowing` is unchanged.
   - After closing and reopening the database file, `getShowing` still gives the key.
@@ -272,6 +279,8 @@ Conventions line for the report: the existing showing line in `CLAUDE.md` gains 
 - Create: `packages/server/src/labeller.ts`
 - Create: `packages/server/test/labeller.test.ts`
 - Modify: `packages/server/src/main.ts` (the env loading and the label queue; not the `serveApp` call)
+- Modify: `packages/server/src/queue.ts` (`createQueue(job, name = 'import')`, whose log line reads `${name} job failed:`)
+- Modify: `packages/server/test/queue.test.ts`
 - Modify: `packages/server/package.json` (`@anthropic-ai/sdk`, pinned)
 - Modify: `pnpm-lock.yaml`
 - Create: `.env.example`
@@ -293,8 +302,10 @@ Conventions line for the report: the existing showing line in `CLAUDE.md` gains 
 - On a throw, stops and rethrows, so the queue logs it.
 
 **`anthropicLabelClient`:**
-- Uses `new Anthropic()`, which reads `ANTHROPIC_API_KEY`, and calls `client.messages.create` with `max_tokens: 4096` and `output_config: { format: { type: 'json_schema', schema } }`. The schema is an object with `labels`: an array of `{ id, category, relevance, reason }`, where `category` is an enum of every category, `relevance` an enum of `RELEVANCE` and `reason` a string, with `additionalProperties: false`.
-- Parses the text block with a local zod schema, and takes the tokens from `response.usage`.
+- Uses `new Anthropic()`, which reads `ANTHROPIC_API_KEY`.
+- Calls `client.messages.parse` with `max_tokens: 4096` and `output_config: { format: zodOutputFormat(LabelsSchema) }` (from `@anthropic-ai/sdk/helpers/zod`), then reads `parsed_output` and takes the tokens from `response.usage`.
+- `LabelsSchema` is `z.object({ labels: z.array(z.object({ id, category: z.enum(every category), relevance: z.enum(RELEVANCE), reason: z.string() })) })`.
+- If the helper rejects zod 4, it falls back to `messages.create` with `output_config: { format: { type: 'json_schema', schema } }`, a hand-written schema, and parses the text block with `LabelsSchema`. The report says which was used.
 - Its prompt says: a finding comes from a code review step in an agentic workflow; pick one category from the area's list; judge whether it was a real problem worth raising (valid), not one (invalid), or can't tell (unclear); give a reason in one sentence.
 - Check the SDK call's shape against the `claude-api` skill before writing it.
 
@@ -305,7 +316,7 @@ Conventions line for the report: the existing showing line in `CLAUDE.md` gains 
 
 **`.env.example`** lists the three variables with no values, and a comment naming the data folder.
 
-- [ ] **Step 1: Write the failing tests** in `labeller.test.ts`, with a stub `LabelClient` that records each batch's size and answers valid labels:
+- [ ] **Step 1: Write the failing tests** in `labeller.test.ts`. A stub `LabelClient` records each batch's size and answers valid labels. The report imported is `report-projects` with one run's findings repeated under new ids, `F100` onward, until there are at least 60 with ids; the change is made in the test to the parsed fixture.
   - With 60 pending findings and `dailyMax` 500, the batches are 25, 25 and 10, and 60 labels are stored.
   - With `dailyMax` 30, 30 are stored, and a second run the same day stores none.
   - A result whose category is outside its area (`correctness` for a plan finding) is not stored.
@@ -313,6 +324,7 @@ Conventions line for the report: the existing showing line in `CLAUDE.md` gains 
   - `labellerSettings({})` is null.
   - `labellerSettings({ ANTHROPIC_API_KEY: 'k' })` is `{ model: 'claude-haiku-5-5', dailyMax: 500 }`.
   - `LABELLER_DAILY_MAX: '40'` gives 40.
+  - In `queue.test.ts`: a queue named `label` logs `label job failed:` when its job throws.
 - [ ] **Step 2: Run** `pnpm vitest run packages/server/test/labeller.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement** the interfaces and the wiring, with the SDK at its latest stable version, pinned.
 - [ ] **Step 4: Run** `pnpm vitest run packages/server` and `pnpm typecheck`. Expected: PASS.
@@ -367,9 +379,10 @@ Stack line for the report, for `CLAUDE.md`'s `## Stack`: `@anthropic-ai/sdk` for
 - Create: `packages/web/src/layout/ShowingControl.tsx`
 - Create: `packages/web/src/layout/ShowingControl.stories.tsx`
 - Modify: `packages/web/src/layout/Shell.tsx`
+- Modify: `packages/web/src/layout/Shell.stories.tsx` (stubs `/api/showing`)
 - Modify: `packages/web/src/runs/RunsPage.tsx` (the hidden line; `PERIODS` and `SELECT` exported)
 - Modify: `packages/web/src/runs/RunsPage.stories.tsx`
-- Modify: `packages/web/src/lib/format.ts` (`hiddenRunsLabel`)
+- Modify: `packages/web/src/lib/format.ts` (`hiddenLabel`)
 - Create: shadcn `dialog` and `switch` in `packages/web/src/components/ui/`, added with its CLI
 - Create: `packages/web/e2e/showing.spec.ts`
 - Modify: `packages/web/playwright.config.ts` (`workers: 1`, with a comment on why)
@@ -380,7 +393,7 @@ Stack line for the report, for `CLAUDE.md`'s `## Stack`: `@anthropic-ai/sdk` for
 - Produces:
   - `showProjects(projects: string[]): Promise<void>`, through `post`, where `[]` stops showing
   - `ShowingControl()`, which reads `useLiveQuery<ShowingResponse>('/api/showing')`
-  - `hiddenRunsLabel(count: number): string`, giving `+ 2 runs in other projects, counted in totals and charts only`
+  - `hiddenLabel(count: number, noun: string): string`, built with `plural`. `hiddenLabel(2, 'run')` gives `+ 2 runs in other projects, counted in totals and charts only`.
 
 **`ShowingControl`:**
 - **Off:** a switch labelled "Showing mode". Turning it on opens a dialog listing the projects with native checkboxes, and a "Start showing" button that stays disabled while nothing is picked.
@@ -394,7 +407,8 @@ Stack line for the report, for `CLAUDE.md`'s `## Stack`: `@anthropic-ai/sdk` for
     - On.
     - Loading.
     - Error.
-  - The RunsPage story `HiddenRuns` shows `hiddenRunsLabel(2)`.
+  - The RunsPage story `HiddenRuns` shows `hiddenLabel(2, 'run')`.
+  - The Shell stories stub `/api/showing` as off, and still render with no error state.
   - `e2e/showing.spec.ts`, on dev:fixtures' data:
     - Turn the mode on for lantern-notes.
     - `/runs` has no tidepool-api row and shows the hidden line.
@@ -481,6 +495,8 @@ Conventions line for the report: the `api.ts` line in `CLAUDE.md` adds `showProj
 - Create: `packages/web/src/test/findings.ts`
 - Modify: `packages/web/src/router.tsx` (`/findings`)
 - Modify: `packages/web/src/layout/Menu.tsx` (Findings, after Runs)
+- Modify: `packages/web/src/layout/Menu.stories.tsx` (its entries include Findings)
+- Modify: `packages/web/e2e/shell.screens.ts-snapshots/menu-screens-linux.png` (the menu baseline, re-rendered by `pnpm test:screens`)
 - Modify: `packages/web/src/lib/format.ts` (`cellShade`)
 - Create: `packages/shared/fixtures/labels.json`
 - Modify: `packages/server/src/dev-fixtures.ts` (saves `labels.json` through `saveBatch` after the imports)
@@ -506,16 +522,22 @@ Conventions line for the report: the `api.ts` line in `CLAUDE.md` adds `showProj
   - The two share measures show a whole percent of `raised`, and "–" when `raised` is 0.
   - "App differs" shows as a disabled switch option with a tooltip: "Comes with the workflow's own labels".
   - A line above the grid says every label is the app's until the workflow labels findings.
-- **A cell** is a button. Selecting it lists its findings below with `FindingsTable` and `run`.
+- **A cell** is a button. Selecting it lists its findings below with `FindingsTable` and `run`. Under that list, `hiddenLabel(response.hidden, 'finding')` shows while `hidden` is above 0.
 - **The side panel** shows the four signals and the labeller line. The line reads "Labeller off: no API key" when off, and otherwise "N labelled · M waiting · X tokens this week".
 
-`labels.json` is an invented list of labels for report-later's findings, with `model: "fixture"`. dev:fixtures saves it, so the page and its screenshot show labels while the labeller stays off.
+**`labels.json`** is an invented list of labels for the findings of the lantern-notes Full and plan runs (report-full's runs, which report-later re-exports), with `model: "fixture"`.
+- Each entry names its run by `date` and `branch`, plus `findingId`, `category`, `relevance` and `reason`. It holds no key or hash.
+- dev:fixtures resolves each entry's `runKey` and `hash` through `labelInputs(listUnits(db, 'run'))`, then calls `saveBatch`. An entry that matches no input stops dev:fixtures with an error, so a stale fixture can't silently leave the page unlabelled.
+- The page and its screenshot then show labels while the labeller stays off.
+
+Load the `dataviz` skill before writing `cellShade` and the grid.
 
 - [ ] **Step 1: Write the failing tests.**
   - Stories:
     - The page: Empty, Full, Loading and Error.
     - The grid and the panel: Empty and Full.
     - Full's interaction selects the `tests` cell and asserts the table below lists its findings.
+    - The story `HiddenFindings` shows `hiddenLabel(3, 'finding')`.
   - `e2e/findings.spec.ts`:
     - Open Findings from the menu, and see a `correctness` row in the grid.
     - Click a non-zero cell: its findings appear, with a link to a run.
@@ -537,16 +559,14 @@ Conventions line for the report: the `api.ts` line in `CLAUDE.md` adds `showProj
 **Interfaces:**
 - Consumes:
   - `openDb`, `importReport`, `setShowing`, `createApp`
-  - `leaks` (Task 3)
+  - `leaks` and `forbiddenStrings` (Task 3)
   - `projectRoot` and `projectKey` (Task 1)
 
 **What the check does:** after its current checks, on the export it already loaded, `check:real`:
 1. Opens a fresh database in a temp folder, never the real one, and imports the export with `importReport`.
 2. Picks the first project root in sorted order and calls `setShowing` with its key.
-3. Sends requests with `createApp({...}).request(path, { headers: { Host } })` to `/api/home`, `/api/runs?weeks=52`, each shown run's `/api/runs/:key`, and `/api/findings?weeks=52`.
-4. Runs `leaks` on each response against:
-   - every other root and every other root's folder name
-   - every session UUID found in the export's session files and run window transcripts
+3. Sends requests with `createApp({...}).request(path, { headers: { Host } })` to `/api/status`, `/api/showing`, `/api/home`, `/api/runs?weeks=52`, each shown run's `/api/runs/:key`, and `/api/findings?weeks=52`.
+4. Runs `leaks` on each response against `forbiddenStrings`. Its inputs are the export's roots, each root's run branches, the shown root, and every session UUID in the export's session files and run window transcripts.
 5. Prints `showing: pass` or `showing: <n> leaks`, never a leaked value, and removes the temp folder.
 
 - [ ] **Step 1: Write the failing test.** `check-real.test.ts` runs check:real against `report-projects` with `cat` as the reporter, and expects:
