@@ -1,0 +1,31 @@
+# The whole check on invented fixtures only: no secret, and no network beyond installing packages and the image.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The version in package.json's packageManager.
+      - uses: pnpm/action-setup@v4
+      # .nvmrc's major: its latest release satisfies the engines floor (>= 22.18).
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm build
+      # The stories and the web unit tests run in Playwright's chromium inside vitest.
+      - run: pnpm --filter @cwd/web exec playwright install --with-deps chromium
+      - run: pnpm vitest run
+      - run: pnpm --filter @cwd/web exec playwright test --project=checks
+      # The screenshot comparisons, in the Playwright container pinned to the installed @playwright/test version.
+      - run: pnpm test:screens

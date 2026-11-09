@@ -1,1 +1,8 @@
 .superpowers/
+node_modules/
+dist/
+*.sqlite
+test-results/
+playwright-report/
+storybook-static/
+.vitest/
