@@ -21,6 +21,17 @@ const features = tableFeatures({
 // A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
 type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
 
+/** A finding's category, in a dashed badge that marks it as the app's label, never the reporter's; "unlabelled" bare. */
+export function CategoryBadge({ category }: { category: string | null }) {
+  return category === null ? (
+    categoryLabel(null)
+  ) : (
+    <Badge variant="outline" className="border-dashed" title="The app's label">
+      {categoryLabel(category)}
+    </Badge>
+  );
+}
+
 const helper = createColumnHelper<typeof features, Row>();
 const columns = helper.columns([
   helper.accessor('id', { header: '#', cell: (c) => c.getValue() ?? NONE }),
@@ -30,20 +41,7 @@ const columns = helper.columns([
     header: 'Task',
   }),
   helper.accessor('severity', { header: 'Severity', filterFn: 'equalsString', cell: (c) => c.getValue() ?? NONE }),
-  helper.accessor('category', {
-    header: 'Category',
-    cell: (c) => {
-      const category = c.getValue();
-      // The dashed badge marks the category as the app's label, never the reporter's.
-      return category === null ? (
-        categoryLabel(null)
-      ) : (
-        <Badge variant="outline" className="border-dashed" title="The app's label">
-          {categoryLabel(category)}
-        </Badge>
-      );
-    },
-  }),
+  helper.accessor('category', { header: 'Category', cell: (c) => <CategoryBadge category={c.getValue()} /> }),
   helper.accessor('summary', { header: 'Summary', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('outcome', {
     header: 'Outcome',

@@ -1,0 +1,138 @@
+[
+  {
+    "date": "2026-11-08T09:30:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F1",
+    "category": "scope",
+    "relevance": "valid",
+    "reason": "PDF export is not part of the offline goal"
+  },
+  {
+    "date": "2026-11-08T09:30:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F2",
+    "category": "scope",
+    "relevance": "valid",
+    "reason": "The settings redesign is a separate piece of work"
+  },
+  {
+    "date": "2026-11-08T09:30:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F3",
+    "category": "spec gap",
+    "relevance": "valid",
+    "reason": "How long edits are kept decides the storage design"
+  },
+  {
+    "date": "2026-11-08T09:30:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F4",
+    "category": "task split and order",
+    "relevance": "valid",
+    "reason": "Task 3 cannot run before the helper it uses exists"
+  },
+  {
+    "date": "2026-11-08T09:30:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F5",
+    "category": "spec gap",
+    "relevance": "invalid",
+    "reason": "The mockup already names the component"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F1",
+    "category": "correctness",
+    "relevance": "valid",
+    "reason": "A retry loop with no limit never ends"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F2",
+    "category": "naming and clarity",
+    "relevance": "unclear",
+    "reason": "The new name is clearer, but the old one is not wrong"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F3",
+    "category": "security and privacy",
+    "relevance": "valid",
+    "reason": "Markup in a summary could run script in the page"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F4",
+    "category": "data safety",
+    "relevance": "invalid",
+    "reason": "Both tasks are meant to read the same snapshot"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F5",
+    "category": "conventions",
+    "relevance": "unclear",
+    "reason": "A repeated log field is noise, not a fault"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F6",
+    "category": "reuse and duplication",
+    "relevance": "valid",
+    "reason": "A plural helper already exists"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F7",
+    "category": "reuse and duplication",
+    "relevance": "valid",
+    "reason": "Two helpers do the same retry"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F8",
+    "category": "simplicity",
+    "relevance": "valid",
+    "reason": "A helper used once adds a name to learn"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F9",
+    "category": "simplicity",
+    "relevance": "invalid",
+    "reason": "One file per worker is the codebase pattern"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F10",
+    "category": "correctness",
+    "relevance": "valid",
+    "reason": "Screen reader users miss the conflict"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F11",
+    "category": "correctness",
+    "relevance": "valid",
+    "reason": "The badge is hard to see in dark mode"
+  },
+  {
+    "date": "2026-11-10T16:45:00Z",
+    "branch": "feature/offline-sync",
+    "findingId": "F12",
+    "category": "docs",
+    "relevance": "invalid",
+    "reason": "The spec need not list every display detail"
+  }
+]

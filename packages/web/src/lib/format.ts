@@ -1,4 +1,4 @@
-import type { FindingSplit, RunFacts, StepKind } from '@cwd/shared';
+import type { Area, FindingSplit, FindingsResponse, RunFacts, StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -12,6 +12,13 @@ export const STEP_LABELS: Record<StepKind, string> = {
   simplify: 'simplify',
   final_review: 'Final review',
   final_fix_check: 'Final fix-check',
+};
+
+/** An area's name on screen. */
+export const AREA_LABELS: Record<Area, string> = {
+  plan: 'Plan',
+  implementation: 'Implementation',
+  cleanup: 'Cleanup',
 };
 
 /** A key of a step's count line as words: `not_proportionate` as "not proportionate". */
@@ -74,4 +81,38 @@ export function hiddenLabel(count: number, noun: string): string {
 /** The findings' split as the tiles and the feed read it: "13 acted on · 1 open". */
 export function actedOnSplit(findings: FindingSplit): string {
   return `${findings.actedOn} acted on · ${findings.open} open`;
+}
+
+/** A week's start date, as an axis or a column names it: "Nov 8". */
+export function weekLabel(week: string): string {
+  return new Date(week).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+/** A whole percent, or a dash when it isn't known. */
+export function formatPercent(percent: number | null): string {
+  return percent === null ? NONE : `${percent}%`;
+}
+
+// The dataviz blue ramp's five steps, light to dark, the two darkest with white text; and its neutral grey with
+// secondary ink, for 0.
+const SHADES = [
+  'bg-[#cde2fb]',
+  'bg-[#9ec5f4]',
+  'bg-[#6da7ec]',
+  'bg-[#2a78d6] text-white',
+  'bg-[#184f95] text-white',
+];
+const ZERO_SHADE = 'bg-[#f0efec] text-[#52514e]';
+
+/** A heatmap cell's classes: its value's step of the ramp by its share of `max`, the grey for 0. */
+export function cellShade(value: number, max: number): string {
+  if (value <= 0 || max <= 0) return ZERO_SHADE;
+  return SHADES[Math.min(SHADES.length, Math.ceil((SHADES.length * value) / max)) - 1];
+}
+
+/** The labeller's line: "Labeller off: no API key", or "8 labelled · 1 waiting · 43,350 tokens this week". */
+export function labellerLabel(labeller: FindingsResponse['labeller']): string {
+  if (!labeller.on) return 'Labeller off: no API key';
+  const tokens = labeller.tokensThisWeek.input + labeller.tokensThisWeek.output;
+  return `${labeller.labelled} labelled · ${labeller.waiting} waiting · ${tokens.toLocaleString('en-US')} tokens this week`;
 }

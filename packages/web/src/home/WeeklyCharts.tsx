@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCost } from '../lib/format.ts';
+import { STEP_LABELS, formatCost, weekLabel } from '../lib/format.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
 type Charts = HomeResponse['charts'];
@@ -16,11 +16,6 @@ const SURFACE = '#ffffff';
 const INK = '#52514e';
 const GRID = '#e1e0d9';
 const BASELINE = '#c3c2b7';
-
-/** A week's start date on an axis: "Nov 8". */
-function weekLabel(week: string): string {
-  return new Date(week).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
 
 /** The options every chart shares: weeks along the bottom, one value axis, an axis tooltip, no animation. */
 function baseOption(weeks: string[]) {
