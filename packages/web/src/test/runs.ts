@@ -72,6 +72,8 @@ export const runsFull: RunsResponse = {
 };
 export const runsWarned: RunsResponse = { runs: [fullRun], projects: runsFull.projects, hidden: 0 };
 export const runsEmpty: RunsResponse = { runs: [], projects: [], hidden: 0 };
+/** Showing mode on: one shown run, two runs of other projects counted only. */
+export const runsHidden: RunsResponse = { runs: [fullRun], projects: [runsFull.projects[0]], hidden: 2 };
 
 function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' | 'summary'>): FindingRow {
   return {
