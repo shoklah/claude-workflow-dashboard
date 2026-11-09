@@ -28,8 +28,18 @@ export function useLiveQuery<T>(path: string) {
   });
 }
 
-/** Asks the server for an import now. The header is the server's guard against cross-site POSTs. */
-export async function refresh(): Promise<void> {
-  const response = await fetch('/api/refresh', { method: 'POST', headers: { 'X-Dashboard-Refresh': '1' } });
-  if (!response.ok) throw new Error(`/api/refresh answered ${response.status}`);
+/** A POST to the API. The header is the server's guard against cross-site POSTs. */
+async function post(path: string): Promise<void> {
+  const response = await fetch(path, { method: 'POST', headers: { 'X-Dashboard-Refresh': '1' } });
+  if (!response.ok) throw new Error(`${path} answered ${response.status}`);
+}
+
+/** Asks the server for an import now. */
+export function refresh(): Promise<void> {
+  return post('/api/refresh');
+}
+
+/** Marks everything up to now seen, so the home feed starts again from here. */
+export function markSeen(): Promise<void> {
+  return post('/api/seen');
 }

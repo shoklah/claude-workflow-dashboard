@@ -1,4 +1,5 @@
 import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { HomePage } from './home/HomePage.tsx';
 import { Shell } from './layout/Shell.tsx';
 
 const rootRoute = createRootRoute({
@@ -9,12 +10,13 @@ const rootRoute = createRootRoute({
   ),
 });
 
-// Placeholders: Tasks 9 and 10 replace them with the home screen and the Runs list.
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => <h1 className="text-xl font-semibold">Home</h1>,
+  component: HomePage,
 });
+
+// Placeholder: Task 10 replaces it with the Runs list.
 
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
