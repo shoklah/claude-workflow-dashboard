@@ -71,6 +71,11 @@ export function storedBranches(runs: StoredUnit<RunEntry>[]): Map<string, string
   return branches;
 }
 
+/** Every stored session's project root, for a session with a project. */
+export function storedSessionRoots(sessions: StoredUnit<SessionEntry>[]): string[] {
+  return sessions.flatMap(({ merged: { project } }) => (project ? [projectRoot(project)] : []));
+}
+
 /** A stored run's facts: runFacts plus its stored key, its project's key and its project's name from `names`. */
 export function storedFacts(unit: StoredUnit<RunEntry>, names: Map<string, string>): RunFacts {
   const root = rootOf(unit);

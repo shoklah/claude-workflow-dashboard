@@ -231,6 +231,16 @@ describe('the feed', () => {
       cost: 0.71,
     });
   });
+
+  test("with showing on, the feed holds the shown project's session warnings only, masked", async () => {
+    const db = dbWith(fixture('report-v6'));
+    setSeenAt(db, new Date(0));
+    setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
+    const { feed } = await home(db);
+    expect(feed.filter((item) => item.type === 'warning' && item.runKey === null)).toEqual([
+      expect.objectContaining({ text: 'WARN: session a session: startup guidelines missing', sessionId: null }),
+    ]);
+  });
 });
 
 test('coverageFrom is the earliest readable run', async () => {

@@ -134,7 +134,7 @@ test("a hidden run's page is a 404", async () => {
 });
 
 test("maskText masks a hidden project's name and path inside a shown project's text", () => {
-  const scope = scopeOf([projectKey(TIDEPOOL)], BRANCHES, {})!;
+  const scope = scopeOf([projectKey(TIDEPOOL)], BRANCHES, {}, [])!;
   const summary: string = RAW.runs[1].steps[2].findings[0].summary;
   expect(summary).toContain('lantern-notes');
   const masked = maskText(scope, summary);
@@ -150,21 +150,21 @@ test('maskText replaces only whole words', () => {
 });
 
 test("maskText masks a hidden name that '-' joins to other words", () => {
-  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {}, [])!;
   expect(maskText(scope, 'bump tidepool-api-client to 2')).toBe('bump another project-client to 2');
   // A Claude Code transcript folder, as trimPaths leaves it.
   expect(maskText(scope, 'folder -Users-example-Work-tidepool-api')).toBe('folder -Users-example-Work-another project');
 });
 
 test('maskText turns a session file into "a session"', () => {
-  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {}, [])!;
   expect(maskText(scope, 'WARN: 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35.jsonl ended early')).toBe(
     'WARN: a session ended early',
   );
 });
 
 test("maskText masks a hidden run's branch and a bare session ID, not a shown run's branch", () => {
-  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {}, [])!;
   expect(
     maskText(scope, 'as on fix/retry-backoff and chore/tidy-imports, see 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35'),
   ).toBe('as on another branch and chore/tidy-imports, see a session');
@@ -178,7 +178,7 @@ const PREFIX_BRANCHES = new Map([
 ]);
 
 test('maskText keeps a shown name that holds a hidden one, and masks the bare hidden one', () => {
-  const scope = scopeOf([projectKey(WORK)], PREFIX_BRANCHES, {})!;
+  const scope = scopeOf([projectKey(WORK)], PREFIX_BRANCHES, {}, [])!;
   expect(maskText(scope, 'lantern-notes reads Lantern on fix/lamp-wick')).toBe(
     'lantern-notes reads another project on another branch',
   );
@@ -193,13 +193,13 @@ test('leaks skips a hidden name inside a shown one, and finds it alone', () => {
 });
 
 test("showFacts masks a hidden project's name in a shown run's branch", () => {
-  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {}, [])!;
   const facts = { projectKey: projectKey(WORK), project: 'lantern-notes', branch: 'fix/tidepool-api-client' };
   expect(showFacts(scope, facts as RunFacts)?.branch).toBe('fix/another project-client');
 });
 
 test('a folder name a shown project also has is not hidden', () => {
-  const scope = scopeOf([projectKey(ARCHIVE)], BRANCHES, {})!;
+  const scope = scopeOf([projectKey(ARCHIVE)], BRANCHES, {}, [])!;
   expect(scope.hidden).not.toContain('lantern-notes');
   expect(scope.hidden).toContain('tidepool-api');
 });
@@ -251,4 +251,42 @@ test('an empty list turns showing off, and GET then lists every stored project',
   expect(showing.on).toBe(false);
   expect(showing.projects).toHaveLength(3);
   expect(showing.projects.every((p) => !p.picked)).toBe(true);
+});
+
+// report-v6: lantern-notes and tidepool-api runs, and sessions in lantern-notes (one in a worktree), tidepool-api, the
+// Scratch notes folder (no run's root) and no project.
+const V6 = fixture('report-v6');
+const V6_BRANCHES = new Map<string, string[]>();
+for (const run of V6.runs) {
+  const root = projectRoot(run.record.project);
+  V6_BRANCHES.set(root, [...(V6_BRANCHES.get(root) ?? []), run.record.branch]);
+}
+const V6_SESSION_ROOTS: string[] = V6.sessions.flatMap((s: any) => (s.project ? [projectRoot(s.project)] : []));
+
+/** Replaces the test's database with report-v6's import, showing lantern-notes, everything seen before it. */
+function useV6(): void {
+  db.$client.close();
+  db = openDb(join(dir, 'v6', 'dashboard.sqlite'));
+  const loaded = loadReport(JSON.parse(JSON.stringify(V6)));
+  if (!loaded.ok) throw new Error('report-v6 does not load');
+  importReport(db, loaded.report, { runs: V6.runs, sessions: V6.sessions, totals: V6.totals }, NOW);
+  setShowing(db, [projectKey(WORK)]);
+  setSeenAt(db, new Date('2026-01-01T00:00:00Z'));
+}
+
+test("maskText masks a session root's folder name that no run has", () => {
+  const scope = scopeOf([projectKey(WORK)], V6_BRANCHES, {}, V6_SESSION_ROOTS)!;
+  expect(maskText(scope, 'lantern-notes copies notes')).toBe('lantern-notes copies another project');
+});
+
+test('with report-v6 and showing on, home and compliance hold no hidden root, branch or session ID', async () => {
+  useV6();
+  const ids = [...new Set(JSON.stringify(V6).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g))];
+  const strings = forbiddenStrings([...V6_BRANCHES.keys()], V6_BRANCHES, [WORK], ids, V6_SESSION_ROOTS);
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['/Users/example/Scratch/notes', 'notes']));
+  const home = await get<HomeResponse>('/api/home');
+  expect(home.feed.some((item) => item.type === 'warning' && item.runKey === null)).toBe(true);
+  for (const body of [home, await get('/api/compliance?resolved=1&weeks=52')]) {
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  }
 });

@@ -20,7 +20,7 @@ import {
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
-import { showFacts, showWarning, type Scope } from './scope.ts';
+import { showFacts, showSession, showWarning, type Scope } from './scope.ts';
 
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
 
@@ -124,7 +124,7 @@ function fixLine(steps: Step[]): FixLine {
 
 /** The home screen, from the stored runs and warnings: every number is a plain sum over the runs' own facts. With a
  * scope, the numbers (the diagram's warnings, session ones included) still count every run and session, but the feed
- * holds only the shown projects' runs and run warnings. */
+ * holds only the shown projects' runs, run warnings and session warnings (showSession). */
 export function homeView(input: {
   runs: StoredUnit<RunEntry>[];
   sessions: StoredUnit<SessionEntry>[];
@@ -211,9 +211,14 @@ export function homeView(input: {
       minutes: facts.minutes,
       cost: facts.cost,
     }));
-  // With a scope, every session warning and a hidden run's warnings are left out.
+  // With a scope, a hidden run's warnings and the warnings of a session in no shown root are left out.
+  const sessions = new Map(input.sessions.map((unit) => [unit.key, unit.merged]));
   const warningItems = warnings
-    .filter((w) => isNew(w.firstSeenAt) && (w.kind === 'run' ? byKey.has(w.key) : !scope))
+    .filter(
+      (w) =>
+        isNew(w.firstSeenAt) &&
+        (w.kind === 'run' ? byKey.has(w.key) : showSession(scope, sessions.get(w.key)?.project)),
+    )
     .map((w): FeedItem => {
       const run = w.kind === 'run' ? byKey.get(w.key) : undefined;
       return {
