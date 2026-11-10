@@ -21,8 +21,10 @@ const PERIODS: { period: keyof Usage; label: string }[] = [
   { period: 'lastFourWeeks', label: 'Last 4 weeks' },
 ];
 
-// The approved mockup's columns.
+// The approved mockup's columns, its counts right-aligned in tabular figures.
 const COLUMNS = ['Skill or command', 'Share of sessions', 'Sessions', 'Runs', 'Typed', 'Typed, never loaded'];
+const COUNT = 'text-right tabular-nums';
+const isCount = (column: string) => COLUMNS.indexOf(column) >= 2;
 
 /**
  * Home's skills and commands: per skill and slash command, the share of the period's sessions that loaded or typed it
@@ -53,7 +55,9 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
         <TableHeader>
           <TableRow>
             {COLUMNS.map((column) => (
-              <TableHead key={column}>{column}</TableHead>
+              <TableHead key={column} className={cn(isCount(column) && COUNT)}>
+                {column}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -78,10 +82,10 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
                     <span>{formatPercent(share)}</span>
                   </div>
                 </TableCell>
-                <TableCell>{ofLabel(row.sessions, shown.sessions)}</TableCell>
-                <TableCell>{ofLabel(row.runs, shown.runs)}</TableCell>
-                <TableCell>{row.typed}</TableCell>
-                <TableCell className={cn(!!row.typedNeverLoaded && WARNING_INK)}>
+                <TableCell className={COUNT}>{ofLabel(row.sessions, shown.sessions)}</TableCell>
+                <TableCell className={COUNT}>{ofLabel(row.runs, shown.runs)}</TableCell>
+                <TableCell className={COUNT}>{row.typed}</TableCell>
+                <TableCell className={cn(COUNT, !!row.typedNeverLoaded && WARNING_INK)}>
                   {formatCount(row.typedNeverLoaded)}
                 </TableCell>
               </TableRow>

@@ -307,6 +307,38 @@ describe('skills and commands', () => {
     });
   });
 
+  test('a command whose skill loaded only outside the period still lands on the skill row', async () => {
+    const raw = fixture('report-v6');
+    // The Scratch session of Nov 5, last week, loads release-notes; the tidepool session of Nov 9 types its command.
+    raw.sessions[0].skills = [{ name: 'release-notes', time: '2026-11-05T21:20:00.000Z', outcome: 'ran' }];
+    raw.sessions[3].commands.push({ name: 'notes-kit:release-notes', time: '2026-11-09T13:50:00.000Z' });
+    const { usage } = await home(dbWith(raw));
+    expect(row(usage.thisWeek.rows, 'notes-kit:release-notes')).toBeUndefined();
+    expect(row(usage.thisWeek.rows, 'release-notes')).toEqual({
+      name: 'release-notes',
+      kind: 'skill',
+      sessions: 1,
+      runs: 0,
+      typed: 0,
+      typedNeverLoaded: 0,
+    });
+  });
+
+  test("a session's own typed trigger counts it among the skill's sessions", async () => {
+    const raw = fixture('report-v6');
+    // The tidepool session of Nov 9 typed a phrase asking for systematic-debugging, which never loaded.
+    raw.sessions[3].typed = [{ skill: 'systematic-debugging', time: '2026-11-09T14:00:00.000Z', met: false }];
+    const { usage } = await home(dbWith(raw));
+    expect(row(usage.thisWeek.rows, 'systematic-debugging')).toEqual({
+      name: 'systematic-debugging',
+      kind: 'skill',
+      sessions: 1,
+      runs: 0,
+      typed: 1,
+      typedNeverLoaded: 1,
+    });
+  });
+
   test('rows are ordered by sessions, most first', async () => {
     const { usage } = await home(dbWith(fixture('report-v6')));
     const sessions = usage.lastFourWeeks.rows.map((r) => r.sessions);

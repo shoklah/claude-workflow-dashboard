@@ -271,9 +271,10 @@ const ZERO_SHADE = 'bg-[#f0efec] text-[#52514e]';
 export const WARNING_BORDER = 'border-[#ec835a]';
 export const WARNING_INK = 'text-[#a8461c]';
 
-// A share bar (a meter): the dataviz blue's fill, on a lighter step of the same ramp for its track.
-export const SHARE_FILL = 'bg-[#2a78d6]';
-export const SHARE_TRACK = 'bg-[#cde2fb]';
+// A share bar (a meter): the ramp's dataviz blue for its fill (an empty bar, so the step's text colour does nothing),
+// on the ramp's lightest step for its track.
+export const SHARE_FILL = SHADES[3];
+export const SHARE_TRACK = SHADES[0];
 
 /** A heatmap cell's classes: its value's step of the ramp by its share of `max`, the grey for 0. */
 export function cellShade(value: number, max: number): string {

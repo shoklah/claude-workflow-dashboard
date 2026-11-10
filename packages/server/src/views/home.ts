@@ -106,14 +106,21 @@ export function coverageFrom(runs: StoredUnit<RunEntry>[]): string | null {
 }
 
 /**
- * Home's skills and commands over a period's runs and sessions. A skill is a name loaded or typed in them; a command
- * `x:y` names skill `y`. A skill's row: `sessions`, the sessions that loaded it or typed a command naming it; `runs`, the
- * runs that loaded it, both by skillSums; `typed`, its typed triggers on runs and sessions; `typedNeverLoaded`, those
- * never met (skillSums' missing over the triggers). A command naming no skill gets a command row: the sessions that
- * typed it and its commands. Rows are ordered by sessions, most first, then by name. With a scope, every name is masked
- * (maskText) first, so names that mask alike merge and the sums still count every project.
+ * Home's skills and commands over a period's runs and sessions. A skill is a name in `skillNames` (every stored unit's
+ * loaded or typed skills, so a name's kind is the same in every period) or loaded or typed in the period; a command
+ * `x:y` names skill `y`. A skill's row, for a skill loaded, typed or named by a command in the period: `sessions`, the
+ * sessions that loaded it, typed it or typed a command naming it; `runs`, the runs that loaded it, both by skillSums;
+ * `typed`, its typed triggers on runs and sessions; `typedNeverLoaded`, those never met (skillSums' missing over the
+ * triggers). A command naming no skill gets a command row: the sessions that typed it and its commands. Rows are
+ * ordered by sessions, most first, then by name. With a scope, every name is masked (maskText) first, so names that
+ * mask alike merge and the sums still count every project.
  */
-export function usageSums(runs: RunEntry[], sessions: SessionEntry[], scope: Scope | null): Usage {
+export function usageSums(
+  runs: RunEntry[],
+  sessions: SessionEntry[],
+  scope: Scope | null,
+  skillNames: string[],
+): Usage {
   const mask = (name: string | null | undefined) => maskText(scope, name ?? '');
   const masked = (unit: RunEntry | SessionEntry) => ({
     skills: unit.skills?.map((s) => ({ ...s, name: mask(s.name) })),
@@ -124,21 +131,24 @@ export function usageSums(runs: RunEntry[], sessions: SessionEntry[], scope: Sco
   const typed = [...runUnits, ...sessionUnits].flatMap((unit) => unit.typed ?? []);
   const byName = (rows: SkillRow[]) => new Map(rows.map((row) => [row.name, row]));
   const all = byName(skillSums([...runUnits, ...sessionUnits]));
-  const skills = new Set([...all.keys(), ...typed.map((t) => t.skill ?? '')]);
+  const skills = new Set([...skillNames.map(mask), ...all.keys(), ...typed.map((t) => t.skill ?? '')]);
   const skillOf = (command: { name?: string | null }) => mask((command.name ?? '').split(':').at(-1));
-  // A session's loads, plus a load for each command naming a skill, so skillSums counts the session once.
+  // A session's loads, plus a load for each skill it typed and each command naming a skill, so skillSums counts the
+  // session once.
   const inSessions = byName(
     skillSums(
       sessions.map((session, i) => ({
         skills: [
           ...(sessionUnits[i].skills ?? []),
+          ...(sessionUnits[i].typed ?? []).map((t) => ({ name: t.skill })),
           ...(session.commands ?? []).map((c) => ({ name: skillOf(c) })).filter((c) => skills.has(c.name)),
         ],
       })),
     ),
   );
   const inRuns = byName(skillSums(runUnits));
-  const rows: UsageRow[] = [...skills].map((name) => ({
+  const used = new Set([...all.keys(), ...typed.map((t) => t.skill ?? ''), ...inSessions.keys()]);
+  const rows: UsageRow[] = [...used].map((name) => ({
     name,
     kind: 'skill',
     sessions: inSessions.get(name)?.runs ?? 0,
@@ -296,9 +306,14 @@ export function homeView(input: {
       };
     });
 
+  // Every stored unit's loaded or typed skills, so a command's kind is the same in every period.
+  const skillNames = [...input.runs, ...input.sessions].flatMap(({ merged }) => [
+    ...(merged.skills ?? []).map((s) => s.name ?? ''),
+    ...(merged.typed ?? []).map((t) => t.skill ?? ''),
+  ]);
   const usageOf = (weeks: number) => {
     const units = periodUnits(input.runs, input.sessions, { weeks }, now);
-    return usageSums(units.runs, units.sessions, scope);
+    return usageSums(units.runs, units.sessions, scope, skillNames);
   };
 
   return {
