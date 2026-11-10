@@ -23,6 +23,7 @@ import {
   outcomesLabel,
   reporterMark,
   runName,
+  stepWarningsLabel,
   weekLabel,
 } from './format.ts';
 
@@ -42,6 +43,13 @@ describe('formatMinutes', () => {
 
   it('shows a dash when the time is not known', () => {
     expect(formatMinutes(null)).toBe('–');
+  });
+});
+
+describe('stepWarningsLabel', () => {
+  it('names the count and the step', () => {
+    expect(stepWarningsLabel(1, 'final_review')).toBe('1 warning on Final review');
+    expect(stepWarningsLabel(2, 'task_review')).toBe('2 warnings on Task review');
   });
 });
 

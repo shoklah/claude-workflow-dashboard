@@ -208,6 +208,11 @@ export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
+/** A step box's warnings link's name, since a list of links reads it alone: "1 warning on Final review". */
+export function stepWarningsLabel(count: number, step: StepKind): string {
+  return `${plural(count, 'warning')} on ${STEP_LABELS[step]}`;
+}
+
 /** Showing mode's line for what it leaves out: "+ 2 runs in other projects, counted in totals and charts only". */
 export function hiddenLabel(count: number, noun: string): string {
   return `+ ${plural(count, noun)} in other projects, counted in totals and charts only`;

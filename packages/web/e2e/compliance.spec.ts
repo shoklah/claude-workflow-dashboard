@@ -26,7 +26,7 @@ test('the compliance page lists a cell’s warnings with their run and has no ax
 
 test('home’s orange final review box opens compliance filtered to that step', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('figure', { name: 'Final review' }).getByRole('link', { name: '1 warning' }).click();
+  await page.getByRole('figure', { name: 'Final review' }).getByRole('link', { name: '1 warning on Final review' }).click();
   await expect(page).toHaveURL(/\/compliance\?step=final_review$/);
   await expect(page.getByText('Step: Final review')).toBeVisible();
   await expect(page.getByRole('rowheader', { name: 'step has no agent id' })).toBeVisible();

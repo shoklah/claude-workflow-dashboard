@@ -3,7 +3,7 @@ import { Handle, Position, ReactFlow, type Edge, type Node, type NodeProps } fro
 import '@xyflow/react/dist/style.css';
 import { cn } from 'cn';
 import type { DiagramStep, FixLine, HomeResponse } from '@cwd/shared';
-import { STEP_LABELS, WARNING_BORDER, WARNING_INK, plural } from '../lib/format.ts';
+import { STEP_LABELS, WARNING_BORDER, WARNING_INK, plural, stepWarningsLabel } from '../lib/format.ts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
 
 type StepNode = Node<DiagramStep, 'step'>;
@@ -36,6 +36,7 @@ function StepBox({ data }: NodeProps<StepNode>) {
         <Link
           to="/compliance"
           search={{ step: data.step }}
+          aria-label={stepWarningsLabel(data.warnings, data.step)}
           className={cn('pointer-events-auto underline underline-offset-2', WARNING_INK)}
         >
           {plural(data.warnings, 'warning')}
