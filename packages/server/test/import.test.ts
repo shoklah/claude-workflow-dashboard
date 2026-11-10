@@ -299,6 +299,30 @@ describe('importReport', () => {
     expect(listWarnings(db)).toEqual(warnings);
   });
 
+  test('a session whose rows move to a run stops counting them, and rebuild gives the same rows', () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-v6', FIRST);
+    const raw = fixture('report-v6');
+    const moved = raw.sessions[3];
+    expect(moved.refusals).toEqual({ no_model: 1 });
+    moved.refusals = {};
+    moved.advisor.by_role = {};
+    const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+    if (!loaded.ok) throw new Error('does not load');
+    importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, LATER);
+
+    const key = sessionKey(report.sessions[3]!);
+    const session = listUnits(db, 'session').find((u) => u.key === key)!;
+    expect(session.merged.refusals).toEqual({});
+    expect(session.merged.advisor?.by_role).toEqual({});
+    const sessions = listUnits(db, 'session');
+
+    db.update(units).set({ merged: {} }).run();
+    rebuildDerived(db);
+
+    expect(listUnits(db, 'session')).toEqual(sessions);
+  });
+
   test("rebuild gives the same warnings' kinds and steps", () => {
     const { db } = freshDb();
     importFixture(db, 'report-full', FIRST);
