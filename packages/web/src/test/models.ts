@@ -14,7 +14,7 @@ export const modelsFull: ModelsResponse = {
     { name: 'task-reviewer', requested: { '-/-': 31 }, actual: { 'opus-5-5/high': 31 }, mismatches: 0 },
   ],
   mismatchesSource: 'reporter',
-  main: [
+  byPath: [
     { path: 'small', recommended: stageTable(STAGES.small, null), actual: {}, differs: 0 },
     { path: 'full', recommended: stageTable(STAGES.full), actual: { 'opus-5-5/medium': 5 }, differs: 0 },
     { path: 'plan', recommended: stageTable(STAGES.plan), actual: { 'opus-5-5/high': 2, 'fable-5-1/high': 2 }, differs: 2 },
@@ -51,7 +51,7 @@ export const modelsFull: ModelsResponse = {
 export const modelsEmpty: ModelsResponse = {
   ...modelsFull,
   agents: [],
-  main: modelsFull.main.map((row) => ({ ...row, actual: {} })),
+  byPath: modelsFull.byPath.map((row) => ({ ...row, actual: {} })),
   advisor: {
     facts: {
       calls: 0,
@@ -72,6 +72,6 @@ export const modelsEmpty: ModelsResponse = {
 export const modelsOldReporter: ModelsResponse = {
   ...modelsFull,
   agents: modelsFull.agents.map((row) => ({ ...row, mismatches: null })),
-  main: modelsFull.main.map((row) => ({ ...row, recommended: null, differs: null })),
+  byPath: modelsFull.byPath.map((row) => ({ ...row, recommended: null, differs: null })),
   advisor: { facts: null, reporter: { source: 'reporter', trial: null, weeks: [] } },
 };

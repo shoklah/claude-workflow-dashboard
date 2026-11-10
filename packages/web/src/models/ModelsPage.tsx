@@ -52,7 +52,7 @@ const marked = (name: string) => (
 
 /** The static page's "Models and advisor" tables: agents, main sessions, the advisor's facts and its weeks. */
 function ModelsTables({ response }: { response: ModelsResponse }) {
-  const { agents, main, advisor } = response;
+  const { agents, byPath, advisor } = response;
   const facts = advisor.facts;
   const notes = facts ? countsLabel({ notes: facts.notes, changed: facts.changed, missing: facts.missing }) : NONE;
   const advisorRows: [ReactNode, string][] = [
@@ -78,7 +78,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
       </ModelsTable>
       <h2 className="font-semibold">Main sessions</h2>
       <ModelsTable label="Main sessions" columns={['Main session', marked('Stage table'), 'Ran on', marked('Differs')]}>
-        {main.map((row) => (
+        {byPath.map((row) => (
           <TableRow key={row.path}>
             <TableHead scope="row">{row.path}</TableHead>
             <TableCell>{stageTableLabel(row.recommended)}</TableCell>
