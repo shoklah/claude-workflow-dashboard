@@ -9,6 +9,7 @@ import {
   type RunsQuery,
 } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
+import { activeList } from './categories.ts';
 import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
 import {
   getRun,
@@ -104,8 +105,9 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const run = getRun(deps.db, c.req.param('key'));
     if (!run) return c.notFound();
     const runs = listUnits(deps.db, 'run');
-    const labels = currentLabels(deps.db, labelInputs([run]));
-    const view = runView(run, listWarnings(deps.db), storedNames(runs), scopeFor(runs), labels);
+    const list = activeList(deps.db);
+    const labels = list ? currentLabels(deps.db, labelInputs([run]), list.number) : new Map();
+    const view = runView(run, listWarnings(deps.db), storedNames(runs), scopeFor(runs), labels, list);
     // A hidden project's run is a 404, as if it weren't stored.
     return view ? c.json(view) : c.notFound();
   });
@@ -126,19 +128,21 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     return c.body(null, 204);
   });
 
-  // Slice 2a, task 7: the Findings page, with the labeller's state.
+  // Slice 2a, task 7: the Findings page, with the labeller's state; slice 2b, task 8: under the active list, with no
+  // label and none waiting while there is none.
   app.get('/api/findings', (c) => {
     const runs = listUnits(deps.db, 'run');
     const inputs = labelInputs(runs);
-    const labels = currentLabels(deps.db, inputs);
+    const list = activeList(deps.db);
+    const labels = list ? currentLabels(deps.db, inputs, list.number) : new Map();
     const now = deps.now();
     const labeller = {
       on: deps.labeller !== null,
       labelled: labels.size,
-      waiting: deps.labeller ? pendingInputs(deps.db, inputs, deps.labeller.model).length : 0,
+      waiting: deps.labeller && list ? pendingInputs(deps.db, inputs, deps.labeller.model, list.number).length : 0,
       tokensThisWeek: tokensSince(deps.db, weekStart(now)),
     };
-    return c.json(findingsView({ runs, labels, query: periodQuery(c), now, scope: scopeFor(runs), labeller }));
+    return c.json(findingsView({ runs, labels, list, query: periodQuery(c), now, scope: scopeFor(runs), labeller }));
   });
 
   // Slice 2b, task 2: the Weeks page.

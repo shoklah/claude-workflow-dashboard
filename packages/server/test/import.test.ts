@@ -1,8 +1,11 @@
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
+import Database from 'better-sqlite3';
 import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { loadReport, type Report } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -228,8 +231,43 @@ describe('importReport', () => {
   test('stores the export raw totals with the import', () => {
     const { db } = freshDb();
     importFixture(db, 'report-later', FIRST);
-    expect(lastGoodImport(db)).toEqual({ at: FIRST, totals: fixture('report-later').totals });
+    expect(lastGoodImport(db)).toEqual({ at: FIRST, totals: fixture('report-later').totals, categories: null });
     expect(lastImport(db)).toEqual({ at: FIRST, ok: true, error: null });
+  });
+
+  test("stores the export's category list with the import, as the loader read it", () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-v5', FIRST);
+    expect(lastGoodImport(db)!.categories).toEqual(report.categories);
+    expect(lastGoodImport(db)!.categories?.areas?.[0]?.list?.[1]).toEqual({
+      id: 'task_split',
+      label: 'Task split and order',
+      means: expect.stringMatching(/^Tasks too big or too small/),
+    });
+    importFixture(db, 'report-later', LATER);
+    expect(lastGoodImport(db)!.categories).toBeNull();
+  });
+
+  test('an import stored before the categories column keeps its row and its totals, with no list', () => {
+    // The migrations before 0003, which adds the column, applied to a database that then stores an import.
+    const dir = mkdtempSync(join(tmpdir(), 'cwd migrate '));
+    dirs.push(dir);
+    const before = join(dir, 'drizzle');
+    const migrations = new URL('../drizzle', import.meta.url);
+    cpSync(migrations, before, { recursive: true });
+    rmSync(join(before, '0003_import_categories.sql'));
+    const journal = JSON.parse(readFileSync(join(before, 'meta', '_journal.json'), 'utf8'));
+    journal.entries = journal.entries.filter((e: { tag: string }) => e.tag < '0003');
+    writeFileSync(join(before, 'meta', '_journal.json'), JSON.stringify(journal));
+    const file = join(dir, 'dashboard.sqlite');
+    const old = new Database(file);
+    migrate(drizzle(old), { migrationsFolder: before });
+    old.prepare('INSERT INTO imports (at, ok, error, totals) VALUES (?, 1, NULL, ?)').run(FIRST.getTime(), '{"runs":3}');
+    old.close();
+
+    const db = openDb(file);
+    dbs.push(db);
+    expect(lastGoodImport(db)).toEqual({ at: FIRST, totals: { runs: 3 }, categories: null });
   });
 
   test('a run with no key is skipped', () => {

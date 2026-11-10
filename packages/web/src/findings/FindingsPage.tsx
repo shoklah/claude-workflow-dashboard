@@ -100,9 +100,9 @@ export function FindingsPage() {
             {selected ? (
               <>
                 <h2 className="font-semibold">
-                  {`${categoryLabel(selected.category)} · week of ${weekLabel(selected.week)} · ${plural(listed.length, 'finding')}`}
+                  {`${categoryLabel(selected.category, data.categoryLabels)} · week of ${weekLabel(selected.week)} · ${plural(listed.length, 'finding')}`}
                 </h2>
-                <FindingsTable findings={listed} run />
+                <FindingsTable findings={listed} categoryLabels={data.categoryLabels} run />
               </>
             ) : (
               <p className="text-sm text-muted-foreground">Select a cell to list its findings.</p>

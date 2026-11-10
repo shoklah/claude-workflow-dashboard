@@ -1,5 +1,5 @@
 import { and, asc, count, eq, gte, lt, sum } from 'drizzle-orm';
-import { areaOf, CATEGORY_LIST_VERSION, type Area, type Relevance, type RunEntry } from '@cwd/shared';
+import { areaOf, type Area, type Relevance, type RunEntry } from '@cwd/shared';
 import { hash } from '../keys.ts';
 import { trimPaths } from '../text.ts';
 import type { Db } from './open.ts';
@@ -47,14 +47,15 @@ export function labelInputs(runs: StoredUnit<RunEntry>[]): LabelInput[] {
   return inputs;
 }
 
-/** Each input's label, keyed `${runKey} ${findingId}`: the latest at the current list version for the input's hash. */
-export function currentLabels(db: Db, inputs: LabelInput[]): Map<string, StoredLabel> {
+/** Each input's label, keyed `${runKey} ${findingId}`: the latest under the list numbered `list` (the active list's
+ * number) for the input's hash. */
+export function currentLabels(db: Db, inputs: LabelInput[], list: number): Map<string, StoredLabel> {
   const hashes = new Map(inputs.map((i) => [findingKey(i.runKey, i.findingId), i.hash]));
   const labels = new Map<string, StoredLabel>();
   const rows = db
     .select()
     .from(findingLabels)
-    .where(eq(findingLabels.listVersion, CATEGORY_LIST_VERSION))
+    .where(eq(findingLabels.listVersion, list))
     .orderBy(asc(findingLabels.labelledAt))
     .all();
   for (const row of rows) {
@@ -66,28 +67,29 @@ export function currentLabels(db: Db, inputs: LabelInput[]): Map<string, StoredL
   return labels;
 }
 
-/** The inputs with no label from `model` at the current list version for their hash. */
-export function pendingInputs(db: Db, inputs: LabelInput[], model: string): LabelInput[] {
+/** The inputs with no label from `model` under the list numbered `list` for their hash. */
+export function pendingInputs(db: Db, inputs: LabelInput[], model: string, list: number): LabelInput[] {
   const done = new Set(
     db
       .select()
       .from(findingLabels)
-      .where(and(eq(findingLabels.listVersion, CATEGORY_LIST_VERSION), eq(findingLabels.model, model)))
+      .where(and(eq(findingLabels.listVersion, list), eq(findingLabels.model, model)))
       .all()
       .map((row) => `${findingKey(row.runKey, row.findingId)} ${row.inputHash}`),
   );
   return inputs.filter((i) => !done.has(`${findingKey(i.runKey, i.findingId)} ${i.hash}`));
 }
 
-/** Stores a batch's labels, at the current list version, and its token usage, in one transaction. */
+/** Stores a batch's labels, under the list numbered `list`, and its token usage, in one transaction. */
 export function saveBatch(
   db: Db,
   labels: StoredLabel[],
   usage: { at: Date; inputTokens: number; outputTokens: number },
+  list: number,
 ): void {
   db.transaction((tx) => {
     for (const { hash: inputHash, ...label } of labels) {
-      tx.insert(findingLabels).values({ ...label, inputHash, listVersion: CATEGORY_LIST_VERSION }).run();
+      tx.insert(findingLabels).values({ ...label, inputHash, listVersion: list }).run();
     }
     tx.insert(labelBatches).values(usage).run();
   });

@@ -32,6 +32,7 @@ export function FindingsGrid({
   onSelect: (cell: Selection) => void;
 }) {
   const rows = response.rows.filter((row) => row.area === area);
+  const label = (category: string | null) => categoryLabel(category, response.categoryLabels);
   const max = measure === 'raised' ? Math.max(0, ...rows.flatMap((row) => row.cells.map((c) => c.raised))) : 100;
   return (
     <HeatmapTable
@@ -42,17 +43,17 @@ export function FindingsGrid({
         {
           heading: null,
           rows: rows.map((row) => ({
-            key: categoryLabel(row.category),
-            header: <CategoryBadge category={row.category} />,
+            key: label(row.category),
+            header: <CategoryBadge category={row.category} labels={response.categoryLabels} />,
             values: row.cells.map((cell) => value(cell, measure)),
           })),
         },
       ]}
       max={max}
       format={measure === 'raised' ? formatCount : formatPercent}
-      selected={selected && { key: categoryLabel(selected.category), week: selected.week }}
+      selected={selected && { key: label(selected.category), week: selected.week }}
       onSelect={(cell) =>
-        onSelect({ category: rows.find((row) => categoryLabel(row.category) === cell.key)!.category, week: cell.week })
+        onSelect({ category: rows.find((row) => label(row.category) === cell.key)!.category, week: cell.week })
       }
     />
   );

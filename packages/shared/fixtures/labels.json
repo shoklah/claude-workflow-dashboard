@@ -19,7 +19,7 @@
     "date": "2026-11-08T09:30:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F3",
-    "category": "spec gap",
+    "category": "spec_gap",
     "relevance": "valid",
     "reason": "How long edits are kept decides the storage design"
   },
@@ -27,7 +27,7 @@
     "date": "2026-11-08T09:30:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F4",
-    "category": "task split and order",
+    "category": "task_split",
     "relevance": "valid",
     "reason": "Task 3 cannot run before the helper it uses exists"
   },
@@ -35,7 +35,7 @@
     "date": "2026-11-08T09:30:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F5",
-    "category": "spec gap",
+    "category": "spec_gap",
     "relevance": "invalid",
     "reason": "The mockup already names the component"
   },
@@ -51,7 +51,7 @@
     "date": "2026-11-10T16:45:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F2",
-    "category": "naming and clarity",
+    "category": "naming",
     "relevance": "unclear",
     "reason": "The new name is clearer, but the old one is not wrong"
   },
@@ -59,7 +59,7 @@
     "date": "2026-11-10T16:45:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F3",
-    "category": "security and privacy",
+    "category": "security_privacy",
     "relevance": "valid",
     "reason": "Markup in a summary could run script in the page"
   },
@@ -67,7 +67,7 @@
     "date": "2026-11-10T16:45:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F4",
-    "category": "data safety",
+    "category": "data_safety",
     "relevance": "invalid",
     "reason": "Both tasks are meant to read the same snapshot"
   },
@@ -83,7 +83,7 @@
     "date": "2026-11-10T16:45:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F6",
-    "category": "reuse and duplication",
+    "category": "reuse",
     "relevance": "valid",
     "reason": "A plural helper already exists"
   },
@@ -91,7 +91,7 @@
     "date": "2026-11-10T16:45:00Z",
     "branch": "feature/offline-sync",
     "findingId": "F7",
-    "category": "reuse and duplication",
+    "category": "reuse",
     "relevance": "valid",
     "reason": "Two helpers do the same retry"
   },

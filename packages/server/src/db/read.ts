@@ -1,5 +1,5 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
-import { RunEntrySchema, SessionEntrySchema, type RunEntry, type SessionEntry } from '@cwd/shared';
+import { RunEntrySchema, SessionEntrySchema, type CategoryList, type RunEntry, type SessionEntry } from '@cwd/shared';
 import type { Db, Tx } from './open.ts';
 import { imports, state, units, warnings } from './schema.ts';
 
@@ -90,8 +90,8 @@ export function lastImport(db: Db): { at: Date; ok: boolean; error: string | nul
   return row ? { at: row.at, ok: row.ok, error: row.error } : null;
 }
 
-/** The last successful import, with the export's totals as received. */
-export function lastGoodImport(db: Db): { at: Date; totals: unknown } | null {
+/** The last successful import, with the export's totals as received and its category list, null when it had none. */
+export function lastGoodImport(db: Db): { at: Date; totals: unknown; categories: CategoryList | null } | null {
   const row = db.select().from(imports).where(eq(imports.ok, true)).orderBy(desc(imports.id)).limit(1).get();
-  return row ? { at: row.at, totals: row.totals } : null;
+  return row ? { at: row.at, totals: row.totals, categories: row.categories ?? null } : null;
 }

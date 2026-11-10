@@ -67,13 +67,14 @@ async function run(key: string): Promise<RunResponse> {
   return res.json();
 }
 
-/** Stores the app's label of a run's finding, for its current text. */
+/** Stores the app's label of a run's finding, for its current text, under report-v5's list (101). */
 function label(key: string, findingId: string, reason: string): void {
   const input = labelInputs(listUnits(db, 'run')).find((i) => i.runKey === key && i.findingId === findingId)!;
   saveBatch(
     db,
     [{ ...input, model: 'claude-haiku-5-5', category: 'conventions', relevance: 'invalid', reason, labelledAt: NOW }],
     { at: NOW, inputTokens: 100, outputTokens: 20 },
+    101,
   );
 }
 
@@ -219,8 +220,12 @@ test("the findings table flattens every step's findings", async () => {
 });
 
 test("a labelled finding carries the app's category, relevance and reason, an unlabelled one nulls", async () => {
+  // report-v5 holds the same Full run, with the workflow's category list.
+  db.$client.close();
+  db = dbWith('report-v5');
   label(FULL, 'F4', 'An invented reason for the label.');
-  const { findings, timeline } = await run(FULL);
+  const { findings, timeline, categoryLabels } = await run(FULL);
+  expect(categoryLabels.conventions).toBe('Conventions');
   expect(findings[3]).toMatchObject({
     id: 'F4',
     reason: 'The shared key is intended: both tasks read the same snapshot',
@@ -304,6 +309,7 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
     new Map(),
     null,
     new Map(),
+    null,
   );
   expect(view!.warnings).toEqual([
     { text: 'WARN: feature/offline-sync (2026-11-10): {session} ended early', sessionId: '7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c' },
@@ -357,6 +363,9 @@ describe('projects', () => {
   });
 
   test("with showing on, a label's reason is masked as the finding's text is", async () => {
+    // report-v5 holds the same run and projects, with the workflow's category list.
+    db.$client.close();
+    db = dbWith('report-v5');
     label(MAIN, 'F1', 'tidepool-api keeps the same import in /Users/example/Work/tidepool-api/src/x.ts');
     setShowing(db, [LANTERN]);
     expect((await run(MAIN)).findings[0].labelReason).toBe('another project keeps the same import in x.ts');

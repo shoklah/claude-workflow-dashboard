@@ -4,6 +4,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { builtWebDist, serveApp } from './app.ts';
+import { activeList } from './categories.ts';
 import { loadConfig } from './config.ts';
 import { rebuildDerived } from './db/import.ts';
 import { openDb } from './db/open.ts';
@@ -22,7 +23,14 @@ rebuildDerived(db);
 const now = () => new Date();
 const settings = labellerSettings(process.env);
 const client = settings && anthropicLabelClient(settings.model);
-const labels = settings && client ? createQueue(() => labelPending(db, client, settings, now()), 'label') : null;
+// The label job reads the active list each time, since an import can change it; with no list it labels nothing.
+const labels =
+  settings && client
+    ? createQueue(async () => {
+        const list = activeList(db);
+        if (list) await labelPending(db, client, settings, now(), list);
+      }, 'label')
+    : null;
 const queue = createQueue(async () => {
   await importOnce(db, config, now);
   labels?.request();

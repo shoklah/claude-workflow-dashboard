@@ -125,7 +125,7 @@ describe('importOnce', () => {
   test('imports the report', async () => {
     const { db, config } = setup(['cat', fixturePath('report-full')]);
     await importOnce(db, config, () => AT);
-    expect(lastGoodImport(db)).toEqual({ at: AT, totals: fixture('report-full').totals });
+    expect(lastGoodImport(db)).toEqual({ at: AT, totals: fixture('report-full').totals, categories: null });
     expect(listUnits(db, 'run')).toHaveLength(5);
   });
 

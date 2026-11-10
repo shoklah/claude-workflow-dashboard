@@ -7,8 +7,9 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, type Relevance } from '@cwd/shared';
+import type { Relevance } from '@cwd/shared';
 import { builtWebDist, serveApp } from './app.ts';
+import { activeList } from './categories.ts';
 import { loadConfig } from './config.ts';
 import { labelInputs, saveBatch } from './db/labels.ts';
 import { openDb } from './db/open.ts';
@@ -32,8 +33,9 @@ for (const [i, file] of files.entries()) {
   if (!result?.ok) throw new Error(`fixture ${names[i]} did not import: ${result?.error}`);
 }
 
-// Each label names its run by date and branch; one that matches no stored finding, or whose category isn't in the
-// finding's area, stops here, so a stale labels.json can't leave the pages unlabelled unnoticed.
+// Each label names its run by date and branch and is saved under the active list (the last fixture's); one that matches
+// no stored finding, or whose category isn't one of the list's ids for the finding's area, stops here, so a stale
+// labels.json can't leave the pages unlabelled unnoticed.
 type FixtureLabel = {
   date: string;
   branch: string;
@@ -44,17 +46,21 @@ type FixtureLabel = {
 };
 const labelsFile = fileURLToPath(new URL('../../shared/fixtures/labels.json', import.meta.url));
 const fixtureLabels: FixtureLabel[] = JSON.parse(readFileSync(labelsFile, 'utf8'));
+const list = activeList(db);
+if (!list) throw new Error(`labels.json: fixture ${names.at(-1)} has no category list`);
 const runs = listUnits(db, 'run');
 const inputs = labelInputs(runs);
 const labels = fixtureLabels.map(({ date, branch, findingId, category, relevance, reason }) => {
   const run = runs.find((r) => r.merged.record?.date === date && r.merged.record?.branch === branch);
   const input = inputs.find((i) => i.runKey === run?.key && i.findingId === findingId);
   if (!input) throw new Error(`labels.json: no finding ${findingId} in the run of ${date} on ${branch}`);
-  if (!CATEGORIES[input.area].includes(category)) throw new Error(`labels.json: ${category} isn't a ${input.area} category`);
+  if (!list.areas[input.area].some((c) => c.id === category)) {
+    throw new Error(`labels.json: ${category} isn't a ${input.area} category`);
+  }
   const { runKey, hash } = input;
   return { runKey, findingId, hash, model: 'fixture', category, relevance, reason, labelledAt: NOW };
 });
-saveBatch(db, labels, { at: NOW, inputTokens: 0, outputTokens: 0 });
+saveBatch(db, labels, { at: NOW, inputTokens: 0, outputTokens: 0 }, list.number);
 
 const config = { ...base, reporterCommand: ['cat', files.at(-1)!] };
 const queue = createQueue(() => importOnce(db, config, () => NOW));

@@ -48,7 +48,7 @@ export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
   if (run.isPending) return <p className="text-sm text-muted-foreground">Loading the run…</p>;
   if (run.isError) return <p className="text-sm">Couldn't load this run.</p>;
-  const { facts, timeline, findings, skills, models, advisor, warnings } = run.data;
+  const { facts, timeline, findings, skills, models, advisor, warnings, categoryLabels } = run.data;
   return (
     <div className="flex flex-col gap-4">
       <Header run={facts} />
@@ -62,7 +62,7 @@ export function RunPage({ runKey }: { runKey: string }) {
             <RunTimeline timeline={timeline} beforeSteps={facts.beforeSteps} />
           </TabsContent>
           <TabsContent value="findings">
-            <FindingsTable findings={findings} />
+            <FindingsTable findings={findings} categoryLabels={categoryLabels} />
           </TabsContent>
         </Tabs>
         <div className="flex w-72 flex-col gap-4 text-sm">

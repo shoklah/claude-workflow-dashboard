@@ -1,7 +1,6 @@
 import {
   areaOf,
   AREAS,
-  CATEGORIES,
   parseTime,
   splitFindings,
   weekOf,
@@ -13,6 +12,7 @@ import {
   type RunEntry,
   type Step,
 } from '@cwd/shared';
+import { categoryLabels, type ActiveList } from '../categories.ts';
 import type { StoredLabel } from '../db/labels.ts';
 import type { StoredUnit } from '../db/read.ts';
 import { period, runView, storedFacts, storedNames } from './runs.ts';
@@ -51,21 +51,22 @@ function signals(runs: RunEntry[]): FindingsResponse['signals'] {
 }
 
 /**
- * The Findings page: over the stored runs in the query's period (period), each area's categories by week (a finding's
- * week is its run's), then the area's unlabelled row when any of its findings has no label from `labels`
- * (currentLabels), the findings as runView gives them, and the signals. With a
- * scope, the cells and signals still count every project, but the findings are only the shown projects', masked as
+ * The Findings page: over the stored runs in the query's period (period), each area's categories by week in `list`'s
+ * (the active list's) order (a finding's week is its run's), then the area's unlabelled row when any of its findings
+ * has no label from `labels` (currentLabels), the findings as runView gives them, the signals, and the list's display
+ * labels. With no list, every finding is in its area's unlabelled row. With a scope, the cells and signals still count every project, but the findings are only the shown projects', masked as
  * runView masks them, and `hidden` counts those left out.
  */
 export function findingsView(input: {
   runs: StoredUnit<RunEntry>[];
   labels: Map<string, StoredLabel>;
+  list: ActiveList | null;
   query: FindingsQuery;
   now: Date;
   scope: Scope | null;
   labeller: FindingsResponse['labeller'];
 }): FindingsResponse {
-  const { labels, query, scope } = input;
+  const { labels, list, query, scope } = input;
   const { weeks, matches } = period(query, input.now);
   const names = storedNames(input.runs);
   // Stored runs always have a date: the import skips a run without one.
@@ -75,7 +76,9 @@ export function findingsView(input: {
   });
 
   // Each row's findings, by week, under `${area} ${category}`; a null category is the unlabelled row.
-  const rowKeys = AREAS.flatMap((area) => [...CATEGORIES[area], null].map((category) => ({ area, category })));
+  const rowKeys = AREAS.flatMap((area) =>
+    [...(list?.areas[area].map((c) => c.id) ?? []), null].map((category) => ({ area, category })),
+  );
   const byRow = new Map(
     rowKeys.map(({ area, category }) => [`${area} ${category}`, weeks.map((): FindingRow[] => [])]),
   );
@@ -84,8 +87,8 @@ export function findingsView(input: {
   for (const { unit, week } of runs) {
     // runView gives null only for a hidden project's run, so never with no scope. Masking changes no step, category,
     // outcome or relevance, so a shown run's masked rows count in the cells as they are.
-    const shown = runView(unit, [], names, scope, labels);
-    const all = shown ?? runView(unit, [], names, null, labels)!;
+    const shown = runView(unit, [], names, scope, labels, list);
+    const all = shown ?? runView(unit, [], names, null, labels, list)!;
     for (const f of all.findings) byRow.get(`${areaOf(f.step)} ${f.category}`)?.[weeks.indexOf(week)].push(f);
     if (!shown) {
       hidden += all.findings.length;
@@ -106,5 +109,6 @@ export function findingsView(input: {
     hidden,
     signals: signals(runs.map(({ unit }) => unit.merged)),
     labeller: input.labeller,
+    categoryLabels: categoryLabels(list),
   };
 }

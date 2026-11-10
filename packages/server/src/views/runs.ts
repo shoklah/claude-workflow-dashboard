@@ -17,6 +17,7 @@ import {
   type TimelineGroup,
   type TimelineStep,
 } from '@cwd/shared';
+import { categoryLabels, type ActiveList } from '../categories.ts';
 import { findingKey, type StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { projectKey } from '../keys.ts';
@@ -206,8 +207,8 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
 }
 
 /** One run: its facts, timeline and findings, each with the app's label from `labels` (currentLabels), its skills,
- * models and advisor notes, and its current warnings; its project's name from `names`, every stored run's
- * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
+ * models and advisor notes, its current warnings, and the display labels of `list`'s (the active list's) categories;
+ * its project's name from `names`, every stored run's (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
  * named by the scope and its findings' texts and label reasons masked (maskText). */
 export function runView(
   run: StoredUnit<RunEntry>,
@@ -215,6 +216,7 @@ export function runView(
   names: Map<string, string>,
   scope: Scope | null,
   labels: Map<string, StoredLabel>,
+  list: ActiveList | null,
 ): RunResponse | null {
   const entry = run.merged;
   const facts = showFacts(scope, storedFacts(run, names));
@@ -251,5 +253,6 @@ export function runView(
     advisor: calls != null && notes != null ? { calls, notes } : null,
     warnings: currentWarnings([run], [], warnings)
       .map((w) => showWarning(scope, w.text)),
+    categoryLabels: categoryLabels(list),
   };
 }

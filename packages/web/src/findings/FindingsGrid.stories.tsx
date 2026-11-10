@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
-import { CATEGORIES } from '@cwd/shared';
-import { findingsEmpty, findingsFull } from '../test/findings.ts';
+import { CATEGORY_IDS, findingsEmpty, findingsFull } from '../test/findings.ts';
 import { FindingsGrid } from './FindingsGrid.tsx';
 
 const meta = {
@@ -30,8 +29,8 @@ export const Empty: Story = {
       'Nov 1',
       'Nov 8',
     ]);
-    await expect(canvas.getAllByRole('rowheader')).toHaveLength(CATEGORIES.implementation.length);
-    await expect(rowCells(canvasElement, 'correctness')).toEqual(['0', '0', '0', '0']);
+    await expect(canvas.getAllByRole('rowheader')).toHaveLength(CATEGORY_IDS.implementation.length);
+    await expect(rowCells(canvasElement, 'Correctness')).toEqual(['0', '0', '0', '0']);
     await expect(canvas.queryByRole('rowheader', { name: 'unlabelled' })).toBeNull();
   },
 };
@@ -42,19 +41,19 @@ export const Empty: Story = {
  */
 export const Full: Story = {
   play: async ({ args, canvas, canvasElement, userEvent }) => {
-    await expect(rowCells(canvasElement, 'tests')).toEqual(['0', '0', '1', '2']);
+    await expect(rowCells(canvasElement, 'Tests')).toEqual(['0', '0', '1', '2']);
     await expect(rowCells(canvasElement, 'unlabelled')).toEqual(['0', '0', '1', '0']);
     await expect(canvas.getAllByRole('rowheader').at(-1)).toHaveTextContent('unlabelled');
     // It scrolls sideways over many weeks, so its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Findings by category and week' })).toHaveAttribute('tabindex', '0');
-    await expect(within(canvas.getByRole('rowheader', { name: 'tests' })).getByText('tests')).toHaveAttribute(
+    await expect(within(canvas.getByRole('rowheader', { name: 'Tests' })).getByText('Tests')).toHaveAttribute(
       'title',
       "The app's label",
     );
     // The darkest step for the grid's largest count, a grey for 0.
-    const cell = canvas.getByRole('button', { name: 'tests, week of Nov 8: 2' });
+    const cell = canvas.getByRole('button', { name: 'Tests, week of Nov 8: 2' });
     await expect(cell).toHaveClass('bg-[#184f95]');
-    await expect(canvas.getByRole('button', { name: 'tests, week of Oct 18: 0' })).toHaveClass('bg-[#f0efec]');
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Oct 18: 0' })).toHaveClass('bg-[#f0efec]');
     await userEvent.click(cell);
     await expect(args.onSelect).toHaveBeenCalledWith({ category: 'tests', week: '2026-11-08' });
   },
@@ -64,8 +63,8 @@ export const Full: Story = {
 export const Selected: Story = {
   args: { selected: { category: 'tests', week: '2026-11-08' } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('button', { name: 'tests, week of Nov 8: 2' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(canvas.getByRole('button', { name: 'tests, week of Nov 1: 1' })).toHaveAttribute('aria-pressed', 'false');
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 2' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 1: 1' })).toHaveAttribute('aria-pressed', 'false');
   },
 };
 
@@ -73,7 +72,7 @@ export const Selected: Story = {
 export const ShareActedOn: Story = {
   args: { measure: 'actedOn' },
   play: async ({ canvasElement }) => {
-    await expect(rowCells(canvasElement, 'tests')).toEqual(['–', '–', '100%', '50%']);
+    await expect(rowCells(canvasElement, 'Tests')).toEqual(['–', '–', '100%', '50%']);
   },
 };
 
@@ -81,7 +80,8 @@ export const ShareActedOn: Story = {
 export const PlanArea: Story = {
   args: { area: 'plan' },
   play: async ({ canvas, canvasElement }) => {
-    await expect(canvas.getAllByRole('rowheader')).toHaveLength(CATEGORIES.plan.length);
-    await expect(rowCells(canvasElement, 'scope (missing or extra work)')).toEqual(['0', '0', '1', '0']);
+    await expect(canvas.getAllByRole('rowheader')).toHaveLength(CATEGORY_IDS.plan.length);
+    await expect(rowCells(canvasElement, 'Scope')).toEqual(['0', '0', '1', '0']);
+    await expect(canvas.getByRole('rowheader', { name: 'Code facts' })).toBeVisible();
   },
 };

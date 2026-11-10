@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { CATEGORIES, loadReport, type FindingsResponse, type Relevance } from '@cwd/shared';
+import { loadReport, type FindingsResponse, type Relevance } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp, type AppDeps } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -24,10 +24,30 @@ const [, TIDEPOOL, TIDY, OFFLINE] = fixture('report-projects').runs.map(runKey) 
 let dir: string;
 let db: Db;
 
-/** A fresh database in the test's folder, holding report-projects' import, changed first by `change`. */
+// CR10's version 1 list, by area, as report-v5 exports it.
+const PLAN = ['scope', 'task_split', 'spec_gap', 'risk_missed', 'test_plan', 'code_facts'];
+const IMPLEMENTATION = [
+  'correctness',
+  'error_handling',
+  'data_safety',
+  'security_privacy',
+  'reuse',
+  'conventions',
+  'simplicity',
+  'tests',
+  'naming',
+  'performance',
+  'docs',
+];
+
+/**
+ * A fresh database in the test's folder, holding report-projects' import with report-v5's category list (CR10's
+ * version 1, so labels are saved under 101), changed first by `change`.
+ */
 function dbWith(name: string, change: (raw: any) => void = () => {}): Db {
   const fresh = openDb(join(dir, name, 'dashboard.sqlite'));
   const raw = fixture('report-projects');
+  raw.categories = fixture('report-v5').categories;
   change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
   if (!loaded.ok) throw new Error('report-projects does not load');
@@ -65,27 +85,42 @@ async function findings(query = '', deps: Partial<AppDeps> = {}): Promise<Findin
 /** Stores the app's label of a run's finding, for its current text. */
 function label(key: string, findingId: string, category: string, relevance: Relevance, reason = 'a reason'): void {
   const input = labelInputs(listUnits(db, 'run')).find((i) => i.runKey === key && i.findingId === findingId)!;
-  saveBatch(db, [{ ...input, model: 'claude-haiku-5-5', category, relevance, reason, labelledAt: NOW }], {
-    at: NOW,
-    inputTokens: 100,
-    outputTokens: 20,
-  });
+  saveBatch(
+    db,
+    [{ ...input, model: 'claude-haiku-5-5', category, relevance, reason, labelledAt: NOW }],
+    { at: NOW, inputTokens: 100, outputTokens: 20 },
+    101,
+  );
 }
 
 const row = (body: FindingsResponse, area: string, category: string | null) =>
   body.rows.find((r) => r.area === area && r.category === category);
 
-test("the rows start with the plan area's five categories, in list order", async () => {
+test("the rows follow the active list: the plan area's six workflow ids first, in its order", async () => {
   const body = await findings();
   expect(body.weeks).toEqual(WEEKS);
-  expect(body.rows.slice(0, 5).map((r) => [r.area, r.category])).toEqual(
-    CATEGORIES.plan.map((category) => ['plan', category]),
-  );
+  expect(body.rows.slice(0, 6).map((r) => [r.area, r.category])).toEqual(PLAN.map((category) => ['plan', category]));
   expect(body.rows.filter((r) => r.category !== null).map((r) => r.category)).toEqual([
-    ...CATEGORIES.plan,
-    ...CATEGORIES.implementation,
-    ...CATEGORIES.cleanup,
+    ...PLAN,
+    ...IMPLEMENTATION,
+    ...IMPLEMENTATION,
   ]);
+  expect(body.categoryLabels.task_split).toBe('Task split and order');
+  expect(body.categoryLabels.security_privacy).toBe('Security and privacy');
+});
+
+test("with no category list, nothing shows a label: every finding is in its area's unlabelled row", async () => {
+  db.$client.close();
+  db = dbWith('no list', (raw) => delete raw.categories);
+  label(TIDY, 'F1', 'tests', 'valid');
+  const body = await findings();
+  expect(body.categoryLabels).toEqual({});
+  expect(body.rows.map((r) => [r.area, r.category])).toEqual([
+    ['plan', null],
+    ['implementation', null],
+    ['cleanup', null],
+  ]);
+  expect(body.findings.every((f) => f.category === null)).toBe(true);
 });
 
 test("a labelled finding counts in its week's category cell", async () => {

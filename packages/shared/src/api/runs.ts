@@ -49,7 +49,8 @@ export type TimelineGroup = {
   steps: TimelineStep[];
 };
 
-/** `GET /api/runs/:key`: one run, its timeline, every finding, and its skills, models, advisor notes and warnings. */
+/** `GET /api/runs/:key`: one run, its timeline, every finding, and its skills, models, advisor notes and warnings;
+ * `categoryLabels` names each category id of the active list for display, empty with none. */
 export type RunResponse = {
   facts: RunFacts;
   timeline: TimelineGroup[];
@@ -58,4 +59,5 @@ export type RunResponse = {
   models: { model: string; cost: number | null }[];
   advisor: { calls: number; notes: number } | null;
   warnings: { text: string; sessionId: string | null }[];
+  categoryLabels: Record<string, string>;
 };

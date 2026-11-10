@@ -1,5 +1,5 @@
 import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { RELEVANCE } from '@cwd/shared';
+import { RELEVANCE, type CategoryList } from '@cwd/shared';
 
 // unitVersions holds every raw JSON a run or session had, in order; units' merged, readable and firstSeenAt, and
 // the warnings table, are derived from it and can be rebuilt (rebuildDerived). missingSince is not derived: it
@@ -55,6 +55,9 @@ export const imports = sqliteTable('imports', {
   error: text('error'),
   // The export's totals as received, kept for slice 2's pages.
   totals: text('totals', { mode: 'json' }).$type<unknown>(),
+  // The export's finding category list as the loader read it, null when it had none; the last good import's is the
+  // active list (activeList).
+  categories: text('categories', { mode: 'json' }).$type<CategoryList | null>(),
 });
 
 export const state = sqliteTable('state', {

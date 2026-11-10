@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import {
   columnFilteringFeature,
@@ -21,19 +22,21 @@ const features = tableFeatures({
 // A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
 type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
 
-/** A finding's category, in a dashed badge that marks it as the app's label, never the reporter's; "unlabelled" bare. */
-export function CategoryBadge({ category }: { category: string | null }) {
+/** A finding's category by its label from `labels`, in a dashed badge that marks it as the app's label, never the
+ * reporter's; "unlabelled" bare. */
+export function CategoryBadge({ category, labels }: { category: string | null; labels: Record<string, string> }) {
   return category === null ? (
-    categoryLabel(null)
+    categoryLabel(null, labels)
   ) : (
     <Badge variant="outline" className="border-dashed" title="The app's label">
-      {categoryLabel(category)}
+      {categoryLabel(category, labels)}
     </Badge>
   );
 }
 
 const helper = createColumnHelper<typeof features, Row>();
-const columns = helper.columns([
+/** The finding columns, each category named by `labels`. */
+const columnsOf = (labels: Record<string, string>) => helper.columns([
   helper.accessor('id', { header: '#', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('step', { header: 'Step', filterFn: 'equalsString', cell: (c) => STEP_LABELS[c.getValue()] }),
   helper.accessor((f) => (f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : NONE), {
@@ -41,7 +44,10 @@ const columns = helper.columns([
     header: 'Task',
   }),
   helper.accessor('severity', { header: 'Severity', filterFn: 'equalsString', cell: (c) => c.getValue() ?? NONE }),
-  helper.accessor('category', { header: 'Category', cell: (c) => <CategoryBadge category={c.getValue()} /> }),
+  helper.accessor('category', {
+    header: 'Category',
+    cell: (c) => <CategoryBadge category={c.getValue()} labels={labels} />,
+  }),
   helper.accessor('summary', { header: 'Summary', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('outcome', {
     header: 'Outcome',
@@ -73,7 +79,7 @@ const columns = helper.columns([
     },
   }),
 ]);
-const withRun = helper.columns([
+const runColumn = helper.columns([
   helper.accessor((f) => runName({ project: f.project ?? null, branch: f.branch ?? null }), {
     id: 'run',
     header: 'Run',
@@ -83,7 +89,6 @@ const withRun = helper.columns([
       </Link>
     ),
   }),
-  ...columns,
 ]);
 
 // The filters: each lists the values its column holds, in order, labelled as the column shows them.
@@ -94,11 +99,20 @@ const FILTERS = [
 ] as const;
 
 /**
- * Every finding of the run in one table, filtered by step, severity and outcome, with the app's label of each. With
- * `run`, a first column links each finding to its run.
+ * Every finding of the run in one table, filtered by step, severity and outcome, with the app's label of each, its
+ * category named by `categoryLabels` (the response's). With `run`, a first column links each finding to its run.
  */
-export function FindingsTable({ findings, run }: { findings: Row[]; run?: boolean }) {
-  const table = useTable({ features, columns: run ? withRun : columns, data: findings });
+export function FindingsTable({
+  findings,
+  categoryLabels,
+  run,
+}: {
+  findings: Row[];
+  categoryLabels: Record<string, string>;
+  run?: boolean;
+}) {
+  const columns = useMemo(() => [...(run ? runColumn : []), ...columnsOf(categoryLabels)], [run, categoryLabels]);
+  const table = useTable({ features, columns, data: findings });
   const rows = table.getRowModel().rows;
   return (
     <div className="flex flex-col gap-3">

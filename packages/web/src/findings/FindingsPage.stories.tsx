@@ -40,21 +40,21 @@ export const Empty: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText('No findings in this period.')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'tests, week of Nov 8: 0' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 0' })).toBeVisible();
     await expect(canvas.getByText('Labeller off: no API key')).toBeVisible();
   },
 };
 
 /**
  * Full: the last 4 weeks' implementation findings by default, counted as raised, with the line that every label is the
- * app's. Selecting the tests cell of Nov 8 lists its two findings below the grid, each linking to its run.
+ * app's. Selecting the Tests cell of Nov 8 lists its two findings below the grid, each linking to its run.
  */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsFull });
   },
   play: async ({ canvas, userEvent }) => {
-    const cell = await canvas.findByRole('button', { name: 'tests, week of Nov 8: 2' });
+    const cell = await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2' });
     await expect(canvas.getByText(/Every label here is the app's/)).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await expect(canvas.getByRole('button', { name: 'Raised' })).toHaveAttribute('aria-pressed', 'true');
@@ -68,7 +68,7 @@ export const Full: Story = {
     await expect(canvas.getByText('Select a cell to list its findings.')).toBeVisible();
 
     await userEvent.click(cell);
-    await expect(canvas.getByRole('heading', { name: 'tests · week of Nov 8 · 2 findings' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Tests · week of Nov 8 · 2 findings' })).toBeVisible();
     const list = within(canvas.getByRole('region', { name: 'Findings' }));
     await expect(list.getAllByRole('row')).toHaveLength(3);
     await expect(list.getByText('The retry path has no test')).toBeVisible();
@@ -100,12 +100,12 @@ export const Switches: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsFull });
   },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'tests, week of Nov 8: 2' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Share acted on' }));
-    await expect(canvas.getByRole('button', { name: 'tests, week of Nov 8: 50%' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 50%' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Plan' }));
-    await expect(canvas.getByRole('rowheader', { name: 'scope (missing or extra work)' })).toBeVisible();
-    await expect(canvas.queryByRole('rowheader', { name: 'tests' })).toBeNull();
+    await expect(canvas.getByRole('rowheader', { name: 'Scope' })).toBeVisible();
+    await expect(canvas.queryByRole('rowheader', { name: 'Tests' })).toBeNull();
     await expect(canvas.getByText('Select a cell to list its findings.')).toBeVisible();
   },
 };
@@ -123,7 +123,7 @@ export const Filters: Story = {
     });
   },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('button', { name: 'tests, week of Nov 8: 2' });
+    await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2' });
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await waitFor(() =>
       expect(canvas.getByRole('combobox', { name: 'Project' }).querySelectorAll('option')).toHaveLength(4),
@@ -140,7 +140,7 @@ export const HiddenFindings: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsHidden });
   },
   play: async ({ canvas }) => {
-    await canvas.findByRole('button', { name: 'tests, week of Nov 8: 2' });
+    await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2' });
     await expect(canvas.getByText('+ 3 findings in other projects, counted in totals and charts only')).toBeVisible();
   },
 };

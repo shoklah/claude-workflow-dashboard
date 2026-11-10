@@ -4,11 +4,12 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { CATEGORIES, loadReport } from '@cwd/shared';
+import { loadReport } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { listUnits } from '../src/db/read.ts';
+import { activeList, type ActiveList } from '../src/categories.ts';
 import { currentLabels, labelInputs, tokensSince, type LabelInput } from '../src/db/labels.ts';
 import {
   anthropicLabelClient,
@@ -46,9 +47,9 @@ function imported(raw: any): Db {
   return db;
 }
 
-/** report-projects with the plan run's findings repeated under new ids, F100 onward, until `total` have ids. */
+/** report-v5 with the plan run's findings repeated under new ids, F100 onward, until `total` have ids. */
 function withFindings(total: number): any {
-  const raw = fixture('report-projects');
+  const raw = fixture('report-v5');
   const steps = raw.runs.flatMap((r: any) => r.steps ?? []).filter((s: any) => s.step);
   let count = steps.flatMap((s: any) => s.findings ?? []).filter((f: any) => f.id).length;
   const run = raw.runs.find((r: any) => r.steps?.some((s: any) => s.step === 'plan_review'));
@@ -63,23 +64,26 @@ function inputs(db: Db): LabelInput[] {
   return labelInputs(listUnits(db, 'run'));
 }
 
+/** The database's active list, which every labelled case here has: report-v5's, number 101. */
+const list = (db: Db): ActiveList => activeList(db)!;
+
 function stored(db: Db): number {
-  return currentLabels(db, inputs(db)).size;
+  return currentLabels(db, inputs(db), list(db).number).size;
 }
 
-const validAnswer = (item: Item): Result => ({
+const validAnswer = (item: Item, active: ActiveList): Result => ({
   id: item.id,
-  category: CATEGORIES[item.area][0]!,
+  category: active.areas[item.area][0]!.id,
   relevance: 'valid',
   reason: 'An invented reason.',
 });
 
 /** A stub client that records each batch it is sent and answers each item with `answer`. */
-function stubClient(answer: (item: Item) => Result[] = (item) => [validAnswer(item)]) {
+function stubClient(answer: (item: Item, active: ActiveList) => Result[] = (item, active) => [validAnswer(item, active)]) {
   const batches: Item[][] = [];
-  const client: LabelClient = async (batch) => {
+  const client: LabelClient = async (batch, active) => {
     batches.push(batch);
-    return { results: batch.flatMap(answer), inputTokens: 1000, outputTokens: 200 };
+    return { results: batch.flatMap((item) => answer(item, active)), inputTokens: 1000, outputTokens: 200 };
   };
   return { batches, client };
 }
@@ -94,7 +98,7 @@ describe('labelPending', () => {
     const db = imported(withFindings(60));
     expect(inputs(db)).toHaveLength(60);
     const { batches, client } = stubClient();
-    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW);
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
     expect(batches.map((b) => b.length)).toEqual([25, 25, 10]);
     expect(batches[0]!.map((i) => i.id)).toEqual(Array.from({ length: 25 }, (_, n) => `f${n + 1}`));
     expect(batches[2]!.map((i) => i.id)).toEqual(Array.from({ length: 10 }, (_, n) => `f${n + 1}`));
@@ -105,37 +109,50 @@ describe('labelPending', () => {
   test('stops at the daily max, and a second run the same day stores none', async () => {
     const db = imported(withFindings(60));
     const { batches, client } = stubClient();
-    await labelPending(db, client, { model: MODEL, dailyMax: 30 }, NOW);
+    await labelPending(db, client, { model: MODEL, dailyMax: 30 }, NOW, list(db));
     expect(stored(db)).toBe(30);
-    await labelPending(db, client, { model: MODEL, dailyMax: 30 }, LATER_SAME_DAY);
+    await labelPending(db, client, { model: MODEL, dailyMax: 30 }, LATER_SAME_DAY, list(db));
     expect(stored(db)).toBe(30);
     expect(batches.map((b) => b.length)).toEqual([25, 5]);
   });
 
   test("doesn't store a category outside the finding's area", async () => {
-    const db = imported(fixture('report-projects'));
+    const db = imported(fixture('report-v5'));
     const all = inputs(db);
-    const { client } = stubClient((item) => [
-      item.area === 'plan' ? { ...validAnswer(item), category: 'correctness' } : validAnswer(item),
+    const { client } = stubClient((item, active) => [
+      item.area === 'plan' ? { ...validAnswer(item, active), category: 'correctness' } : validAnswer(item, active),
     ]);
-    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW);
-    const labels = currentLabels(db, all);
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
+    const labels = currentLabels(db, all, list(db).number);
     expect(labels.size).toBe(all.filter((i) => i.area !== 'plan').length);
     for (const input of all.filter((i) => i.area === 'plan')) {
       expect(labels.has(`${input.runKey} ${input.findingId}`)).toBe(false);
     }
   });
 
+  test("under list 101, a reply naming the app's old 'task split and order' isn't stored, and 'task_split' is", async () => {
+    const db = imported(fixture('report-v5'));
+    const plan = inputs(db).filter((i) => i.area === 'plan');
+    const answer = (category: string) =>
+      stubClient((item, active) => [item.area === 'plan' ? { ...validAnswer(item, active), category } : []].flat());
+    await labelPending(db, answer('task split and order').client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
+    expect(currentLabels(db, plan, 101).size).toBe(0);
+    await labelPending(db, answer('task_split').client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
+    const labels = currentLabels(db, plan, 101);
+    expect(labels.size).toBe(plan.length);
+    expect([...labels.values()].every((l) => l.category === 'task_split')).toBe(true);
+  });
+
   test('keeps the first result for an id named twice, and drops an id that was not sent', async () => {
-    const db = imported(fixture('report-projects'));
+    const db = imported(fixture('report-v5'));
     const all = inputs(db);
-    const { client } = stubClient((item) => [
-      validAnswer(item),
-      { ...validAnswer(item), relevance: 'invalid' },
-      { ...validAnswer(item), id: 'f99' },
+    const { client } = stubClient((item, active) => [
+      validAnswer(item, active),
+      { ...validAnswer(item, active), relevance: 'invalid' },
+      { ...validAnswer(item, active), id: 'f99' },
     ]);
-    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW);
-    const labels = [...currentLabels(db, all).values()];
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
+    const labels = [...currentLabels(db, all, list(db).number).values()];
     expect(labels).toHaveLength(all.length);
     expect(labels.every((l) => l.relevance === 'valid')).toBe(true);
   });
@@ -146,15 +163,15 @@ describe('labelPending', () => {
     const { batches, client: answering } = stubClient();
     let calls = 0;
     let text = '';
-    const client: LabelClient = async (batch) => {
+    const client: LabelClient = async (batch, active) => {
       // The first batch fails every time, with an error that quotes a finding.
       if (++calls === 1) {
         text = batch[0]!.text;
         throw new Error(`no label for ${text}`);
       }
-      return answering(batch);
+      return answering(batch, active);
     };
-    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW);
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
     expect(calls).toBe(3);
     expect(batches.map((b) => b.length)).toEqual([25, 10]);
     expect(stored(db)).toBe(35);
@@ -165,46 +182,55 @@ describe('labelPending', () => {
   });
 
   test("a LabelError's fixed message is logged", async () => {
-    const db = imported(fixture('report-projects'));
+    const db = imported(fixture('report-v5'));
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const message = "the labeller's reply did not parse (stop reason: max_tokens)";
     const client: LabelClient = async () => {
       throw new LabelError(message);
     };
-    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW);
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
     expect(error).toHaveBeenCalledWith('label batch failed:', message);
     error.mockRestore();
   });
 });
 
 describe('anthropicLabelClient', () => {
-  test('a reply cut off at max_tokens throws a LabelError naming the stop reason, not the reply', async () => {
-    // A local stand-in for the API, never the API itself, answering with an invented, cut-off reply.
-    const reply = '{"labels":[{"id":"f1","category":"invented-cut-off';
-    const server = createServer((_req, res) => {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          id: 'msg_invented',
-          type: 'message',
-          role: 'assistant',
-          model: MODEL,
-          content: [{ type: 'text', text: reply }],
-          stop_reason: 'max_tokens',
-          stop_sequence: null,
-          usage: { input_tokens: 10, output_tokens: 4096 },
-        }),
-      );
+  /**
+   * Runs `check` with the API pointed at a local stand-in, never the API itself, that answers every request with the
+   * invented reply `text` and `stop_reason`, and records each request's body.
+   */
+  async function withStandIn(
+    text: string,
+    stopReason: string,
+    check: (requests: any[]) => Promise<void>,
+  ): Promise<void> {
+    const requests: any[] = [];
+    const server = createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk) => (body += chunk));
+      req.on('end', () => {
+        requests.push(JSON.parse(body));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            id: 'msg_invented',
+            type: 'message',
+            role: 'assistant',
+            model: MODEL,
+            content: [{ type: 'text', text }],
+            stop_reason: stopReason,
+            stop_sequence: null,
+            usage: { input_tokens: 10, output_tokens: 4096 },
+          }),
+        );
+      });
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const env = { key: process.env.ANTHROPIC_API_KEY, url: process.env.ANTHROPIC_BASE_URL };
     process.env.ANTHROPIC_API_KEY = 'test-key';
     process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     try {
-      const client = anthropicLabelClient(MODEL);
-      const result = client([{ id: 'f1', area: 'plan', text: 'An invented finding.' }]);
-      await expect(result).rejects.toThrow(LabelError);
-      await expect(result).rejects.toThrow("the labeller's reply did not parse (stop reason: max_tokens)");
+      await check(requests);
     } finally {
       for (const [name, value] of [['ANTHROPIC_API_KEY', env.key], ['ANTHROPIC_BASE_URL', env.url]] as const) {
         if (value === undefined) delete process.env[name];
@@ -212,6 +238,49 @@ describe('anthropicLabelClient', () => {
       }
       await new Promise((resolve) => server.close(resolve));
     }
+  }
+
+  test('a reply cut off at max_tokens throws a LabelError naming the stop reason, not the reply', async () => {
+    const active = list(imported(fixture('report-v5')));
+    await withStandIn('{"labels":[{"id":"f1","category":"invented-cut-off', 'max_tokens', async () => {
+      const client = anthropicLabelClient(MODEL);
+      const result = client([{ id: 'f1', area: 'plan', text: 'An invented finding.' }], active);
+      await expect(result).rejects.toThrow(LabelError);
+      await expect(result).rejects.toThrow("the labeller's reply did not parse (stop reason: max_tokens)");
+    });
+  });
+
+  test("the prompt and the reply's schema come from the list it is given on each call", async () => {
+    const active = list(imported(fixture('report-v5')));
+    const reply = JSON.stringify({ labels: [{ id: 'f1', category: 'task_split', relevance: 'valid', reason: 'Invented.' }] });
+    await withStandIn(reply, 'end_turn', async (requests) => {
+      const client = anthropicLabelClient(MODEL);
+      const batch = [{ id: 'f1', area: 'plan' as const, text: 'An invented finding.' }];
+      const result = await client(batch, active);
+      expect(result.results).toEqual([{ id: 'f1', category: 'task_split', relevance: 'valid', reason: 'Invented.' }]);
+      const system: string = requests[0].system;
+      expect(system).toContain(
+        "task_split: Tasks too big or too small, in the wrong order, depending on each other when they shouldn't, or grouped into a wave that breaks its rules.",
+      );
+      expect(system).toContain(active.rule);
+      expect(system).toContain(`invalid: ${active.validity.invalid}`);
+      expect(system).not.toContain('worth raising');
+      const category = JSON.stringify(requests[0].output_config.format.schema);
+      expect(category).toContain('"code_facts"');
+      expect(category).not.toContain('task split and order');
+
+      // Another list on the next call: its ids, not the first list's.
+      const other: ActiveList = {
+        number: 102,
+        areas: { plan: [{ id: 'invented_plan', label: 'Invented', means: 'An invented meaning.' }], implementation: [], cleanup: [] },
+        rule: 'An invented rule.',
+        validity: {},
+      };
+      await client(batch, other).catch(() => {});
+      expect(requests[1].system).toContain('invented_plan: An invented meaning.');
+      expect(requests[1].system).not.toContain('task_split');
+      expect(JSON.stringify(requests[1].output_config.format.schema)).not.toContain('code_facts');
+    });
   });
 });
 
