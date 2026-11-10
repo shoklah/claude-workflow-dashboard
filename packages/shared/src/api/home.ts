@@ -34,9 +34,9 @@ export type FeedItem = {
 
 /**
  * A skill or slash command on Home's skills and commands section, over a period's sessions and runs: `sessions`, the
- * sessions that loaded the skill or typed a command naming it; `runs`, the runs that loaded it; `typed`, a skill's typed
- * triggers or a command's commands; `typedNeverLoaded`, a skill's typed triggers never met. A command no skill has has
- * no `runs` and no `typedNeverLoaded`.
+ * sessions that loaded the skill, typed it (a typed trigger) or typed a command naming it; `runs`, the runs that loaded
+ * it; `typed`, a skill's typed triggers or a command's commands; `typedNeverLoaded`, a skill's typed triggers never met.
+ * A command no skill has has no `runs` and no `typedNeverLoaded`.
  */
 export type UsageRow = {
   name: string;

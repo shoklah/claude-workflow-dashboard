@@ -4,8 +4,8 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 type Whole = { [key: string]: true | Whole };
 
-// The reporter's sparse count maps, a unit's and its advisor's: a key a new version lacks no longer counts (its rows
-// moved to another unit), so a non-null map replaces the stored one whole.
+// The reporter's per-version maps, a unit's and its advisor's: each replaces the stored one whole when non-null, so a
+// key a new version lacks no longer counts (its rows moved to another unit), sparse or fixed-key (notes, tokens) alike.
 const COUNT_MAPS: Whole = {
   refusals: true,
   models: true,
