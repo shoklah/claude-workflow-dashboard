@@ -466,7 +466,7 @@ describe('importReport with a cursor', () => {
     expect(getCursor(db)).toBe('s2:1');
   });
 
-  test('an export with no cursor is full and keeps the stored cursor', () => {
+  test('an export with no cursor is full and clears the stored cursor', () => {
     const { db } = freshDb();
     const { runs, sessions } = start(db);
     importFixture(db, 'report-full', LATER, 's1:1', (raw) => {
@@ -481,6 +481,6 @@ describe('importReport with a cursor', () => {
       [runs[4]!]: LATER,
     });
     expect(missing(db, 'session')).toEqual({ [sessions[0]!]: null, [sessions[1]!]: LATER });
-    expect(getCursor(db)).toBe('s1:1');
+    expect(getCursor(db)).toBeNull();
   });
 });

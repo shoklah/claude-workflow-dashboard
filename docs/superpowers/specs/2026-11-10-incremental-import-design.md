@@ -47,7 +47,7 @@ Every import trigger runs a full `--json` today, so the export's cost and size g
    - each key in `removed.runs` and `removed.sessions` that is stored and not already missing is marked missing with the import's time; an unknown key is ignored;
    - a stored unit the export doesn't carry is left as it is.
    Any other export (no cursor sent, another id, a sequence not higher, no `cursor` in the export) is full: imported as today, a stored unit absent from it marked missing.
-5. **No `cursor` in the export** (a plain `--json`, a fixture): imported as full and no cursor is stored, so the stored one, if any, stays.
+5. **No `cursor` in the export** (a plain `--json`, a fixture): imported as full, and the stored cursor, if any, is cleared, so the next import sends `0` and resyncs in full. (Changed after the final review: keeping the stored cursor left the marks and versions such an export wrote uncorrected by later incremental exports.)
 6. **Totals and categories** are stored with each import, as today.
 7. **`check:real`'s key check.** It compares each run's and session's reporter `key` with `runKey` and `sessionKey` and prints `reporter keys: N compared, M differ` or, when no unit carries a `key`, `reporter keys: not in the export`, a count only *(wording changed while planning, from `keys: pass`, to match check:real's other lines; the owner confirms it with the plan)*; a unit without a `key` (an export before CR6) isn't counted. If the recipes drifted, `removed` would match nothing.
 8. **`CLAUDE.md`:** one `## Code conventions` line on the cursor and on when a unit is marked missing; the schema's comment on `missingSince` updated.
