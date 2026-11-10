@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slice 2b mockup: Compliance by kind, and Home's orange step boxes</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --page: #f3f3f1; --border: #dcdbd6;
+    --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
+    --s1: #2a78d6; --warn: #eb6834;
+    --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #2a78d6; --seq-5: #184f95;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.45 system-ui, -apple-system, sans-serif; background: var(--page); color: var(--text); }
+  .note { max-width: 1180px; margin: 16px auto 8px; padding: 0 16px; color: var(--text-2); }
+  h1 { font-size: 17px; margin: 0 0 4px; color: var(--text); }
+  h2 { font-size: 14px; margin: 26px auto 6px; max-width: 1180px; padding: 0 16px; }
+  .shell { display: flex; max-width: 1180px; margin: 0 auto 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .menu { width: 150px; flex: none; padding: 12px 10px; border-right: 1px solid var(--border); line-height: 2; color: var(--text-2); }
+  .menu .on { color: var(--text); font-weight: 600; }
+  .main { flex: 1; padding: 14px 16px; min-width: 0; }
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); border-radius: 14px; padding: 2px 10px; background: #fff; }
+  .chip.on { background: var(--seq-1); border-color: var(--seq-3); }
+  .muted { color: var(--muted); }
+  table { border-collapse: collapse; }
+  th, td { text-align: left; padding: 4px 6px; vertical-align: middle; }
+  th { font-weight: 500; color: var(--text-2); font-size: 12px; }
+  tr.fam th { padding-top: 12px; font-weight: 600; color: var(--text); }
+  td.c { width: 44px; height: 24px; text-align: center; font-size: 11px; border: 2px solid var(--surface); font-variant-numeric: tabular-nums; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 12px; }
+  .l0 { background: #f1f1ee; color: var(--muted); } .l1 { background: var(--seq-1); } .l2 { background: var(--seq-2); }
+  .l3 { background: var(--seq-3); } .l4 { background: var(--seq-4); color: #fff; } .l5 { background: var(--seq-5); color: #fff; }
+  .sel { outline: 2px solid var(--text); outline-offset: -2px; }
+  .list { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .item { border-left: 3px solid var(--warn); padding: 4px 8px; margin-bottom: 6px; }
+  .tag { font-size: 11px; border-radius: 3px; padding: 0 5px; border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
+  .new { color: #a8461c; font-size: 11px; }
+  .flow { display: flex; gap: 6px; align-items: stretch; margin: 8px 0; }
+  .step { flex: 1; border: 1px solid #bdbcb6; border-radius: 6px; padding: 6px 4px; text-align: center; background: #fff; }
+  .step b { display: block; font-size: 12px; margin-bottom: 2px; }
+  .step.warn { border: 2px solid var(--warn); }
+  .step .w { color: #a8461c; font-size: 11px; }
+  .arrow { align-self: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <h1>Slice 2b mockup: Compliance by kind, and Home's orange step boxes</h1>
+  Invented data. The Compliance page reuses the Findings page's grid: warning kinds down, weeks across, one blue ramp, the count written in each cell. Kinds come from the reporter's structured warnings (CR4). The dashboard groups them into families, and a kind it doesn't know lands in "Other". A cell lists its warnings below the grid. A step box on Home turns orange when a warning in the diagram's period is tied to that step.
+</div>
+
+<h2>Compliance: kinds by week</h2>
+<div class="shell">
+  <div class="menu">
+    <div>Home</div><div>Runs</div><div>Findings</div><div class="on">Compliance</div>
+    <div>Steps and rules</div><div>Skills</div><div>Models and advisor</div><div>Weeks</div>
+  </div>
+  <div class="main">
+    <div class="filters">
+      <span class="chip on">Last 8 weeks</span><span class="chip">Path: all</span><span class="chip">Project: all</span>
+      <span class="chip on">Current warnings</span><span class="chip">Including resolved</span>
+      <span class="muted">41 warnings in 8 weeks · 6 new since you last looked</span>
+    </div>
+    <table>
+      <thead><tr><th></th><th>Sep 20</th><th>Sep 27</th><th>Oct 4</th><th>Oct 11</th><th>Oct 18</th><th>Oct 25</th><th>Nov 1</th><th>Nov 8</th><th class="n">Total</th></tr></thead>
+      <tbody>
+        <tr class="fam"><th colspan="10">Review flow</th></tr>
+        <tr><th>final review without simplify</th><td class="c l2">2</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="n">4</td></tr>
+        <tr><th>plan review without plan simplify</th><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="n">2</td></tr>
+        <tr class="fam"><th colspan="10">Steps and the record</th></tr>
+        <tr><th>count line missing</th><td class="c l0">0</td><td class="c l1">1</td><td class="c l2">2</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="n">5</td></tr>
+        <tr><th>step counts differ</th><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="n">2</td></tr>
+        <tr><th>step has no agent id</th><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l2">3</td><td class="c l1 sel">1</td><td class="n">4</td></tr>
+        <tr class="fam"><th colspan="10">Agents and models</th></tr>
+        <tr><th>agent off its pin</th><td class="c l1">1</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l2">2</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="n">6</td></tr>
+        <tr><th>model-less dispatch</th><td class="c l3">4</td><td class="c l2">3</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="n">8</td></tr>
+        <tr class="fam"><th colspan="10">Skills and offers</th></tr>
+        <tr><th>typed skill never loaded</th><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l1">1</td><td class="n">4</td></tr>
+        <tr><th>offer not recorded</th><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="n">1</td></tr>
+        <tr class="fam"><th colspan="10">Sessions</th></tr>
+        <tr><th>startup guidelines missing</th><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="n">3</td></tr>
+        <tr><th>session wrote no run record</th><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l0">0</td><td class="c l1">1</td><td class="c l0">0</td><td class="n">2</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Families with no warning in the period are left out. "Current warnings" counts what the latest export still reports; "Including resolved" adds warnings that have since gone, each in the week it was first seen. The family table lives in the dashboard; the reporter carries no grouping.</p>
+    <div class="list">
+      <b>step has no agent id</b> · week of Nov 8 · 1 warning
+      <div class="item"><span class="tag">final review</span> lantern-notes · feature/offline-sync · run of Nov 10 <span class="new">new</span><br>final_review step 0 has no agent id</div>
+    </div>
+  </div>
+</div>
+
+<h2>Home: the workflow diagram with orange step boxes</h2>
+<div class="shell">
+  <div class="main">
+    <div class="filters"><span class="chip on">Full path</span><span class="chip">Small path</span><span class="muted">last 7 days</span></div>
+    <div class="flow">
+      <div class="step"><b>Plan simplify</b>ran 2<br>cut 5</div><span class="arrow">→</span>
+      <div class="step"><b>Plan review</b>ran 2<br>found 3</div><span class="arrow">→</span>
+      <div class="step warn"><b>Task review</b>ran 11<br>found 9 · fixed 8<br><span class="w">2 warnings</span></div><span class="arrow">→</span>
+      <div class="step"><b>simplify</b>ran 2<br>applied 6</div><span class="arrow">→</span>
+      <div class="step warn"><b>Final review</b>ran 2<br>found 5 · fixed 4<br><span class="w">1 warning</span></div>
+    </div>
+    <p class="muted">A box is orange when a current warning in the diagram's period names that step (the warning's <code>step.step</code>). The count says how many, and the box opens Compliance filtered to that step. The orange carries a count in text, so colour is never the only signal.</p>
+  </div>
+</div>
+
+</body>
+</html>
