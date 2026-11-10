@@ -61,10 +61,10 @@ function signals(runs: RunEntry[]): FindingsResponse['signals'] {
  * The Findings page: over the stored runs in the query's period (period), each area's categories by week in `list`'s
  * (the active list's) order, then the area's unlabelled row when any of its findings or strengths has no category; a
  * finding or strength counts in its run's week, its step's area and its category as runView gives it (the workflow's,
- * else the app's from `labels`, currentLabels). Then the findings as runView gives them, the signals, and the list's
- * display labels. With no list, every area has only its unlabelled row. With a scope, the cells and signals still
- * count every project, but the findings are only the shown projects', masked as runView masks them, and `hidden`
- * counts those left out.
+ * else the app's from `labels`, currentLabels), or in the area's unlabelled row when that isn't one of the area's ids.
+ * Then the findings as runView gives them, the signals, and the list's display labels. With no list, every area has
+ * only its unlabelled row. With a scope, the cells and signals still count every project, but the findings are only
+ * the shown projects', masked as runView masks them, and `hidden` counts those left out.
  */
 export function findingsView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -101,8 +101,9 @@ export function findingsView(input: {
     // outcome or relevance, so a shown run's masked rows count in the cells as they are.
     const shown = runView(unit, [], names, scope, labels, list);
     const all = shown ?? runView(unit, [], names, null, labels, list)!;
+    // A category outside the list's ids for the step's area counts in the area's unlabelled row.
     const bucket = (step: StepKind, category: string | null) =>
-      byRow.get(`${areaOf(step)} ${category}`)?.[weeks.indexOf(week)];
+      (byRow.get(`${areaOf(step)} ${category}`) ?? byRow.get(`${areaOf(step)} null`))?.[weeks.indexOf(week)];
     for (const f of all.findings) bucket(f.step, f.category)?.findings.push(f);
     for (const s of all.strengths) {
       const at = bucket(s.step, s.category);

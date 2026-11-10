@@ -231,6 +231,26 @@ test("the workflow's labels win in the cells: strengths, byApp and appDiffers in
   });
 });
 
+test("a workflow category outside its step's area counts in the area's unlabelled row", async () => {
+  db.$client.close();
+  db = dbWith('v5', () => {}, 'report-v5');
+  const before = await findings();
+  db.$client.close();
+  // The plan review's F1 named with an implementation id, and the task review's strength with a plan one.
+  db = dbWith(
+    'v5 out of area',
+    (raw) => {
+      raw.runs[5].steps[0].findings[0].category = 'correctness';
+      raw.runs[5].steps[1].strengths[0].category = 'spec_gap';
+    },
+    'report-v5',
+  );
+  const after = await findings();
+  const nov8 = (body: FindingsResponse, area: string) => row(body, area, null)?.cells[3];
+  expect(nov8(after, 'plan')?.raised).toBe((nov8(before, 'plan')?.raised ?? 0) + 1);
+  expect(nov8(after, 'implementation')?.strengths).toBe((nov8(before, 'implementation')?.strengths ?? 0) + 1);
+});
+
 test('the weeks, path and project filters choose the runs counted', async () => {
   expect((await findings('?weeks=1')).findings.map((f) => f.week)).toEqual(Array(5).fill('2026-11-08'));
   expect((await findings('?path=small')).findings.map((f) => f.runKey)).toEqual(Array(4).fill(TIDY));
