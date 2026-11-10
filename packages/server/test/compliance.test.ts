@@ -159,7 +159,7 @@ test('isNew follows seenAt', async () => {
   expect(isNew(await compliance())).toEqual([]);
 });
 
-test("with showing on, the cells count every warning, but the list holds only shown runs' warnings, masked", async () => {
+test("with showing on, the cells count every warning outside \"other\", but the list holds only shown runs' warnings, masked", async () => {
   const raw = fixture('report-v5');
   const branches = new Map<string, string[]>();
   for (const run of [...fixture('report-full').runs, ...raw.runs]) {
@@ -186,8 +186,11 @@ test("with showing on, the cells count every warning, but the list holds only sh
   });
   setShowing(db, [projectKey(LANTERN)]);
   const body = await compliance('?resolved=1&weeks=52');
+  // The "other" rows (unknown kinds, the null-kind row) are hidden; the family rows still count every warning.
+  expect(body.rows.filter((row) => row.family === 'other')).toEqual([]);
   const count = body.rows.reduce((n, row) => n + row.cells.reduce((a, b) => a + b, 0), 0);
-  expect(count).toBe(7);
+  // Seven warnings in the period, less the two brand_new_check ones and the resolved one with no kind.
+  expect(count).toBe(4);
   // The shown runs' in-family warnings, masked; no session warning, no "other" one.
   expect(body.warnings.map((w) => ({ kind: w.kind, project: w.project, text: w.text }))).toEqual([
     {

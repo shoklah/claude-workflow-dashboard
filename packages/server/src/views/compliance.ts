@@ -72,8 +72,9 @@ export function familyOf(kind: string | null): string {
  * with `resolved` every other stored warning. A run's warning is in the period when its run is (period), in its run's week; a
  * session's, of any path or project, in the week it was first seen. `step` keeps the warnings naming that step. The
  * rows are the kinds with a warning, in FAMILIES' order, then "other" kinds, the one with no kind last. With a scope,
- * the cells still count every warning, but the list holds only the shown projects' run warnings outside "other"
- * (which can name anything), masked (showFacts, showWarning), and `hidden` counts those left out.
+ * the "other" rows are left out (an unknown kind can name anything) and the family rows' cells still count every
+ * warning, but the list holds only the shown projects' run warnings outside "other", masked (showFacts, showWarning),
+ * and `hidden` counts every warning in the period left out of the list.
  */
 export function complianceView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -105,7 +106,8 @@ export function complianceView(input: {
     ...[...others].filter((kind): kind is string => kind !== null).sort().map((kind) => ({ family: OTHER, kind })),
     ...(others.has(null) ? [{ family: OTHER, kind: null }] : []),
   ];
-  // Each kind's count by week in one pass; a kind with no warning in the period gets no row.
+  // Each kind's count by week in one pass; a kind with no warning in the period gets no row, nor, with a scope, an
+  // "other" kind, which can name anything.
   const counts = new Map<string | null, number[]>();
   for (const x of inPeriod) {
     const cells = counts.get(x.w.warningKind) ?? weeks.map(() => 0);
@@ -114,7 +116,7 @@ export function complianceView(input: {
   }
   const rows: ComplianceRow[] = rowKeys.flatMap(({ family, kind }) => {
     const cells = counts.get(kind);
-    return cells ? [{ family, kind, cells }] : [];
+    return cells && !(scope && family === OTHER) ? [{ family, kind, cells }] : [];
   });
 
   const warnings = inPeriod.flatMap(({ w, run, week, family }): ComplianceWarning[] => {
