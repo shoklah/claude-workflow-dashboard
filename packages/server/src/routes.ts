@@ -17,6 +17,7 @@ import {
 import { projectKey } from './keys.ts';
 import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
+import { modelsView } from './views/models.ts';
 import { rootOf, runView, runsList, storedBranches, storedNames } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
 import { showingView } from './views/showing.ts';
@@ -155,6 +156,19 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       skillsView({
         runs,
         sessions: listUnits(deps.db, 'session'),
+        totals: lastGoodImport(deps.db)?.totals,
+        query: periodQuery(c),
+        now: deps.now(),
+        scope: scopeFor(runs),
+      }),
+    );
+  });
+  // Slice 2b, task 5: the Models and advisor page, with the reporter's all-time figures from the last good import.
+  app.get('/api/models', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    return c.json(
+      modelsView({
+        runs,
         totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),

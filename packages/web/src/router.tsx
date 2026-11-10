@@ -7,6 +7,7 @@ import { RunsPage } from './runs/RunsPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
 import { SkillsPage } from './skills/SkillsPage.tsx';
+import { ModelsPage } from './models/ModelsPage.tsx';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -60,8 +61,14 @@ const skillsRoute = createRoute({
   component: SkillsPage,
 });
 
+const modelsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/models',
+  component: ModelsPage,
+});
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute, findingsRoute, stepsRoute, skillsRoute, weeksRoute]),
+  routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute, findingsRoute, stepsRoute, skillsRoute, modelsRoute, weeksRoute]),
 });
 
 declare module '@tanstack/react-router' {
