@@ -257,8 +257,8 @@ export const ReportSchema = z.object({
   runs: z.array(RunEntrySchema),
   sessions: z.array(SessionEntrySchema),
   totals: TotalsSchema,
-  cursor: z.string().nullish(),
-  removed: z.object({ runs: z.array(z.string()), sessions: z.array(z.string()) }).nullish(),
+  cursor: str,
+  removed: z.object({ runs: strings, sessions: strings }).nullish(),
 });
 
 export type Report = z.infer<typeof ReportSchema>;

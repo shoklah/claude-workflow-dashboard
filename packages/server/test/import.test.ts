@@ -418,6 +418,20 @@ describe('importReport with a cursor', () => {
     expect(getCursor(db)).toBe('s1:4');
   });
 
+  test('a removed list with only runs marks those runs missing', () => {
+    const { db } = freshDb();
+    const { runs, sessions } = start(db);
+    importFixture(db, 'report-full', LATER, 's1:1', (raw) => {
+      raw.runs = [];
+      raw.sessions = [];
+      raw.cursor = 's1:2';
+      raw.removed = { runs: [runs[1]] };
+    });
+    expect(missing(db, 'run')[runs[1]!]).toEqual(LATER);
+    expect(missing(db, 'session')).toEqual({ [sessions[0]!]: null, [sessions[1]!]: null });
+    expect(getCursor(db)).toBe('s1:2');
+  });
+
   test('a removed key that was never stored is ignored', () => {
     const { db } = freshDb();
     start(db);
