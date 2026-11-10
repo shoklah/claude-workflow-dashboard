@@ -146,15 +146,16 @@ describe('the diagram', () => {
     expect(diagram.small.map((s) => s.warnings)).toEqual([0, 0, 0]);
   });
 
-  test('a box counts the session warnings first seen in its 7 days, but not with showing on', async () => {
+  test('a box counts the session warnings first seen in its 7 days, with showing on too', async () => {
     const raw = fixture('report-v5');
     const text = `WARN: session ${raw.sessions[0].file.split('/').pop()}: plan review without plan-simplifier: an invented plan`;
     raw.sessions[0].warns = [text];
     raw.sessions[0].warnings = [{ text, kind: 'plan_review_without_simplify', step: { step: 'plan_review' } }];
     const db = dbWith(raw);
     expect((await home(db)).diagram.full.find((s) => s.step === 'plan_review')?.warnings).toBe(1);
+    // Counts include everything; only lists are filtered.
     setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
-    expect((await home(db)).diagram.full.find((s) => s.step === 'plan_review')?.warnings).toBe(0);
+    expect((await home(db)).diagram.full.find((s) => s.step === 'plan_review')?.warnings).toBe(1);
   });
 
   test("a session warning stops counting once the latest export drops its line or its session", async () => {

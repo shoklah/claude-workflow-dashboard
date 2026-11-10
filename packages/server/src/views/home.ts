@@ -123,7 +123,8 @@ function fixLine(steps: Step[]): FixLine {
 }
 
 /** The home screen, from the stored runs and warnings: every number is a plain sum over the runs' own facts. With a
- * scope, the numbers still count every run, but the feed holds only the shown projects' runs and run warnings. */
+ * scope, the numbers (the diagram's warnings, session ones included) still count every run and session, but the feed
+ * holds only the shown projects' runs and run warnings. */
 export function homeView(input: {
   runs: StoredUnit<RunEntry>[];
   sessions: StoredUnit<SessionEntry>[];
@@ -179,11 +180,11 @@ export function homeView(input: {
   const smallRuns = withSteps.filter((r) => r.facts.path === 'small');
   const fullSteps = stepsOf(fullRuns);
   const smallSteps = stepsOf(smallRuns);
-  // A tab's warnings: the current warnings of its runs, and the session warnings first seen in the 7 days, left out
-  // with a scope.
-  const recentSessions = scope
-    ? []
-    : warnings.filter((w) => w.kind === 'session' && w.firstSeenAt.getTime() > now.getTime() - 7 * DAY);
+  // A tab's warnings: the current warnings of its runs, and the session warnings first seen in the 7 days, with a scope
+  // too, since counts include every project.
+  const recentSessions = warnings.filter(
+    (w) => w.kind === 'session' && w.firstSeenAt.getTime() > now.getTime() - 7 * DAY,
+  );
   const warningsOf = (of: Run[]) => {
     const keys = new Set(of.map((r) => r.unit.key));
     return [...warnings.filter((w) => w.kind === 'run' && keys.has(w.key)), ...recentSessions];
