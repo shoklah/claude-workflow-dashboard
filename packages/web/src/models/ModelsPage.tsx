@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import type { FindingsQuery, ModelsResponse, RunsResponse } from '@cwd/shared';
+import type { FindingsQuery, ModelsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -14,7 +14,7 @@ import {
   stopLabel,
   weekLabel,
 } from '../lib/format.ts';
-import { ListFilters, listPath } from '../runs/RunsPage.tsx';
+import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 /** A table under the static page's column names, a row saying `empty` when it has no rows, scrolling sideways in a
  * region named `label`. */
@@ -118,12 +118,11 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
 export function ModelsPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
   const models = useLiveQuery<ModelsResponse>(listPath('/api/models', query));
-  // The project options: every project of the longest period.
-  const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 }));
+  const projects = useProjects();
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Models and advisor</h1>
-      <ListFilters query={query} projects={runs.data?.projects} onChange={(change) => setQuery({ ...query, ...change })} />
+      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })} />
       {models.isPending && <p className="text-sm text-muted-foreground">Loading the models and advisor…</p>}
       {models.isError && <p className="text-sm">Couldn't load the models and advisor.</p>}
       {models.data && <ModelsTables response={models.data} />}

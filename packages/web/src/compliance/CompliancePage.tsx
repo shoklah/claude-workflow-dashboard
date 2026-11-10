@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { X } from 'lucide-react';
 import { cn } from 'cn';
-import type { ComplianceResponse, FindingsQuery, RunsResponse, StepKind } from '@cwd/shared';
+import type { ComplianceResponse, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { WarningText } from '../components/WarningText.tsx';
@@ -17,7 +17,7 @@ import {
   runName,
   weekLabel,
 } from '../lib/format.ts';
-import { ListFilters, listPath } from '../runs/RunsPage.tsx';
+import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 /** The rows by family, each family's run of rows under its name, in the response's order. */
 function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
@@ -26,7 +26,7 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
     if (groups.at(-1)?.family !== row.family) {
       groups.push({ family: row.family, heading: FAMILY_LABELS[row.family] ?? row.family, rows: [] });
     }
-    groups.at(-1)!.rows.push({ key: kindLabel(row.kind), header: kindLabel(row.kind), values: row.cells });
+    groups.at(-1)!.rows.push({ id: row.kind ?? '', name: kindLabel(row.kind), header: kindLabel(row.kind), values: row.cells });
   }
   return groups;
 }
@@ -40,19 +40,18 @@ export function CompliancePage({ step }: { step?: StepKind }) {
   const [resolved, setResolved] = useState(false);
   const [selected, setSelected] = useState<HeatmapSelection | null>(null);
   const compliance = useLiveQuery<ComplianceResponse>(listPath('/api/compliance', { ...query, resolved, step }));
-  // The project options: every project of the longest period.
-  const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 }));
+  const projects = useProjects();
   const data = compliance.data;
   const listed =
     data && selected
-      ? data.warnings.filter((w) => kindLabel(w.kind) === selected.key && w.week === selected.week)
+      ? data.warnings.filter((w) => (w.kind ?? '') === selected.id && w.week === selected.week)
       : [];
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Compliance</h1>
       <ListFilters
         query={query}
-        projects={runs.data?.projects}
+        projects={projects}
         onChange={(change) => {
           setQuery({ ...query, ...change });
           setSelected(null);
@@ -100,7 +99,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
       {data && data.rows.length > 0 && selected && (
         <>
           <h2 className="font-semibold">
-            {`${selected.key} · week of ${weekLabel(selected.week)} · ${plural(listed.length, 'warning')}`}
+            {`${kindLabel(selected.id || null)} · week of ${weekLabel(selected.week)} · ${plural(listed.length, 'warning')}`}
           </h2>
           <ul aria-label="Warnings" className="flex flex-col gap-2 text-sm">
             {listed.map((w) => (

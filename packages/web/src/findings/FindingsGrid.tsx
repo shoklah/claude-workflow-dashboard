@@ -55,7 +55,8 @@ export function FindingsGrid({
         {
           heading: null,
           rows: rows.map((row) => ({
-            key: label(row.category),
+            id: row.category ?? '',
+            name: label(row.category),
             header: (
               <CategoryBadge
                 category={row.category}
@@ -70,9 +71,9 @@ export function FindingsGrid({
       ]}
       max={max}
       format={count ? formatCount : formatPercent}
-      selected={selected && { key: label(selected.category), week: selected.week }}
+      selected={selected && { id: selected.category ?? '', week: selected.week }}
       onSelect={(cell) =>
-        onSelect({ category: rows.find((row) => label(row.category) === cell.key)!.category, week: cell.week })
+        onSelect({ category: cell.id || null, week: cell.week })
       }
     />
   );

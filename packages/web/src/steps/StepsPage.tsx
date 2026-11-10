@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import type { FindingsQuery, RunsResponse, StepsResponse } from '@cwd/shared';
+import type { FindingsQuery, StepsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -12,8 +12,9 @@ import {
   formatCost,
   formatCount,
   formatTokens,
+  total,
 } from '../lib/format.ts';
-import { ListFilters, listPath } from '../runs/RunsPage.tsx';
+import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 const COLUMNS = [
   'Step or rule',
@@ -27,9 +28,6 @@ const COLUMNS = [
   'Tokens',
   'Est. cost',
 ];
-
-const sum = (counts: Record<string, number> | null) =>
-  counts === null ? null : Object.values(counts).reduce((total, n) => total + n, 0);
 
 /** A rule's row: its name, what ran, what found something and its counts; a cost only for the advisor. */
 function RuleRow(props: { name: ReactNode; ran: number | null; found?: number | null; counts: string; cost?: string }) {
@@ -83,11 +81,11 @@ function StepsTable({ response }: { response: StepsResponse }) {
             Rules
           </TableCell>
         </TableRow>
-        <RuleRow name={RULE_LABELS.failingTest} ran={sum(rules.failingTest)} counts={countsLabel(rules.failingTest)} />
+        <RuleRow name={RULE_LABELS.failingTest} ran={total(rules.failingTest)} counts={countsLabel(rules.failingTest)} />
         <RuleRow
           name={<>{RULE_LABELS.dispatchGuard}<ReporterMark /></>}
           ran={null}
-          found={sum(reporter.dispatchGuard)}
+          found={reporter.dispatchGuard && total(reporter.dispatchGuard)}
           counts={countsLabel(reporter.dispatchGuard)}
         />
         <RuleRow
@@ -115,12 +113,11 @@ function StepsTable({ response }: { response: StepsResponse }) {
 export function StepsPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
   const steps = useLiveQuery<StepsResponse>(listPath('/api/steps', query));
-  // The project options: every project of the longest period.
-  const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 }));
+  const projects = useProjects();
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Steps and rules</h1>
-      <ListFilters query={query} projects={runs.data?.projects} onChange={(change) => setQuery({ ...query, ...change })} />
+      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })} />
       {steps.isPending && <p className="text-sm text-muted-foreground">Loading the steps and rules…</p>}
       {steps.isError && <p className="text-sm">Couldn't load the steps and rules.</p>}
       {steps.data && <StepsTable response={steps.data} />}

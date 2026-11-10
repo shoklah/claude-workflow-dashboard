@@ -64,8 +64,9 @@ function importUnit(tx: Tx, kind: Kind, key: string, raw: unknown, at: Date): vo
 
 /**
  * Stores an export in one transaction. `rawUnits` holds the export's runs and sessions as received, in the report's
- * order, and its totals; the export's category list is stored as the loader read it. A run with no key is skipped. A stored unit absent from the export is marked missing, never
- * deleted. The first successful import sets the "seen" time, so the feed starts empty.
+ * order, and its totals; the export's category list is stored as the loader read it. A run with no key is skipped.
+ * A stored unit absent from the export is marked missing, never deleted. The first successful import sets the "seen"
+ * time, so the feed starts empty.
  */
 export function importReport(
   db: Db,

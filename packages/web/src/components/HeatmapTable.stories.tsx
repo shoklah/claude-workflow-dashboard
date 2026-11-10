@@ -36,13 +36,13 @@ export const Full: Story = {
       {
         heading: 'First group',
         rows: [
-          { key: 'alpha', header: 'alpha', values: [0, 1, 4] },
-          { key: 'beta', header: 'beta', values: [2, 0, null] },
+          { id: 'alpha', name: 'alpha', header: 'alpha', values: [0, 1, 4] },
+          { id: 'beta', name: 'beta', header: 'beta', values: [2, 0, null] },
         ],
       },
-      { heading: null, rows: [{ key: 'gamma', header: <i>gamma</i>, values: [0, 0, 1] }] },
+      { heading: null, rows: [{ id: 'gamma', name: 'gamma', header: <i>gamma</i>, values: [0, 0, 1] }] },
     ],
-    selected: { key: 'alpha', week: '2026-11-08' },
+    selected: { id: 'alpha', week: '2026-11-08' },
   },
   play: async ({ args, canvas, userEvent }) => {
     const heading = canvas.getByText('First group');
@@ -62,7 +62,7 @@ export const Full: Story = {
     await expect(canvas.getByRole('button', { name: 'alpha, week of Nov 1: 1' })).toHaveAttribute('aria-pressed', 'false');
     await expect(canvas.getByRole('button', { name: 'beta, week of Nov 8: –' })).toHaveClass('bg-[#f0efec]');
     await userEvent.click(canvas.getByRole('button', { name: 'gamma, week of Nov 8: 1' }));
-    await expect(args.onSelect).toHaveBeenCalledWith({ key: 'gamma', week: '2026-11-08' });
+    await expect(args.onSelect).toHaveBeenCalledWith({ id: 'gamma', week: '2026-11-08' });
   },
 };
 
@@ -70,7 +70,7 @@ export const Full: Story = {
 export const Percent: Story = {
   args: {
     max: 100,
-    groups: [{ heading: null, rows: [{ key: 'alpha', header: 'alpha', values: [null, 50, 100] }] }],
+    groups: [{ heading: null, rows: [{ id: 'alpha', name: 'alpha', header: 'alpha', values: [null, 50, 100] }] }],
     format: (value) => (value === null ? '–' : `${value}%`),
   },
   play: async ({ canvas }) => {

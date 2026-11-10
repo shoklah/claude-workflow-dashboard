@@ -4,12 +4,12 @@ import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
 import { HomePage } from './home/HomePage.tsx';
 import { Shell } from './layout/Shell.tsx';
+import { ModelsPage } from './models/ModelsPage.tsx';
 import { RunPage } from './runs/RunPage.tsx';
 import { RunsPage } from './runs/RunsPage.tsx';
+import { SkillsPage } from './skills/SkillsPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
-import { SkillsPage } from './skills/SkillsPage.tsx';
-import { ModelsPage } from './models/ModelsPage.tsx';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -62,12 +62,6 @@ const stepsRoute = createRoute({
   component: StepsPage,
 });
 
-const weeksRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/weeks',
-  component: WeeksPage,
-});
-
 const skillsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/skills',
@@ -80,8 +74,24 @@ const modelsRoute = createRoute({
   component: ModelsPage,
 });
 
+const weeksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/weeks',
+  component: WeeksPage,
+});
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute, findingsRoute, complianceRoute, stepsRoute, skillsRoute, modelsRoute, weeksRoute]),
+  routeTree: rootRoute.addChildren([
+    homeRoute,
+    runsRoute,
+    runRoute,
+    findingsRoute,
+    complianceRoute,
+    stepsRoute,
+    skillsRoute,
+    modelsRoute,
+    weeksRoute,
+  ]),
 });
 
 declare module '@tanstack/react-router' {

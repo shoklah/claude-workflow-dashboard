@@ -26,6 +26,11 @@ export function listPath(
   return `${base}?${params}`;
 }
 
+/** The project options of a list page: every stored run's project, from the one query the list pages share. */
+export function useProjects(): RunsResponse['projects'] | undefined {
+  return useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 })).data?.projects;
+}
+
 const SELECT = 'rounded-md border bg-background px-2 py-1';
 
 /** A list's path, project and period filters, then the page's own controls; `projects` are the project options. */

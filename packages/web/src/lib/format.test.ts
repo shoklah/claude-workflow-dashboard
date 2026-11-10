@@ -16,6 +16,7 @@ import {
   formatMinutes,
   formatPercent,
   formatTokens,
+  total,
   hiddenWarningsLabel,
   labellerLabel,
   nonZeroCountsLabel,
@@ -257,5 +258,13 @@ describe('strengthWhere', () => {
   it("names a strength's step, and its task when it has one", () => {
     expect(strengthWhere({ step: 'task_review', task: 3 })).toBe('Task review · task 3');
     expect(strengthWhere({ step: 'final_review', task: null })).toBe('Final review');
+  });
+});
+
+describe('total', () => {
+  it('sums a record’s counts, a count that isn’t known as 0', () => {
+    expect(total({ small: 4, full: 2 })).toBe(6);
+    expect(total({ with: 3, without: null })).toBe(3);
+    expect(total({})).toBe(0);
   });
 });

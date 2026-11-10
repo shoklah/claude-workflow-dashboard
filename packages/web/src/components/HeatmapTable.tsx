@@ -3,12 +3,12 @@ import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table.tsx';
 import { cellShade, formatCount, weekLabel } from '../lib/format.ts';
 
-/** A cell of a heatmap: its row's key and a week. */
-export type HeatmapSelection = { key: string; week: string };
+/** A cell of a heatmap: its row's id and a week. */
+export type HeatmapSelection = { id: string; week: string };
 
-/** A row of a heatmap: `key` names it in its cells' labels and in the selection, `header` is what its header shows;
- * `texts`, when given, is each cell's text in place of `format`'s. */
-export type HeatmapRow = { key: string; header: ReactNode; values: (number | null)[]; texts?: string[] };
+/** A row of a heatmap: `id` identifies it in the selection, `name` names it in its cells' labels, `header` is what its
+ * header shows; `texts`, when given, is each cell's text in place of `format`'s. */
+export type HeatmapRow = { id: string; name: string; header: ReactNode; values: (number | null)[]; texts?: string[] };
 
 /** A group of rows, under a full-width heading row unless its heading is null. */
 export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
@@ -60,21 +60,21 @@ export function HeatmapTable({
             </TableRow>
           )}
           {group.rows.map((row) => (
-            <TableRow key={row.key} className="border-0 hover:bg-transparent">
+            <TableRow key={row.id} className="border-0 hover:bg-transparent">
               <TableHead scope="row" className="font-normal">
                 {row.header}
               </TableHead>
               {row.values.map((value, i) => {
                 const week = weeks[i];
                 const text = row.texts?.[i] ?? format(value);
-                const pressed = selected?.key === row.key && selected.week === week;
+                const pressed = selected?.id === row.id && selected.week === week;
                 return (
                   <TableCell key={week} className="p-0.5">
                     <button
                       type="button"
                       aria-pressed={pressed}
-                      aria-label={`${row.key}, week of ${weekLabel(week)}: ${text}`}
-                      onClick={() => onSelect({ key: row.key, week })}
+                      aria-label={`${row.name}, week of ${weekLabel(week)}: ${text}`}
+                      onClick={() => onSelect({ id: row.id, week })}
                       className={cn(
                         'h-7 min-w-12 rounded-sm px-1 text-xs whitespace-nowrap tabular-nums',
                         cellShade(value ?? 0, max),

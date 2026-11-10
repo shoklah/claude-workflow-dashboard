@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import type { FindingsQuery, RunsResponse, SkillsResponse } from '@cwd/shared';
+import type { FindingsQuery, SkillsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { NONE, outcomesLabel } from '../lib/format.ts';
-import { ListFilters, listPath } from '../runs/RunsPage.tsx';
+import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 // The static page's columns; the last is the reporter's all-time figure.
 const COLUMNS = ['Skill', 'Runs', 'Last', 'Outcomes'];
@@ -14,12 +14,11 @@ const COLUMNS = ['Skill', 'Runs', 'Last', 'Outcomes'];
 export function SkillsPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
   const skills = useLiveQuery<SkillsResponse>(listPath('/api/skills', query));
-  // The project options: every project of the longest period.
-  const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 }));
+  const projects = useProjects();
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Skills</h1>
-      <ListFilters query={query} projects={runs.data?.projects} onChange={(change) => setQuery({ ...query, ...change })} />
+      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })} />
       <p className="text-sm text-muted-foreground">
         The path and project filters choose the runs; every session counts. Runs counts the runs and sessions that
         loaded the skill.

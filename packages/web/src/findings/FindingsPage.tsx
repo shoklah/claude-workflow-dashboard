@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { AREAS, type Area, type FindingsQuery, type FindingsResponse, type RunsResponse } from '@cwd/shared';
+import { AREAS, type Area, type FindingsQuery, type FindingsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
 import { AREA_LABELS, categoryLabel, hiddenLabel, plural, weekLabel } from '../lib/format.ts';
 import { FindingsTable } from '../runs/FindingsTable.tsx';
-import { ListFilters, listPath } from '../runs/RunsPage.tsx';
+import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 import { FindingsGrid, workflowLabelled, type Measure, type Selection } from './FindingsGrid.tsx';
 import { SignalsPanel } from './SignalsPanel.tsx';
 
@@ -36,8 +36,7 @@ export function FindingsPage() {
   const [area, setArea] = useState<Area>('implementation');
   const [selected, setSelected] = useState<Selection | null>(null);
   const findings = useLiveQuery<FindingsResponse>(listPath('/api/findings', query));
-  // The project options: every project of the longest period.
-  const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 }));
+  const projects = useProjects();
   const data = findings.data;
   const listed =
     data && selected
@@ -48,7 +47,7 @@ export function FindingsPage() {
       <h1 className="text-xl font-semibold">Findings</h1>
       <ListFilters
         query={query}
-        projects={runs.data?.projects}
+        projects={projects}
         onChange={(change) => {
           setQuery({ ...query, ...change });
           setSelected(null);

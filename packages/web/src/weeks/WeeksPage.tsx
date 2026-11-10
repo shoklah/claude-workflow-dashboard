@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { FindingsQuery, RunTime, RunsResponse, WeeksResponse } from '@cwd/shared';
+import type { FindingsQuery, RunTime, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
-import { NONE, formatCost, formatMinutes, nonZeroCountsLabel, weekLabel } from '../lib/format.ts';
-import { ListFilters, listPath } from '../runs/RunsPage.tsx';
+import { NONE, formatCost, formatMinutes, nonZeroCountsLabel, total, weekLabel } from '../lib/format.ts';
+import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 type Week = WeeksResponse['weeks'][number];
 
@@ -28,7 +28,6 @@ const RUN_TIMES: { key: keyof RunTime; label: string }[] = [
   { key: 'withoutWaves', label: 'without waves' },
 ];
 
-const sum = (counts: Record<string, number>) => Object.values(counts).reduce((n, c) => n + c, 0);
 
 /** The four small multiples, one measure each on its own axis, the weeks oldest first; the week table is their table
  * view. */
@@ -36,8 +35,8 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
   const oldestFirst = weeks.toReversed();
   const names = oldestFirst.map((w) => w.week);
   const charts = [
-    { title: 'Runs', data: oldestFirst.map((w) => sum(w.runs)) },
-    { title: 'Final review findings', data: oldestFirst.map((w) => sum(w.findings)) },
+    { title: 'Runs', data: oldestFirst.map((w) => total(w.runs)) },
+    { title: 'Final review findings', data: oldestFirst.map((w) => total(w.findings)) },
     { title: 'Estimated dollars', data: oldestFirst.map((w) => w.cost), cost: true },
     // A duration is rounded to whole minutes first.
     {
@@ -121,15 +120,14 @@ function RunTimeTable({ runTime }: { runTime: RunTime }) {
 export function WeeksPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 12 });
   const weeks = useLiveQuery<WeeksResponse>(listPath('/api/weeks', query));
-  // The project options: every project of the longest period.
-  const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 }));
+  const projects = useProjects();
   const data = weeks.data;
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Weeks</h1>
       <ListFilters
         query={query}
-        projects={runs.data?.projects}
+        projects={projects}
         onChange={(change) => setQuery({ ...query, ...change })}
       />
       {weeks.isPending && <p className="text-sm text-muted-foreground">Loading the weeks…</p>}
@@ -140,7 +138,7 @@ export function WeeksPage() {
           <p className="text-sm text-muted-foreground">
             Findings here are the final review's, as the reporter counts them per week.
           </p>
-          {data.weeks.every((w) => sum(w.runs) === 0) && <p className="text-sm">No runs in this period.</p>}
+          {data.weeks.every((w) => total(w.runs) === 0) && <p className="text-sm">No runs in this period.</p>}
           <CoverageNote coverageFrom={data.coverageFrom} firstWeek={data.weeks.at(-1)!.week} />
           <WeeksTable weeks={data.weeks} />
           <RunTimeTable runTime={data.runTime} />
