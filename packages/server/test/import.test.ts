@@ -150,10 +150,55 @@ describe('importReport', () => {
       key: runKey(report.runs[1]!),
       text: 'WARN: fix/retry-backoff (2026-10-21): no session transcript found',
       firstSeenAt: FIRST,
+      warningKind: null,
+      stepKind: null,
     });
     const added = warnings.find((w) => w.key === runKey(report.runs[2]!))!;
     expect(added.text).toBe('WARN: chore/tidy-imports (2026-11-03): no session transcript found');
     expect(added.firstSeenAt).toEqual(LATER);
+  });
+
+  test("a warning first stored before CR4 takes a later export's kind and step, and keeps its first-seen time", () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-full', FIRST);
+    expect(listWarnings(db).every((w) => w.warningKind === null && w.stepKind === null)).toBe(true);
+    importFixture(db, 'report-v5', LATER);
+    const warnings = listWarnings(db);
+    expect(warnings.find((w) => w.key === runKey(report.runs[1]!))).toMatchObject({
+      firstSeenAt: FIRST,
+      warningKind: 'no_transcript',
+      stepKind: null,
+    });
+    expect(warnings.find((w) => w.key === runKey(report.runs[4]!))).toMatchObject({
+      firstSeenAt: FIRST,
+      warningKind: 'simplify_record_differs',
+      stepKind: 'simplify',
+    });
+  });
+
+  test('a warning a later export no longer reports keeps its null kind and step', () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-full', FIRST);
+    importFixture(db, 'report-v5', LATER);
+    expect(listWarnings(db).find((w) => w.key === sessionKey(report.sessions[1]!))).toEqual({
+      kind: 'session',
+      key: sessionKey(report.sessions[1]!),
+      text: 'WARN: session 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35.jsonl: startup guidelines missing',
+      firstSeenAt: FIRST,
+      warningKind: null,
+      stepKind: null,
+    });
+  });
+
+  test('a later export with no warning objects keeps the known kind', () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-v5', FIRST);
+    importFixture(db, 'report-full', LATER);
+    expect(listWarnings(db).find((w) => w.key === runKey(report.runs[4]!))).toMatchObject({
+      firstSeenAt: FIRST,
+      warningKind: 'simplify_record_differs',
+      stepKind: 'simplify',
+    });
   });
 
   test('a failure leaves the stored data unchanged', () => {
@@ -213,6 +258,19 @@ describe('importReport', () => {
 
     expect(listUnits(db, 'run')).toEqual(runs);
     expect(listUnits(db, 'session')).toEqual(sessions);
+    expect(listWarnings(db)).toEqual(warnings);
+  });
+
+  test("rebuild gives the same warnings' kinds and steps", () => {
+    const { db } = freshDb();
+    importFixture(db, 'report-full', FIRST);
+    importFixture(db, 'report-v5', LATER);
+    const warnings = listWarnings(db);
+    expect(warnings.filter((w) => w.warningKind !== null)).toHaveLength(5);
+
+    db.$client.exec('UPDATE warnings SET warning_kind = NULL, step_kind = NULL');
+    rebuildDerived(db);
+
     expect(listWarnings(db)).toEqual(warnings);
   });
 });

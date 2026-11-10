@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { builtWebDist, serveApp } from './app.ts';
 import { loadConfig } from './config.ts';
+import { rebuildDerived } from './db/import.ts';
 import { openDb } from './db/open.ts';
 import { lastGoodImport } from './db/read.ts';
 import { anthropicLabelClient, labelPending, labellerSettings } from './labeller.ts';
@@ -16,6 +17,8 @@ const config = loadConfig();
 const envFile = join(config.dataDir, '.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 const db = openDb(join(config.dataDir, 'dashboard.sqlite'));
+// The derived values are rebuilt at every start, so rows stored before a new derived value gain it.
+rebuildDerived(db);
 const now = () => new Date();
 const settings = labellerSettings(process.env);
 const client = settings && anthropicLabelClient(settings.model);

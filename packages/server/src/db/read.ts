@@ -4,7 +4,16 @@ import type { Db, Tx } from './open.ts';
 import { imports, state, units, warnings } from './schema.ts';
 
 export type StoredUnit<T> = { key: string; merged: T; firstSeenAt: Date; missingSince: Date | null; readable: boolean };
-export type StoredWarning = { kind: 'run' | 'session'; key: string; text: string; firstSeenAt: Date };
+// warningKind and stepKind are the warning object's kind and step.step, null when no export gave one; kind is the
+// unit's.
+export type StoredWarning = {
+  kind: 'run' | 'session';
+  key: string;
+  text: string;
+  firstSeenAt: Date;
+  warningKind: string | null;
+  stepKind: string | null;
+};
 
 const SEEN_AT = 'seenAt';
 const SHOWING = 'showing';

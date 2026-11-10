@@ -12,3 +12,4 @@ export * from './api/findings.ts';
 export * from './api/weeks.ts';
 export * from './api/steps.ts';
 export * from './api/skills.ts';
+export * from './api/compliance.ts';
