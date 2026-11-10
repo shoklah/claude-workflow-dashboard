@@ -11,7 +11,7 @@ export type WeekNumbers = {
   newWarnings: number;
 };
 
-/** A step box on the workflow diagram. `warnings` stays 0 until warnings are tied to steps (CR4). */
+/** A step box on the workflow diagram; `warnings` counts the current warnings naming its step. */
 export type DiagramStep = { step: StepKind; ran: number; findings: number; actedOn: number; warnings: number };
 
 /** The fix-check line under a diagram tab. */

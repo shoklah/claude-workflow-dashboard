@@ -11,6 +11,7 @@ import {
   type RunResponse,
   type RunsQuery,
   type RunsResponse,
+  type SessionEntry,
   type Step,
   type StepKind,
   type TimelineGroup,
@@ -72,12 +73,20 @@ export function storedFacts(unit: StoredUnit<RunEntry>, names: Map<string, strin
 }
 
 /**
- * The stored warnings that are current: every session warning, and a run's warnings, the texts in its latest merged
- * `warns`; the store only gives their first-seen times.
+ * The stored warnings that are current, those the latest export still reports: a run's, the texts in its latest
+ * merged `warns`, and a session's, the texts in its latest merged `warns` while the latest export holds the session;
+ * the store only gives their first-seen times.
  */
-export function currentWarnings(runs: StoredUnit<RunEntry>[], warnings: StoredWarning[]): StoredWarning[] {
-  const warns = new Map(runs.map((run) => [run.key, run.merged.warns ?? []]));
-  return warnings.filter((w) => w.kind === 'session' || (warns.get(w.key)?.includes(w.text) ?? false));
+export function currentWarnings(
+  runs: StoredUnit<RunEntry>[],
+  sessions: StoredUnit<SessionEntry>[],
+  warnings: StoredWarning[],
+): StoredWarning[] {
+  const warns = {
+    run: new Map(runs.map((run) => [run.key, run.merged.warns ?? []])),
+    session: new Map(sessions.filter((s) => s.missingSince === null).map((s) => [s.key, s.merged.warns ?? []])),
+  };
+  return warnings.filter((w) => warns[w.kind].get(w.key)?.includes(w.text) ?? false);
 }
 
 /**
@@ -114,7 +123,7 @@ export function runsList(
   const all = runs.map((run) => storedFacts(run, names));
   const rows = all.flatMap((row) => showFacts(scope, row) ?? []);
   const inPeriod = period(query, now).matches;
-  const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
+  const warned = new Set(currentWarnings(runs, [], warnings).map((w) => w.key));
   const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
   const matches = (row: RunFacts) => inPeriod(row) && (!query.warnings || warned.has(row.key));
   const shown = rows.filter(matches);
@@ -240,8 +249,7 @@ export function runView(
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
-    warnings: currentWarnings([run], warnings)
-      .filter((w) => w.kind === 'run')
+    warnings: currentWarnings([run], [], warnings)
       .map((w) => showWarning(scope, w.text)),
   };
 }

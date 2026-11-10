@@ -10,7 +10,8 @@ import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { setSeenAt } from '../src/db/read.ts';
+import { setSeenAt, setShowing } from '../src/db/read.ts';
+import { projectKey } from '../src/keys.ts';
 import { weekSums } from '../src/views/home.ts';
 
 const PORT = 4317;
@@ -92,7 +93,8 @@ describe('week numbers', () => {
     expect(first.thisWeek).toMatchObject({ warnings: 2, newWarnings: 0 });
     expect(first.lastWeek).toMatchObject({ warnings: 0, newWarnings: 0 });
     const later = await home(dbWith(fixture('report-full'), fixture('report-later')));
-    expect(later.thisWeek).toMatchObject({ warnings: 2, newWarnings: 0 });
+    // report-later no longer holds the session, so its warning isn't current.
+    expect(later.thisWeek).toMatchObject({ warnings: 1, newWarnings: 0 });
     // The Small run's new warning counts in its run's week.
     expect(later.lastWeek).toMatchObject({ warnings: 1, newWarnings: 1 });
   });
@@ -129,6 +131,44 @@ describe('the diagram', () => {
     expect(diagram.beforeSteps).toBe(1);
     expect(diagram.full).toEqual(before.diagram.full);
     expect(diagram.fixChecks).toEqual(before.diagram.fixChecks);
+  });
+
+  test("a box counts the current warnings naming its step, of the diagram's runs", async () => {
+    // report-v5's simplify warning on the Full run of 2026-11-10, and step_agent_missing on the webhooks run.
+    const { diagram } = await home(dbWith(fixture('report-full'), fixture('report-v5')));
+    expect(diagram.full.map((s) => [s.step, s.warnings])).toEqual([
+      ['plan_simplify', 0],
+      ['plan_review', 0],
+      ['task_review', 0],
+      ['simplify', 1],
+      ['final_review', 1],
+    ]);
+    expect(diagram.small.map((s) => s.warnings)).toEqual([0, 0, 0]);
+  });
+
+  test('a box counts the session warnings first seen in its 7 days, but not with showing on', async () => {
+    const raw = fixture('report-v5');
+    const text = `WARN: session ${raw.sessions[0].file.split('/').pop()}: plan review without plan-simplifier: an invented plan`;
+    raw.sessions[0].warns = [text];
+    raw.sessions[0].warnings = [{ text, kind: 'plan_review_without_simplify', step: { step: 'plan_review' } }];
+    const db = dbWith(raw);
+    expect((await home(db)).diagram.full.find((s) => s.step === 'plan_review')?.warnings).toBe(1);
+    setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
+    expect((await home(db)).diagram.full.find((s) => s.step === 'plan_review')?.warnings).toBe(0);
+  });
+
+  test("a session warning stops counting once the latest export drops its line or its session", async () => {
+    const raw = fixture('report-v5');
+    const text = `WARN: session ${raw.sessions[0].file.split('/').pop()}: plan review without plan-simplifier: an invented plan`;
+    raw.sessions[0].warns = [text];
+    raw.sessions[0].warnings = [{ text, kind: 'plan_review_without_simplify', step: { step: 'plan_review' } }];
+    const box = async (db: Db) => (await home(db)).diagram.full.find((s) => s.step === 'plan_review')?.warnings;
+    // The next export still holds the session, without the line.
+    expect(await box(dbWith(raw, fixture('report-v5')))).toBe(0);
+    // The next export no longer holds the session.
+    const gone = fixture('report-v5');
+    gone.sessions = [];
+    expect(await box(dbWith(raw, gone))).toBe(0);
   });
 
   test('fix-checks count open and round 3', async () => {
@@ -221,7 +261,10 @@ test('a run date with no zone is UTC, so Sunday 07:00 starts its week', () => {
 });
 
 test('no response field holds a slash-containing project or a transcript path', async () => {
-  const db = dbWith(fixture('report-full'), fixture('report-later'));
+  // report-later keeps report-full's warned session, so its warning stays current.
+  const later = fixture('report-later');
+  later.sessions.push(fixture('report-full').sessions[1]);
+  const db = dbWith(fixture('report-full'), later);
   // Everything ever seen goes to the feed, the session warning included.
   setSeenAt(db, new Date(0));
   const response = await home(db);

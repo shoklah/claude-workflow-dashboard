@@ -41,6 +41,9 @@ export const warnings = sqliteTable(
     key: text('key').notNull(),
     text: text('text').notNull(),
     firstSeenAt: time('first_seen_at').notNull(),
+    // The latest known kind and step of the warning's object (CR4), null for a warning no export gave one.
+    warningKind: text('warning_kind'),
+    stepKind: text('step_kind'),
   },
   (t) => [primaryKey({ columns: [t.kind, t.key, t.text] })],
 );

@@ -12,6 +12,7 @@ import {
   type HomeResponse,
   type RunEntry,
   type RunFacts,
+  type SessionEntry,
   type Step,
   type StepKind,
   type WeekNumbers,
@@ -99,12 +100,14 @@ export function coverageFrom(runs: StoredUnit<RunEntry>[]): string | null {
   return times.sort((a, b) => parseTime(a).getTime() - parseTime(b).getTime())[0] ?? null;
 }
 
-/** A diagram tab's step boxes: per step kind, the steps that ran, their findings and those acted on. */
-function diagramSteps(steps: Step[], kinds: StepKind[]): DiagramStep[] {
+/** A diagram tab's step boxes: per step kind, the steps that ran, their findings and those acted on, and the warnings
+ * naming it. */
+function diagramSteps(steps: Step[], kinds: StepKind[], warnings: StoredWarning[]): DiagramStep[] {
   return kinds.map((step) => {
     const ran = steps.filter((s) => s.step === step);
     const split = splitFindings(ran);
-    return { step, ran: ran.length, findings: split.total, actedOn: split.actedOn, warnings: 0 };
+    const named = warnings.filter((w) => w.stepKind === step).length;
+    return { step, ran: ran.length, findings: split.total, actedOn: split.actedOn, warnings: named };
   });
 }
 
@@ -122,14 +125,15 @@ function fixLine(steps: Step[]): FixLine {
  * scope, the numbers still count every run, but the feed holds only the shown projects' runs and run warnings. */
 export function homeView(input: {
   runs: StoredUnit<RunEntry>[];
+  sessions: StoredUnit<SessionEntry>[];
   warnings: StoredWarning[];
   seenAt: Date | null;
   now: Date;
   scope: Scope | null;
 }): HomeResponse {
   const { seenAt, now, scope } = input;
-  // Only the current warnings show: a run's are the texts in its latest warns.
-  const warnings = currentWarnings(input.runs, input.warnings);
+  // Only the current warnings show (currentWarnings).
+  const warnings = currentWarnings(input.runs, input.sessions, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
   const names = storedNames(input.runs);
   const runs: Run[] = input.runs.map((unit) => {
@@ -170,8 +174,19 @@ export function homeView(input: {
   // beforeSteps.
   const recent = runs.filter((r) => r.finished.getTime() > now.getTime() - 7 * DAY);
   const withSteps = recent.filter((r) => !r.facts.beforeSteps);
-  const fullSteps = stepsOf(withSteps.filter((r) => r.facts.path === 'full' || r.facts.path === 'plan'));
-  const smallSteps = stepsOf(withSteps.filter((r) => r.facts.path === 'small'));
+  const fullRuns = withSteps.filter((r) => r.facts.path === 'full' || r.facts.path === 'plan');
+  const smallRuns = withSteps.filter((r) => r.facts.path === 'small');
+  const fullSteps = stepsOf(fullRuns);
+  const smallSteps = stepsOf(smallRuns);
+  // A tab's warnings: the current warnings of its runs, and the session warnings first seen in the 7 days, left out
+  // with a scope.
+  const recentSessions = scope
+    ? []
+    : warnings.filter((w) => w.kind === 'session' && w.firstSeenAt.getTime() > now.getTime() - 7 * DAY);
+  const warningsOf = (of: Run[]) => [
+    ...warnings.filter((w) => w.kind === 'run' && of.some((r) => r.unit.key === w.key)),
+    ...recentSessions,
+  ];
 
   // The feed's runs: with a scope, the shown projects' runs, named by the scope.
   const shown = runs.flatMap((r) => {
@@ -217,8 +232,8 @@ export function homeView(input: {
     thisWeek: numbers[CHART_WEEKS - 1],
     lastWeek: numbers[CHART_WEEKS - 2],
     diagram: {
-      full: diagramSteps(fullSteps, FULL_STEPS),
-      small: diagramSteps(smallSteps, SMALL_STEPS),
+      full: diagramSteps(fullSteps, FULL_STEPS, warningsOf(fullRuns)),
+      small: diagramSteps(smallSteps, SMALL_STEPS, warningsOf(smallRuns)),
       fixChecks: { full: fixLine(fullSteps), small: fixLine(smallSteps) },
       beforeSteps: recent.filter((r) => r.facts.beforeSteps).length,
     },

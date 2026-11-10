@@ -1,5 +1,13 @@
 import type { Context, Hono } from 'hono';
-import { toPath, weekStart, type FindingsQuery, type RunEntry, type RunsQuery } from '@cwd/shared';
+import {
+  toPath,
+  toStepKind,
+  weekStart,
+  type ComplianceQuery,
+  type FindingsQuery,
+  type RunEntry,
+  type RunsQuery,
+} from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
 import {
@@ -15,6 +23,7 @@ import {
   type StoredUnit,
 } from './db/read.ts';
 import { projectKey } from './keys.ts';
+import { complianceView } from './views/compliance.ts';
 import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
 import { modelsView } from './views/models.ts';
@@ -76,6 +85,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     return c.json(
       homeView({
         runs,
+        sessions: listUnits(deps.db, 'session'),
         warnings: listWarnings(deps.db),
         seenAt: getSeenAt(deps.db),
         now: deps.now(),
@@ -149,6 +159,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       }),
     );
   });
+
   // Slice 2b, task 4: the Skills page, with the reporter's all-time missing counts from the last good import's totals.
   app.get('/api/skills', (c) => {
     const runs = listUnits(deps.db, 'run');
@@ -163,6 +174,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       }),
     );
   });
+
   // Slice 2b, task 5: the Models and advisor page, with the reporter's all-time figures from the last good import.
   app.get('/api/models', (c) => {
     const runs = listUnits(deps.db, 'run');
@@ -172,6 +184,27 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
         totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),
+        scope: scopeFor(runs),
+      }),
+    );
+  });
+
+  // Slice 2b, task 6: the Compliance page, its warnings by kind and week.
+  app.get('/api/compliance', (c) => {
+    const query: ComplianceQuery = {
+      ...periodQuery(c),
+      resolved: c.req.query('resolved') === '1',
+      step: toStepKind(c.req.query('step')),
+    };
+    const runs = listUnits(deps.db, 'run');
+    return c.json(
+      complianceView({
+        runs,
+        sessions: listUnits(deps.db, 'session'),
+        warnings: listWarnings(deps.db),
+        query,
+        now: deps.now(),
+        seenAt: getSeenAt(deps.db),
         scope: scopeFor(runs),
       }),
     );

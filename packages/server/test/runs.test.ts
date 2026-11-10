@@ -297,9 +297,9 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
   const view = runView(
     stored,
     [
-      { kind: 'run', key: FULL, text, firstSeenAt: NOW },
-      { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW },
-      { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW },
+      { kind: 'run', key: FULL, text, firstSeenAt: NOW, warningKind: null, stepKind: null },
+      { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW, warningKind: null, stepKind: null },
+      { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW, warningKind: null, stepKind: null },
     ],
     new Map(),
     null,

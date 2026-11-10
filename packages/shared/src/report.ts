@@ -254,3 +254,8 @@ export function reporterTotals(totals: unknown): Totals | null {
 export function toPath(value: unknown): Path | undefined {
   return PATHS.find((p) => p === value);
 }
+
+/** A value as a step kind, or undefined when it isn't one. */
+export function toStepKind(value: unknown): StepKind | undefined {
+  return STEP_KINDS.find((k) => k === value);
+}
