@@ -75,6 +75,9 @@ export const Full: Story = {
     const reviewer = (await canvas.findByRole('rowheader', { name: 'final-reviewer' })).closest('tr')!;
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     const [agents, main, facts, weeks] = canvas.getAllByRole('table');
+    // Each table scrolls sideways in its own named, focusable region.
+    await expect(canvas.getByRole('region', { name: 'Main sessions' })).toHaveAttribute('tabindex', '0');
+    await expect(within(canvas.getByRole('region', { name: 'Advisor weeks' })).getByRole('table')).toBe(weeks);
     await expect(columns(agents)).toEqual(['Agent', 'Requested', 'Ran on', 'Mismatchesreporter, all time']);
     await expect(cells(reviewer)).toEqual(['-/xhigh 5', 'fable-5-1/xhigh 4 · opus-5-5/xhigh 1', '1']);
 

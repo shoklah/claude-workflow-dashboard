@@ -53,8 +53,17 @@ export function nonZeroCountsLabel(counts: Record<string, number>): string {
 /** The advisor's notes, those that changed something and its share of Fable spend, as a whole percent: "notes 12 ·
  * changed 9 · share 8%". */
 export function advisorLabel(advisor: { notes: number | null; changed: number | null; share: number | null }): string {
-  const share = formatPercent(advisor.share === null ? null : Math.round(advisor.share));
-  return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${share}`;
+  return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${formatShare(advisor.share)}`;
+}
+
+/** The advisor's share of Fable spend as a whole percent: "8%"; a dash when it isn't known. */
+export function formatShare(share: number | null): string {
+  return formatPercent(share === null ? null : Math.round(share));
+}
+
+/** An advisor week's stop mark: "STOP" when its share passed the stop share, else nothing. */
+export function stopLabel(stop: boolean | null): string {
+  return stop ? 'STOP' : '';
 }
 
 /** The tokens of every kind together, compact: "9.8M", "333K", a kind that isn't known as 0; a dash when they aren't

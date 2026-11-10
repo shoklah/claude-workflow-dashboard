@@ -8,17 +8,19 @@ import {
   advisorRolesLabel,
   countsLabel,
   formatCost,
-  formatPercent,
+  formatShare,
   formatTokens,
   stageTableLabel,
+  stopLabel,
   weekLabel,
 } from '../lib/format.ts';
 import { ListFilters, listPath } from '../runs/RunsPage.tsx';
 
-/** A table under the static page's column names, a row saying `empty` when it has no rows. */
-function ModelsTable(props: { columns: ReactNode[]; empty?: string; children: ReactNode[] }) {
+/** A table under the static page's column names, a row saying `empty` when it has no rows, scrolling sideways in a
+ * region named `label`. */
+function ModelsTable(props: { label: string; columns: ReactNode[]; empty?: string; children: ReactNode[] }) {
   return (
-    <Table>
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': props.label }}>
       <TableHeader>
         <TableRow>
           {props.columns.map((column, i) => (
@@ -63,7 +65,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
   return (
     <>
       <h2 className="font-semibold">Agents</h2>
-      <ModelsTable columns={['Agent', 'Requested', 'Ran on', marked('Mismatches')]} empty="No dispatches in this period.">
+      <ModelsTable label="Agents" columns={['Agent', 'Requested', 'Ran on', marked('Mismatches')]} empty="No dispatches in this period.">
         {agents.map((row) => (
           <TableRow key={row.name}>
             <TableHead scope="row">{row.name}</TableHead>
@@ -74,7 +76,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
         ))}
       </ModelsTable>
       <h2 className="font-semibold">Main sessions</h2>
-      <ModelsTable columns={['Main session', marked('Stage table'), 'Ran on', marked('Differs')]}>
+      <ModelsTable label="Main sessions" columns={['Main session', marked('Stage table'), 'Ran on', marked('Differs')]}>
         {main.map((row) => (
           <TableRow key={row.path}>
             <TableHead scope="row">{row.path}</TableHead>
@@ -85,7 +87,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
         ))}
       </ModelsTable>
       <h2 className="font-semibold">Advisor</h2>
-      <ModelsTable columns={[marked('Advisor'), 'Value']}>
+      <ModelsTable label="Advisor" columns={[marked('Advisor'), 'Value']}>
         {advisorRows.map(([name, value]) => (
           <TableRow key={name}>
             <TableHead scope="row">{name}</TableHead>
@@ -94,6 +96,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
         ))}
       </ModelsTable>
       <ModelsTable
+        label="Advisor weeks"
         columns={[marked('Week'), 'Advisor', 'Fable', 'Share', 'Stop']}
         empty="No advisor weeks in this period."
       >
@@ -102,8 +105,8 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
             <TableHead scope="row">{weekLabel(week.week)}</TableHead>
             <TableCell>{formatCost(week.advisor)}</TableCell>
             <TableCell>{formatCost(week.fable)}</TableCell>
-            <TableCell>{formatPercent(week.share === null ? null : Math.round(week.share))}</TableCell>
-            <TableCell>{week.stop ? 'STOP' : ''}</TableCell>
+            <TableCell>{formatShare(week.share)}</TableCell>
+            <TableCell>{stopLabel(week.stop)}</TableCell>
           </TableRow>
         ))}
       </ModelsTable>
