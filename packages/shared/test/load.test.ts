@@ -38,7 +38,7 @@ describe('loadReport', () => {
     expect(report.totals.advisor?.weeks?.[0].stop).toBe(false);
   });
 
-  test('accepts a failing-test entry whose task isn\u2019t a number, as the raw record a session wrote', () => {
+  test('accepts a failing-test entry whose task isn’t a number, as the raw record a session wrote', () => {
     const json = fixture('report-v5');
     const run = json.runs.find((r: { schema: number }) => r.schema === 5);
     run.record.failing_test = [{ task: 'wave A', result: 'passed' }, { task: null, result: 'exempt' }];
