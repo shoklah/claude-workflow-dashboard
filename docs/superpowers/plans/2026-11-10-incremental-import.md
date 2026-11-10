@@ -22,7 +22,7 @@
 ## Review Focus
 
 1. The reporter's state was lost or rebuilt: the returned cursor has another state id, so the export is full and every stored unit it lacks is marked missing (Task 1 test).
-2. The import fails after the reporter already advanced its state: the stored cursor is unchanged, so the next run sends the old one and gets every change since (Task 2 test).
+2. The import fails after the reporter already advanced its state (at the loader, or a throw inside the store's transaction): the stored cursor is unchanged, so the next run sends the old one and gets every change since (Task 2 tests).
 3. A key in `removed` that is already missing keeps its first `missingSince` (Task 1 test).
 4. A plain export with no `cursor` after a stored one: imported as full, the stored cursor kept (Task 1 test).
 
@@ -50,7 +50,7 @@ Extend the `importFixture` helper with an optional `sent` and a `change(raw)` ca
 
 - `isIncremental`: `(null, 'a:2')` false; `('a:1', 'a:2')` true; `('a:2', 'a:2')` false; `('a:3', 'a:2')` false; `('a:1', 'b:2')` false; `('a:1', null)` false; `('a:1', 'a2')` false; `('a:1', 'a:x')` false; an id holding `:` (`('a:b:1', 'a:b:2')`) true, since the sequence is after the last `:`.
 - 'an incremental export marks only removed units missing': full import with `cursor 's1:1'` at FIRST; then at LATER, sent `'s1:1'`, the export carries only run 0, `cursor 's1:2'`, `removed: { runs: [key of run 1], sessions: [key of session 0] }` → run 1 and session 0 have `missingSince` LATER; runs 0, 2, 3, 4 and session 1 have `missingSince` null; `getCursor` is `'s1:2'`.
-- 'a removed key already missing keeps its first time': as above, then a third incremental at a later time (sent `'s1:2'`, cursor `'s1:3'`) removing run 1 again → its `missingSince` stays LATER.
+- 'a removed key already missing keeps its first time': as above, then a third incremental at a later time (sent `'s1:2'`, cursor `'s1:3'`) removing run 1 again → its `missingSince` stays LATER; then a fourth incremental (sent `'s1:3'`, cursor `'s1:4'`) carrying run 1 → its `missingSince` is null.
 - 'a removed key that was never stored is ignored': `removed.runs: ['0000000000000000']` → no throw, no unit added.
 - 'another state id is a full export': stored `'s1:1'`, then sent `'s1:1'`, export holds only run 0 and session 0 with `cursor 's2:1'` and an empty `removed` → runs 1–4 and session 1 are marked missing; `getCursor` is `'s2:1'`.
 - 'an export with no cursor is full and keeps the stored cursor': stored `'s1:1'`, then a plain export (no `cursor`) holding only run 0 and session 0, sent `'s1:1'` → the other units are marked missing; `getCursor` is still `'s1:1'`.
@@ -86,6 +86,7 @@ git commit -m "feat: import CR6's incremental exports: stored cursor, removed ke
 - Modify: `packages/server/src/reporter.ts` (`importOnce`)
 - Modify: `packages/server/src/dev-fixtures.ts` (both `['cat', file]` commands)
 - Modify: `CLAUDE.md` (`## Code conventions`, one line)
+- Modify: `README.md` (line 3's command and the `reporterCommand` row)
 - Test: `packages/server/test/reporter.test.ts`
 
 **Interfaces:**
@@ -93,10 +94,12 @@ git commit -m "feat: import CR6's incremental exports: stored cursor, removed ke
 
 - [ ] **Step 1: Write the failing tests** in `reporter.test.ts`, `describe('importOnce')`
 
-Switch the existing `['cat', fixturePath(...)]` commands in `importOnce`'s tests to `['sh', '-c', 'cat "$0"', fixturePath(...)]`, which ignores the appended arguments (`runReporter`'s own tests keep `cat`). New tests, each with a stand-in that records its arguments: `['sh', '-c', 'echo "$2 $3" >> "$1"; cat "$0"', file, argsFile]`, where `file` is a temp copy of `report-full` with a `cursor` set:
+Switch the existing `['cat', fixturePath(...)]` commands in `importOnce`'s tests to `['sh', '-c', 'cat "$0"', fixturePath(...)]`, which ignores the appended arguments (`runReporter`'s own tests keep `cat`), and 'an empty output is a failed import, never an empty one' from `nodeScript('')` to `['sh', '-c', ':']` (node refuses the appended `--changed-since`). New tests, each with a stand-in that records its arguments: `['sh', '-c', 'echo "$2 $3" >> "$1"; cat "$0"', file, argsFile]`, where `file` is a temp copy of `report-full` with a `cursor` set:
 
 - 'sends 0 when no cursor is stored, then the stored cursor': two `importOnce` runs (the file's cursor `'s1:1'`, then rewritten to `'s1:2'` between them) → `argsFile` lines are `--changed-since 0` then `--changed-since s1:1`; `getCursor(db)` is `'s1:2'`.
 - 'a failed import keeps the cursor': after a good import storing `'s1:1'`, a run whose stand-in prints a report failing the loader (`report-shape`'s content with `cursor 's1:2'`) → `getCursor(db)` is still `'s1:1'`, and the next run sends `--changed-since s1:1`.
+- 'a store that throws keeps the cursor': after a good import storing `'s1:1'`, a trigger `CREATE TRIGGER fail_import BEFORE INSERT ON imports WHEN NEW.ok = 1 BEGIN SELECT RAISE(ABORT, 'database is locked'); END` (as the existing store-failure test does), then an export with cursor `'s1:2'` → `lastImport` is the recorded failure, `getCursor(db)` is still `'s1:1'`, and the units are unchanged.
+- 'an empty reporter command is a recorded failure' (existing) keeps its `/^import failed: /` expectation.
 
 - [ ] **Step 2: Run them and see them fail**
 
@@ -105,19 +108,20 @@ Expected: FAIL (no arguments recorded; the cursor isn't stored).
 
 - [ ] **Step 3: Implement**
 
-- `importOnce`: read `getCursor(db)` before running, run `[...config.reporterCommand, '--changed-since', sent ?? '0']`, and pass `sent` to `importReport`. Doc comment: the cursor sent and why a failure keeps it.
+- `importOnce`: throw `new Error('no reporter command')` inside its `try` when `config.reporterCommand` is empty (so the empty command is still recorded as `import failed: …`, never as a flag that failed to start; the doc comment's example stays true); read `getCursor(db)` before running, run `[...config.reporterCommand, '--changed-since', sent ?? '0']`, and pass `sent` to `importReport`. Doc comment: the cursor sent and why a failure keeps it.
 - `dev-fixtures.ts`: both commands become `['sh', '-c', 'cat "$0"', file]`.
+- `README.md`: line 3 says it runs `workflow-report.py --json --changed-since <cursor>`; the `reporterCommand` row adds that the dashboard appends `--changed-since <cursor>`, so an override must accept it and must not pass `--since`.
 - `CLAUDE.md`, under `## Code conventions`: "`importOnce` appends `--changed-since <getCursor or 0>` to the reporter command, so a command standing in for the reporter (dev:fixtures, tests) ignores extra arguments: `['sh', '-c', 'cat \"$0\"', file]`; check:real runs the plain command, which never touches the reporter's state."
 
 - [ ] **Step 4: Run the server tests, the type check and dev:fixtures' start**
 
 Run: `pnpm exec vitest run packages/server && pnpm typecheck`
-Expected: PASS. Then run `pnpm --filter @cwd/server dev:fixtures` in the background, check it logs that it listens (every fixture imported), and stop it.
+Expected: PASS. Then run `PORT=4399 pnpm --filter @cwd/server dev:fixtures` in the background (never the default 4317, the installed dashboard's), check it logs `dashboard on http://localhost:4399` (every fixture imported), and stop it.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/server/src/reporter.ts packages/server/src/dev-fixtures.ts packages/server/test/reporter.test.ts CLAUDE.md
+git add packages/server/src/reporter.ts packages/server/src/dev-fixtures.ts packages/server/test/reporter.test.ts CLAUDE.md README.md
 git commit -m "feat: importOnce sends the stored cursor with --changed-since"
 ```
 
@@ -125,6 +129,7 @@ git commit -m "feat: importOnce sends the stored cursor with --changed-since"
 
 **Files:**
 - Modify: `packages/server/src/check-real.ts` (after the `run keys:` line)
+- Modify: `packages/shared/fixtures/report-v6.json` (session 0's stale `key` `1570f96429a1194d` becomes `233f23f883fa7c21`, its file's `sessionKey`; `key` isn't in `ReportSchema`, so no response or baseline changes)
 - Test: `packages/server/test/check-real.test.ts`
 
 **Interfaces:**
@@ -134,7 +139,7 @@ git commit -m "feat: importOnce sends the stored cursor with --changed-since"
 
 - [ ] **Step 1: Write the failing tests** in `check-real.test.ts`
 
-A new line right after `run keys: …`: `reporter keys: N compared, M differ` (counts only, never a key), or `reporter keys: not in the export` when no run or session carries a string `key`. Counted on the raw `runs` and `sessions` like `run keys`: a unit with a string `key` is compared with `runKey`/`sessionKey` of it (a run whose `runKey` is null differs).
+A new line right after `run keys: …`: `reporter keys: N compared, M differ` (counts only, never a key), or `reporter keys: not in the export` when no run or session carries a string `key`. Counted on the raw `runs` and `sessions` like `run keys`: a unit with a string `key` is compared with `runKey`/`sessionKey` of it (a run whose `runKey` is null differs; a session that isn't an object with a string `file` differs, never hashed, since `sessionKey` would throw on it and the line runs before the loader's result is checked).
 
 - Every existing expected output gains `reporter keys: not in the export\n` after the `run keys` line (`report-full`, `report-v5` have no `key`); `report-v6`'s gains `reporter keys: 12 compared, 0 differ\n` (7 runs and 5 sessions carry a `key`).
 - 'counts reporter keys that differ': `report-v6` with one run's `key` and one session's `key` replaced by `'0000000000000000'` → `reporter keys: 12 compared, 2 differ`, and the output doesn't contain `0000000000000000`.
@@ -154,6 +159,6 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/server/src/check-real.ts packages/server/test/check-real.test.ts
+git add packages/server/src/check-real.ts packages/server/test/check-real.test.ts packages/shared/fixtures/report-v6.json
 git commit -m "feat: check:real compares the reporter's unit keys with the app's"
 ```
