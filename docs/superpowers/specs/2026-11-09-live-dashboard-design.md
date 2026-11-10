@@ -270,7 +270,7 @@ After CR10, the table also lists the reviewers' strengths.
 
   A session that a run now covers counts with its run, not as a session, as the reporter counts it. The Sessions page lists it with its link, behind a filter.
 - **Reading CR10's labels** (2b): CR10 shipped as record schema 5.
-  - **The exported list replaces the app's.** `--json`'s top-level `categories` holds the version, the tie-break rule, the validity definitions, and per area a list of `{id, label, means}`. Its snake_case ids, including the plan list's `code_facts`, replace the app's list. A label's list identity becomes the exported version (`workflow-<N>`), so every finding is relabelled once. The labeller's prompt uses the export's `means` sentences, rule and validity definitions, so both judges pick from the same text.
+  - **The exported list replaces the app's.** `--json`'s top-level `categories` holds the version, the tie-break rule, the validity definitions, and per area a list of `{id, label, means}`. Its snake_case ids, including the plan list's `code_facts`, replace the app's list, which goes: an export with no list gets no labels. A label's list identity becomes the exported version, stored as `100 + N`, so every finding is relabelled once. Until its new label lands, a finding sits in its area's unlabelled row (decision 51). The labeller's prompt uses the export's `means` sentences, rule and validity definitions, so both judges pick from the same text.
   - **Workflow labels win.** A finding's `category` and `validity` (CR10's name for the session's valid, invalid or unclear call) are the facts shown. The app's call shows only where it differs. The Valid column shows `validity`.
   - **Strengths:** a review step's `strengths` list on the run page, and strengths by category as a measure on the Findings page.
   - **Turned on:** "App differs" and the per-cell "by the app" split (decision 49). The page line saying every label is the app's shows only while no finding carries a workflow label.
@@ -402,6 +402,11 @@ CR6 can land at any point without a visible change. To check in planning: that e
     - 2c: the Sessions page and Home's skills-and-commands section, on CR11's fields once it merges.
 
     2b plans against PR #8's and CR10's merged JSON, whose shapes are final, and the owner installs them before the tasks that read them run. This replaces decision 48's "if PR #8 is installed" condition. The Compliance mockup is approved.
+51. **The slice 2b plan is approved** (`docs/superpowers/plans/2026-11-10-live-dashboard-slice-2b.md`), with four readings of the design:
+    - The workflow's list is numbered `100 + N` in the labels' existing column, so no stored label moves.
+    - During the one-time relabel, findings show as unlabelled, not under 2a's labels.
+    - With no exported list, nothing is labelled.
+    - The four basics pages' views keep their leak checks.
 
 ## Claude's calls, open to correction
 
