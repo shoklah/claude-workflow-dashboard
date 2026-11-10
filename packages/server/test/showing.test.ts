@@ -106,6 +106,13 @@ test('the leak check looks for the hidden names, branches and session IDs, not t
   expect(FORBIDDEN).toContain('0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35');
   expect(FORBIDDEN).not.toContain('lantern-notes');
   expect(FORBIDDEN).not.toContain('feature/offline-sync');
+  // Each named by its kinds, for check:real's lines: Archive and Work lantern-notes share a folder name, so only the
+  // Archive root is forbidden of the two.
+  expect(STRINGS.kinds.get(TIDEPOOL)).toEqual(['project path']);
+  expect(STRINGS.kinds.get('tidepool-api')).toEqual(['project folder name']);
+  expect(STRINGS.kinds.get('fix/retry-backoff')).toEqual(['branch']);
+  expect(STRINGS.kinds.get('0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35')).toEqual(['session ID']);
+  expect([...STRINGS.kinds.keys()]).toEqual(STRINGS.forbidden);
 });
 
 test("with showing on, no response holds a path, a session ID or a hidden project's name or branch", async () => {

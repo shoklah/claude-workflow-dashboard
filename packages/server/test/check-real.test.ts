@@ -182,7 +182,20 @@ describe('check:real', () => {
     const [, leakCount, inside] = /^showing: (\d+) leaks \((\d+) inside words\)$/m.exec(stdout) ?? [];
     expect(Number(inside)).toBeGreaterThan(0);
     expect(Number(inside)).toBe(Number(leakCount));
+    // Each leak named by its route and kind, in a key here.
+    expect(stdout).toContain('\nshowing leak: /api/steps?weeks=52: project folder name, in a key, inside a word\n');
     for (const value of ['/Users/', 'app']) expect(`${stdout}${stderr}`).not.toContain(value);
+    expect(status).toBe(1);
+  });
+
+  test('names a hidden branch found as a response key, a limit of the strict check', () => {
+    // A hidden tidepool-api run on a branch named docs, a category id the findings responses hold as a key.
+    const file = changed('report-v6', (raw) => {
+      const run = raw.runs.find((r: { record: { project: string } }) => r.record.project.endsWith('/tidepool-api'));
+      run.record.branch = 'docs';
+    });
+    const { stdout, status } = checkReal(['cat', file]);
+    expect(stdout).toContain('\nshowing leak: /api/findings?weeks=52: branch, in a key and a value\n');
     expect(status).toBe(1);
   });
 
@@ -242,6 +255,11 @@ describe('check:real', () => {
     const aliases = { '/Users/example/Archive/lantern-notes': 'tidepool-api' };
     const { stdout, stderr, status, tmp } = checkReal(['cat', fixturePath('report-projects')], { aliases });
     expect(stdout).toMatch(/^showing: [1-9]\d* leaks \(0 inside words\)$/m);
+    // Each leak named by its route (a run's key as :key) and kind, once per route.
+    expect(stdout).toContain(
+      '\nshowing leak: /api/home: project folder name, in a value\n' +
+        'showing leak: /api/runs/:key: project folder name, in a value\n',
+    );
     expect(`${stdout}${stderr}`).not.toContain('tidepool-api');
     expect(status).toBe(1);
     expect(tmp).toEqual([]);

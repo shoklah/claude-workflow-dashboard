@@ -119,7 +119,8 @@ export function leaks(json: unknown, forbidden: string[], shown: string[], words
 /**
  * What no showing-mode response may hold (`forbidden`): the hidden roots, runs' and sessions' alike, their folder
  * names and their branches (by root), minus any string a shown root or a shown run also has, plus the session IDs.
- * `shown` is the shown roots' folder names, which may hold a forbidden string without revealing it.
+ * `shown` is the shown roots' folder names, which may hold a forbidden string without revealing it. `kinds` names what
+ * each forbidden string is (a project path, a project folder name, a branch, a session ID), for check:real's lines.
  */
 export function forbiddenStrings(
   roots: string[],
@@ -127,12 +128,22 @@ export function forbiddenStrings(
   shownRoots: string[],
   sessionIds: string[],
   sessionRoots: string[],
-): { forbidden: string[]; shown: string[] } {
-  const strings = (root: string) => [root, folderName(root), ...(branches.get(root) ?? [])];
-  const shown = new Set(shownRoots.flatMap(strings));
-  const hidden = [...roots, ...sessionRoots].filter((root) => !shownRoots.includes(root)).flatMap(strings);
+): { forbidden: string[]; shown: string[]; kinds: Map<string, string[]> } {
+  const strings = (root: string): [string, string][] => [
+    [root, 'project path'],
+    [folderName(root), 'project folder name'],
+    ...(branches.get(root) ?? []).map((branch): [string, string] => [branch, 'branch']),
+  ];
+  const shown = new Set(shownRoots.flatMap(strings).map(([s]) => s));
+  const hidden = [
+    ...[...roots, ...sessionRoots].filter((root) => !shownRoots.includes(root)).flatMap(strings),
+    ...sessionIds.map((id): [string, string] => [id, 'session ID']),
+  ].filter(([s, kind]) => s && (kind === 'session ID' || !shown.has(s)));
+  const kinds = new Map<string, string[]>();
+  for (const [s, kind] of hidden) kinds.set(s, [...new Set([...(kinds.get(s) ?? []), kind])]);
   return {
-    forbidden: [...new Set([...hidden.filter((s) => s && !shown.has(s)), ...sessionIds])],
+    forbidden: [...kinds.keys()],
     shown: [...new Set(shownRoots.map(folderName))].filter(Boolean),
+    kinds,
   };
 }

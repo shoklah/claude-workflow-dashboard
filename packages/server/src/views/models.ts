@@ -94,7 +94,7 @@ export function modelsView(input: {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([name, row]) => ({ name, ...row, mismatches: mismatches[name] ?? null })),
     mismatchesSource: 'reporter',
-    main: PATHS.map((path) => {
+    byPath: PATHS.map((path) => {
       const row = totals?.models?.main?.[path];
       return { path, recommended: row?.recommended ?? null, actual: sums.main[path], differs: row?.differs ?? null };
     }),
