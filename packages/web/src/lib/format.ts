@@ -1,4 +1,4 @@
-import type { Area, FindingCell, FindingRow, FindingSplit, FindingsResponse, RunFacts, StepKind } from '@cwd/shared';
+import { parseTime, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -216,6 +216,24 @@ export function usageName(row: { name: string; kind: 'skill' | 'command' }): str
 /** A session's models, each with its most-used effort: "claude-opus-5-5 · medium, claude-sonnet-5-5"; a dash with none. */
 export function modelsLabel(models: { model: string; effort: string | null }[]): string {
   return models.map(({ model, effort }) => joined([model, effort])).join(', ') || NONE;
+}
+
+/** A session's name: its title, "no title" without one. */
+export function sessionName(title: string | null): string {
+  return title ?? 'no title';
+}
+
+/** A session's project: its name, "other project" for one in no stored run's project. */
+export function projectLabel(project: string | null): string {
+  return project ?? 'other project';
+}
+
+/** An empty list of names, as a cell writes it. */
+export const NO_NAMES = 'none';
+
+/** A time of day only, as a session's timeline writes it: "9:07 AM". */
+export function clockTime(iso: string): string {
+  return parseTime(iso).toLocaleTimeString(undefined, { timeStyle: 'short' });
 }
 
 /** A yes-or-no fact: "yes", "no", or a dash when it isn't known. */

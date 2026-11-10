@@ -43,7 +43,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-async function sessions(query = '?weeks=4'): Promise<SessionsResponse> {
+async function sessions(query = '?weeks=4', aliases: Record<string, string> = {}): Promise<SessionsResponse> {
   const app = createApp({
     db,
     port: PORT,
@@ -51,7 +51,7 @@ async function sessions(query = '?weeks=4'): Promise<SessionsResponse> {
     importing: () => false,
     webDist: null,
     now: () => NOW,
-    aliases: {},
+    aliases,
     labeller: null,
   });
   const res = await app.request(`/api/sessions${query}`, { headers: { Host: `localhost:${PORT}` } });
@@ -156,6 +156,13 @@ describe('with showing on lantern-notes', () => {
       runKey('feature/offline-sync', 'plan'),
     ]);
     expect(body.sessions.map((s) => s.sessionId)).toEqual([null, null]);
+  });
+
+  test("a shown session is named by the scope, so the project's alias applies", async () => {
+    setShowing(db, [projectKey(LANTERN)]);
+    const body = await sessions('?weeks=4', { [LANTERN]: 'Lantern' });
+    expect(body.sessions.map((s) => s.project)).toEqual(['Lantern', 'Lantern']);
+    expect(twoRuns(body).holds.map((h) => h.project)).toEqual(['Lantern']);
   });
 
   test('names and titles are masked, and the response leaks nothing', async () => {

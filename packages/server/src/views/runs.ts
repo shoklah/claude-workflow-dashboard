@@ -59,6 +59,15 @@ export function sessionRootOf(project: string | null | undefined): string | null
   return project ? projectRoot(project) : null;
 }
 
+/**
+ * A session's project key from its project (sessionRootOf), only when that root is one of `runRoots`, the stored runs'
+ * roots (rootOf); else null, "other project".
+ */
+export function sessionProjectKey(project: string | null | undefined, runRoots: Set<string>): string | null {
+  const root = sessionRootOf(project);
+  return root && runRoots.has(root) ? projectKey(root) : null;
+}
+
 /** The display name of every stored run's project, by root. */
 export function storedNames(runs: StoredUnit<RunEntry>[]): Map<string, string> {
   return projectNames(runs.map(rootOf));
@@ -162,8 +171,8 @@ export function periodUnits(
   const { filters } = period(query, now);
   const { weeks, runs: inPeriod } = periodRuns(runs, query, now);
   const runRoots = new Set(runs.map(rootOf));
-  const keyOf = (root: string | null) => (root && runRoots.has(root) ? projectKey(root) : '');
-  const kept = ({ project }: SessionEntry) => filters({ path: null, projectKey: keyOf(sessionRootOf(project)) });
+  const kept = ({ project }: SessionEntry) =>
+    filters({ path: null, projectKey: sessionProjectKey(project, runRoots) ?? '' });
   return { weeks, runs: inPeriod, sessions: periodSessions(sessions, weeks).map((unit) => unit.merged).filter(kept) };
 }
 

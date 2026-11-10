@@ -31,6 +31,9 @@ import {
   modelsLabel,
   sessionsSummary,
   yesNoLabel,
+  clockTime,
+  projectLabel,
+  sessionName,
 } from './format.ts';
 
 describe('formatMinutes', () => {
@@ -328,5 +331,25 @@ describe('sessionsSummary', () => {
   it('counts the sessions and those holding a run', () => {
     expect(sessionsSummary([{ holds: [{}] }, { holds: [] }, { holds: [{}, {}] }])).toBe('3 sessions · 2 hold a run');
     expect(sessionsSummary([{ holds: [{}] }])).toBe('1 session · 1 holds a run');
+  });
+});
+
+describe('sessionName', () => {
+  it('names a session by its title, "no title" without one', () => {
+    expect(sessionName('Plan the search index')).toBe('Plan the search index');
+    expect(sessionName(null)).toBe('no title');
+  });
+});
+
+describe('projectLabel', () => {
+  it('names a project, "other project" for a session in no stored run\'s project', () => {
+    expect(projectLabel('atlas')).toBe('atlas');
+    expect(projectLabel(null)).toBe('other project');
+  });
+});
+
+describe('clockTime', () => {
+  it('writes a time of day only, with no date', () => {
+    expect(clockTime('2026-11-10T09:07:00Z')).toMatch(/^\d{1,2}:\d{2}(\s|\u202f)?(AM|PM)?$/);
   });
 });

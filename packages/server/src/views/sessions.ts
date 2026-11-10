@@ -1,4 +1,5 @@
 import {
+  modelsCost,
   parseTime,
   SESSION_FILE,
   type RunEntry,
@@ -9,12 +10,12 @@ import {
   type SessionsResponse,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { projectKey } from '../keys.ts';
 import {
   currentWarnings,
   period,
   periodSessions,
   rootOf,
+  sessionProjectKey,
   sessionRootOf,
   skillOutcomeLabel,
   storedFacts,
@@ -88,8 +89,7 @@ export function sessionsView(input: {
 
   for (const unit of periodSessions(input.sessions, weeks)) {
     const session = unit.merged;
-    const root = sessionRootOf(session.project);
-    const key = root && runRoots.has(root) ? projectKey(root) : null;
+    const key = sessionProjectKey(session.project, runRoots);
     const held = input.runs
       .filter((run) => run.merged.window?.transcript === session.file)
       .map((run) => ({ run, facts: storedFacts(run, names) }))
@@ -121,13 +121,12 @@ export function sessionsView(input: {
       title: maskText(scope, session.title ?? null),
       sessionId: scope ? null : (SESSION_FILE.exec(session.file)?.[1] ?? null),
       projectKey: key,
-      project: key === null ? null : (scope?.names.get(key) ?? names.get(root!) ?? null),
+      project: key === null ? null : (scope?.names.get(key) ?? names.get(sessionRootOf(session.project)!) ?? null),
       start,
       end,
       minutes: end === null ? null : (time(end) - time(start)) / 60000,
       models: models.map(([model]) => ({ model: maskText(scope, model), effort: maskText(scope, mostUsed(model)) })),
-      // As runFacts' cost: null with no models, else the sum of the priced ones.
-      cost: session.models ? models.reduce((sum, [, m]) => sum + (m.cost ?? 0), 0) : null,
+      cost: modelsCost(session.models),
       startup: session.startup ?? null,
       warnings,
       holds: shown.map(({ run, facts }) => ({ runKey: run.key, project: facts.project, branch: facts.branch, path: facts.path })),

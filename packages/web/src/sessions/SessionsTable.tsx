@@ -7,12 +7,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   NONE,
+  NO_NAMES,
   WARNING_BORDER,
   WARNING_INK,
+  clockTime,
   formatCost,
   formatMinutes,
   joined,
   modelsLabel,
+  projectLabel,
+  runName,
+  sessionName,
   usageName,
   yesNoLabel,
 } from '../lib/format.ts';
@@ -39,7 +44,7 @@ type Hold = SessionRow['holds'][number];
 function HoldLink({ hold }: { hold: Hold }) {
   return (
     <Link to="/runs/$key" params={{ key: hold.runKey }} className="underline-offset-2 hover:underline">
-      {joined([hold.project, hold.branch, hold.path])}
+      {joined([runName(hold), hold.path])}
     </Link>
   );
 }
@@ -53,9 +58,9 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
         const hold = session.holds.find((h) => h.runKey === item.runKey);
         return (
           <li key={i}>
-            <span className="mr-2 text-muted-foreground tabular-nums">
-              <Time iso={item.at} />
-            </span>
+            <time dateTime={item.at} className="mr-2 text-muted-foreground tabular-nums">
+              {clockTime(item.at)}
+            </time>
             {item.kind === 'skill' && (
               <>
                 skill <b>{item.name}</b> · {item.outcome ?? NONE}
@@ -78,7 +83,7 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
 /** A session's row and, when open, its timeline's row below it. */
 function SessionRows({ session }: { session: SessionRow }) {
   const [open, setOpen] = useState(false);
-  const name = session.title ?? 'no title';
+  const name = sessionName(session.title);
   const skills = [...new Set(session.timeline.filter((t) => t.kind === 'skill').map((t) => t.name))];
   const commands = new Map<string, boolean>();
   for (const t of session.timeline.filter((t) => t.kind === 'command')) {
@@ -103,14 +108,14 @@ function SessionRows({ session }: { session: SessionRow }) {
           )}
         </TableCell>
         <TableCell className={cn(session.project === null && 'text-muted-foreground')}>
-          {session.project ?? 'other project'}
+          {projectLabel(session.project)}
         </TableCell>
         <TableCell>
           <Time iso={session.start} />
         </TableCell>
         <TableCell className="text-right tabular-nums">{formatMinutes(session.minutes)}</TableCell>
         <TableCell className="whitespace-normal">
-          {skills.length === 0 && <span className="text-muted-foreground">none</span>}
+          {skills.length === 0 && <span className="text-muted-foreground">{NO_NAMES}</span>}
           {skills.map((skill) => (
             <span key={skill} className={TAG}>
               {skill}
@@ -118,7 +123,7 @@ function SessionRows({ session }: { session: SessionRow }) {
           ))}
         </TableCell>
         <TableCell className="whitespace-normal">
-          {commands.size === 0 && <span className="text-muted-foreground">none</span>}
+          {commands.size === 0 && <span className="text-muted-foreground">{NO_NAMES}</span>}
           {[...commands].map(([command, neverLoaded]) => (
             <span key={command} className={cn(TAG, 'font-mono', neverLoaded && [WARNING_BORDER, WARNING_INK])}>
               {usageName({ name: command, kind: 'command' })}
