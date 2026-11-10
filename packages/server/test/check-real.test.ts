@@ -188,6 +188,17 @@ describe('check:real', () => {
     expect(status).toBe(1);
   });
 
+  test('names a hidden branch found as a response key, a limit of the strict check', () => {
+    // A hidden tidepool-api run on a branch named docs, a category id the findings responses hold as a key.
+    const file = changed('report-v6', (raw) => {
+      const run = raw.runs.find((r: { record: { project: string } }) => r.record.project.endsWith('/tidepool-api'));
+      run.record.branch = 'docs';
+    });
+    const { stdout, status } = checkReal(['cat', file]);
+    expect(stdout).toContain('\nshowing leak: /api/findings?weeks=52: branch, in a key and a value\n');
+    expect(status).toBe(1);
+  });
+
   test('prints field paths for a bad shape', () => {
     const { stdout, status } = checkReal(['cat', fixturePath('report-shape')]);
     expect(stdout).toBe('version: 1\nruns[].steps\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\n');

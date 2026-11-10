@@ -7,14 +7,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import {
-  loadReport,
-  PATHS,
-  splitSessionId,
-  type RunEntry,
-  type RunsResponse,
-  type SessionEntry,
-} from '@cwd/shared';
+import { loadReport, PATHS, splitSessionId, type RunEntry, type RunsResponse, type SessionEntry } from '@cwd/shared';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { importReport } from './db/import.ts';
