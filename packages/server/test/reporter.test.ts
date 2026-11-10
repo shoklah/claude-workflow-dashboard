@@ -1,11 +1,12 @@
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { fixture, fixturePath } from '../../shared/test/fixture.ts';
 import type { Config } from '../src/config.ts';
 import { openDb, type Db } from '../src/db/open.ts';
-import { lastGoodImport, lastImport, listUnits } from '../src/db/read.ts';
+import { getCursor, lastGoodImport, lastImport, listUnits } from '../src/db/read.ts';
+import { runKey } from '../src/keys.ts';
 import { importOnce, runReporter } from '../src/reporter.ts';
 
 const AT = new Date('2026-11-10T18:00:00Z');
@@ -123,7 +124,7 @@ describe('importOnce', () => {
   }
 
   test('imports the report', async () => {
-    const { db, config } = setup(['cat', fixturePath('report-full')]);
+    const { db, config } = setup(['sh', '-c', 'cat "$0"', fixturePath('report-full')]);
     await importOnce(db, config, () => AT);
     expect(lastGoodImport(db)).toEqual({ at: AT, totals: fixture('report-full').totals, categories: null });
     expect(listUnits(db, 'run')).toHaveLength(5);
@@ -149,14 +150,14 @@ describe('importOnce', () => {
   });
 
   test('an empty output is a failed import, never an empty one', async () => {
-    const { db, config } = setup(nodeScript(''));
+    const { db, config } = setup(['sh', '-c', ':']);
     await importOnce(db, config, () => AT);
     expect(lastImport(db)).toEqual({ at: AT, ok: false, error: 'reporter printed no JSON' });
     expect(listUnits(db, 'run')).toEqual([]);
   });
 
   test("a bad shape is recorded with its field paths", async () => {
-    const { db, config } = setup(['cat', fixturePath('report-shape')]);
+    const { db, config } = setup(['sh', '-c', 'cat "$0"', fixturePath('report-shape')]);
     await importOnce(db, config, () => AT);
     const last = lastImport(db);
     expect(last).toMatchObject({ at: AT, ok: false });
@@ -164,7 +165,7 @@ describe('importOnce', () => {
   });
 
   test('a store that throws during the import is a recorded failure', async () => {
-    const { db, config } = setup(['cat', fixturePath('report-full')]);
+    const { db, config } = setup(['sh', '-c', 'cat "$0"', fixturePath('report-full')]);
     // Any write of a unit fails, as with SQLITE_BUSY when the database is open elsewhere; the failure row still writes.
     db.$client.exec(
       "CREATE TRIGGER fail_import BEFORE INSERT ON unit_versions BEGIN SELECT RAISE(ABORT, 'database is locked'); END",
@@ -172,6 +173,91 @@ describe('importOnce', () => {
     await importOnce(db, config, () => AT);
     expect(lastImport(db)).toEqual({ at: AT, ok: false, error: 'import failed: database is locked' });
     expect(listUnits(db, 'run')).toEqual([]);
+  });
+
+  /**
+   * A reporter stand-in that records its appended arguments in `argsFile` and prints `file`, which `write` fills with
+   * a fixture's content and a cursor.
+   */
+  function recording(): {
+    command: string[];
+    write: (name: string, cursor: string, change?: (raw: any) => void) => void;
+    sent: () => string[];
+  } {
+    const dir = tempDir();
+    const file = join(dir, 'report.json');
+    const argsFile = join(dir, 'args.txt');
+    return {
+      command: ['sh', '-c', 'echo "$2 $3" >> "$1"; cat "$0"', file, argsFile],
+      write: (name, cursor, change) => {
+        const raw = { ...fixture(name), cursor };
+        change?.(raw);
+        writeFileSync(file, JSON.stringify(raw));
+      },
+      sent: () => readFileSync(argsFile, 'utf8').trim().split('\n'),
+    };
+  }
+
+  test('an incremental export marks only its removed units missing', async () => {
+    const reporter = recording();
+    const { db, config } = setup(reporter.command);
+    reporter.write('report-full', 's1:1');
+    await importOnce(db, config, () => AT);
+    const runs = listUnits(db, 'run').map((u) => u.key);
+    const removed = runKey(fixture('report-full').runs[1]) as string;
+    reporter.write('report-full', 's1:2', (raw) => {
+      raw.runs = [raw.runs[0]];
+      raw.sessions = [];
+      raw.removed = { runs: [removed], sessions: [] };
+    });
+    const LATER = new Date(AT.getTime() + 60_000);
+    await importOnce(db, config, () => LATER);
+    expect(lastImport(db)).toMatchObject({ ok: true });
+    expect(Object.fromEntries(listUnits(db, 'run').map((u) => [u.key, u.missingSince]))).toEqual(
+      Object.fromEntries(runs.map((key) => [key, key === removed ? LATER : null])),
+    );
+    expect(listUnits(db, 'session').map((u) => u.missingSince)).toEqual([null, null]);
+  });
+
+  test('sends 0 when no cursor is stored, then the stored cursor', async () => {
+    const reporter = recording();
+    const { db, config } = setup(reporter.command);
+    reporter.write('report-full', 's1:1');
+    await importOnce(db, config, () => AT);
+    reporter.write('report-full', 's1:2');
+    await importOnce(db, config, () => AT);
+    expect(reporter.sent()).toEqual(['--changed-since 0', '--changed-since s1:1']);
+    expect(getCursor(db)).toBe('s1:2');
+  });
+
+  test('a failed import keeps the cursor', async () => {
+    const reporter = recording();
+    const { db, config } = setup(reporter.command);
+    reporter.write('report-full', 's1:1');
+    await importOnce(db, config, () => AT);
+    reporter.write('report-shape', 's1:2');
+    await importOnce(db, config, () => AT);
+    expect(lastImport(db)).toMatchObject({ ok: false });
+    expect(getCursor(db)).toBe('s1:1');
+    await importOnce(db, config, () => AT);
+    expect(reporter.sent().at(-1)).toBe('--changed-since s1:1');
+  });
+
+  test('a store that throws keeps the cursor', async () => {
+    const reporter = recording();
+    const { db, config } = setup(reporter.command);
+    reporter.write('report-full', 's1:1');
+    await importOnce(db, config, () => AT);
+    const units = listUnits(db, 'run');
+    db.$client.exec(
+      'CREATE TRIGGER fail_import BEFORE INSERT ON imports WHEN NEW.ok = 1 ' +
+        "BEGIN SELECT RAISE(ABORT, 'database is locked'); END",
+    );
+    reporter.write('report-later', 's1:2');
+    await importOnce(db, config, () => AT);
+    expect(lastImport(db)).toEqual({ at: AT, ok: false, error: 'import failed: database is locked' });
+    expect(getCursor(db)).toBe('s1:1');
+    expect(listUnits(db, 'run')).toEqual(units);
   });
 
   test('an empty reporter command is a recorded failure', async () => {

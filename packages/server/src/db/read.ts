@@ -17,6 +17,7 @@ export type StoredWarning = {
 
 const SEEN_AT = 'seenAt';
 const SHOWING = 'showing';
+const CURSOR = 'cursor';
 
 /** Every stored run or session, its merged facts parsed with the loader's schema. */
 export function listUnits(db: Db, kind: 'run'): StoredUnit<RunEntry>[];
@@ -67,6 +68,23 @@ export function setSeenAt(db: Db | Tx, at: Date): void {
     .values({ name: SEEN_AT, value: at.toISOString() })
     .onConflictDoUpdate({ target: state.name, set: { value: at.toISOString() } })
     .run();
+}
+
+/** The reporter's cursor from the last good import, or null when it returned none. */
+export function getCursor(db: Db): string | null {
+  return db.select().from(state).where(eq(state.name, CURSOR)).get()?.value ?? null;
+}
+
+export function setCursor(db: Db | Tx, cursor: string): void {
+  db.insert(state)
+    .values({ name: CURSOR, value: cursor })
+    .onConflictDoUpdate({ target: state.name, set: { value: cursor } })
+    .run();
+}
+
+/** Forgets the stored cursor, so the next import sends `0` and gets a full export. */
+export function clearCursor(db: Db | Tx): void {
+  db.delete(state).where(eq(state.name, CURSOR)).run();
 }
 
 /** Showing mode's picked project keys, or null while it is off. */

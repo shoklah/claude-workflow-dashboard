@@ -1,18 +1,19 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
-// paths, the run key counts, the weeks, run time groups, step kinds, rules and unit figures whose sums differ from the
-// reporter's totals, the count of skills and of models that differ, and the leaks showing mode lets through. It prints
-// no value from the data but those weeks' dates, and no skill or agent name, since a project can name one. Usage:
-// `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
+// paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
+// groups, step kinds, rules and unit figures whose sums differ from the reporter's totals, the count of skills and of
+// models that differ, and the leaks showing mode lets through. It prints no value from the data but those weeks'
+// dates, and no skill or agent name, since a project can name one. Usage: `pnpm --filter @cwd/server check:real
+// [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadReport, PATHS, splitSessionId, type RunEntry, type RunsResponse } from '@cwd/shared';
+import { loadReport, PATHS, splitSessionId, type RunEntry, type RunsResponse, type SessionEntry } from '@cwd/shared';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { importReport } from './db/import.ts';
 import { openDb } from './db/open.ts';
 import { listUnits, setSeenAt, setShowing } from './db/read.ts';
-import { projectKey, runKey } from './keys.ts';
+import { projectKey, runKey, sessionKey } from './keys.ts';
 import { runReporter } from './reporter.ts';
 import { weekSums } from './views/home.ts';
 import { modelSums } from './views/models.ts';
@@ -53,7 +54,7 @@ if (!result.ok) {
   process.exit(1);
 }
 
-const json = result.json as { version?: unknown; runs?: unknown } | null;
+const json = result.json as { version?: unknown; runs?: unknown; sessions?: unknown } | null;
 console.log(`version: ${typeof json?.version === 'number' ? json.version : 'none'}`);
 
 const loaded = loadReport(result.json);
@@ -64,6 +65,22 @@ const runs = Array.isArray(json?.runs) ? (json.runs as unknown[]) : [];
 const keys = runs.map((run) => (typeof run === 'object' && run !== null ? runKey(run as RunEntry) : null));
 const present = keys.filter((key) => key !== null);
 console.log(`run keys: ${present.length - new Set(present).size} duplicates, ${keys.length - present.length} missing`);
+
+// The reporter's unit keys against the app's, since an export's removed keys match stored units only if the recipes
+// agree. A run with no app key is left out, as run keys counts it missing; a session with no string file differs
+// unhashed, as sessionKey would throw on it.
+const sessions = Array.isArray(json?.sessions) ? (json.sessions as unknown[]) : [];
+type Keyed = { key: string; file?: unknown };
+const keyed = (units: unknown[]) =>
+  units.filter((unit): unit is Keyed => typeof (unit as Keyed | null)?.key === 'string');
+const keyedRuns = keyed(runs).filter((run) => runKey(run as RunEntry) !== null);
+const keyedSessions = keyed(sessions);
+const keysDiffer = [
+  ...keyedRuns.filter((run) => run.key !== runKey(run as RunEntry)),
+  ...keyedSessions.filter((s) => typeof s.file !== 'string' || s.key !== sessionKey(s as SessionEntry)),
+].map((unit) => unit.key);
+const compared = keyedRuns.length + keyedSessions.length;
+differLine('reporter keys', `${compared} compared, `, compared ? keysDiffer : null, false);
 
 if (!loaded.ok) process.exitCode = 1;
 else {
