@@ -10,7 +10,7 @@ import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { listUnits } from '../src/db/read.ts';
 import { activeList, type ActiveList } from '../src/categories.ts';
-import { currentLabels, labelInputs, tokensSince, type LabelInput } from '../src/db/labels.ts';
+import { currentLabels, labelInputs, labelledOn, saveBatch, tokensSince, type LabelInput } from '../src/db/labels.ts';
 import {
   anthropicLabelClient,
   LabelError,
@@ -141,6 +141,55 @@ describe('labelPending', () => {
     const labels = currentLabels(db, plan, 101);
     expect(labels.size).toBe(plan.length);
     expect([...labels.values()].every((l) => l.category === 'task_split')).toBe(true);
+  });
+
+  test("a finding whose area has no categories in the list isn't sent; the others are", async () => {
+    const db = imported(fixture('report-v5'));
+    const all = inputs(db);
+    const noPlan: ActiveList = { ...list(db), areas: { ...list(db).areas, plan: [] } };
+    const { batches, client } = stubClient();
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, noPlan);
+    const sent = batches.flat();
+    expect(sent.some((item) => item.area === 'plan')).toBe(false);
+    expect(sent).toHaveLength(all.filter((i) => i.area !== 'plan').length);
+    expect(stored(db)).toBe(sent.length);
+  });
+
+  test('a list with a version but no areas sends nothing', async () => {
+    const raw = fixture('report-v5');
+    raw.categories.areas = null;
+    const db = imported(raw);
+    expect(list(db).number).toBe(101);
+    const { batches, client } = stubClient();
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
+    expect(batches).toEqual([]);
+    expect(tokensSince(db, IMPORTED)).toEqual({ input: 0, output: 0 });
+  });
+
+  test("the daily max counts the day's labels under list 1 too, after the switch to list 101", async () => {
+    const db = freshDb();
+    const raw = fixture('report-full');
+    const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+    if (!loaded.ok) throw new Error('the fixture does not load');
+    importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, IMPORTED);
+    const old = inputs(db).slice(0, 5).map((input) => ({
+      ...input,
+      model: MODEL,
+      category: 'correctness',
+      relevance: 'valid' as const,
+      reason: 'An invented reason.',
+      labelledAt: NOW,
+    }));
+    saveBatch(db, old, { at: NOW, inputTokens: 0, outputTokens: 0 }, 1);
+    const v5 = fixture('report-v5');
+    const loadedV5 = loadReport(JSON.parse(JSON.stringify(v5)));
+    if (!loadedV5.ok) throw new Error('the fixture does not load');
+    importReport(db, loadedV5.report, { runs: v5.runs, sessions: v5.sessions, totals: v5.totals }, IMPORTED);
+    expect(inputs(db).length).toBeGreaterThan(10);
+    const { client } = stubClient();
+    await labelPending(db, client, { model: MODEL, dailyMax: 10 }, LATER_SAME_DAY, list(db));
+    expect(stored(db)).toBe(5);
+    expect(labelledOn(db, NOW)).toBe(10);
   });
 
   test('keeps the first result for an id named twice, and drops an id that was not sent', async () => {

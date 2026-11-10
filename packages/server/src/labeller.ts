@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import { AREAS, RELEVANCE, type Area, type Relevance } from '@cwd/shared';
-import type { ActiveList } from './categories.ts';
+import { labellable, type ActiveList } from './categories.ts';
 import { labelInputs, labelledOn, pendingInputs, saveBatch, type StoredLabel } from './db/labels.ts';
 import type { Db } from './db/open.ts';
 import { listUnits } from './db/read.ts';
@@ -33,7 +33,8 @@ export function labellerSettings(env: Record<string, string | undefined>): { mod
 }
 
 /**
- * Labels the findings with no label from the model under `list` (the active list), in batches, up to the daily max. A
+ * Labels the findings with no label from the model under `list` (the active list), in batches, up to the daily max;
+ * only findings whose area has categories in the list are sent (labellable), so no request has no ids to pick from. A
  * result whose category isn't one of the list's ids for its finding's area, or whose id wasn't sent or was answered
  * already, is dropped. A batch whose client throws stores nothing and is logged, as a LabelError's message or else the
  * error's name, since another error's text can quote the findings; the next batches still go, and the next import
@@ -47,7 +48,7 @@ export async function labelPending(
   list: ActiveList,
 ): Promise<void> {
   const left = settings.dailyMax - labelledOn(db, now);
-  const inputs = labelInputs(listUnits(db, 'run'));
+  const inputs = labellable(labelInputs(listUnits(db, 'run')), list);
   const pending = pendingInputs(db, inputs, settings.model, list.number).slice(0, Math.max(0, left));
   for (let start = 0; start < pending.length; start += BATCH) {
     const batch = new Map(pending.slice(start, start + BATCH).map((input, n) => [`f${n + 1}`, input]));

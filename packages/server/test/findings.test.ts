@@ -227,3 +227,12 @@ test("the labeller's state: off with no labeller, else the findings waiting for 
   expect(on.labeller).toMatchObject({ on: true, waiting: 9 });
   expect((await findings('', { labeller: { model: 'another-model' } })).labeller).toMatchObject({ waiting: 11 });
 });
+
+test('a finding whose area has no categories in the list is not waiting', async () => {
+  db.$client.close();
+  db = dbWith('no plan list', (raw) => {
+    raw.categories.areas = raw.categories.areas.filter((a: { area: string }) => a.area !== 'plan');
+  });
+  // 11 findings have an id; the 5 plan ones can't be labelled.
+  expect((await findings('', { labeller: { model: 'claude-haiku-5-5' } })).labeller).toMatchObject({ waiting: 6 });
+});

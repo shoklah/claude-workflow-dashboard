@@ -9,7 +9,7 @@ import {
   type RunsQuery,
 } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
-import { activeList } from './categories.ts';
+import { activeList, labellable } from './categories.ts';
 import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
 import {
   getRun,
@@ -136,10 +136,11 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const list = activeList(deps.db);
     const labels = list ? currentLabels(deps.db, inputs, list.number) : new Map();
     const now = deps.now();
+    const model = deps.labeller?.model;
     const labeller = {
       on: deps.labeller !== null,
       labelled: labels.size,
-      waiting: deps.labeller && list ? pendingInputs(deps.db, inputs, deps.labeller.model, list.number).length : 0,
+      waiting: model && list ? pendingInputs(deps.db, labellable(inputs, list), model, list.number).length : 0,
       tokensThisWeek: tokensSince(deps.db, weekStart(now)),
     };
     return c.json(findingsView({ runs, labels, list, query: periodQuery(c), now, scope: scopeFor(runs), labeller }));

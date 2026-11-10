@@ -36,6 +36,12 @@ export function activeList(db: Db): ActiveList | null {
   return { number: 100 + list.version, areas, rule: list.rule ?? '', validity: list.validity ?? {} };
 }
 
+/** The inputs whose area has categories in `list`: a finding of an area with none can't be labelled, so it is never
+ * sent or waiting. */
+export function labellable<T extends { area: Area }>(inputs: T[], list: ActiveList): T[] {
+  return inputs.filter((input) => list.areas[input.area].length > 0);
+}
+
 /** Each category's display label by its id, as responses carry them; none with no active list. */
 export function categoryLabels(list: ActiveList | null): Record<string, string> {
   return Object.fromEntries(AREAS.flatMap((area) => list?.areas[area].map((c) => [c.id, c.label]) ?? []));
