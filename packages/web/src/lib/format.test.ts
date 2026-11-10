@@ -5,6 +5,7 @@ import {
   formatMinutes,
   formatPercent,
   labellerLabel,
+  outcomesLabel,
   reporterMark,
   runName,
   weekLabel,
@@ -96,5 +97,12 @@ describe('reporterMark', () => {
     expect(reporterMark.tooltip).toBe(
       "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
     );
+  });
+});
+
+describe('outcomesLabel', () => {
+  it('writes each outcome with its count, or a dash with none', () => {
+    expect(outcomesLabel({ ran: 2, 'applied 2, skipped 1': 1 })).toBe('ran × 2 · applied 2, skipped 1 × 1');
+    expect(outcomesLabel({})).toBe('–');
   });
 });

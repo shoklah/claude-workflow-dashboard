@@ -6,6 +6,7 @@ const ENTRIES = [
   { to: '/', label: 'Home', exact: true },
   { to: '/runs', label: 'Runs', exact: false },
   { to: '/findings', label: 'Findings', exact: false },
+  { to: '/skills', label: 'Skills', exact: false },
 ] as const;
 
 export function Menu() {

@@ -20,6 +20,7 @@ import { homeView } from './views/home.ts';
 import { rootOf, runView, runsList, storedBranches, storedNames } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
 import { showingView } from './views/showing.ts';
+import { skillsView } from './views/skills.ts';
 import { statusView } from './views/status.ts';
 
 /** The answer to any method but POST on a POST-only route. */
@@ -126,4 +127,17 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     };
     return c.json(findingsView({ runs, labels, query: periodQuery(c), now, scope: scopeFor(runs), labeller }));
   });
+
+  // Slice 2b, task 4: the Skills page, with the reporter's all-time missing counts from the last good import's totals.
+  app.get('/api/skills', (c) =>
+    c.json(
+      skillsView({
+        runs: listUnits(deps.db, 'run'),
+        sessions: listUnits(deps.db, 'session'),
+        totals: lastGoodImport(deps.db)?.totals,
+        query: periodQuery(c),
+        now: deps.now(),
+      }),
+    ),
+  );
 }
