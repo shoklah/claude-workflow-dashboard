@@ -28,7 +28,7 @@ const base = loadConfig(dataDir);
 
 for (const [i, file] of files.entries()) {
   const at = new Date(NOW.getTime() - (files.length - i) * HOUR);
-  await importOnce(db, { ...base, reporterCommand: ['cat', file] }, () => at);
+  await importOnce(db, { ...base, reporterCommand: ['sh', '-c', 'cat "$0"', file] }, () => at);
   const result = lastImport(db);
   if (!result?.ok) throw new Error(`fixture ${names[i]} did not import: ${result?.error}`);
 }
@@ -62,7 +62,7 @@ const labels = fixtureLabels.map(({ date, branch, findingId, category, relevance
 });
 saveBatch(db, labels, { at: NOW, inputTokens: 0, outputTokens: 0 }, list.number);
 
-const config = { ...base, reporterCommand: ['cat', files.at(-1)!] };
+const config = { ...base, reporterCommand: ['sh', '-c', 'cat "$0"', files.at(-1)!] };
 const queue = createQueue(() => importOnce(db, config, () => NOW));
 const port = process.env.PORT ? Number(process.env.PORT) : config.port;
 serveApp({

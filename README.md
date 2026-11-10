@@ -1,6 +1,6 @@
 # claude-workflow-dashboard
 
-A live, local dashboard for a Claude Code agentic workflow. It runs the workflow's reporter, `workflow-report.py --json`, on start, whenever the workflow's run log changes, every 15 minutes when a session transcript changed, and on the page's refresh button, keeps every import in a local SQLite database, and shows what the reporter says: runs by path, the findings each review step raised and acted on, warnings, and estimated spend, week by week.
+A live, local dashboard for a Claude Code agentic workflow. It runs the workflow's reporter, `workflow-report.py --json --changed-since <cursor>`, on start, whenever the workflow's run log changes, every 15 minutes when a session transcript changed, and on the page's refresh button, keeps every import in a local SQLite database, and shows what the reporter says: runs by path, the findings each review step raised and acted on, warnings, and estimated spend, week by week.
 
 ![The home page on invented data](packages/web/e2e/home.screens.ts-snapshots/home-screens-linux.png)
 
@@ -37,7 +37,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 | Key | Default |
 |---|---|
 | `port` | `4317` |
-| `reporterCommand` | `["/usr/bin/python3", "-I", "~/.claude/scripts/workflow-report.py", "--json"]`, with `~` expanded |
+| `reporterCommand` | `["/usr/bin/python3", "-I", "~/.claude/scripts/workflow-report.py", "--json"]`, with `~` expanded; the dashboard appends `--changed-since <cursor>`, so an override must accept it and must not pass `--since` |
 | `runLog` | `~/.claude/workflow-log.jsonl` (an import runs when it changes) |
 | `projectsDir` | `~/.claude/projects` (the session transcripts, checked every 15 minutes) |
 | `reporterTimeoutMs` | `120000` |
