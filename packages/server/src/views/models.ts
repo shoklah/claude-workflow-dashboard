@@ -42,7 +42,8 @@ export function modelSums(runs: RunEntry[]): ModelSums {
 /**
  * The Models and advisor page: modelSums over the stored runs in the query's period (period), with the reporter's
  * all-time figures from `totals`, the last good import's: each agent's mismatches, each path's stage table and differs,
- * and the advisor's facts, its weeks only those of the period. With a scope, each name from the units (agents, models,
+ * and the advisor's facts, its weeks only those of the period. An agent with mismatches that no dispatch in the period
+ * names gets a row with no dispatches, as Skills keeps a skill required but not loaded. With a scope, each name from the units (agents, models,
  * efforts, the advisor's roles and failed codes) is masked (maskText) first, so names that mask alike merge and the
  * sums still count every project.
  */
@@ -71,6 +72,9 @@ export function modelsView(input: {
   const mismatches: Record<string, number> = {};
   for (const [name, row] of Object.entries(totals?.models?.agents ?? {})) {
     if (row.mismatches != null) addCount(mismatches, maskText(input.scope, name), row.mismatches);
+  }
+  for (const [name, count] of Object.entries(mismatches)) {
+    if (count > 0) sums.agents[name] ??= { requested: {}, actual: {} };
   }
   const advisor = totals?.advisor;
   let facts: AdvisorFacts | null = null;

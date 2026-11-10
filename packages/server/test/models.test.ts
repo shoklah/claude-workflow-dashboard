@@ -142,7 +142,8 @@ test("the advisor's facts are the reporter's, and its weeks only the period's", 
 
 test('the path and project filters choose the runs whose dispatches and main sessions count', async () => {
   const small = await models('?path=small');
-  expect(small.agents).toEqual([]);
+  // No small run dispatched: only the agent the reporter counts a mismatch for, with no dispatches.
+  expect(small.agents).toEqual([{ name: 'fix-checker', requested: {}, actual: {}, mismatches: 1 }]);
   expect(small.main.map((row) => [row.path, row.actual])).toEqual([
     ['small', { 'claude-opus-5-5/medium': 1 }],
     ['full', {}],
@@ -151,6 +152,19 @@ test('the path and project filters choose the runs whose dispatches and main ses
   const tidepool = byName((await models(`?project=${projectKey(TIDEPOOL)}`)).agents);
   expect(tidepool.has('plan-simplifier')).toBe(false);
   expect(tidepool.get('implementer')?.actual).toEqual({ 'claude-opus-5-5/medium': 3 });
+});
+
+test("an agent with the reporter's mismatches but no dispatch in the period gets a row with none", async () => {
+  db.$client.close();
+  db = dbWith('old agent', (raw) => {
+    raw.totals.models.agents['retired-reviewer'] = { requested: {}, actual: {}, mismatches: 2 };
+    raw.totals.models.agents['quiet-helper'] = { requested: {}, actual: {}, mismatches: 0 };
+  });
+  const agents = byName((await models()).agents);
+  expect(agents.get('retired-reviewer')).toEqual({ name: 'retired-reviewer', requested: {}, actual: {}, mismatches: 2 });
+  // None for an agent with no mismatch.
+  expect(agents.has('quiet-helper')).toBe(false);
+  expect([...agents.keys()]).toEqual([...agents.keys()].sort());
 });
 
 test("the reporter's figures are null when the last export's totals have none", async () => {
@@ -186,6 +200,9 @@ test("with showing on, the sums count every project and hold no hidden project's
     dispatch.agent = 'tidepool-api-deployer';
     dispatch.requested_model = 'feature/webhooks';
     raw.totals.models.agents['tidepool-api-deployer'] = { requested: {}, actual: {}, mismatches: 1 };
+    // Two agents named after the hidden project's branches, never dispatched, with the reporter's mismatches.
+    raw.totals.models.agents['feature/webhooks-auditor'] = { requested: {}, actual: {}, mismatches: 1 };
+    raw.totals.models.agents['fix/retry-backoff-auditor'] = { requested: {}, actual: {}, mismatches: 2 };
     raw.totals.advisor.by_role['tidepool-api-deployer'] = { calls: 1, flagged: false };
     raw.totals.advisor.failed['tidepool-api.timeout'] = 1;
   });
@@ -196,6 +213,10 @@ test("with showing on, the sums count every project and hold no hidden project's
     mismatches: 1,
   });
   expect(byName(body.agents).get('implementer')?.actual).toEqual({ 'claude-opus-5-5/medium': 3 });
+  // Their names mask alike, so their rows merge.
+  expect(body.agents.filter((row) => row.name.endsWith('-auditor'))).toEqual([
+    { name: 'another branch-auditor', requested: {}, actual: {}, mismatches: 3 },
+  ]);
   expect(body.advisor.facts?.byRole['another project-deployer']).toEqual({ calls: 1, flagged: false });
   expect(body.advisor.facts?.failed).toEqual({ overloaded_error: 1, 'another project.timeout': 1 });
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);

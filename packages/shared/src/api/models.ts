@@ -1,7 +1,8 @@
 import type { Path } from '../report.ts';
 
 /** An agent type's dispatches over a period, as the reporter's model_totals: their `model/effort` pairs as asked for
- * and as run, and `mismatches`, the reporter's all-time count of those that ran off their request. */
+ * and as run (none for an agent with mismatches but no dispatch in the period), and `mismatches`, the reporter's
+ * all-time count of those that ran off their request. */
 export type AgentModels = {
   name: string;
   requested: Record<string, number>;
