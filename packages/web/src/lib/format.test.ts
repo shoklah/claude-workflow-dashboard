@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cellShade,
   countLabel,
+  countsLabel,
   formatMinutes,
   formatPercent,
   labellerLabel,
@@ -40,6 +41,17 @@ describe('runName', () => {
 describe('countLabel', () => {
   it('writes a count line key as words', () => {
     expect(countLabel('not_proportionate')).toBe('not proportionate');
+  });
+});
+
+describe('countsLabel', () => {
+  it('writes the counts that are not 0, in their order, as words', () => {
+    expect(countsLabel({ small: 4, full: 0, plan: 1 })).toBe('small 4 · plan 1');
+    expect(countsLabel({ fix_rounds: 2 })).toBe('fix rounds 2');
+  });
+  it('writes "none" when every count is 0', () => {
+    expect(countsLabel({ critical: 0, important: 0 })).toBe('none');
+    expect(countsLabel({})).toBe('none');
   });
 });
 

@@ -32,6 +32,12 @@ export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
 }
 
+/** Counts by key, as the static page writes them, without the zeros: "small 4 · full 2", or "none". */
+export function countsLabel(counts: Record<string, number>): string {
+  const known = Object.entries(counts).filter(([, n]) => n > 0);
+  return known.length === 0 ? 'none' : known.map(([key, n]) => `${countLabel(key)} ${n}`).join(' · ');
+}
+
 // The categories whose display label adds the spec's parentheses; the others show as they are stored.
 const CATEGORY_LABELS: Record<string, string> = {
   scope: 'scope (missing or extra work)',
