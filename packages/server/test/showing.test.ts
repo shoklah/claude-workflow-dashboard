@@ -194,6 +194,14 @@ test('leaks skips a hidden name inside a shown one, and finds it alone', () => {
   expect(leaks('lantern-notes-v2', ['lantern-notes-v2'], shown)).toEqual(['lantern-notes-v2']);
 });
 
+test('leaks finds a hidden name holding a character JSON escapes, and names it as it is', () => {
+  for (const name of ['x"y', 'x\\y', 'x\ty']) {
+    expect(leaks({ a: `see ${name} here` }, [name], [])).toEqual([name]);
+    expect(leaks({ a: `see ${name} here` }, [name], [], true)).toEqual([name]);
+  }
+  expect(leaks({ a: 'x"y-notes' }, ['x"y'], ['x"y-notes'])).toEqual([]);
+});
+
 test("leaks' whole words: only the matches maskText's word rule would mask, a shown name still winning", () => {
   const { forbidden, shown } = forbiddenStrings([LANTERN, WORK], PREFIX_BRANCHES, [WORK], [], []);
   expect(leaks({ lanterns: 'see lantern' }, forbidden, shown)).toEqual(['lantern']);

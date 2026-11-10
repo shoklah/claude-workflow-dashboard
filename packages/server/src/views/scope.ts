@@ -111,9 +111,11 @@ export function showWarning(scope: Scope | null, text: string): { text: string; 
 export function leaks(json: unknown, forbidden: string[], shown: string[], words = false): string[] {
   if (forbidden.length === 0) return [];
   const hidden = new Set(forbidden);
-  const strings = [...forbidden, ...shown];
+  // Each string as JSON writes it, so one holding `"`, `\` or a control character is found too.
+  const original = new Map([...forbidden, ...shown].map((s) => [JSON.stringify(s).slice(1, -1), s]));
+  const strings = [...original.keys()];
   const found = JSON.stringify(json).match(new RegExp(words ? asWords(strings) : anyOf(strings), 'g')) ?? [];
-  return [...new Set(found.filter((s) => hidden.has(s)))];
+  return [...new Set(found.map((s) => original.get(s)!).filter((s) => hidden.has(s)))];
 }
 
 /**
