@@ -16,6 +16,7 @@ import {
   kindLabel,
   plural,
   runName,
+  warningsSummary,
   weekLabel,
 } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
@@ -33,8 +34,8 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
 }
 
 /**
- * The Compliance page: the period's warnings by kind and week, the kinds grouped by family, current ones or including
- * resolved; the selected cell's warnings below the grid. `step`, from the URL, keeps the warnings naming that step.
+ * The Compliance page: the period's warnings by kind and week, the kinds grouped by family, each kind's total, current
+ * ones or including resolved, under a line summing them; the selected cell's warnings below the grid. `step`, from the URL, keeps the warnings naming that step.
  */
 export function CompliancePage({ step }: { step?: StepKind }) {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
@@ -87,15 +88,25 @@ export function CompliancePage({ step }: { step?: StepKind }) {
         (data.rows.length === 0 ? (
           <p className="text-sm">No warnings in this period.</p>
         ) : (
-          <HeatmapTable
-            label="Warnings by kind and week"
-            corner="Kind"
-            weeks={data.weeks}
-            groups={groupsOf(data.rows)}
-            max={Math.max(0, ...data.rows.flatMap((row) => row.cells))}
-            selected={selected}
-            onSelect={setSelected}
-          />
+          <>
+            <p className="text-sm text-muted-foreground">
+              {warningsSummary(
+                data.rows.reduce((n, row) => n + row.cells.reduce((a, b) => a + b, 0), 0),
+                data.weeks.length,
+                data.newWarnings,
+              )}
+            </p>
+            <HeatmapTable
+              label="Warnings by kind and week"
+              corner="Kind"
+              weeks={data.weeks}
+              groups={groupsOf(data.rows)}
+              max={Math.max(0, ...data.rows.flatMap((row) => row.cells))}
+              total
+              selected={selected}
+              onSelect={setSelected}
+            />
+          </>
         ))}
       {data && data.rows.length > 0 && selected && (
         <>

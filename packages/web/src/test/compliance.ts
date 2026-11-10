@@ -14,7 +14,7 @@ function warning(
   return { sessionId: null, runKey: run.key, project: run.project, branch: run.branch, step: null, isNew: false, ...w };
 }
 
-export const complianceEmpty: ComplianceResponse = { weeks: WEEKS, rows: [], warnings: [], hidden: 0 };
+export const complianceEmpty: ComplianceResponse = { weeks: WEEKS, rows: [], newWarnings: 0, warnings: [], hidden: 0 };
 
 /**
  * Every family but skills and offers, then "other": a kind the dashboard doesn't know and the row of warnings stored
@@ -32,6 +32,7 @@ export const complianceFull: ComplianceResponse = {
     { family: 'other', kind: 'brand_new_check', cells: [0, 0, 0, 1] },
     { family: 'other', kind: null, cells: [1, 0, 0, 0] },
   ],
+  newWarnings: 2,
   warnings: [
     warning({
       kind: 'final_review_without_simplify',

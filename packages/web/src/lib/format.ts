@@ -218,6 +218,12 @@ export function hiddenLabel(count: number, noun: string): string {
   return `+ ${plural(count, noun)} in other projects, counted in totals and charts only`;
 }
 
+/** Compliance's line above its grid: the grid's warnings, its weeks and how many of the warnings are new, "41 warnings
+ * in 8 weeks · 6 new since you last looked". */
+export function warningsSummary(warnings: number, weeks: number, fresh: number): string {
+  return `${plural(warnings, 'warning')} in ${plural(weeks, 'week')} · ${fresh} new since you last looked`;
+}
+
 /** Compliance's line for what showing mode left out of its list: other projects', sessions' and "other" warnings. */
 export function hiddenWarningsLabel(count: number): string {
   return `+ ${plural(count, 'warning')} left out while showing (other projects, sessions and other kinds), counted in the grid only`;

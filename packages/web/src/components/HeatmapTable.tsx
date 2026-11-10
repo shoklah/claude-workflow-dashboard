@@ -16,7 +16,8 @@ export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
 /**
  * Rows down and the weeks across, each cell a button with its number written in it (`format`, a count by default), so
  * the heatmap is its own table view. One blue ramp shades the cells against `max`, the grey for 0 or an unknown value.
- * It scrolls sideways over many weeks, in a region named `label`; `corner` heads the rows' column.
+ * It scrolls sideways over many weeks, in a region named `label`; `corner` heads the rows' column. With `total`, a last
+ * "Total" column holds each row's values summed.
  */
 export function HeatmapTable({
   label,
@@ -25,6 +26,7 @@ export function HeatmapTable({
   groups,
   max,
   format = formatCount,
+  total = false,
   selected,
   onSelect,
 }: {
@@ -34,6 +36,7 @@ export function HeatmapTable({
   groups: HeatmapGroup[];
   max: number;
   format?: (value: number | null) => string;
+  total?: boolean;
   selected: HeatmapSelection | null;
   onSelect: (cell: HeatmapSelection) => void;
 }) {
@@ -48,13 +51,14 @@ export function HeatmapTable({
               {weekLabel(week)}
             </TableHead>
           ))}
+          {total && <TableHead className="text-right">Total</TableHead>}
         </TableRow>
       </TableHeader>
       {groups.map((group, g) => (
         <TableBody key={g}>
           {group.heading !== null && (
             <TableRow className="border-0 hover:bg-transparent">
-              <TableHead scope="rowgroup" colSpan={weeks.length + 1} className="pt-3 font-semibold text-foreground">
+              <TableHead scope="rowgroup" colSpan={weeks.length + (total ? 2 : 1)} className="pt-3 font-semibold text-foreground">
                 {group.heading}
               </TableHead>
             </TableRow>
@@ -86,6 +90,11 @@ export function HeatmapTable({
                   </TableCell>
                 );
               })}
+              {total && (
+                <TableCell className="text-right text-xs tabular-nums">
+                  {row.values.reduce<number>((sum, value) => sum + (value ?? 0), 0)}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

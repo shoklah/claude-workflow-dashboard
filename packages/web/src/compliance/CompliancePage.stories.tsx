@@ -44,8 +44,9 @@ export const Empty: Story = {
 };
 
 /**
- * Full: the current warnings' kinds by family and week, in the reporter's order, each family under its heading and
- * "other" last; a selected cell lists its warnings below the grid: kind, run link, "new" mark and text.
+ * Full: the line summing the grid, then the current warnings' kinds by family and week, in the reporter's order, each
+ * family under its heading and "other" last, each kind's total last; a selected cell lists its warnings below the grid:
+ * kind, run link, "new" mark and text.
  */
 export const Full: Story = {
   beforeEach: () => {
@@ -69,6 +70,14 @@ export const Full: Story = {
       'brand new check',
       'other',
     ]);
+    await expect(canvas.getByText('9 warnings in 4 weeks · 2 new since you last looked')).toBeVisible();
+    // Each kind's warnings over the period in the last column; a family's heading spans it too.
+    await expect(canvas.getAllByRole('columnheader').at(-1)).toHaveTextContent('Total');
+    const totalOf = (kind: string) =>
+      within(canvas.getByRole('rowheader', { name: kind }).closest('tr')!).getAllByRole('cell').at(-1);
+    await expect(totalOf('step has no agent id')).toHaveTextContent('3');
+    await expect(totalOf('other')).toHaveTextContent('1');
+    await expect(canvas.getByRole('rowheader', { name: 'Review flow' })).toHaveAttribute('colspan', '6');
     // The grid's largest count takes the darkest step.
     await expect(canvas.getByRole('button', { name: 'step has no agent id, week of Nov 1: 2' })).toHaveClass(
       'bg-[#184f95]',

@@ -74,7 +74,8 @@ export function familyOf(kind: string | null): string {
  * rows are the kinds with a warning, in FAMILIES' order, then "other" kinds, the one with no kind last. With a scope,
  * the "other" rows are left out (an unknown kind can name anything) and the family rows' cells still count every
  * warning, but the list holds only the shown projects' run warnings outside "other", masked (showFacts, showWarning),
- * and `hidden` counts every warning in the period left out of the list.
+ * and `hidden` counts every warning in the period left out of the list. `newWarnings` counts the grid's warnings first
+ * seen after seenAt, every project's.
  */
 export function complianceView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -100,23 +101,25 @@ export function complianceView(input: {
     return weeks.includes(week) ? [{ w, run, week, family: familyOf(w.warningKind) }] : [];
   });
 
-  const others = new Set(inPeriod.filter((x) => x.family === OTHER).map((x) => x.w.warningKind));
+  // With a scope, the grid leaves out the "other" kinds, which can name anything.
+  const inGrid = scope ? inPeriod.filter((x) => x.family !== OTHER) : inPeriod;
+  const isNew = (w: StoredWarning) => seenAt === null || w.firstSeenAt > seenAt;
+  const others = new Set(inGrid.filter((x) => x.family === OTHER).map((x) => x.w.warningKind));
   const rowKeys = [
     ...FAMILIES.flatMap(({ family, kinds }) => kinds.map((kind) => ({ family, kind }))),
     ...[...others].filter((kind): kind is string => kind !== null).sort().map((kind) => ({ family: OTHER, kind })),
     ...(others.has(null) ? [{ family: OTHER, kind: null }] : []),
   ];
-  // Each kind's count by week in one pass; a kind with no warning in the period gets no row, nor, with a scope, an
-  // "other" kind, which can name anything.
+  // Each kind's count by week in one pass; a kind with no warning in the grid gets no row.
   const counts = new Map<string | null, number[]>();
-  for (const x of inPeriod) {
+  for (const x of inGrid) {
     const cells = counts.get(x.w.warningKind) ?? weeks.map(() => 0);
     cells[weeks.indexOf(x.week)] += 1;
     counts.set(x.w.warningKind, cells);
   }
   const rows: ComplianceRow[] = rowKeys.flatMap(({ family, kind }) => {
     const cells = counts.get(kind);
-    return cells && !(scope && family === OTHER) ? [{ family, kind, cells }] : [];
+    return cells ? [{ family, kind, cells }] : [];
   });
 
   const warnings = inPeriod.flatMap(({ w, run, week, family }): ComplianceWarning[] => {
@@ -132,10 +135,16 @@ export function complianceView(input: {
         project: facts?.project ?? null,
         branch: facts?.branch ?? null,
         step: toStepKind(w.stepKind) ?? null,
-        isNew: seenAt === null || w.firstSeenAt > seenAt,
+        isNew: isNew(w),
       },
     ];
   });
 
-  return { weeks, rows, warnings, hidden: inPeriod.length - warnings.length };
+  return {
+    weeks,
+    rows,
+    newWarnings: inGrid.filter((x) => isNew(x.w)).length,
+    warnings,
+    hidden: inPeriod.length - warnings.length,
+  };
 }

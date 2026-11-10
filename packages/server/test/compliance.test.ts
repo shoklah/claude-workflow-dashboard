@@ -155,8 +155,10 @@ test('isNew follows seenAt', async () => {
   const isNew = (body: ComplianceResponse) => body.warnings.filter((w) => w.isNew).map((w) => w.kind).sort();
   // Report-v5's new warnings, first seen after report-full's import.
   expect(isNew(await compliance())).toEqual(['brand_new_check', 'no_transcript', 'step_agent_missing']);
+  expect((await compliance()).newWarnings).toBe(3);
   setSeenAt(db, SECOND);
   expect(isNew(await compliance())).toEqual([]);
+  expect((await compliance()).newWarnings).toBe(0);
 });
 
 test("with showing on, the cells count every warning outside \"other\", but the list holds only shown runs' warnings, masked", async () => {
@@ -209,5 +211,9 @@ test("with showing on, the cells count every warning outside \"other\", but the 
   expect(body.warnings.some((w) => w.kind === 'step_agent_missing' || w.project === 'tidepool-api')).toBe(false);
   expect(body.rows.find((r) => r.kind === 'step_agent_missing')?.cells.at(-1)).toBe(1);
   expect(body.hidden).toBe(5);
+  // The grid's new warnings, the hidden webhooks run's step_agent_missing included, the "other" ones not; the list
+  // holds one of them.
+  expect(body.newWarnings).toBe(2);
+  expect(body.warnings.filter((w) => w.isNew)).toHaveLength(1);
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
