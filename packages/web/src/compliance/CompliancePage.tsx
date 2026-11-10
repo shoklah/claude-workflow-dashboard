@@ -35,7 +35,8 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
 
 /**
  * The Compliance page: the period's warnings by kind and week, the kinds grouped by family, each kind's total, current
- * ones or including resolved, under a line summing them; the selected cell's warnings below the grid. `step`, from the URL, keeps the warnings naming that step.
+ * ones or including resolved, under a line summing them; the selected cell's warnings below the grid. `step`, from the
+ * URL, keeps the warnings naming that step.
  */
 export function CompliancePage({ step }: { step?: StepKind }) {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });

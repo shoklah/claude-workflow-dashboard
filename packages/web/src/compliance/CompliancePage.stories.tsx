@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
-import { complianceEmpty, complianceFull } from '../test/compliance.ts';
+import { complianceEmpty, complianceFull, complianceShowing } from '../test/compliance.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { CompliancePage } from './CompliancePage.tsx';
@@ -141,16 +141,18 @@ export const Step: Story = {
   },
 };
 
-/** Showing mode: what it left out of the list (other projects', sessions' and "other" warnings) is counted under it. */
+/** Showing mode: no "other" rows, and what it left out of the list (other projects', sessions' and "other" warnings) is
+ * counted under it. */
 export const Hidden: Story = {
   beforeEach: () => {
-    mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': { ...complianceFull, hidden: 3 } });
+    mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': complianceShowing });
   },
   play: async ({ canvas }) => {
     await expect(
       await canvas.findByText(
-        '+ 3 warnings left out while showing (other projects, sessions and other kinds), counted in the grid only',
+        '+ 3 warnings left out while showing (other projects, sessions and other kinds); the grid counts all but other kinds',
       ),
     ).toBeVisible();
+    await expect(canvas.queryByRole('rowheader', { name: 'Other' })).toBeNull();
   },
 };

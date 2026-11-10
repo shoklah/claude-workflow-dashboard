@@ -43,9 +43,9 @@ export function modelSums(runs: RunEntry[]): ModelSums {
  * The Models and advisor page: modelSums over the stored runs in the query's period (period), with the reporter's
  * all-time figures from `totals`, the last good import's: each agent's mismatches, each path's stage table and differs,
  * and the advisor's facts, its weeks only those of the period. An agent with mismatches that no dispatch in the period
- * names gets a row with no dispatches, as Skills keeps a skill required but not loaded. With a scope, each name from the units (agents, models,
- * efforts, the advisor's roles and failed codes) is masked (maskText) first, so names that mask alike merge and the
- * sums still count every project.
+ * names gets a row with no dispatches, as Skills keeps a skill required but not loaded. With a scope, each name from
+ * the units (agents, models, efforts, the advisor's roles and failed codes) is masked (maskText) first, so names that
+ * mask alike merge and the sums still count every project.
  */
 export function modelsView(input: {
   runs: StoredUnit<RunEntry>[];

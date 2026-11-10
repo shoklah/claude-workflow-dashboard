@@ -58,7 +58,11 @@ export function HeatmapTable({
         <TableBody key={g}>
           {group.heading !== null && (
             <TableRow className="border-0 hover:bg-transparent">
-              <TableHead scope="rowgroup" colSpan={weeks.length + (total ? 2 : 1)} className="pt-3 font-semibold text-foreground">
+              <TableHead
+                scope="rowgroup"
+                colSpan={weeks.length + (total ? 2 : 1)}
+                className="pt-3 font-semibold text-foreground"
+              >
                 {group.heading}
               </TableHead>
             </TableRow>

@@ -161,7 +161,12 @@ test("an agent with the reporter's mismatches but no dispatch in the period gets
     raw.totals.models.agents['quiet-helper'] = { requested: {}, actual: {}, mismatches: 0 };
   });
   const agents = byName((await models()).agents);
-  expect(agents.get('retired-reviewer')).toEqual({ name: 'retired-reviewer', requested: {}, actual: {}, mismatches: 2 });
+  expect(agents.get('retired-reviewer')).toEqual({
+    name: 'retired-reviewer',
+    requested: {},
+    actual: {},
+    mismatches: 2,
+  });
   // None for an agent with no mismatch.
   expect(agents.has('quiet-helper')).toBe(false);
   expect([...agents.keys()]).toEqual([...agents.keys()].sort());

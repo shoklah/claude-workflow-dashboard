@@ -104,3 +104,14 @@ export const complianceFull: ComplianceResponse = {
   ],
   hidden: 0,
 };
+
+/**
+ * Showing mode's answer to the same period: no "other" rows, the list without the session's and "other" warnings, and
+ * those three counted in `hidden`.
+ */
+export const complianceShowing: ComplianceResponse = {
+  ...complianceFull,
+  rows: complianceFull.rows.filter((row) => row.family !== 'other'),
+  warnings: complianceFull.warnings.filter((w) => w.family !== 'other' && w.sessionId === null),
+  hidden: 3,
+};

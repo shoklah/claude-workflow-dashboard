@@ -224,9 +224,10 @@ export function warningsSummary(warnings: number, weeks: number, fresh: number):
   return `${plural(warnings, 'warning')} in ${plural(weeks, 'week')} · ${fresh} new since you last looked`;
 }
 
-/** Compliance's line for what showing mode left out of its list: other projects', sessions' and "other" warnings. */
+/** Compliance's line for what showing mode left out of its list: other projects', sessions' and "other" warnings, the
+ * last left out of the grid too. */
 export function hiddenWarningsLabel(count: number): string {
-  return `+ ${plural(count, 'warning')} left out while showing (other projects, sessions and other kinds), counted in the grid only`;
+  return `+ ${plural(count, 'warning')} left out while showing (other projects, sessions and other kinds); the grid counts all but other kinds`;
 }
 
 /** The findings' split as the tiles and the feed read it: "13 acted on · 1 open". */

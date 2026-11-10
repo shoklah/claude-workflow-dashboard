@@ -220,9 +220,9 @@ describe('warningsSummary', () => {
 });
 
 describe('hiddenWarningsLabel', () => {
-  it('says what showing mode left out of Compliance’s list, and that the grid still counts it', () => {
+  it('says what showing mode left out of Compliance’s list, and that the grid counts all but other kinds', () => {
     expect(hiddenWarningsLabel(3)).toBe(
-      '+ 3 warnings left out while showing (other projects, sessions and other kinds), counted in the grid only',
+      '+ 3 warnings left out while showing (other projects, sessions and other kinds); the grid counts all but other kinds',
     );
     expect(hiddenWarningsLabel(1)).toMatch(/^\+ 1 warning left out/);
   });

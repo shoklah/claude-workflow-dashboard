@@ -161,7 +161,7 @@ test('isNew follows seenAt', async () => {
   expect((await compliance()).newWarnings).toBe(0);
 });
 
-test("with showing on, the cells count every warning outside \"other\", but the list holds only shown runs' warnings, masked", async () => {
+test("with showing on, the grid counts all but \"other\" warnings, the list only shown runs', masked", async () => {
   const raw = fixture('report-v5');
   const branches = new Map<string, string[]>();
   for (const run of [...fixture('report-full').runs, ...raw.runs]) {
