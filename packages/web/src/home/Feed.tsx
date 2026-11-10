@@ -4,11 +4,11 @@ import type { FeedItem } from '@cwd/shared';
 import { markSeen } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
 import { WarningText } from '../components/WarningText.tsx';
-import { actedOnSplit, formatCost, formatMinutes, joined, plural, runName } from '../lib/format.ts';
+import { actedOnSplit, formatCost, formatMinutes, joined, plural, runWhere } from '../lib/format.ts';
 
 /** An item's first line, "Run finished · atlas · feat/search · full", opening its run when it has one. */
 function Headline({ item, title }: { item: FeedItem; title: string }) {
-  const where = joined([runName(item), item.path]);
+  const where = runWhere(item);
   const text = (
     <>
       <b>{title}</b>

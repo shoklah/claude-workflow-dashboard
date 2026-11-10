@@ -11,7 +11,7 @@ const COUNT_MAPS: Whole = {
   models: true,
   efforts: true,
   notes: true,
-  advisor: { tokens: true, by_role: true, failed: true, weeks: true },
+  advisor: { tokens: true, by_role: true, failed: true },
 };
 
 /**

@@ -1,7 +1,7 @@
 import {
   modelsCost,
   parseTime,
-  SESSION_FILE,
+  splitSessionId,
   type RunEntry,
   type RunFacts,
   type SessionEntry,
@@ -22,6 +22,7 @@ import {
   storedNames,
 } from './runs.ts';
 import { maskText, showFacts, showSession, type Scope } from './scope.ts';
+import { commandSkill } from './skills.ts';
 
 const time = (at: string) => parseTime(at).getTime();
 
@@ -37,7 +38,7 @@ function timelineOf(
   scope: Scope | null,
 ): SessionRow['timeline'] {
   const unmet = typed.filter((t) => t.met === false);
-  const neverLoaded = (name: string, at: string) => unmet.some((t) => t.skill === name.split(':').at(-1) && t.time === at);
+  const neverLoaded = (name: string, at: string) => unmet.some((t) => t.skill === commandSkill(name) && t.time === at);
   const item = (at: string, kind: 'skill' | 'command' | 'run', name: string) => ({
     at,
     kind,
@@ -83,18 +84,23 @@ export function sessionsView(input: {
   const { weeks, filters } = period(query, input.now);
   const names = storedNames(input.runs);
   const runRoots = new Set(input.runs.map(rootOf));
-  const warned = currentWarnings([], input.sessions, input.warnings);
+  const warned = new Map<string, number>();
+  for (const w of currentWarnings([], input.sessions, input.warnings)) warned.set(w.key, (warned.get(w.key) ?? 0) + 1);
+  const byTranscript = new Map<string, StoredUnit<RunEntry>[]>();
+  for (const run of input.runs) {
+    const file = run.merged.window?.transcript;
+    if (file) byTranscript.set(file, [...(byTranscript.get(file) ?? []), run]);
+  }
   const sessions: SessionRow[] = [];
   let hidden = 0;
 
   for (const unit of periodSessions(input.sessions, weeks)) {
     const session = unit.merged;
     const key = sessionProjectKey(session.project, runRoots);
-    const held = input.runs
-      .filter((run) => run.merged.window?.transcript === session.file)
+    const held = (byTranscript.get(session.file) ?? [])
       .map((run) => ({ run, facts: storedFacts(run, names) }))
       .sort((a, b) => time(a.run.merged.window?.start ?? '') - time(b.run.merged.window?.start ?? ''));
-    const warnings = warned.filter((w) => w.kind === 'session' && w.key === unit.key).length;
+    const warnings = warned.get(unit.key) ?? 0;
     // period's filters over the held runs, a session holding none matching no path filter.
     const matches = (holds: Pick<RunFacts, 'path'>[]) =>
       (query.path ? holds : [{ path: null }]).some((h) => filters({ path: h.path, projectKey: key ?? '' })) &&
@@ -119,7 +125,7 @@ export function sessionsView(input: {
     sessions.push({
       key: unit.key,
       title: maskText(scope, session.title ?? null),
-      sessionId: scope ? null : (SESSION_FILE.exec(session.file)?.[1] ?? null),
+      sessionId: scope ? null : splitSessionId(session.file).sessionId,
       projectKey: key,
       project: key === null ? null : (scope?.names.get(key) ?? names.get(sessionRootOf(session.project)!) ?? null),
       start,

@@ -6,6 +6,7 @@ import {
   type ComplianceQuery,
   type FindingsQuery,
   type RunEntry,
+  type SessionEntry,
   type RunsQuery,
   type SessionsQuery,
 } from '@cwd/shared';
@@ -59,13 +60,13 @@ function periodQuery(c: Context): FindingsQuery {
 
 /** The API routes, one block per task. The request rules (Host, the POST header and Origin) are app.ts's middleware. */
 export function registerRoutes(app: Hono, deps: AppDeps): void {
-  // Showing mode's scope over the stored runs (listed here when the caller has none) and sessions, null while it is
-  // off.
-  const scopeFor = (runs?: StoredUnit<RunEntry>[]): Scope | null => {
+  // Showing mode's scope over the stored runs and sessions (each listed here when the caller has none), null while it
+  // is off.
+  const scopeFor = (runs?: StoredUnit<RunEntry>[], sessions?: StoredUnit<SessionEntry>[]): Scope | null => {
     const showing = getShowing(deps.db);
     if (!showing) return null;
     const branches = storedBranches(runs ?? listUnits(deps.db, 'run'));
-    return scopeOf(showing, branches, deps.aliases, storedSessionRoots(listUnits(deps.db, 'session')));
+    return scopeOf(showing, branches, deps.aliases, storedSessionRoots(sessions ?? listUnits(deps.db, 'session')));
   };
 
   // Task 4: the import's status, the refresh and "mark all seen".
@@ -88,14 +89,15 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   // Task 6: the home screen.
   app.get('/api/home', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       homeView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         warnings: listWarnings(deps.db),
         seenAt: getSeenAt(deps.db),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
@@ -159,13 +161,14 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   // Slice 2b, task 3: the Steps and rules page, its refusals, startup and advisor over runs and sessions (2c, task 4).
   app.get('/api/steps', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       stepsView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         query: periodQuery(c),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
@@ -173,13 +176,14 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   // Slice 2b, task 4: the Skills page, its missing counts over runs and sessions (2c, task 4).
   app.get('/api/skills', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       skillsView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         query: periodQuery(c),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
@@ -188,14 +192,15 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   // the advisor's facts over runs and sessions (2c, task 4).
   app.get('/api/models', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       modelsView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
@@ -208,15 +213,16 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       step: toStepKind(c.req.query('step')),
     };
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       complianceView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         warnings: listWarnings(deps.db),
         query,
         now: deps.now(),
         seenAt: getSeenAt(deps.db),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
@@ -225,14 +231,15 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   app.get('/api/sessions', (c) => {
     const query: SessionsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       sessionsView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         warnings: listWarnings(deps.db),
         query,
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });

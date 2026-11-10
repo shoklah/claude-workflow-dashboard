@@ -12,10 +12,9 @@ import {
   WARNING_INK,
   formatCost,
   formatMinutes,
-  joined,
   modelsLabel,
   projectLabel,
-  runName,
+  runWhere,
   sessionName,
   timelineTimes,
   usageName,
@@ -44,7 +43,7 @@ type Hold = SessionRow['holds'][number];
 function HoldLink({ hold }: { hold: Hold }) {
   return (
     <Link to="/runs/$key" params={{ key: hold.runKey }} className="underline-offset-2 hover:underline">
-      {joined([runName(hold), hold.path])}
+      {runWhere(hold)}
     </Link>
   );
 }

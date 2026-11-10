@@ -13,6 +13,11 @@ import { maskText, type Scope } from './scope.ts';
 
 type SkillUnit = { skills?: RunEntry['skills']; missing_skills?: RunEntry['missing_skills']; typed?: RunEntry['typed'] };
 
+/** The skill a slash command names: `x:y` (a plugin skill's command) names `y`, any other its own name. */
+export function commandSkill(name: string | null | undefined): string {
+  return (name ?? '').split(':').at(-1) ?? '';
+}
+
 /**
  * Each skill by name, as the reporter's skill_totals: the units (runs and sessions alike) that loaded it, its latest
  * load and its loads by skillOutcomeLabel, from `units`; and the times it was required and missing, a run's missing

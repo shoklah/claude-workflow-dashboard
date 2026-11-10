@@ -10,8 +10,8 @@ import {
   type SessionEntry,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
-import { showFacts, showSession, showWarning, type Scope } from './scope.ts';
+import { currentWarnings, period, sessionWarningShown, storedFacts, storedNames } from './runs.ts';
+import { showFacts, showWarning, type Scope } from './scope.ts';
 
 const OTHER = 'other';
 
@@ -90,7 +90,7 @@ export function complianceView(input: {
   const { weeks, matches } = period(query, input.now);
   const names = storedNames(input.runs);
   const runs = new Map(input.runs.map((unit) => [unit.key, { unit, facts: storedFacts(unit, names) }]));
-  const sessions = new Map(input.sessions.map((unit) => [unit.key, unit.merged]));
+  const sessionShown = sessionWarningShown(scope, input.sessions);
   const current = new Set(currentWarnings(input.runs, input.sessions, input.warnings));
 
   const inPeriod = input.warnings.flatMap((w) => {
@@ -125,7 +125,7 @@ export function complianceView(input: {
 
   const warnings = inPeriod.flatMap(({ w, run, week, family }): ComplianceWarning[] => {
     const facts = run && showFacts(scope, run.facts);
-    const shown = w.kind === 'run' ? !!facts : showSession(scope, sessions.get(w.key)?.project);
+    const shown = w.kind === 'run' ? !!facts : sessionShown(w.key);
     if (scope && (!shown || family === OTHER)) return [];
     return [
       {

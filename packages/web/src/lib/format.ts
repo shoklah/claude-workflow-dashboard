@@ -195,6 +195,11 @@ export function runName(run: { project: string | null; branch: string | null }):
   return joined([run.project, run.branch]);
 }
 
+/** Where a run is: "atlas · feat/search · full", its name and its path. */
+export function runWhere(run: { project: string | null; branch: string | null; path: string | null }): string {
+  return joined([runName(run), run.path]);
+}
+
 /** "14 · 12 closed"; "–" for a record from before steps, which has no findings to count. */
 export function findingsLabel(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): string {
   if (run.beforeSteps) return NONE;

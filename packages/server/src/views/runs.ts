@@ -22,7 +22,7 @@ import { categoryLabels, type ActiveList } from '../categories.ts';
 import { findingKey, type StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { projectKey } from '../keys.ts';
-import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
+import { maskText, showFacts, showSession, showWarning, type Scope } from './scope.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -87,7 +87,7 @@ export function storedBranches(runs: StoredUnit<RunEntry>[]): Map<string, string
 
 /** Every stored session's project root, for a session with a project. */
 export function storedSessionRoots(sessions: StoredUnit<SessionEntry>[]): string[] {
-  return sessions.flatMap(({ merged: { project } }) => sessionRootOf(project) ?? []);
+  return [...new Set(sessions.flatMap(({ merged: { project } }) => sessionRootOf(project) ?? []))];
 }
 
 /** A stored run's facts: runFacts plus its stored key, its project's key and its project's name from `names`. */
@@ -111,6 +111,12 @@ export function currentWarnings(
     session: new Map(sessions.filter((s) => s.missingSince === null).map((s) => [s.key, s.merged.warns ?? []])),
   };
   return warnings.filter((w) => warns[w.kind].get(w.key)?.includes(w.text) ?? false);
+}
+
+/** Whether a stored session's warning is listed under `scope`: showSession of the session's project, by its key. */
+export function sessionWarningShown(scope: Scope | null, sessions: StoredUnit<SessionEntry>[]): (key: string) => boolean {
+  const projects = new Map(sessions.map((unit) => [unit.key, unit.merged.project]));
+  return (key) => showSession(scope, projects.get(key));
 }
 
 /**

@@ -40,22 +40,6 @@ export function modelSums(runs: RunEntry[]): ModelSums {
   return sums;
 }
 
-type UnitAdvisor = RunEntry['advisor'];
-
-/** A unit's advisor with its roles' labels and failed calls' codes masked (maskText), those that mask alike merged. */
-function maskAdvisor(scope: Scope | null, advisor: UnitAdvisor): UnitAdvisor {
-  if (!scope || !advisor) return advisor;
-  const byRole: NonNullable<NonNullable<UnitAdvisor>['by_role']> = {};
-  for (const [label, role] of Object.entries(advisor.by_role ?? {})) {
-    const row = (byRole[maskText(scope, label)] ??= { calls: 0, flagged: false });
-    row.calls = (row.calls ?? 0) + (role.calls ?? 0);
-    row.flagged ||= role.flagged ?? false;
-  }
-  const failed: Record<string, number> = {};
-  for (const [code, n] of Object.entries(advisor.failed ?? {})) addCount(failed, maskText(scope, code), n);
-  return { ...advisor, by_role: advisor.by_role && byRole, failed: advisor.failed && failed };
-}
-
 /**
  * The Models and advisor page: modelSums over the stored runs in the query's period (period), the advisor's facts
  * over its runs and sessions (periodUnits, unitSums), with the reporter's all-time figures from `totals`, the last good
@@ -85,7 +69,6 @@ export function modelsView(input: {
         effort: maskText(input.scope, d.effort),
       })),
       main: run.main && { model: maskText(input.scope, run.main.model), effort: maskText(input.scope, run.main.effort) },
-      advisor: maskAdvisor(input.scope, run.advisor),
     }));
   const sums = modelSums(runs);
   const totals = reporterTotals(input.totals);
@@ -99,11 +82,12 @@ export function modelsView(input: {
   const advisor = totals?.advisor;
   const facts = unitSums(
     runs,
-    sessions.map((session) => ({ ...session, advisor: maskAdvisor(input.scope, session.advisor) })),
+    sessions,
     cr6Of(
       input.runs.map((unit) => unit.merged),
       input.sessions.map((unit) => unit.merged),
     ),
+    (label) => maskText(input.scope, label),
   ).advisor;
   return {
     agents: Object.entries(sums.agents)

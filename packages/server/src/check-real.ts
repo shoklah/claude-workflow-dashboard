@@ -203,6 +203,12 @@ else {
   // export's units predate (cr6Of), as the pages show none, and the line is not in the export when it gives none.
   const { dispatchGuard, startup, advisor } = unitSums(entries, sessionEntries, cr6Of(entries, sessionEntries));
   const wantAdvisor = totals.advisor;
+  const scalars = (a: { calls?: number | null; notes?: number | null; changed?: number | null; missing?: number | null }) => ({
+    calls: a.calls,
+    notes: a.notes,
+    changed: a.changed,
+    missing: a.missing,
+  });
   const unitFigures = {
     ...(dispatchGuard && {
       dispatch_guard: !!board?.dispatch_guard && sameCounts(dispatchGuard, board.dispatch_guard),
@@ -211,15 +217,7 @@ else {
     ...(advisor && {
       advisor:
         !!wantAdvisor &&
-        sameCounts(
-          { calls: advisor.calls, notes: advisor.notes, changed: advisor.changed, missing: advisor.missing },
-          {
-            calls: wantAdvisor.calls,
-            notes: wantAdvisor.notes,
-            changed: wantAdvisor.changed,
-            missing: wantAdvisor.missing,
-          },
-        ) &&
+        sameCounts(scalars(advisor), scalars(wantAdvisor)) &&
         sameCounts(advisor.tokens, wantAdvisor.tokens) &&
         sameCounts(advisor.failed, wantAdvisor.failed) &&
         keysOf(advisor.byRole, wantAdvisor.by_role).every((role) => {

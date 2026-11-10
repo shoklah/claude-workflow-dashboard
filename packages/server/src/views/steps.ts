@@ -139,9 +139,15 @@ export function cr6Of(runs: RunEntry[], sessions: SessionEntry[]): Cr6 {
  * sum them over runs and sessions alike (CR6): the refusals by reason, the sessions with and without the startup
  * guidelines, and the advisor's facts and notes, its share of the advisor and Fable dollars as share_pct gives it.
  * Each is null on an export from before CR6, as `cr6` (cr6Of over every stored unit) tells: the refusals and startup
- * unless `sessions`, the advisor unless `advisor`; on CR6 data, units with nothing sum to zeros.
+ * unless `sessions`, the advisor unless `advisor`; on CR6 data, units with nothing sum to zeros. `name` maps each role
+ * label and failed code as it is summed (a view's maskText under a scope), so labels that map alike merge.
  */
-export function unitSums(runs: RunEntry[], sessions: SessionEntry[], cr6: Cr6): UnitSums {
+export function unitSums(
+  runs: RunEntry[],
+  sessions: SessionEntry[],
+  cr6: Cr6,
+  name: (label: string) => string = (label) => label,
+): UnitSums {
   const units = [...runs, ...sessions];
   const guard: Record<string, number> = {};
   for (const unit of units) for (const [key, n] of Object.entries(unit.refusals ?? {})) addCount(guard, key, n);
@@ -169,11 +175,11 @@ export function unitSums(runs: RunEntry[], sessions: SessionEntry[], cr6: Cr6): 
       sums.cost += a.cost ?? 0;
       for (const [label, n] of Object.entries(a.tokens ?? {})) addCount(sums.tokens, label, n);
       for (const [label, role] of Object.entries(a.by_role ?? {})) {
-        const row = (sums.byRole[label] ??= { calls: 0, flagged: false });
+        const row = (sums.byRole[name(label)] ??= { calls: 0, flagged: false });
         row.calls += role.calls ?? 0;
         row.flagged ||= role.flagged ?? false;
       }
-      for (const [code, n] of Object.entries(a.failed ?? {})) addCount(sums.failed, code, n);
+      for (const [code, n] of Object.entries(a.failed ?? {})) addCount(sums.failed, name(code), n);
       for (const week of a.weeks ?? []) fable += week.fable ?? 0;
     }
     const total = sums.cost + fable;

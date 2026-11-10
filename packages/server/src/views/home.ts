@@ -22,9 +22,9 @@ import {
   type WeekRow,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, period, periodUnits, storedFacts, storedNames } from './runs.ts';
-import { maskText, showFacts, showSession, showWarning, type Scope } from './scope.ts';
-import { skillSums } from './skills.ts';
+import { currentWarnings, period, periodUnits, sessionWarningShown, storedFacts, storedNames } from './runs.ts';
+import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
+import { commandSkill, skillSums } from './skills.ts';
 
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
 
@@ -131,8 +131,8 @@ export function usageSums(
   const typed = [...runUnits, ...sessionUnits].flatMap((unit) => unit.typed ?? []);
   const byName = (rows: SkillRow[]) => new Map(rows.map((row) => [row.name, row]));
   const all = byName(skillSums([...runUnits, ...sessionUnits]));
-  const skills = new Set([...skillNames.map(mask), ...all.keys(), ...typed.map((t) => t.skill ?? '')]);
-  const skillOf = (command: { name?: string | null }) => mask((command.name ?? '').split(':').at(-1));
+  const skills = new Set([...skillNames.map(mask), ...all.keys()]);
+  const skillOf = (command: { name?: string | null }) => mask(commandSkill(command.name));
   // A session's loads, plus a load for each skill it typed and each command naming a skill, so skillSums counts the
   // session once.
   const inSessions = byName(
@@ -283,12 +283,12 @@ export function homeView(input: {
       cost: facts.cost,
     }));
   // With a scope, a hidden run's warnings and the warnings of a session in no shown root are left out.
-  const sessions = new Map(input.sessions.map((unit) => [unit.key, unit.merged]));
+  const sessionShown = sessionWarningShown(scope, input.sessions);
   const warningItems = warnings
     .filter(
       (w) =>
         isNew(w.firstSeenAt) &&
-        (w.kind === 'run' ? byKey.has(w.key) : showSession(scope, sessions.get(w.key)?.project)),
+        (w.kind === 'run' ? byKey.has(w.key) : sessionShown(w.key)),
     )
     .map((w): FeedItem => {
       const run = w.kind === 'run' ? byKey.get(w.key) : undefined;
@@ -307,10 +307,14 @@ export function homeView(input: {
     });
 
   // Every stored unit's loaded or typed skills, so a command's kind is the same in every period.
-  const skillNames = [...input.runs, ...input.sessions].flatMap(({ merged }) => [
-    ...(merged.skills ?? []).map((s) => s.name ?? ''),
-    ...(merged.typed ?? []).map((t) => t.skill ?? ''),
-  ]);
+  const skillNames = [
+    ...new Set(
+      [...input.runs, ...input.sessions].flatMap(({ merged }) => [
+        ...(merged.skills ?? []).map((s) => s.name ?? ''),
+        ...(merged.typed ?? []).map((t) => t.skill ?? ''),
+      ]),
+    ),
+  ];
   const usageOf = (weeks: number) => {
     const units = periodUnits(input.runs, input.sessions, { weeks }, now);
     return usageSums(units.runs, units.sessions, scope, skillNames);
