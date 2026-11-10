@@ -1,7 +1,9 @@
 import {
   parseTime,
+  projectNames,
+  projectRoot,
   runFacts,
-  splitSessionId,
+  weekOf,
   weekStart,
   type FindingRow,
   type RunEntry,
@@ -14,12 +16,18 @@ import {
   type TimelineGroup,
   type TimelineStep,
 } from '@cwd/shared';
+import { findingKey, type StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
+import { projectKey } from '../keys.ts';
+import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 // A logged step whose kind the reporter gave; it always gives one.
 type KnownStep = Step & { step: StepKind };
+
+// A finding's label fields, by its id.
+type LabelOf = (id: string | null | undefined) => Pick<FindingRow, 'category' | 'relevance' | 'labelReason'>;
 
 /** What a skill's outcome says, never the outcome itself: a string other than 'ran' is a file path. */
 export function skillOutcomeLabel(outcome: unknown): string {
@@ -35,6 +43,34 @@ export function skillOutcomeLabel(outcome: unknown): string {
   return '–';
 }
 
+/** A stored run's project root. */
+export function rootOf(unit: StoredUnit<RunEntry>): string {
+  return projectRoot(unit.merged.record?.project ?? '');
+}
+
+/** The display name of every stored run's project, by root. */
+export function storedNames(runs: StoredUnit<RunEntry>[]): Map<string, string> {
+  return projectNames(runs.map(rootOf));
+}
+
+/** Every stored run's branch, by its project root. */
+export function storedBranches(runs: StoredUnit<RunEntry>[]): Map<string, string[]> {
+  const branches = new Map<string, string[]>();
+  for (const run of runs) {
+    const root = rootOf(run);
+    const list = branches.get(root) ?? [];
+    list.push(run.merged.record?.branch ?? '');
+    branches.set(root, list);
+  }
+  return branches;
+}
+
+/** A stored run's facts: runFacts plus its stored key, its project's key and its project's name from `names`. */
+export function storedFacts(unit: StoredUnit<RunEntry>, names: Map<string, string>): RunFacts {
+  const root = rootOf(unit);
+  return { ...runFacts(unit.merged), key: unit.key, projectKey: projectKey(root), project: names.get(root) ?? '' };
+}
+
 /**
  * The stored warnings that are current: every session warning, and a run's warnings, the texts in its latest merged
  * `warns`; the store only gives their first-seen times.
@@ -45,32 +81,54 @@ export function currentWarnings(runs: StoredUnit<RunEntry>[], warnings: StoredWa
 }
 
 /**
- * The runs finished in the query's last `weeks` weeks (this week and the ones before it, weeks starting Sunday
- * 07:00 UTC) that match its path, project and "has warnings" (a current run warning), newest first.
+ * A query's period: its last `weeks` weeks (this week and the ones before it, weeks starting Sunday 07:00 UTC), oldest
+ * first, each named by weekOf, and whether a run's facts are in it, finished in one of those weeks, and match the
+ * query's path and project key.
+ */
+export function period(
+  query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
+  now: Date,
+): { weeks: string[]; matches: (row: RunFacts) => boolean } {
+  const start = weekStart(now).getTime();
+  const weeks = Array.from({ length: query.weeks }, (_, i) => weekOf(new Date(start - (query.weeks - 1 - i) * WEEK)));
+  // A stored run always has its finish time (finishedAt), the date its key is made from.
+  const matches = (row: RunFacts) =>
+    weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) &&
+    (!query.path || row.path === query.path) &&
+    (!query.project || row.projectKey === query.project);
+  return { weeks, matches };
+}
+
+/**
+ * The runs in the query's period (period) that have a current run warning when it asks "has warnings", newest first,
+ * and every stored run's project, by name. With a scope, only the shown projects' runs and projects, and `hidden`
+ * counts the matching runs it left out.
  */
 export function runsList(
   runs: StoredUnit<RunEntry>[],
   warnings: StoredWarning[],
   query: RunsQuery,
   now: Date,
+  scope: Scope | null,
 ): RunsResponse {
-  const rows = runs.map((run) => ({ ...runFacts(run.merged), key: run.key }));
-  const from = weekStart(now).getTime() - (query.weeks - 1) * WEEK;
+  const names = storedNames(runs);
+  const all = runs.map((run) => storedFacts(run, names));
+  const rows = all.flatMap((row) => showFacts(scope, row) ?? []);
+  const inPeriod = period(query, now).matches;
   const warned = new Set(currentWarnings(runs, warnings).filter((w) => w.kind === 'run').map((w) => w.key));
-  // A stored run always has its finish time (finishedAt), the date its key is made from.
   const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
+  const matches = (row: RunFacts) => inPeriod(row) && (!query.warnings || warned.has(row.key));
+  const shown = rows.filter(matches);
   return {
-    runs: rows
-      .filter((row) => finished(row) >= from)
-      .filter((row) => !query.path || row.path === query.path)
-      .filter((row) => !query.project || row.project === query.project)
-      .filter((row) => !query.warnings || warned.has(row.key))
-      .sort((a, b) => finished(b) - finished(a)),
-    projects: [...new Set(rows.map((row) => row.project).filter(Boolean))].sort(),
+    runs: shown.sort((a, b) => finished(b) - finished(a)),
+    projects: [...new Map(rows.filter((row) => row.project).map((row) => [row.projectKey, row.project]))]
+      .map(([key, name]) => ({ key, name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    hidden: all.filter(matches).length - shown.length,
   };
 }
 
-function findingRows(step: KnownStep): FindingRow[] {
+function findingRows(step: KnownStep, labelOf: LabelOf): FindingRow[] {
   return (step.findings ?? []).map((f) => ({
     id: f.id ?? null,
     step: step.step,
@@ -84,22 +142,29 @@ function findingRows(step: KnownStep): FindingRow[] {
     outcome: f.outcome ?? null,
     reason: f.reason ?? null,
     verdicts: f.verdicts ?? [],
+    ...labelOf(f.id),
   }));
 }
 
-function timelineSteps(steps: KnownStep[]): TimelineStep[] {
+function timelineSteps(steps: KnownStep[], labelOf: LabelOf): TimelineStep[] {
   return steps.map((step) => ({
     step: step.step,
     round: step.round ?? null,
     agent: step.agent ?? null,
     counts: step.counts ?? {},
-    findings: findingRows(step),
+    findings: findingRows(step, labelOf),
   }));
 }
 
 /** A group with no tasks; `at` only for start and end. */
-function group(kind: TimelineGroup['kind'], label: string, steps: KnownStep[] = [], at: string | null = null) {
-  return { kind, label, at, tasks: [], steps: timelineSteps(steps) };
+function group(
+  kind: TimelineGroup['kind'],
+  label: string,
+  labelOf: LabelOf,
+  steps: KnownStep[] = [],
+  at: string | null = null,
+) {
+  return { kind, label, at, tasks: [], steps: timelineSteps(steps, labelOf) };
 }
 
 /**
@@ -107,45 +172,77 @@ function group(kind: TimelineGroup['kind'], label: string, steps: KnownStep[] = 
  * check's steps), a group per task in no wave, simplify, final review, end. A plan, simplify or final group with no
  * steps is left out, except a run from before steps, which gets an empty final group between start and end.
  */
-function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts): TimelineGroup[] {
-  const start = group('start', 'Start', [], facts.startedAt);
-  const end = group('end', 'End', [], facts.finishedAt);
-  if (facts.beforeSteps) return [start, group('final', 'Final review'), end];
+function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: LabelOf): TimelineGroup[] {
+  const start = group('start', 'Start', labelOf, [], facts.startedAt);
+  const end = group('end', 'End', labelOf, [], facts.finishedAt);
+  if (facts.beforeSteps) return [start, group('final', 'Final review', labelOf), end];
   const kinds = (...k: StepKind[]) => steps.filter((s) => k.includes(s.step));
-  const ofTask = (task: number) => ({ task, steps: timelineSteps(steps.filter((s) => s.task === task)) });
+  const ofTask = (task: number) => ({ task, steps: timelineSteps(steps.filter((s) => s.task === task), labelOf) });
   const waves = run.waves ?? [];
   const inWave = new Set(waves.flatMap((w) => w.tasks ?? []));
   const loose = [...new Set(steps.map((s) => s.task).filter((t) => t != null && !inWave.has(t)))] as number[];
   return [
     start,
-    group('plan', 'Plan', kinds('plan_simplify', 'plan_review')),
+    group('plan', 'Plan', labelOf, kinds('plan_simplify', 'plan_review')),
     ...waves.map((w) => ({
-      ...group('wave', `Wave ${w.wave ?? ''}`, steps.filter((s) => s.wave != null && s.wave === w.wave)),
+      ...group('wave', `Wave ${w.wave ?? ''}`, labelOf, steps.filter((s) => s.wave != null && s.wave === w.wave)),
       tasks: (w.tasks ?? []).map(ofTask),
     })),
-    ...loose.sort((a, b) => a - b).map((task) => ({ ...group('task', `Task ${task}`), tasks: [ofTask(task)] })),
-    group('simplify', 'Simplify', kinds('simplify')),
-    group('final', 'Final review', kinds('final_review', 'final_fix_check')),
+    ...loose
+      .sort((a, b) => a - b)
+      .map((task) => ({ ...group('task', `Task ${task}`, labelOf), tasks: [ofTask(task)] })),
+    group('simplify', 'Simplify', labelOf, kinds('simplify')),
+    group('final', 'Final review', labelOf, kinds('final_review', 'final_fix_check')),
     end,
   ].filter((g) => !['plan', 'simplify', 'final'].includes(g.kind) || g.steps.length > 0);
 }
 
-/** One run: its facts, timeline and findings, its skills, models and advisor notes, and its current warnings. */
-export function runView(run: StoredUnit<RunEntry>, warnings: StoredWarning[]): RunResponse {
+/** One run: its facts, timeline and findings, each with the app's label from `labels` (currentLabels), its skills,
+ * models and advisor notes, and its current warnings; its project's name from `names`, every stored run's
+ * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
+ * named by the scope and its findings' texts and label reasons masked (maskText). */
+export function runView(
+  run: StoredUnit<RunEntry>,
+  warnings: StoredWarning[],
+  names: Map<string, string>,
+  scope: Scope | null,
+  labels: Map<string, StoredLabel>,
+): RunResponse | null {
   const entry = run.merged;
-  const facts = { ...runFacts(entry), key: run.key };
-  const steps = (entry.steps ?? []).filter((s): s is KnownStep => s.step != null);
+  const facts = showFacts(scope, storedFacts(run, names));
+  if (!facts) return null;
+  const mask = (text: string | null | undefined) => (scope && text ? maskText(scope, text) : text);
+  const steps = (entry.steps ?? [])
+    .filter((s): s is KnownStep => s.step != null)
+    .map((s) => ({
+      ...s,
+      findings: s.findings?.map((f) => ({
+        ...f,
+        kind: mask(f.kind),
+        summary: mask(f.summary),
+        reason: mask(f.reason),
+        verdicts: f.verdicts?.map((v) => mask(v) ?? v),
+      })),
+    }));
+  const labelOf: LabelOf = (id) => {
+    const label = id ? labels.get(findingKey(run.key, id)) : undefined;
+    return {
+      category: label?.category ?? null,
+      relevance: label?.relevance ?? null,
+      labelReason: mask(label?.reason) ?? null,
+    };
+  };
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;
   return {
     facts,
-    timeline: timeline(entry, steps, facts),
-    findings: steps.flatMap(findingRows),
+    timeline: timeline(entry, steps, facts, labelOf),
+    findings: steps.flatMap((step) => findingRows(step, labelOf)),
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
     warnings: currentWarnings([run], warnings)
       .filter((w) => w.kind === 'run')
-      .map((w) => splitSessionId(w.text)),
+      .map((w) => showWarning(scope, w.text)),
   };
 }

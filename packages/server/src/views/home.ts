@@ -3,10 +3,8 @@ import {
   PATHS,
   runFacts,
   splitFindings,
-  splitSessionId,
   STEP_KINDS,
   weekOf,
-  weekStart,
   type Path,
   type DiagramStep,
   type FeedItem,
@@ -19,7 +17,8 @@ import {
   type WeekNumbers,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings } from './runs.ts';
+import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
+import { showFacts, showWarning, type Scope } from './scope.ts';
 
 type WeekSum = { runs: WeekNumbers['runs']; cost: number | null };
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
@@ -71,19 +70,22 @@ function fixLine(steps: Step[]): FixLine {
   };
 }
 
-/** The home screen, from the stored runs and warnings: every number is a plain sum over the runs' own facts. */
+/** The home screen, from the stored runs and warnings: every number is a plain sum over the runs' own facts. With a
+ * scope, the numbers still count every run, but the feed holds only the shown projects' runs and run warnings. */
 export function homeView(input: {
   runs: StoredUnit<RunEntry>[];
   warnings: StoredWarning[];
   seenAt: Date | null;
   now: Date;
+  scope: Scope | null;
 }): HomeResponse {
-  const { seenAt, now } = input;
+  const { seenAt, now, scope } = input;
   // Only the current warnings show: a run's are the texts in its latest warns.
   const warnings = currentWarnings(input.runs, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
+  const names = storedNames(input.runs);
   const runs: Run[] = input.runs.map((unit) => {
-    const facts = { ...runFacts(unit.merged), key: unit.key };
+    const facts = storedFacts(unit, names);
     return { unit, facts, finished: parseTime(facts.finishedAt!) };
   });
   const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;
@@ -91,10 +93,7 @@ export function homeView(input: {
   const stepsOf = (of: Run[]) => of.flatMap((r) => r.unit.merged.steps ?? []);
 
   // The charts' weeks: this week and the 11 before it, oldest first.
-  const start = weekStart(now).getTime();
-  const weeks = Array.from({ length: CHART_WEEKS }, (_, i) =>
-    weekOf(new Date(start - (CHART_WEEKS - 1 - i) * 7 * DAY)),
-  );
+  const weeks = period({ weeks: CHART_WEEKS }, now).weeks;
   const byWeek = weeks.map((week) => runs.filter((r) => weekOf(r.finished) === week));
 
   function weekNumbers(week: string, inWeek: Run[]): WeekNumbers {
@@ -126,8 +125,13 @@ export function homeView(input: {
   const fullSteps = stepsOf(withSteps.filter((r) => r.facts.path === 'full' || r.facts.path === 'plan'));
   const smallSteps = stepsOf(withSteps.filter((r) => r.facts.path === 'small'));
 
-  const byKey = new Map(runs.map((r) => [r.unit.key, r]));
-  const runItems = runs
+  // The feed's runs: with a scope, the shown projects' runs, named by the scope.
+  const shown = runs.flatMap((r) => {
+    const facts = showFacts(scope, r.facts);
+    return facts ? [{ ...r, facts }] : [];
+  });
+  const byKey = new Map(shown.map((r) => [r.unit.key, r]));
+  const runItems = shown
     .filter((r) => isNew(r.unit.firstSeenAt))
     .map(({ unit, facts, finished }): FeedItem => ({
       at: finished.toISOString(),
@@ -142,8 +146,9 @@ export function homeView(input: {
       minutes: facts.minutes,
       cost: facts.cost,
     }));
+  // With a scope, every session warning and a hidden run's warnings are left out.
   const warningItems = warnings
-    .filter((w) => isNew(w.firstSeenAt))
+    .filter((w) => isNew(w.firstSeenAt) && (w.kind === 'run' ? byKey.has(w.key) : !scope))
     .map((w): FeedItem => {
       const run = w.kind === 'run' ? byKey.get(w.key) : undefined;
       return {
@@ -153,7 +158,7 @@ export function homeView(input: {
         project: run?.facts.project ?? null,
         branch: run?.facts.branch ?? null,
         path: null,
-        ...splitSessionId(w.text),
+        ...showWarning(scope, w.text),
         findings: null,
         minutes: null,
         cost: null,

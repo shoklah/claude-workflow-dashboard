@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slice 2 mockup: the static page's sections, and showing mode</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --page: #f3f3f1; --border: #dcdbd6;
+    --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
+    --s1: #2a78d6; --seq-1: #cde2fb; --seq-3: #6da7ec;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.45 system-ui, -apple-system, sans-serif; background: var(--page); color: var(--text); }
+  .note { max-width: 1180px; margin: 16px auto 8px; padding: 0 16px; color: var(--text-2); }
+  h1 { font-size: 17px; margin: 0 0 4px; color: var(--text); }
+  h2 { font-size: 14px; margin: 26px auto 6px; max-width: 1180px; padding: 0 16px; }
+  .panel { max-width: 1180px; margin: 0 auto 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); border-radius: 14px; padding: 2px 10px; background: #fff; }
+  .chip.on { background: var(--seq-1); border-color: var(--seq-3); }
+  .muted { color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #ecebe7; vertical-align: top; }
+  th { font-weight: 500; color: var(--text-2); font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.sep td { background: #f7f7f5; font-weight: 600; color: var(--text-2); font-size: 12px; }
+  .src { font-size: 10px; border: 1px dashed var(--border); border-radius: 3px; padding: 0 4px; color: var(--text-2); white-space: nowrap; }
+  .off { color: #a8461c; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+  .sm { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .sm i { font-style: normal; color: var(--text-2); font-size: 12px; }
+  .sm b { float: right; font-weight: 600; }
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 46px; margin-top: 6px; border-bottom: 1px solid #d6d5cf; }
+  .bars span { flex: 1; background: var(--s1); border-radius: 2px 2px 0 0; }
+  details { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; }
+  summary { cursor: pointer; }
+  details ul { margin: 6px 0 2px 18px; padding: 0; color: var(--text-2); }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; }
+  .topbar.showing { background: #fff4e5; border-color: #eda100; }
+  .switch { display: inline-flex; align-items: center; gap: 6px; }
+  .knob { width: 30px; height: 16px; border-radius: 8px; background: #c9c8c2; position: relative; }
+  .knob::after { content: ""; position: absolute; width: 12px; height: 12px; top: 2px; left: 2px; border-radius: 50%; background: #fff; }
+  .on .knob { background: #eda100; } .on .knob::after { left: 16px; }
+  .dialog { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; width: 420px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+  .dialog label { display: block; padding: 3px 0; }
+  .two { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <h1>Slice 2 mockup: the static page's sections as pages, and showing mode</h1>
+  Invented data. Every page takes a period, like the Runs list, and sums the stored runs and sessions in it. A dashed <span class="src">reporter, all time</span> mark labels a figure that isn't a sum over runs and sessions yet: it shows the latest export's total until the workflow moves it into runs and sessions.
+</div>
+
+<h2>Steps and rules (the static page's "Rules and steps")</h2>
+<div class="panel">
+  <div class="filters"><span class="chip on">Last 4 weeks</span><span class="chip">Last 12 weeks</span><span class="chip">All stored</span><span class="chip">Path: all</span></div>
+  <table>
+    <thead><tr><th>Step or rule</th><th class="n">Ran</th><th class="n">Found something</th><th>Counts</th><th class="n">Fixed or applied</th><th class="n">Declined</th><th class="n">Deferred</th><th class="n">Open or to owner</th><th class="n">Tokens</th><th class="n">Est. cost</th></tr></thead>
+    <tbody>
+      <tr class="sep"><td colspan="10">Steps</td></tr>
+      <tr><td>plan simplify</td><td class="n">4</td><td class="n">4</td><td>cuts 11 · flags 5</td><td class="n">11</td><td class="n">2</td><td class="n">0</td><td class="n">3</td><td class="n">1.2 M</td><td class="n">$4.10</td></tr>
+      <tr><td>plan review</td><td class="n">4</td><td class="n">3</td><td>findings 9</td><td class="n">7</td><td class="n">2</td><td class="n">0</td><td class="n">0</td><td class="n">2.0 M</td><td class="n">$6.30</td></tr>
+      <tr><td>task review</td><td class="n">31</td><td class="n">22</td><td>critical 1 · important 18 · minor 47</td><td class="n">24</td><td class="n">3</td><td class="n">38</td><td class="n">1</td><td class="n">9.8 M</td><td class="n">$21.40</td></tr>
+      <tr><td>fix-check</td><td class="n">19</td><td class="n">3</td><td>fixed 22 · not proportionate 2 · open 1</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n">2.6 M</td><td class="n">$3.90</td></tr>
+      <tr><td>simplify</td><td class="n">5</td><td class="n">5</td><td>applied 14 · skipped 41</td><td class="n">14</td><td class="n">41</td><td class="n">0</td><td class="n">0</td><td class="n">–</td><td class="n">–</td></tr>
+      <tr><td>final review</td><td class="n">5</td><td class="n">5</td><td>critical 0 · important 9 · minor 13 · unneeded 6</td><td class="n">9</td><td class="n">0</td><td class="n">13</td><td class="n">6</td><td class="n">3.1 M</td><td class="n">$12.80</td></tr>
+      <tr class="sep"><td colspan="10">Rules</td></tr>
+      <tr><td>failing-test check</td><td class="n">27</td><td class="n">–</td><td>passed 22 · failed 1 · no tests 1 · couldn't run 2 · exempt 1</td><td colspan="7"></td></tr>
+      <tr><td>dispatch guard <span class="src">reporter, all time</span></td><td class="n">–</td><td class="n">3</td><td>plan review refused 2 · final review refused 1</td><td colspan="7"></td></tr>
+      <tr><td>advisor</td><td class="n">14</td><td class="n">–</td><td>notes 12 · changed 9 · share 8% <span class="src">reporter, all time</span></td><td colspan="5"></td><td class="n">$3.20</td><td></td></tr>
+      <tr><td>startup guidelines <span class="src">reporter, all time</span></td><td class="n">41</td><td class="n">–</td><td>with 38 · without 3</td><td colspan="7"></td></tr>
+      <tr><td>fix-round cap</td><td class="n">–</td><td class="n">–</td><td>runs reaching round 3: 1 · ruled 2</td><td colspan="7"></td></tr>
+      <tr><td>stop rule</td><td class="n">–</td><td class="n">–</td><td>stops 1</td><td colspan="7"></td></tr>
+      <tr><td>offer grill-me</td><td class="n">3</td><td class="n">–</td><td>accepted 2 · skipped 1</td><td colspan="7"></td></tr>
+      <tr><td>offer graphify</td><td class="n">4</td><td class="n">–</td><td>accepted 3 · not offered 1</td><td colspan="7"></td></tr>
+    </tbody>
+  </table>
+  <p class="muted">The same rows as the static page. A step name opens its runs; the workflow diagram on Home keeps its counts.</p>
+</div>
+
+<h2>Weeks (the static page's "Whole workflow")</h2>
+<div class="panel">
+  <div class="filters"><span class="chip on">Last 12 weeks</span><span class="chip">All stored</span><span class="muted">weeks before Oct 4 show what was stored; the reporter can no longer read them</span></div>
+  <div class="grid">
+    <div class="sm"><i>Runs</i><b>7</b><div class="bars"><span style="height:40%"></span><span style="height:55%"></span><span style="height:30%"></span><span style="height:70%"></span><span style="height:60%"></span><span style="height:85%"></span><span style="height:50%"></span><span style="height:75%"></span></div></div>
+    <div class="sm"><i>Findings (final review)</i><b>11</b><div class="bars"><span style="height:60%"></span><span style="height:45%"></span><span style="height:70%"></span><span style="height:40%"></span><span style="height:55%"></span><span style="height:35%"></span><span style="height:50%"></span><span style="height:45%"></span></div></div>
+    <div class="sm"><i>Est. cost</i><b>$38</b><div class="bars"><span style="height:50%"></span><span style="height:60%"></span><span style="height:40%"></span><span style="height:80%"></span><span style="height:65%"></span><span style="height:90%"></span><span style="height:55%"></span><span style="height:70%"></span></div></div>
+    <div class="sm"><i>Minutes per run (median)</i><b>140</b><div class="bars"><span style="height:70%"></span><span style="height:60%"></span><span style="height:80%"></span><span style="height:55%"></span><span style="height:65%"></span><span style="height:50%"></span><span style="height:60%"></span><span style="height:45%"></span></div></div>
+  </div>
+  <table>
+    <thead><tr><th>Week</th><th>Runs</th><th class="n">Tasks</th><th>Findings</th><th class="n">Fix rounds</th><th class="n">Stops</th><th class="n">Fable pts</th><th class="n">All pts</th><th class="n">Est. cost</th><th class="n">Min / run</th><th class="n">Later fixes</th></tr></thead>
+    <tbody>
+      <tr><td>Nov 8</td><td>full 2 · small 4 · plan 1</td><td class="n">19</td><td>important 3 · minor 8</td><td class="n">6</td><td class="n">0</td><td class="n">14</td><td class="n">9</td><td class="n">$38</td><td class="n">140</td><td class="n">1</td></tr>
+      <tr><td>Nov 1</td><td>full 1 · small 3</td><td class="n">11</td><td>important 2 · minor 5</td><td class="n">4</td><td class="n">1</td><td class="n">9</td><td class="n">6</td><td class="n">$24</td><td class="n">165</td><td class="n">0</td></tr>
+    </tbody>
+  </table>
+  <table style="margin-top:12px;width:auto"><thead><tr><th>Full runs</th><th class="n">Runs</th><th class="n">With a run time</th><th class="n">Median minutes</th></tr></thead>
+    <tbody><tr><td>with waves</td><td class="n">5</td><td class="n">5</td><td class="n">150</td></tr><tr><td>without waves</td><td class="n">9</td><td class="n">8</td><td class="n">185</td></tr></tbody></table>
+  <p class="muted">Four small multiples, one measure each on its own axis (never two scales on one chart); their numbers are the table. "Findings" here is the final review's, as the reporter counts it per week.</p>
+</div>
+
+<h2>Skills</h2>
+<div class="panel">
+  <div class="filters"><span class="chip on">Last 4 weeks</span><span class="chip">Runs and sessions</span></div>
+  <table>
+    <thead><tr><th>Skill</th><th class="n">Runs</th><th class="n">Sessions</th><th>Last loaded</th><th>Outcomes</th><th class="n">Required but missing</th></tr></thead>
+    <tbody>
+      <tr><td>brainstorming</td><td class="n">2</td><td class="n">8</td><td>Nov 10, 09:07</td><td>spec 6 · none 4</td><td class="n">0</td></tr>
+      <tr><td>subagent-driven-development</td><td class="n">4</td><td class="n">1</td><td>Nov 9, 14:40</td><td>ran 5</td><td class="n">0</td></tr>
+      <tr><td>simplify</td><td class="n">5</td><td class="n">3</td><td>Nov 9, 16:02</td><td>simplify 7 · none 1</td><td class="n off">1</td></tr>
+      <tr><td>grill-me</td><td class="n">0</td><td class="n">1</td><td>Nov 3, 10:15</td><td>ran 1</td><td class="n off">2 <span class="src">typed, never loaded</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Models and advisor</h2>
+<div class="panel">
+  <div class="two">
+    <table style="width:auto"><thead><tr><th>Agent</th><th>Requested</th><th>Ran on</th><th class="n">Mismatches</th></tr></thead>
+      <tbody>
+        <tr><td>implementer</td><td>opus-5-5/medium 22</td><td>opus-5-5/medium 22</td><td class="n">0</td></tr>
+        <tr><td>task-reviewer</td><td>–/– 31</td><td>opus-5-5/high 31</td><td class="n">0</td></tr>
+        <tr><td>final-reviewer</td><td>–/xhigh 5</td><td>fable-5-1/xhigh 4 · opus-5-5/xhigh 1</td><td class="n off">1</td></tr>
+      </tbody></table>
+    <table style="width:auto"><thead><tr><th>Main session</th><th>Stage table <span class="src">reporter</span></th><th>Ran on</th><th class="n">Differs</th></tr></thead>
+      <tbody>
+        <tr><td>full</td><td>1=opus-5-5 2=opus-5-5 3=opus-5-5</td><td>opus-5-5/medium 5</td><td class="n">0</td></tr>
+        <tr><td>plan</td><td>1=fable-5-1 2=fable-5-1 3=opus-5-5</td><td>opus-5-5/high 2 · fable-5-1/high 2</td><td class="n off">2</td></tr>
+      </tbody></table>
+  </div>
+  <table style="width:auto;margin-top:12px"><thead><tr><th>Advisor <span class="src">reporter, all time</span></th><th>Value</th></tr></thead>
+    <tbody><tr><td>calls by role</td><td>implementation session 9 · implementer 3 · planning 2</td></tr><tr><td>failed calls</td><td>overloaded 1</td></tr><tr><td>notes</td><td>notes 12 · changed 9 · missing 2</td></tr><tr><td>trial</td><td>runs 8/5, weeks 0/3 CHECKPOINT</td></tr></tbody></table>
+  <table style="width:auto;margin-top:12px"><thead><tr><th>Week</th><th class="n">Advisor</th><th class="n">Fable</th><th class="n">Share</th><th></th></tr></thead>
+    <tbody><tr><td>Nov 8</td><td class="n">$3.20</td><td class="n">$41.00</td><td class="n">7%</td><td></td></tr><tr><td>Nov 1</td><td class="n">$9.80</td><td class="n">$25.10</td><td class="n off">28%</td><td class="off">STOP</td></tr></tbody></table>
+</div>
+
+<h2>Compliance (the static page's "Health", as slice 2 shows it)</h2>
+<div class="panel">
+  <div class="filters"><span class="chip on">Current warnings</span><span class="muted">grouped as the static page groups them; slice 3 regroups them by kind with a weekly trend (needs structured warnings)</span></div>
+  <details open><summary><b>lantern-notes · feature/offline-sync</b> (Nov 9): 2</summary><ul><li>final-reviewer ran on another model than its pin</li><li>task 4 failing-test check: couldn't run</li></ul></details>
+  <details><summary><b>session e81b2d77</b>: 1</summary></details>
+  <details><summary><b>other</b>: 1</summary></details>
+  <details><summary><b>information</b>: 3</summary></details>
+</div>
+
+<h2>Showing mode</h2>
+<div class="panel">
+  <div class="topbar"><b>Workflow dashboard</b><span class="muted">imported 2 min ago</span><span style="flex:1"></span><span class="switch"><span class="knob"></span>Showing mode</span></div>
+  <div class="two">
+    <div class="dialog">
+      <b>Show which projects in full?</b>
+      <p class="muted" style="margin:4px 0 8px">Projects you pick show under their alias, with runs, findings and costs. Every other project appears only in totals and charts. Paths and session IDs are never sent while this is on.</p>
+      <label><input type="checkbox" checked> lantern-notes · shows as <b>Notes app</b></label>
+      <label><input type="checkbox" checked> tidepool-api · shows as <b>Tide API</b></label>
+      <label><input type="checkbox"> claude-workflow-dashboard · <span class="muted">no alias: pick to use its folder name</span></label>
+      <label><input type="checkbox"> 3 more projects</label>
+      <p style="margin:10px 0 0"><span class="chip on">Start showing</span> <span class="chip">Cancel</span></p>
+    </div>
+    <div style="flex:1;min-width:380px">
+      <div class="topbar showing"><b>Showing: Notes app, Tide API</b><span class="muted">costs and points visible</span><span style="flex:1"></span><span class="switch on"><span class="knob"></span>Stop showing</span></div>
+      <table>
+        <thead><tr><th>Finished</th><th>Project · branch</th><th>Path</th><th>Time</th><th>Findings</th><th class="n">Est. cost</th></tr></thead>
+        <tbody>
+          <tr><td>Nov 9, 16:40</td><td>Notes app · feature/offline-sync</td><td>full</td><td>7 h 40</td><td>12 · 10 closed</td><td class="n">$13.79</td></tr>
+          <tr><td>Nov 9, 11:05</td><td>Tide API · fix/retry-backoff</td><td>small</td><td>30 min</td><td>2 · 2 closed</td><td class="n">$1.10</td></tr>
+          <tr><td colspan="6" class="muted">+ 5 runs in other projects, counted in totals and charts only</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Aliases live in the data folder next to the config. The mode is held by the server, so every page and the feed are filtered, not just this screen; stopping it is a deliberate click. Sessions show without their ID or copy button.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

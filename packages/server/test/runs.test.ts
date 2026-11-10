@@ -1,14 +1,15 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadReport, type HomeResponse, type RunResponse, type RunsResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { runKey } from '../src/keys.ts';
-import { listUnits } from '../src/db/read.ts';
+import { projectKey, runKey } from '../src/keys.ts';
+import { listUnits, setShowing } from '../src/db/read.ts';
+import { labelInputs, saveBatch } from '../src/db/labels.ts';
 import { runView, skillOutcomeLabel } from '../src/views/runs.ts';
 
 const PORT = 4317;
@@ -20,13 +21,19 @@ const [RATE_LIMITS, RETRY_BACKOFF, , PLAN, FULL] = fixture('report-full').runs.m
 let dir: string;
 let db: Db;
 
+/** A fresh database in the test's folder, holding the fixture's import. */
+function dbWith(name: string): Db {
+  const fresh = openDb(join(dir, name, 'dashboard.sqlite'));
+  const raw = fixture(name);
+  const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+  if (!loaded.ok) throw new Error(`fixture ${name} does not load`);
+  importReport(fresh, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
+  return fresh;
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'cwd runs '));
-  db = openDb(join(dir, 'data dir', 'dashboard.sqlite'));
-  const raw = fixture('report-full');
-  const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
-  if (!loaded.ok) throw new Error('fixture report-full does not load');
-  importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
+  db = dbWith('report-full');
 });
 
 afterEach(() => {
@@ -42,6 +49,8 @@ async function get(path: string): Promise<Response> {
     importing: () => false,
     webDist: null,
     now: () => NOW,
+    aliases: {},
+    labeller: null,
   });
   return app.request(path, { headers: { Host: `localhost:${PORT}` } });
 }
@@ -58,6 +67,16 @@ async function run(key: string): Promise<RunResponse> {
   return res.json();
 }
 
+/** Stores the app's label of a run's finding, for its current text. */
+function label(key: string, findingId: string, reason: string): void {
+  const input = labelInputs(listUnits(db, 'run')).find((i) => i.runKey === key && i.findingId === findingId)!;
+  saveBatch(
+    db,
+    [{ ...input, model: 'claude-haiku-5-5', category: 'conventions', relevance: 'invalid', reason, labelledAt: NOW }],
+    { at: NOW, inputTokens: 100, outputTokens: 20 },
+  );
+}
+
 test('lists runs newest first', async () => {
   const list = await runs('?weeks=12');
   expect(list.runs.map((r) => r.finishedAt)).toEqual([
@@ -68,7 +87,10 @@ test('lists runs newest first', async () => {
     '2026-10-06T15:20:00Z',
   ]);
   expect(list.runs[0]).toMatchObject({ key: FULL, project: 'lantern-notes', branch: 'feature/offline-sync' });
-  expect(list.projects).toEqual(['lantern-notes', 'tidepool-api']);
+  expect(list.projects).toEqual([
+    { key: projectKey('/Users/example/Work/lantern-notes'), name: 'lantern-notes' },
+    { key: projectKey('/Users/example/Work/tidepool-api'), name: 'tidepool-api' },
+  ]);
 });
 
 test('filters by path', async () => {
@@ -76,10 +98,10 @@ test('filters by path', async () => {
   expect((await runs('?weeks=12&path=plan')).runs.map((r) => r.key)).toEqual([PLAN]);
 });
 
-test('filters by project name', async () => {
-  const list = await runs('?weeks=12&project=tidepool-api');
+test('filters by project key', async () => {
+  const list = await runs(`?weeks=12&project=${projectKey('/Users/example/Work/tidepool-api')}`);
   expect(list.runs.map((r) => r.key)).toEqual([RETRY_BACKOFF, RATE_LIMITS]);
-  expect(list.projects).toEqual(['lantern-notes', 'tidepool-api']);
+  expect(list.projects.map((p) => p.name)).toEqual(['lantern-notes', 'tidepool-api']);
 });
 
 test('filters to runs with warnings', async () => {
@@ -187,10 +209,27 @@ test("the findings table flattens every step's findings", async () => {
     outcome: 'ruled',
     reason: 'The shared key is intended: both tasks read the same snapshot',
     verdicts: ['open', 'open', 'open'],
+    category: null,
+    relevance: null,
+    labelReason: null,
   });
   expect(findings[0]).toMatchObject({ step: 'task_review', task: 1, wave: null, outcome: 'fixed', closedRound: 1 });
   expect(findings[5]).toMatchObject({ id: 'F6', task: 4, outcome: null });
   expect(findings[9]).toMatchObject({ id: 'F10', step: 'final_review', task: null });
+});
+
+test("a labelled finding carries the app's category, relevance and reason, an unlabelled one nulls", async () => {
+  label(FULL, 'F4', 'An invented reason for the label.');
+  const { findings, timeline } = await run(FULL);
+  expect(findings[3]).toMatchObject({
+    id: 'F4',
+    reason: 'The shared key is intended: both tasks read the same snapshot',
+    category: 'conventions',
+    relevance: 'invalid',
+    labelReason: 'An invented reason for the label.',
+  });
+  expect(timeline[1].steps[0].findings[0]).toMatchObject({ id: 'F4', category: 'conventions' });
+  expect(findings[0]).toMatchObject({ id: 'F1', category: null, relevance: null, labelReason: null });
 });
 
 test('a schema 1 run has empty groups and beforeSteps', async () => {
@@ -255,12 +294,18 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
   const text = 'WARN: feature/offline-sync (2026-11-10): 7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c.jsonl ended early';
   // A run's warnings are the texts in its latest warns; the other two are left out by run and by kind.
   stored.merged.warns = [text, 'WARN: another run', 'WARN: a session'];
-  const view = runView(stored, [
-    { kind: 'run', key: FULL, text, firstSeenAt: NOW },
-    { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW },
-    { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW },
-  ]);
-  expect(view.warnings).toEqual([
+  const view = runView(
+    stored,
+    [
+      { kind: 'run', key: FULL, text, firstSeenAt: NOW },
+      { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW },
+      { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW },
+    ],
+    new Map(),
+    null,
+    new Map(),
+  );
+  expect(view!.warnings).toEqual([
     { text: 'WARN: feature/offline-sync (2026-11-10): {session} ended early', sessionId: '7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c' },
   ]);
 });
@@ -276,4 +321,44 @@ test("no response holds a transcript path, a project path or the fixture's spec 
     expect(body).not.toContain('offline-sync-design.md');
     expect(body).not.toContain('docs/superpowers');
   }
+});
+
+describe('projects', () => {
+  // report-projects' runs, oldest first: Archive lantern-notes, tidepool-api, Work lantern-notes, its worktree.
+  const [, , MAIN, WORKTREE] = fixture('report-projects').runs.map(runKey) as string[];
+  const LANTERN = projectKey('/Users/example/Work/lantern-notes');
+
+  beforeEach(() => {
+    db.$client.close();
+    db = dbWith('report-projects');
+  });
+
+  test("a worktree's run has its main root's project key", async () => {
+    const row = (await runs('?weeks=52')).runs.find((r) => r.key === WORKTREE)!;
+    expect(row.projectKey).toBe(LANTERN);
+  });
+
+  test("filters by project key: the root's runs and its worktree's", async () => {
+    const list = await runs(`?project=${LANTERN}&weeks=52`);
+    expect(list.runs.map((r) => r.key)).toEqual([WORKTREE, MAIN]);
+  });
+
+  test("the run page names the project as the Runs list does", async () => {
+    const row = (await runs('?weeks=52')).runs.find((r) => r.key === MAIN)!;
+    expect(row.project).toBe('lantern-notes (Work)');
+    expect((await run(MAIN)).facts.project).toBe(row.project);
+  });
+
+  test('lists each project once, by key, with distinct names', async () => {
+    const { projects } = await runs('?weeks=52');
+    expect(projects).toHaveLength(3);
+    expect(new Set(projects.map((p) => p.name)).size).toBe(3);
+    expect(projects).toContainEqual({ key: LANTERN, name: 'lantern-notes (Work)' });
+  });
+
+  test("with showing on, a label's reason is masked as the finding's text is", async () => {
+    label(MAIN, 'F1', 'tidepool-api keeps the same import in /Users/example/Work/tidepool-api/src/x.ts');
+    setShowing(db, [LANTERN]);
+    expect((await run(MAIN)).findings[0].labelReason).toBe('another project keeps the same import in x.ts');
+  });
 });

@@ -67,6 +67,18 @@ describe('runReporter', () => {
     expect(result.summary).toBe('reporter exited with 3');
   });
 
+  test("the reporter runs without the labeller's API key in its env", async () => {
+    const key = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    try {
+      const script = nodeScript('console.log(JSON.stringify("ANTHROPIC_API_KEY" in process.env))');
+      expect(await runReporter(script, TIMEOUT)).toEqual({ ok: true, json: false });
+    } finally {
+      if (key === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = key;
+    }
+  });
+
   test('exit 0 with empty output is an error "reporter printed no JSON"', async () => {
     expect(await runReporter(nodeScript('process.stdout.write("  \\n")'), TIMEOUT)).toEqual({
       ok: false,
@@ -105,6 +117,7 @@ describe('importOnce', () => {
       runLog: join(dataDir, 'workflow-log.jsonl'),
       projectsDir: join(dataDir, 'projects'),
       reporterTimeoutMs: TIMEOUT,
+      aliases: {},
     };
     return { db, config };
   }

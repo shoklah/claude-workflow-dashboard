@@ -1,16 +1,18 @@
+import type { Relevance } from '../categories.ts';
 import type { RunFacts } from '../facts.ts';
 import type { Outcome, Path, StepKind } from '../report.ts';
 
-/** `GET /api/runs`'s query: `path`, `project` (a project's name), `weeks` (default 4) and `warnings=1`. */
+/** `GET /api/runs`'s query: `path`, `project` (a project's key), `weeks` (default 4) and `warnings=1`. */
 export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings: boolean };
 
 export type RunRow = RunFacts;
 
-/** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, and the name of
- * every stored run's project. */
-export type RunsResponse = { runs: RunRow[]; projects: string[] };
+/** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, the key and
+ * name of every stored run's project, by name, and how many matching runs showing mode left out. */
+export type RunsResponse = { runs: RunRow[]; projects: { key: string; name: string }[]; hidden: number };
 
-/** A finding of a step, with that step's kind, task, wave and round. */
+/** A finding of a step, with that step's kind, task, wave and round, and the app's label of it, null while unlabelled:
+ * its category, relevance call and the label's reason (`reason` stays the session's). */
 export type FindingRow = {
   id: string | null;
   step: StepKind;
@@ -24,6 +26,9 @@ export type FindingRow = {
   outcome: Outcome | null;
   reason: string | null;
   verdicts: string[];
+  category: string | null;
+  relevance: Relevance | null;
+  labelReason: string | null;
 };
 
 export type TimelineStep = {

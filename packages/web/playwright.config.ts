@@ -8,6 +8,8 @@ const PORT = 4399;
 // Playwright container that `pnpm test:screens` starts, so baselines never depend on the Mac's fonts.
 export default defineConfig({
   testDir: 'e2e',
+  // One worker: showing mode is server-wide state, so a test that turns it on must not overlap another test.
+  workers: 1,
   use: { baseURL: `http://127.0.0.1:${PORT}` },
   webServer: {
     command: 'pnpm build && pnpm --filter @cwd/server dev:fixtures',

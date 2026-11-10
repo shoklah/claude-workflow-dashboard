@@ -1,6 +1,6 @@
 # Live workflow dashboard: design
 
-Started 2026-11-09. **Status: slice 1 approved by the owner on 2026-11-09; later slices open.** This is also the running record of the design: each session adds its decisions to the record and ends with the open questions.
+Started 2026-11-09. **Status: slice 1 approved by the owner on 2026-11-09 and merged; slice 2 approved by the owner on 2026-11-09, after a grill; later slices open.** This is also the running record of the design: each session adds its decisions to the record and ends with the open questions.
 
 ## Intent
 
@@ -36,7 +36,8 @@ This project makes that view live, and makes it something the owner can show to 
 This fails, even if it works, if:
 
 - Real data reaches the repo, the fixtures, CI, a screenshot or anything public.
-- The app and the reporter disagree on a fact.
+- The app and the reporter disagree on a fact, or the app's labels pass for the reporter's facts.
+- The labeller spends past its cap, or sends anything but finding text.
 - Another website can read the local server's data or drive it.
 - Stored history goes stale without saying so, or a migration loses data that can't be rebuilt.
 - The playground never ships: slice 1 ends with the live home working on the owner's real data.
@@ -46,6 +47,7 @@ This fails, even if it works, if:
 - The reporter is the installed copy, JSON version 1, about 20 to 30 s per export, and it runs only on the Mac, as `/usr/bin/python3 -I <path> --json`.
 - The workflow applies in full: the Full path, TDD with the failing-test check, task and final reviews. Two parts are risk areas: the local server's request checks, and any migration of stored data.
 - Personal data lives only in `~/Library/Application Support/claude-workflow-dashboard/`, outside every repo.
+- From slice 2, the labeller sends finding text, never code, from the Mac to the Anthropic API, with the owner's own key.
 
 ## Approaches considered
 
@@ -59,6 +61,10 @@ This fails, even if it works, if:
 | Stack | Python backend with React; TypeScript end to end; Django with Next.js | TypeScript end to end: one set of types from import to charts |
 | Home | workflow first; numbers first; what's new first | the numbers on top, the workflow in the middle, the feed on the side |
 | One run | timeline; tabs; findings first | the timeline, with the findings table as a toggle |
+| Who judges a finding's category and relevance | the workflow at review time; the app after import, with a model; the owner by hand on the run page | both machines: the workflow's label is the fact, the app's is a second opinion that also covers past runs. The owner's hand mark stays a later override if self-grading proves soft |
+| How the app calls a model | the API with its own key; the Claude plan through `claude -p`; no model at all | the API with its own key: billed apart from the plan's weekly limits, and no Claude Code prompt riding on every call |
+| The Findings page | table first, one row per category; heatmap first, category by week | heatmap first |
+| Slice 2's cut | findings first, in two parts; the static page's sections first; one slice | findings first: 2a is findings and showing mode, 2b the static page's sections, Compliance, Sessions and Home's skills section. Basics first leaves the gap the owner named open longest; one slice is about 18 tasks behind one review |
 
 ## Slice 1 design
 
@@ -100,6 +106,174 @@ This fails, even if it works, if:
 - Chart details within ECharts, guided by the `dataviz` skill.
 - The fixture runs, as long as they cover a Full run with waves, a Small run, a plan record, a schema 1 record, null facts and a failing reporter.
 - Each run's key across exports: to confirm against the reporter's output (a record's `date` looks unique; old records unconfirmed). If no stable key exists, that's a change request (CR7), and the plan stops there.
+
+## Slice 2 design
+
+Two parts, each with its own plan and pull request (decision 43):
+- **2a:** findings assessment and showing mode.
+- **2b:** the static page's sections, Compliance, Sessions and Home's skills section.
+
+The mockups are in `docs/design/2026-11-09-slice-2/`: the Findings page uses layout B (`findings.html`), plus `sessions.html` and `basics-and-showing.html`. The look of the basics pages is not settled (decision 42).
+
+**Why.** Slice 1 counts the findings raised and closed. It can't say:
+- whether a finding mattered
+- whether the session applied the right ones
+- what the plan and the implementation do well and badly
+
+That is the gap the owner named first (decision 35). The rest of slice 2 is decision 20's basics and the Sessions page; the static page covers them meanwhile.
+
+### 2a. Findings assessment
+
+This section describes where findings assessment ends up. What 2a itself builds and what lands later:
+- **2a builds:**
+  - the category list
+  - the app's labeller and its stored labels
+  - the key's env file
+  - the Findings page, with every label the app's
+  - the run page's Category and App columns, with Valid showing "–"
+  - showing mode
+  - drafts of CR10 to CR12 in this spec
+- **Lands with CR10, as its own task from the workflow's real output:**
+  - workflow labels winning over the app's
+  - the Valid column's values
+  - strengths
+  - the "app differs" measure
+  - the exported list replacing the one in `packages/shared`
+
+**Labels.** Every finding gets a category from one fixed list, by area, and a relevance call: valid, invalid or unclear.
+- **The area comes from the step,** with no new field:
+  - plan simplify and plan review are the plan
+  - task reviews, wave checks and the final review are the implementation
+  - simplify is cleanup, labelled from the implementation list
+- **The list** (a draft, decision 37):
+  - Plan: scope (missing or extra work), task split and order, spec gap, risk missed, test plan.
+  - Implementation: correctness, error handling, data safety, security and privacy, reuse and duplication, conventions, simplicity (over-building), tests, naming and clarity, performance, docs.
+
+  The list carries a version. It lives in `packages/shared` until the reporter exports the workflow's list (CR10); then the exported list replaces it.
+- **Two judges** (decision 36):
+  - **The workflow's labels** are facts from the reporter, once CR10 lands: the reviewer's category, the session's valid, invalid or unclear when it applies, declines or rules the finding, and the reviewers' strengths.
+  - **The app's labeller** labels every finding, past and new. On a finding the workflow labelled, its call shows only where it differs, as the app's second opinion. On any other finding it is the only label, marked as the app's.
+
+**The labeller.**
+- **When:** after each successful import, as a job on `createQueue`. It labels each finding that has no app label for the current list version, about 25 findings per request, up to the day's cap.
+- **Input per finding:** the step kind, the severity (or plan simplify's kind), summary, outcome, reason and fix-check verdicts. Never code, and never the run's files. Each text goes through `trimPaths` before it leaves the Mac.
+- **Output per finding:** a category from the area's list, valid, invalid or unclear, and a reason of at most one sentence. Structured output rejects a reply outside the list; it is never stored.
+- **Model:** Claude Haiku 5.5 by default, set in the env file. It uses plain Messages API calls; the Batch API's discount is worth cents here.
+- **Cap:** a daily count of findings, set in the env file, 500 by default, so labelling past runs takes a day or two. The page shows how many findings are labelled, how many are waiting, and the tokens the labeller used this week.
+- **No key:** labelling is off, the Findings page says so in one line, and everything else works. CI, `dev:fixtures` and every test run with no key; the client is injected and stubbed.
+- **Labels are stored facts.**
+  - Each label is keyed by run key, finding id, a hash of its input text, the list's version and the model, and stored with the time and its one-sentence reason.
+  - Labels can't be rebuilt from `unit_versions`, so a migration carries them over, as it does `missing_since`.
+  - A finding gets labelled again when its text changes, the list gets a new version, or `LABELLER_MODEL` changes. Switching to a stronger model is how a doubtful labeller gets upgraded, with no code change. Old labels stay stored. After a model change, the old model's label shows until the new model's replaces it (decision 49).
+  - Each app call's reason shows in the cell's findings list, so judging a pattern means reading the reasons behind it.
+- **Cost:** about 230 input and 150 output tokens per finding, at list prices on 2026-11-09. With about 250 findings in a busy week, Haiku 5.5 costs about $0.03 a week, and about $0.10 to label every finding already stored. The Anthropic workspace's spend limit is the hard ceiling (below).
+
+**The key** (decision 38).
+- `ANTHROPIC_API_KEY`, `LABELLER_MODEL` and `LABELLER_DAILY_MAX` live in `.env` in the data folder, mode 0600. Node's `process.loadEnvFile` loads it at start, and the SDK reads the key itself.
+- `.env.example` in the repo names these variables, with no values.
+- The key never appears in the repo, a fixture, a log or an error text.
+- The owner makes a dedicated key in its own Console workspace with a monthly spend limit, the hard ceiling on cost.
+
+**The Findings page,** a menu entry after Runs, layout B:
+- **The grid:** categories down, weeks across, over a period chosen as on the Runs list. One blue ramp, with the number in each cell.
+  - A measure switch: raised, share acted on, share judged invalid, app differs.
+  - An area switch: plan, implementation, cleanup.
+  - Path and project filters.
+  - An "unlabelled" row while labels are missing.
+- **A cell** opens its findings below the grid. Each shows its summary, its run (project · branch, linking to the run), step, outcome, the workflow's valid call, and the app's label and call.
+- **A side panel** shows the period's relevance signals, all sums over the stored runs:
+  - fix commits within 14 days after a run (`later_fixes`)
+  - final-review findings on runs whose task reviews came back clean
+  - fix-check verdicts of "fixed, not proportionate"
+  - declined or ruled findings, and, after CR10, how many the session judged invalid
+- **Strengths** by category become a measure of their own after CR10.
+- **Counting:** a finding counts in its run's week (`weekOf` on the run's finish time). Acted on and not acted on mean what slice 1 defines.
+- **Which judge a count uses.** A category or relevance count uses the workflow's call where one exists, otherwise the app's (decision 36: the app's is the only label on past runs). Until CR10 every label is the app's, so one line on the page says so, and an aggregate never passes for the reporter's facts (decision 49). The per-cell split ("7 · 5 by the app") and "App differs" come with CR10's task.
+- **2a reads no CR10 field.** Its shape is still a draft, and fixtures that guess it could drift from the real output. Until CR10:
+  - the Valid column shows "–"
+  - no strengths show
+  - every label is the app's
+
+  Reading CR10's fields is its own task once the workflow ships it, built from its real output.
+
+**One run's findings table** gains three columns:
+- **Category:** the workflow's, otherwise the app's, marked as the app's.
+- **Valid:** the workflow's call, "–" before CR10.
+- **App:** "agrees", or the app's differing call.
+
+After CR10, the table also lists the reviewers' strengths.
+
+### 2a. Showing mode
+
+- **Turning it on:**
+  - A switch in the header opens a picker of the stored projects. The owner ticks the ones to show and starts.
+  - The server holds the mode and the picked projects in `state`, so the mode survives a restart and filters every response, not just the page that's open.
+  - Starting and stopping are POSTs under `createApp`'s request rules, like the refresh.
+- **A picked project** shows in full detail under its alias, or under its folder name when it has none. Aliases live in `config.json` in the data folder. Costs and the Fable and all-model points stay visible (decision 40).
+- **Everything else:**
+  - Other projects appear only in sums (tiles, charts, totals), plus one line where their rows would be ("+ 5 runs in other projects").
+  - No response carries an absolute path or a session ID. Session chips drop their ID and copy button. Warning and finding texts go through `trimPaths` and lose session file names.
+  - The feed keeps only picked projects' items, and filter lists offer only picked projects.
+- **Where it applies:** each view takes the scope and applies it through one shared helper; a route never filters. Each view's tests run a leak check: with showing mode on, the serialized response holds no hidden project's name, path or branch, and no session ID from the fixtures.
+- **Checked on real data too.** The fixtures' leak check passes by construction, so `check:real` adds a showing-mode leak check on the stored data:
+  - it picks one stored project and builds every page's response with showing mode on
+  - it checks that no other project's path or folder name, and no session ID, appears in any of them
+  - it prints pass or fail and a count, never a value
+- **What a project is.**
+  - A project is its full path. Two projects can share a folder name, so a name alone would leak one when the other is picked.
+  - A worktree under `<repo>/.claude/worktrees/<name>` folds into `<repo>`.
+  - The API carries a project key, a hash like the run keys, never the path.
+  - A project shows as its alias, otherwise its folder name, with the parent folder added when two shown projects share a name.
+  - This changes slice 1's `project` fact (today the last path segment) and the Runs list's project filter (today by name) to the key, as part of 2a.
+- **A session's project** (for 2b; decision 49): the reporter doesn't give one. In 2a, showing mode leaves out every session warning, which fails closed. Until CR11, the app encodes each stored project's path the way Claude Code names transcript folders.
+  - A session belongs to a project when its folder equals that encoding, or starts with the encoding followed by `--claude-worktrees-`, and exactly one project matches.
+  - With no match, or more than one, it is "other project" and stays hidden in showing mode, so the check fails closed.
+- **Text that names a hidden project.** A picked project's finding, warning or labeller reason can name a hidden project's folder or path. In showing mode, that name is replaced with "another project". The leak-check fixtures include such a text.
+
+### 2b. The static page's sections, Compliance, Sessions, Home's skills section
+
+- **Steps and rules, Weeks, Skills, Models and advisor:** the static page's tables, each with a period.
+  - A figure that is a sum over runs and sessions is summed from the stored ones. On a full export, `check:real` compares each new sum with the reporter's totals, as it does for `weekSums`.
+  - Some figures aren't sums over runs and sessions yet: dispatch-guard refusals; the advisor's calls by role, failed calls, tokens and weekly Fable share; startup counts; typed-trigger misses in run windows; the stage table. These show the latest export's totals, marked "reporter, all time", until CR12 moves them into runs and sessions.
+  - Weeks adds four small multiples, one measure each: runs, final-review findings, cost, minutes per run.
+  - The tables ship working but plain; their readability is a later UX/UI slice (decision 42).
+- **Compliance** (decision 48).
+  - **If PR #8 is installed when 2b's plan is written:**
+    - warnings are grouped by kind (CR4's `warnings` objects), with a weekly trend per kind
+    - each group opens onto the runs and sessions behind it
+    - Home's step boxes turn orange when a warning is attached to that step
+    - a kind the dashboard doesn't know shows as "other"
+  - **Otherwise:** Health's warnings, grouped as the static page groups them: each run, each session, other, information.
+  - **In showing mode,** either way, only picked projects' warnings show.
+- **Sessions:** one row per session, showing:
+  - its name (decision 31) and project (as above), and when it was first seen
+  - the skills it loaded, and the skill commands typed, marked when the skill never loaded
+  - model and effort, estimated cost, startup guidelines, warnings
+
+  A session that a run now covers links to that run: its file is the run's window transcript (decision 32). A row opens the session's skill loads and typed commands in time order. Once CR9 is installed, it shows the session's title in place of its ID's first characters. After CR11 it also shows start and end, the reporter's project and every slash command.
+- **A session's time,** for periods and sums:
+  - its start, once CR11 exports one
+  - until then, its earliest skill load or typed command
+  - otherwise, its first-seen time, which puts sessions with no activity from before the first import in that import's week
+
+  A session that a run now covers counts with its run, not as a session, as the reporter counts it. The Sessions page lists it with its link, behind a filter.
+- **Home's skills and commands section,** below the charts. For each skill or command:
+  - the share of the period's sessions that loaded it, as a bar
+  - how many runs loaded it
+  - how often it was typed, and how often typed but never loaded
+
+### Left to the builder (slice 2)
+
+- The labels table's columns, the labeller's prompt and its output schema, and how the queue orders labelling after an import.
+- The API shapes, the scope helper's name and signature, and the picker's components.
+- The heatmap: a table with coloured cells, which is its own table view, or an ECharts heatmap under the chart conventions. The `dataviz` skill decides the ramp's steps.
+- The fixtures, as long as they cover:
+  - findings in every area, labelled and unlabelled
+  - a finding whose text changes between exports
+  - sessions in a run's project and in none
+  - warnings holding a session file name
+  - at least two projects, for the leak checks
+- Which reporter fields `report.ts` adds (`offers`, the totals 2b reads), under its convention.
 
 ## Decision record
 
@@ -153,6 +327,56 @@ CR6 can land at any point without a visible change. To check in planning: that e
 33. **`main`:** its first commit holds `CLAUDE.md`, `.gitignore`, the spec, the slice 1 plan and the mockups, and is pushed; the empty design branch is deleted; implementation runs on its own branch, with a pull request to `main`.
 34. **Story states** (from plan simplify): every component gets stories for its empty and full states; only components that fetch data also get loading and error states. This narrows decision 29's "every state".
 
+### 2026-11-09, the owner, slice 2 design
+
+35. **Findings assessment is slice 2's headline:**
+    - whether each finding mattered, and whether the session applied the right ones
+    - findings grouped by categories finer than severity, to show the plan's and the implementation's strengths and weaknesses
+    - positive findings counted beside the problems
+36. **Two judges for each finding.**
+    - The workflow labels findings at review time (CR10).
+    - The app labels them after import, with a cheaper model, through the Anthropic API and its own key.
+    - The workflow's label is the fact. The app's is a second opinion, and the only label on past runs.
+37. **The category list** starts as the draft in the slice 2 design and gets refined later.
+38. **The API key lives in an env file:** the real one in the data folder, a template in the repo.
+39. **Sessions:** the Sessions page lists each session's skills and commands, and the summary of skills and commands across sessions lives on Home.
+40. **In showing mode, a guest sees** estimated costs and the Fable and all-model points.
+41. **The Findings page is layout B:** category by week first.
+42. **The static page's sections ship as working tables.** Making Steps and rules and Models and advisor readable waits for a UX/UI slice.
+43. **Slice 2 is cut findings first:**
+    - 2a: findings assessment and showing mode.
+    - 2b: the static page's sections, Compliance, Sessions and Home's skills section.
+
+    This replaces decision 23's slice 2 row. 2a still starts with nothing from the workflow repo, and CR10, CR11 and CR12 improve 2a and 2b as they land. It also adds Findings to decision 22's menu, after Runs. The Workflow entry stays hidden until slice 3.
+
+### 2026-11-09, the owner, slice 2 grill
+
+44. **The app outlines patterns; the owner judges them.** The owner assesses whether a pattern is pertinent and designs any fix outside the app. The Findings page shows the pattern and the findings behind it, with no export and no links to agent files.
+45. **Trusting the labeller before CR10.**
+    - The labeller stays on Haiku 5.5, with each call's one-sentence reason shown beside it.
+    - If the reasons read wrong, switching `LABELLER_MODEL` relabels everything, with no code change.
+    - Once CR10 lands, "app differs" is the standing check.
+46. **Strengths meet the findings' bar:**
+    - specific, and tied to the brief
+    - at most three per review, categorized
+    - optional, so a review can list none
+
+    Categories of their own for strengths come later (open question 6).
+47. **CR10 starts now, in parallel with 2a,** in its own session in the workflow repo.
+48. **The order after 2a:**
+    - **2b, if PR #8 is installed when 2b's plan is written.** [shoklah/claude-workflow#8](https://github.com/shoklah/claude-workflow/pull/8) holds CR4, CR8 and CR9. 2b's Compliance then groups warnings by kind, with a weekly trend, and Home's step boxes turn orange. Otherwise, 2b keeps the static page's grouping and these move to slice 3.
+    - **Slice 3** shrinks to the Workflow page, with CR5 if it needs it.
+    - **The UX/UI slice** comes right after 2b.
+
+    This replaces decision 23's slice 3 row.
+
+### 2026-11-09, the owner, slice 2a plan
+
+49. **The slice 2a plan is approved** (`docs/superpowers/plans/2026-11-09-live-dashboard-slice-2a.md`), with three changes to the design:
+    - Until CR10, one page line says every label is the app's, instead of a per-cell count.
+    - Matching sessions to projects moves to 2b, and 2a's showing mode leaves out every session warning.
+    - After a model change, the old model's labels show until the new model's replace them.
+
 ## Claude's calls, open to correction
 
 - **One library per job at a time.** Swapping a component kit or a graphical library is its own small task, with screenshots before and after and a line in `CLAUDE.md`, so evolving never stalls a slice.
@@ -165,18 +389,53 @@ CR6 can land at any point without a visible change. To check in planning: that e
 - **One web frontend.** The same frontend reads the real JSON locally and invented JSON in tests, screenshots and the later public demo.
 - **A Mac-side job** started at login (launchd) runs the reporter. It's needed wherever the page is served, since only the Mac has the transcripts.
 - **No tricks to make the export faster here.** The app stores what each export brings and never re-derives a fact; a faster export is the reporter's job (CR6).
+- **Slice 2, the labeller's mechanics.**
+  - Haiku 5.5 is the default model, from the owner's "a cheaper model".
+  - It makes plain calls of about 25 findings each, with structured output, after each import.
+  - The cap counts findings, not dollars: the app keeps no price table, since prices are the reporter's.
+  - Labels are keyed by a hash of their input text and the list's version, so a change relabels by itself.
+  - Labels are stored facts, carried over by migrations.
+- **Slice 2, the area of a finding comes from its step,** and simplify's findings use the implementation list.
+- **Slice 2, showing mode's safety:**
+  - The mode lives in `state`, so it survives a restart.
+  - One scope helper applies it in every view, and each view's tests run a leak check.
+  - A session's project comes from matching its transcript folder against stored run projects. A session that matches none is hidden, so the check fails closed.
+  - Compliance hides the "other" and "information" groups while showing, since they can name anything.
+- **Slice 2, figures that aren't sums over runs and sessions** show the latest export's totals, marked "reporter, all time", until CR12.
+- **Slice 2, from the builder check (2026-11-09):**
+  - A project is its full path, worktrees folded in, behind a hashed key. Slice 1's name-based project fact and filter move to that key.
+  - A session's project needs exactly one match.
+  - Text naming a hidden project gets masked.
+  - Counts use the workflow's call where one exists, otherwise the app's, and say how much is the app's.
+  - 2a reads no CR10 field.
+  - A session's time follows the fallbacks set out in 2b, and covered sessions count with their run.
 
 ## Change requests for the workflow repo (draft)
 
 - **CR1.** Re-export the template, so the public reporter has `--json` version 1. The dashboard can't run from the public template until then.
 - **CR2.** Point the 2026-11-08 design's part two to this design: the Mac first, then the home server.
 - **CR3, only if ongoing sessions are in scope.** A fast way to read sessions in progress: which sessions are active, and the steps and findings of a run so far. It probably needs a machine-readable ledger line format, and a mode that reads only recently changed transcripts.
-- **CR4.** Structured warnings in `--json`: today each WARN is a sentence, so grouping or charting them here would mean parsing text. Each warning would also carry its kind, its run or session, and its step or skill where it has one, next to the sentence.
+- **CR4.** Structured warnings in `--json`: today each WARN is a sentence, so grouping or charting them here would mean parsing text. Each warning would also carry its kind, its run or session, and its step or skill where it has one, next to the sentence. **Status, 2026-11-09:** built with CR8 and CR9 on `claude/dashboard-facts` ([shoklah/claude-workflow#8](https://github.com/shoklah/claude-workflow/pull/8)), CI green, open, not yet installed.
 - **CR5, if the workflow diagram shows each run's path.** The reporter emits the workflow's expected steps per path, or each run's trace against them, so the diagram here doesn't hold a copy of the workflow that drifts.
 - **CR6. An incremental export.** `--json` exports only the units (runs, sessions) whose facts changed since a cursor from the previous export, each under a stable key, with a new cursor. It needs the reporter to keep state between runs, which it doesn't today (it's read-only), and every total must be expressible as a sum over units so the app can rebuild it. It would also speed up `--health` and `--brief`, which sessions run at the end of every run. It needs its own design in the workflow repo.
 - **CR7, only if runs have no stable key.** A key per run and per session that stays the same across exports.
-- **CR8. Step times and links.** Each step's time, and each dispatch and skill load tied to its step, so the run's timeline can show when each step happened and what ran in it. Slice 1 goes without it (decision 30).
-- **CR9. Session titles.** Each session's title, and the title of each run's main session, so the page can name a session instead of showing the start of its ID (decision 31).
+- **CR8. Step times and links.** Each step's time, and each dispatch and skill load tied to its step, so the run's timeline can show when each step happened and what ran in it. Slice 1 goes without it (decision 30). **Status:** in the same pull request as CR4.
+- **CR9. Session titles.** Each session's title, and the title of each run's main session, so the page can name a session instead of showing the start of its ID (decision 31). **Status:** in the same pull request as CR4.
+- **CR10. Findings labels** (decision 36).
+  - Each finding in the run record carries a `category` from the workflow's list, by area.
+  - Each finding also carries `valid`: "valid", "invalid" or "unclear", set by the session when it applies, declines or rules the finding.
+  - Each review step carries `strengths`: a list of `{category, summary}` from the reviewer's report. A strength meets the findings' bar:
+    - specific: where it is and what it does
+    - tied to a requirement or risk in the brief, not a general quality
+    - at most three per review, each with a category from the same list
+    - optional: none is recorded as an empty list, not as missing
+  - The list, with a version, lives in the workflow repo. The reviewer agents' report format reads it, and `--json` exports it.
+  - It needs a record schema bump and report-format changes in task-reviewer, final-reviewer, plan-reviewer and plan-simplifier.
+- **CR11. Session facts** (beyond CR9's titles). For each session: its start and end, its project (the working directory), and every slash command typed, with name and time, never its arguments.
+- **CR12. Totals into units.**
+  - Each of these goes on the run or session it comes from: dispatch-guard refusals; the advisor's calls by role, failed calls, tokens and Fable spend; the startup flag; typed triggers.
+  - The stage table is exported once.
+  - Then every total on the static page is a sum over runs and sessions and takes a period, as CR6 already needs.
 
 ## Design candidates (to try; decision 29 adopts some)
 
@@ -198,6 +457,9 @@ CR6 can land at any point without a visible change. To check in planning: that e
 
 ## Open questions
 
-1. What the other screens show: Workflow, Compliance, Sessions and the rest of the menu (slices 2 and 3).
+1. What the Workflow page shows (slice 3). Slice 2's screens, Compliance by kind included, are designed above.
 2. Ongoing sessions: what to show, and what it would cost (reporter work, refresh cost).
 3. Where the workflow roadmap's UX/UI design step is described, if anywhere beyond decision 28.
+4. The UX/UI slice (decision 42), which comes right after 2b (decision 48): what it covers beyond the readability of Steps and rules and Models and advisor.
+5. When the owner's own marks on findings come in, as an override of the two machine judges (decision 36).
+6. Categories of their own for strengths, beyond the findings' list: to assess once strengths come in (CR10).

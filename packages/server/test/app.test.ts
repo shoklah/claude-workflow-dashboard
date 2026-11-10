@@ -41,6 +41,8 @@ function app(overrides: Partial<AppDeps> = {}) {
     importing: () => false,
     webDist,
     now: () => NOW,
+    aliases: {},
+    labeller: null,
     ...overrides,
   });
 }

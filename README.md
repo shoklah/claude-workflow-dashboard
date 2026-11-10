@@ -31,6 +31,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 
 - `dashboard.sqlite`: the imports and what was read from them.
 - `logs/`: the agent's `out.log` and `err.log`.
+- `.env` (optional): the Anthropic API key and the labeller's settings, as `.env.example` lists them; with no key, the labeller stays off.
 - `config.json` (optional): overrides any of the defaults below.
 
 | Key | Default |
@@ -40,6 +41,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 | `runLog` | `~/.claude/workflow-log.jsonl` (an import runs when it changes) |
 | `projectsDir` | `~/.claude/projects` (the session transcripts, checked every 15 minutes) |
 | `reporterTimeoutMs` | `120000` |
+| `aliases` | `{}`: showing mode's display names, by project root path, e.g. `{"/Users/me/Work/app": "Notes app"}` |
 
 ## Checking your real data
 
@@ -47,7 +49,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 pnpm --filter @cwd/server check:real
 ```
 
-runs the reporter once and says whether the dashboard reads its output: the JSON version, the fields it can't read (`fields: none` when all is well), the run key counts, and the weeks whose sums differ from the reporter's totals. It prints no value from the data but those weeks' dates.
+runs the reporter once and says whether the dashboard reads its output: the JSON version, the fields it can't read (`fields: none` when all is well), the run key counts, and the weeks whose sums differ from the reporter's totals. It then imports the output into a fresh database in a temp folder (never the dashboard's own), turns showing mode on for the first project, and checks every API response for a hidden project's path, name or branch and for session IDs: `showing: pass`, or `showing: <n> leaks`. It prints no value from the data but those weeks' dates.
 
 ## Development
 

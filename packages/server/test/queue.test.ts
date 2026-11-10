@@ -65,4 +65,15 @@ describe('createQueue', () => {
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
+
+  test('a queue logs its failing job under its name', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const queue = createQueue(async () => {
+      throw new Error('boom');
+    }, 'label');
+    queue.request();
+    await queue.idle();
+    expect(error).toHaveBeenCalledWith('label job failed:', expect.any(Error));
+    error.mockRestore();
+  });
 });

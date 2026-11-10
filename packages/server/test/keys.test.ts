@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { loadReport, type Report } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
-import { runKey, sessionKey } from '../src/keys.ts';
+import { projectKey, runKey, sessionKey } from '../src/keys.ts';
 
 function report(): Report {
   const result = loadReport(fixture('report-full'));
@@ -40,5 +40,11 @@ describe('sessionKey', () => {
     expect(sessionKey(first)).toMatch(/^[0-9a-f]{16}$/);
     expect(sessionKey(first)).not.toBe(sessionKey(second));
     expect(sessionKey({ ...first, warns: [] })).toBe(sessionKey(first));
+  });
+});
+
+describe('projectKey', () => {
+  test('projectKey is 16 hex characters', () => {
+    expect(projectKey('/Users/example/Work/lantern-notes')).toMatch(/^[0-9a-f]{16}$/);
   });
 });

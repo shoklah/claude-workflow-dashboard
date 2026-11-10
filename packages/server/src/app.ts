@@ -14,6 +14,10 @@ export type AppDeps = {
   // The built frontend's folder, served with index.html as the fallback for non-/api paths; null serves none.
   webDist: string | null;
   now: () => Date;
+  // Showing mode's display names, by project root path (the config's aliases).
+  aliases: Record<string, string>;
+  // The labeller's model, null while it is off (no key).
+  labeller: { model: string } | null;
 };
 
 /**

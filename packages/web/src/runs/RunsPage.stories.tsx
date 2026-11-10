@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
-import { runsEmpty, runsFull, runsWarned } from '../test/runs.ts';
+import { runsEmpty, runsFull, runsHidden, runsWarned } from '../test/runs.ts';
 import { RunsPage } from './RunsPage.tsx';
 
 const meta = { component: RunsPage } satisfies Meta<typeof RunsPage>;
@@ -55,6 +55,18 @@ export const Full: Story = {
       'harbor',
       'quarry',
     ]);
+    await expect(canvas.queryByText(/in other projects/)).toBeNull();
+  },
+};
+
+/** Showing mode on: the runs of other projects are only counted, in a line under the list. */
+export const HiddenRuns: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/runs?weeks=4': runsHidden });
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole('link', { name: 'atlas · feat/search' })).toBeVisible();
+    await expect(canvas.getByText('+ 2 runs in other projects, counted in totals and charts only')).toBeVisible();
   },
 };
 
@@ -80,8 +92,8 @@ export const Filters: Story = {
       '/api/status': status,
       '/api/runs?weeks=4': runsFull,
       '/api/runs?path=full&weeks=4': runsWarned,
-      '/api/runs?path=full&project=atlas&weeks=4': runsWarned,
-      '/api/runs?path=full&project=atlas&weeks=12': runsWarned,
+      '/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=4': runsWarned,
+      '/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12': runsWarned,
     });
   },
   play: async ({ canvas, userEvent }) => {
@@ -89,6 +101,6 @@ export const Filters: Story = {
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Project' }), 'atlas');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '12');
-    await expect(fetch).toHaveBeenCalledWith('/api/runs?path=full&project=atlas&weeks=12');
+    await expect(fetch).toHaveBeenCalledWith('/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12');
   },
 };

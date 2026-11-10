@@ -4,6 +4,7 @@ export type FindingSplit = { total: number; actedOn: number; notActedOn: number;
 
 export type RunFacts = {
   key: string;
+  projectKey: string;
   project: string;
   branch: string | null;
   path: Path | null;
@@ -23,8 +24,9 @@ export type RunFacts = {
 const ACTED_ON: readonly Outcome[] = ['fixed', 'applied'];
 const NOT_ACTED_ON: readonly Outcome[] = ['declined', 'deferred', 'ruled', 'to_owner'];
 
-// A session transcript's file name, as the reporter writes it in a session warning.
-const SESSION_FILE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl/i;
+// A session ID, and a session transcript's file name, as the reporter writes it in a session warning.
+export const SESSION_ID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+export const SESSION_FILE = new RegExp(`(${SESSION_ID.source})\\.jsonl`, 'i');
 
 /** Every finding of every step: acted on = fixed or applied, not acted on = declined, deferred, ruled or to_owner,
  * open = open; a finding with no outcome counts in total only. */
@@ -48,8 +50,9 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
 }
 
-/** A run's facts but its key, each taken from its run entry as the reporter gives it; a view adds the stored key. */
-export function runFacts(run: RunEntry): Omit<RunFacts, 'key'> {
+/** A run's facts but its keys, each taken from its run entry as the reporter gives it; a view adds the stored key and
+ * the project's key and name. */
+export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
   const record = run.record;
   const path = toPath(record?.path) ?? null;
   return {

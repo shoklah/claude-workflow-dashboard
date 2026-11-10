@@ -13,14 +13,17 @@ function failure(summary: string, detail = ''): ReporterResult {
 }
 
 /**
- * Runs the reporter and parses its whole output as JSON. Every failure is a result, never a throw: a command that
- * can't start, a non-zero exit (with stderr's last line), no output, output that isn't JSON, or a run past the timeout,
- * which is killed. The error text never quotes stdout, which holds the data.
+ * Runs the reporter, with the env but `ANTHROPIC_API_KEY`, and parses its whole output as JSON. Every failure is a
+ * result, never a throw: a command that can't start, a non-zero exit (with stderr's last line), no output, output that
+ * isn't JSON, or a run past the timeout, which is killed. The error text never quotes stdout, which holds the data.
  */
 export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterResult> {
   return new Promise((resolve) => {
     const [command, ...args] = cmd;
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    // The labeller's key, which main.ts loads into process.env, stays out of the reporter's env.
+    const env = { ...process.env };
+    delete env.ANTHROPIC_API_KEY;
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], env });
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));

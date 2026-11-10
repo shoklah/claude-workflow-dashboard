@@ -44,7 +44,7 @@ function dbWith(...raws: any[]): Db {
 }
 
 async function home(db: Db): Promise<HomeResponse> {
-  const app = createApp({ db, port: PORT, requestImport: () => {}, importing: () => false, webDist: null, now: () => NOW });
+  const app = createApp({ db, port: PORT, requestImport: () => {}, importing: () => false, webDist: null, now: () => NOW, aliases: {}, labeller: null });
   const res = await app.request('/api/home', { headers: { Host: `localhost:${PORT}` } });
   expect(res.status).toBe(200);
   return res.json();

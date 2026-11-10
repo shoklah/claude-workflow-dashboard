@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -6,17 +7,32 @@ import {
   tableFeatures,
   useTable,
 } from '@tanstack/react-table';
-import type { FindingRow, StepKind } from '@cwd/shared';
+import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { NONE, STEP_LABELS } from '../lib/format.ts';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
+import { NONE, STEP_LABELS, categoryLabel, runName } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
   filteredRowModel: createFilteredRowModel(),
   filterFns: { equalsString: filterFn_equalsString },
 });
-const helper = createColumnHelper<typeof features, FindingRow>();
+// A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
+type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
+
+/** A finding's category, in a dashed badge that marks it as the app's label, never the reporter's; "unlabelled" bare. */
+export function CategoryBadge({ category }: { category: string | null }) {
+  return category === null ? (
+    categoryLabel(null)
+  ) : (
+    <Badge variant="outline" className="border-dashed" title="The app's label">
+      {categoryLabel(category)}
+    </Badge>
+  );
+}
+
+const helper = createColumnHelper<typeof features, Row>();
 const columns = helper.columns([
   helper.accessor('id', { header: '#', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('step', { header: 'Step', filterFn: 'equalsString', cell: (c) => STEP_LABELS[c.getValue()] }),
@@ -25,6 +41,7 @@ const columns = helper.columns([
     header: 'Task',
   }),
   helper.accessor('severity', { header: 'Severity', filterFn: 'equalsString', cell: (c) => c.getValue() ?? NONE }),
+  helper.accessor('category', { header: 'Category', cell: (c) => <CategoryBadge category={c.getValue()} /> }),
   helper.accessor('summary', { header: 'Summary', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('outcome', {
     header: 'Outcome',
@@ -36,6 +53,37 @@ const columns = helper.columns([
   }),
   helper.accessor('reason', { header: 'Reason', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor((f) => (f.verdicts.length ? f.verdicts.join(', ') : NONE), { id: 'verdicts', header: 'Verdicts' }),
+  // The session's call, which the workflow doesn't record yet (CR10).
+  helper.accessor(() => NONE, { id: 'valid', header: 'Valid' }),
+  helper.accessor('relevance', {
+    header: 'App',
+    cell: (c) => {
+      const relevance = c.getValue();
+      if (relevance === null) return NONE;
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={0} className="underline decoration-dotted underline-offset-2">
+              {relevance}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{c.row.original.labelReason}</TooltipContent>
+        </Tooltip>
+      );
+    },
+  }),
+]);
+const withRun = helper.columns([
+  helper.accessor((f) => runName({ project: f.project ?? null, branch: f.branch ?? null }), {
+    id: 'run',
+    header: 'Run',
+    cell: (c) => (
+      <Link to="/runs/$key" params={{ key: c.row.original.runKey ?? '' }} className="underline-offset-2 hover:underline">
+        {c.getValue()}
+      </Link>
+    ),
+  }),
+  ...columns,
 ]);
 
 // The filters: each lists the values its column holds, in order, labelled as the column shows them.
@@ -45,9 +93,12 @@ const FILTERS = [
   { id: 'outcome', label: 'Outcome', show: (v: string) => v },
 ] as const;
 
-/** Every finding of the run in one table, filtered by step, severity and outcome. */
-export function FindingsTable({ findings }: { findings: FindingRow[] }) {
-  const table = useTable({ features, columns, data: findings });
+/**
+ * Every finding of the run in one table, filtered by step, severity and outcome, with the app's label of each. With
+ * `run`, a first column links each finding to its run.
+ */
+export function FindingsTable({ findings, run }: { findings: Row[]; run?: boolean }) {
+  const table = useTable({ features, columns: run ? withRun : columns, data: findings });
   const rows = table.getRowModel().rows;
   return (
     <div className="flex flex-col gap-3">
@@ -74,7 +125,8 @@ export function FindingsTable({ findings }: { findings: FindingRow[] }) {
           );
         })}
       </div>
-      <Table>
+      {/* It scrolls sideways, so its container is a named tab stop for keyboard users. */}
+      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Findings' }}>
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>
@@ -89,7 +141,7 @@ export function FindingsTable({ findings }: { findings: FindingRow[] }) {
         <TableBody>
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={columns.length} className="text-muted-foreground">
+              <TableCell colSpan={table.getAllLeafColumns().length} className="text-muted-foreground">
                 No findings.
               </TableCell>
             </TableRow>
