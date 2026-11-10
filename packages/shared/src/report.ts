@@ -257,6 +257,7 @@ export const ReportSchema = z.object({
   runs: z.array(RunEntrySchema),
   sessions: z.array(SessionEntrySchema),
   totals: TotalsSchema,
+  // `cursor` and `removed` come only with `--changed-since` (CR6).
   cursor: str,
   removed: z.object({ runs: strings, sessions: strings }).nullish(),
 });

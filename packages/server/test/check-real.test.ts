@@ -148,6 +148,14 @@ describe('check:real', () => {
     expect(`${stdout}${stderr}`).not.toContain('0000000000000000');
   });
 
+  test('leaves a keyed run with no app key out of the reporter keys, counted as a missing run key', () => {
+    const file = changed('report-v6', (raw) => {
+      delete raw.runs.find((run: { key?: string }) => run.key).record.date;
+    });
+    const { stdout } = checkReal(['cat', file]);
+    expect(stdout).toContain('\nrun keys: 0 duplicates, 1 missing\nreporter keys: 11 compared, 0 differ\n');
+  });
+
   test('counts the leaks in the sessions route', () => {
     // The shown project (the first root, Work lantern-notes) aliased as the hidden tidepool-api leaks in every response
     // naming it, the sessions route's too while it lists the project's sessions, and in no response with them left out

@@ -67,12 +67,13 @@ const present = keys.filter((key) => key !== null);
 console.log(`run keys: ${present.length - new Set(present).size} duplicates, ${keys.length - present.length} missing`);
 
 // The reporter's unit keys against the app's, since an export's removed keys match stored units only if the recipes
-// agree. A session with no string file differs unhashed, as sessionKey would throw on it.
+// agree. A run with no app key is left out, as run keys counts it missing; a session with no string file differs
+// unhashed, as sessionKey would throw on it.
 const sessions = Array.isArray(json?.sessions) ? (json.sessions as unknown[]) : [];
 type Keyed = { key: string; file?: unknown };
 const keyed = (units: unknown[]) =>
   units.filter((unit): unit is Keyed => typeof (unit as Keyed | null)?.key === 'string');
-const keyedRuns = keyed(runs);
+const keyedRuns = keyed(runs).filter((run) => runKey(run as RunEntry) !== null);
 const keyedSessions = keyed(sessions);
 const keysDiffer = [
   ...keyedRuns.filter((run) => run.key !== runKey(run as RunEntry)),
