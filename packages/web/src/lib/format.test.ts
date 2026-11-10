@@ -31,7 +31,7 @@ import {
   modelsLabel,
   sessionsSummary,
   yesNoLabel,
-  clockTime,
+  timelineTimes,
   projectLabel,
   sessionName,
 } from './format.ts';
@@ -348,8 +348,20 @@ describe('projectLabel', () => {
   });
 });
 
-describe('clockTime', () => {
-  it('writes a time of day only, with no date', () => {
-    expect(clockTime('2026-11-10T09:07:00Z')).toMatch(/^\d{1,2}:\d{2}(\s|\u202f)?(AM|PM)?$/);
+describe('timelineTimes', () => {
+  it('writes the time of day, with the date on the first entry and on the first of each new day', () => {
+    // The two-run session's timeline: three entries on Nov 8, then three on Nov 12.
+    const times = timelineTimes([
+      '2026-11-08T08:02:40.120Z',
+      '2026-11-08T08:05:02.300Z',
+      '2026-11-08T08:10:00Z',
+      '2026-11-12T02:36:05.410Z',
+      '2026-11-12T02:40:00Z',
+      '2026-11-12T02:45:10.000Z',
+    ]);
+    expect(times.map((t) => /^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}/.test(t))).toEqual([true, false, false, true, false, false]);
+    expect(times[0]).toMatch(/^Nov [78], /);
+    expect(times[3]).toMatch(/^Nov 1[12], /);
+    expect(times[1]).toMatch(/^\d{1,2}:\d{2}(\s|\u202f)?(AM|PM)?$/);
   });
 });

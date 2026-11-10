@@ -65,8 +65,9 @@ export const Full: Story = {
     const timeline = canvas.getByRole('list', { name: 'Timeline of Plan the search index' });
     const items = within(timeline).getAllByRole('listitem').map((li) => li.textContent);
     await expect(items).toHaveLength(6);
-    // A line shows its time of day only, as the mockup does.
-    await expect(items[0]).toMatch(/^\d{1,2}:\d{2}\W*(AM|PM)?skill brainstorming · wrote a file$/);
+    // A line shows its time of day, the first one its date too.
+    await expect(items[0]).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}\W*(AM|PM)?skill brainstorming · wrote a file$/);
+    await expect(items[1]).toMatch(/^\d{1,2}:\d{2}\W*(AM|PM)?command \/graphify$/);
     await expect(items[2]).toMatch(/command \/grill-me · its skill never loaded$/);
     await expect(items[3]).toMatch(/window starts · atlas · feat\/search · full$/);
     await expect(within(timeline).getByRole('link', { name: 'harbor · fix/retry · small' })).toHaveAttribute(

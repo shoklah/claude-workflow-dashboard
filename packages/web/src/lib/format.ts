@@ -231,9 +231,15 @@ export function projectLabel(project: string | null): string {
 /** An empty list of names, as a cell writes it. */
 export const NO_NAMES = 'none';
 
-/** A time of day only, as a session's timeline writes it: "9:07 AM". */
-export function clockTime(iso: string): string {
-  return parseTime(iso).toLocaleTimeString(undefined, { timeStyle: 'short' });
+/** A session's timeline times, in its order: the time of day, "9:07 AM", with the date before it on the first entry
+ * and on the first entry of each new day, "Nov 8, 8:02 AM". */
+export function timelineTimes(isos: string[]): string[] {
+  const dates = isos.map((iso) => parseTime(iso));
+  return dates.map((date, i) => {
+    const time = date.toLocaleTimeString(undefined, { timeStyle: 'short' });
+    const newDay = i === 0 || date.toDateString() !== dates[i - 1].toDateString();
+    return newDay ? `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}` : time;
+  });
 }
 
 /** A yes-or-no fact: "yes", "no", or a dash when it isn't known. */

@@ -10,7 +10,6 @@ import {
   NO_NAMES,
   WARNING_BORDER,
   WARNING_INK,
-  clockTime,
   formatCost,
   formatMinutes,
   joined,
@@ -18,6 +17,7 @@ import {
   projectLabel,
   runName,
   sessionName,
+  timelineTimes,
   usageName,
   yesNoLabel,
 } from '../lib/format.ts';
@@ -52,6 +52,7 @@ function HoldLink({ hold }: { hold: Hold }) {
 /** A session's skill loads, commands and held runs' window starts, in the API's time order. */
 function Timeline({ session, name }: { session: SessionRow; name: string }) {
   if (session.timeline.length === 0) return <p className="text-muted-foreground">No skill loads, commands or runs.</p>;
+  const times = timelineTimes(session.timeline.map((item) => item.at));
   return (
     <ol aria-label={`Timeline of ${name}`} className="flex flex-col gap-0.5">
       {session.timeline.map((item, i) => {
@@ -59,7 +60,7 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
         return (
           <li key={i}>
             <time dateTime={item.at} className="mr-2 text-muted-foreground tabular-nums">
-              {clockTime(item.at)}
+              {times[i]}
             </time>
             {item.kind === 'skill' && (
               <>
