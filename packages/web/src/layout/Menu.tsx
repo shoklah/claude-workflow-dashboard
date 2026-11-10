@@ -8,6 +8,7 @@ const ENTRIES = [
   { to: '/findings', label: 'Findings', exact: false },
   { to: '/steps', label: 'Steps and rules', exact: false },
   { to: '/skills', label: 'Skills', exact: false },
+  { to: '/models', label: 'Models and advisor', exact: false },
   { to: '/weeks', label: 'Weeks', exact: false },
 ] as const;
 

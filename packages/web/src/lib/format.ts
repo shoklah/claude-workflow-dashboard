@@ -53,14 +53,24 @@ export function nonZeroCountsLabel(counts: Record<string, number>): string {
 /** The advisor's notes, those that changed something and its share of Fable spend, as a whole percent: "notes 12 ·
  * changed 9 · share 8%". */
 export function advisorLabel(advisor: { notes: number | null; changed: number | null; share: number | null }): string {
-  const share = formatPercent(advisor.share === null ? null : Math.round(advisor.share));
-  return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${share}`;
+  return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${formatShare(advisor.share)}`;
 }
 
-/** The tokens of every kind together, compact: "9.8M", "333K"; a dash when they aren't known. */
-export function formatTokens(tokens: Record<string, number> | null): string {
+/** The advisor's share of Fable spend as a whole percent: "8%"; a dash when it isn't known. */
+export function formatShare(share: number | null): string {
+  return formatPercent(share === null ? null : Math.round(share));
+}
+
+/** An advisor week's stop mark: "STOP" when its share passed the stop share, else nothing. */
+export function stopLabel(stop: boolean | null): string {
+  return stop ? 'STOP' : '';
+}
+
+/** The tokens of every kind together, compact: "9.8M", "333K", a kind that isn't known as 0; a dash when they aren't
+ * known. */
+export function formatTokens(tokens: Record<string, number | null> | null): string {
   if (tokens === null) return NONE;
-  const total = Object.values(tokens).reduce((sum, n) => sum + n, 0);
+  const total = Object.values(tokens).reduce<number>((sum, n) => sum + (n ?? 0), 0);
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(total);
 }
 
@@ -169,4 +179,23 @@ export function labellerLabel(labeller: FindingsResponse['labeller']): string {
 /** A skill's loads by outcome: "ran × 2 · applied 2, skipped 1 × 1"; a dash with none. */
 export function outcomesLabel(outcomes: Record<string, number>): string {
   return joined(Object.entries(outcomes).map(([label, count]) => `${label} × ${count}`)) || NONE;
+}
+
+/** A path's stage table as the static page writes it: "1=opus/medium 2=opus/medium", a stage with no
+ * recommendation as a dash; a dash when it isn't known. */
+export function stageTableLabel(recommended: Record<string, string | null | undefined> | null): string {
+  if (!recommended) return NONE;
+  return Object.entries(recommended)
+    .map(([stage, want]) => `${stage}=${want ?? NONE}`)
+    .join(' ');
+}
+
+/** The advisor's calls by role: "implementer 3 · task-reviewer 2 (should not consult)", a role that should never
+ * consult flagged; a dash when they aren't known. */
+export function advisorRolesLabel(byRole: Record<string, { calls: number; flagged: boolean }> | null): string {
+  if (!byRole) return NONE;
+  return (
+    joined(Object.entries(byRole).map(([role, { calls, flagged }]) => `${role} ${calls}${flagged ? ' (should not consult)' : ''}`)) ||
+    NONE
+  );
 }
