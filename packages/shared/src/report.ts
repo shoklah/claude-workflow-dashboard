@@ -91,6 +91,23 @@ const EffortsSchema = z.record(z.string(), z.record(z.string(), z.number())).nul
 // outcome is a file path, an object, a list, a boolean, 'ran' or null, depending on the skill.
 const SkillSchema = z.object({ name: str, time: str, outcome: z.unknown().optional() });
 
+// A typed trigger: a skill asked for by a typed phrase or command, met when a later row loads it.
+const TypedSchema = z.object({ skill: str, time: str, met: bool });
+
+// A unit's advisor facts (CR6's unit_advisor), which totals.advisor sums: its tokens, calls by role, failed calls by
+// error code, and its advisor and Fable dollars by week.
+const UnitAdvisorSchema = z.object({
+  calls: num,
+  cost: num,
+  tokens: counts,
+  by_role: z.record(z.string(), z.object({ calls: num, flagged: bool })).nullish(),
+  failed: counts,
+  weeks: z.array(z.object({ week: str, advisor: num, fable: num })).nullish(),
+});
+
+// A unit's advisor notes: how many, how many changed something, and the consultations with none.
+const NotesSchema = z.object({ notes: num, changed: num, missing: num });
+
 const DispatchSchema = z.object({
   kind: str,
   agent: str,
@@ -128,21 +145,31 @@ export const RunEntrySchema = z.object({
   dispatches: z.array(DispatchSchema).nullish(),
   skills: z.array(SkillSchema).nullish(),
   missing_skills: strings,
+  typed: z.array(TypedSchema).nullish(),
   refusals: counts,
   models: ModelsSchema,
   efforts: EffortsSchema,
-  advisor: z.object({ calls: num, cost: num }).nullish(),
-  notes: z.object({ notes: num, changed: num, missing: num }).nullish(),
+  advisor: UnitAdvisorSchema.nullish(),
+  notes: NotesSchema.nullish(),
   main: z.object({ model: str, effort: str }).nullish(),
   title: str,
 });
 
+// A main transcript's rows outside every run window (CR6), with its whole transcript's facts (CR11): its first and
+// last row times, its first working directory, and its slash commands by name and time.
 export const SessionEntrySchema = z.object({
   file: z.string(),
+  start: str,
+  end: str,
+  project: str,
+  commands: z.array(z.object({ name: str, time: str })).nullish(),
   skills: z.array(SkillSchema).nullish(),
-  typed: z.array(z.object({ skill: str, time: str, met: bool })).nullish(),
+  typed: z.array(TypedSchema).nullish(),
   models: ModelsSchema,
   efforts: EffortsSchema,
+  advisor: UnitAdvisorSchema.nullish(),
+  notes: NotesSchema.nullish(),
+  refusals: counts,
   startup: bool,
   warns: strings,
   warnings: z.array(WarningSchema).nullish(),

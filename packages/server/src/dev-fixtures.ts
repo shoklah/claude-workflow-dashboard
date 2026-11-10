@@ -1,7 +1,7 @@
 // The dashboard on invented data, for the frontend's tests: a temp data dir, each named fixture imported in order an
 // hour apart (the first is the baseline, so the feed shows what the later ones add), labels.json's invented labels,
 // a fixed clock, a reporter that prints the last fixture again, no triggers and the labeller off. Usage:
-// `pnpm --filter @cwd/server dev:fixtures [fixture...]` (default report-full report-later report-v5); the port is the
+// `pnpm --filter @cwd/server dev:fixtures [fixture...]` (default report-full report-later report-v6); the port is the
 // config's default unless PORT is set.
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,7 +20,7 @@ import { importOnce } from './reporter.ts';
 const NOW = new Date('2026-11-12T12:00:00Z');
 const HOUR = 60 * 60 * 1000;
 
-const names = process.argv.length > 2 ? process.argv.slice(2) : ['report-full', 'report-later', 'report-v5'];
+const names = process.argv.length > 2 ? process.argv.slice(2) : ['report-full', 'report-later', 'report-v6'];
 const files = names.map((name) => fileURLToPath(new URL(`../../shared/fixtures/${name}.json`, import.meta.url)));
 const dataDir = mkdtempSync(join(tmpdir(), 'cwd fixtures '));
 const db = openDb(join(dataDir, 'dashboard.sqlite'));

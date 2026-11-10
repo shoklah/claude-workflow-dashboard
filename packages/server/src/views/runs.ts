@@ -128,6 +128,11 @@ export function periodRuns(
   return { weeks, runs: runs.filter((unit) => matches(storedFacts(unit, names))).map((unit) => unit.merged) };
 }
 
+/** The stored sessions that started in one of `weeks` (a period's weeks); a session with no start is in none. */
+export function periodSessions(sessions: StoredUnit<SessionEntry>[], weeks: string[]): StoredUnit<SessionEntry>[] {
+  return sessions.filter(({ merged: { start } }) => !!start && weeks.includes(weekOf(parseTime(start))));
+}
+
 /**
  * The runs in the query's period (period) that have a current run warning when it asks "has warnings", newest first,
  * and every stored run's project, by name. With a scope, only the shown projects' runs and projects, and `hidden`

@@ -2,7 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, report-later and report-v5, the last one's totals giving the reporter's figures.
+// dev:fixtures' data: report-full, report-later and report-v6, the last one's totals giving the reporter's figures.
 
 test.beforeEach(async ({ page }) => {
   await pinClock(page);
