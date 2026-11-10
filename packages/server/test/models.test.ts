@@ -147,6 +147,22 @@ test("the advisor's facts sum the period's runs and sessions; its trial and week
   expect((await models('?path=full')).advisor.facts?.calls).toBe(8);
 });
 
+test("a CR6 period with no units has the advisor's facts at zero, as the Models page's Empty story shows", async () => {
+  db.$client.close();
+  db = dbWith('v6', () => {}, 'report-v6');
+  expect((await models('?project=0000000000000000')).advisor.facts).toEqual({
+    calls: 0,
+    tokens: { input: 0, output: 0, cache_read: 0, cache_write: 0 },
+    cost: 0,
+    byRole: {},
+    failed: {},
+    notes: 0,
+    changed: 0,
+    missing: 0,
+    share: 0,
+  });
+});
+
 test("on an export from before CR6 the advisor's facts are null", async () => {
   db.$client.close();
   db = dbWith('old reporter', () => {}, 'report-full');
@@ -223,6 +239,9 @@ test("with showing on, the sums count every project and hold no hidden project's
     raw.totals.models.agents['fix/retry-backoff-auditor'] = { requested: {}, actual: {}, mismatches: 2 };
     raw.runs[5].advisor.by_role['tidepool-api-deployer'] = { calls: 1, flagged: false };
     raw.runs[5].advisor.failed['tidepool-api.timeout'] = 1;
+    // Two codes named after the hidden project's branches, which mask alike within one unit.
+    raw.runs[5].advisor.failed['feature/webhooks.limit'] = 1;
+    raw.runs[5].advisor.failed['fix/retry-backoff.limit'] = 2;
   });
   setShowing(db, [projectKey(LANTERN)]);
   const body = await models('?weeks=52');
@@ -236,6 +255,14 @@ test("with showing on, the sums count every project and hold no hidden project's
     { name: 'another branch-auditor', requested: {}, actual: {}, mismatches: 3 },
   ]);
   expect(body.advisor.facts?.byRole['another project-deployer']).toEqual({ calls: 1, flagged: false });
-  expect(body.advisor.facts?.failed).toEqual({ overloaded_error: 1, 'another project.timeout': 1 });
+  expect(body.advisor.facts?.failed).toEqual({
+    'another branch.limit': 3,
+    'another project.timeout': 1,
+    overloaded_error: 1,
+  });
+  // Masked before summing, so the roles and codes come out in the reporter's sorted order.
+  for (const record of [body.advisor.facts!.byRole, body.advisor.facts!.failed]) {
+    expect(Object.keys(record)).toEqual(Object.keys(record).sort());
+  }
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });

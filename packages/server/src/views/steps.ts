@@ -123,22 +123,32 @@ export function ruleSums(runs: RunEntry[]): RuleSums {
 /** unitSums' figures: the Steps page's rules shows the refusals and startup, and the Models page the advisor. */
 export type UnitSums = Pick<StepsResponse['rules'], 'dispatchGuard' | 'startup'> & { advisor: AdvisorFacts | null };
 
+/** Whether the stored units are CR6's: some session carries `refusals` (`sessions`), some advisor `by_role` (`advisor`). */
+export type Cr6 = { sessions: boolean; advisor: boolean };
+
+/** Cr6 over every stored unit, never a period's, so a period with no session still sums its runs' refusals. */
+export function cr6Of(runs: RunEntry[], sessions: SessionEntry[]): Cr6 {
+  return {
+    sessions: sessions.some((s) => s.refusals != null),
+    advisor: [...runs, ...sessions].some((unit) => unit.advisor?.by_role != null),
+  };
+}
+
 /**
  * The units' dispatch-guard refusals, startup guidelines and advisor, as the reporter's scoreboard and advisor_facts
  * sum them over runs and sessions alike (CR6): the refusals by reason, the sessions with and without the startup
  * guidelines, and the advisor's facts and notes, its share of the advisor and Fable dollars as share_pct gives it.
- * Each is null on an export from before CR6: the refusals and startup unless some session carries `refusals`, the
- * advisor unless some unit's advisor has `by_role`.
+ * Each is null on an export from before CR6, as `cr6` (cr6Of over every stored unit) tells: the refusals and startup
+ * unless `sessions`, the advisor unless `advisor`; on CR6 data, units with nothing sum to zeros.
  */
-export function unitSums(runs: RunEntry[], sessions: SessionEntry[]): UnitSums {
+export function unitSums(runs: RunEntry[], sessions: SessionEntry[], cr6: Cr6): UnitSums {
   const units = [...runs, ...sessions];
-  const cr6 = sessions.some((s) => s.refusals != null);
   const guard: Record<string, number> = {};
   for (const unit of units) for (const [key, n] of Object.entries(unit.refusals ?? {})) addCount(guard, key, n);
   const startup = { with: 0, without: 0 };
   for (const s of sessions) startup[s.startup ? 'with' : 'without'] += 1;
   let advisor: AdvisorFacts | null = null;
-  if (units.some((unit) => unit.advisor?.by_role != null)) {
+  if (cr6.advisor) {
     const sums: Omit<AdvisorFacts, 'share'> = {
       calls: 0,
       cost: 0,
@@ -170,12 +180,13 @@ export function unitSums(runs: RunEntry[], sessions: SessionEntry[]): UnitSums {
     const share = total > 0 ? (100 * sums.cost) / total : 0;
     advisor = { ...sums, byRole: byKey(sums.byRole), failed: byKey(sums.failed), share };
   }
-  return { dispatchGuard: cr6 ? byKey(guard) : null, startup: cr6 ? startup : null, advisor };
+  return { dispatchGuard: cr6.sessions ? byKey(guard) : null, startup: cr6.sessions ? startup : null, advisor };
 }
 
 /**
  * The Steps and rules page: each step kind and rule summed over the stored runs in the query's period, and the
- * dispatch-guard refusals, startup guidelines and advisor over its runs and sessions (periodUnits, unitSums). The sums
+ * dispatch-guard refusals, startup guidelines (null under a path filter) and advisor over its runs and sessions
+ * (periodUnits, unitSums, with cr6Of over every stored unit). The sums
  * count every project; with a scope, each offer's skill is masked (maskText) first, so names that mask alike merge.
  */
 export function stepsView(input: {
@@ -190,12 +201,18 @@ export function stepsView(input: {
     ...run,
     offers: run.offers?.map((o) => ({ ...o, skill: maskText(input.scope, o.skill) })),
   }));
-  const { advisor, ...sums } = unitSums(units.runs, units.sessions);
+  const cr6 = cr6Of(
+    input.runs.map((unit) => unit.merged),
+    input.sessions.map((unit) => unit.merged),
+  );
+  const { advisor, dispatchGuard, startup } = unitSums(units.runs, units.sessions, cr6);
   return {
     steps: stepSums(runs),
     rules: {
       ...ruleSums(runs),
-      ...sums,
+      dispatchGuard,
+      // A session has no path, so a path filter leaves none to count.
+      startup: input.query.path ? null : startup,
       advisor: advisor && {
         calls: advisor.calls,
         notes: advisor.notes,

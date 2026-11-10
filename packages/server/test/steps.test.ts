@@ -10,7 +10,7 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
-import { ruleSums, stepSums, unitSums } from '../src/views/steps.ts';
+import { cr6Of, ruleSums, stepSums, unitSums } from '../src/views/steps.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -113,10 +113,9 @@ const TIDEPOOL = '/Users/example/Work/tidepool-api';
 test("unitSums over every unit of report-v6 equals the reporter's dispatch guard, startup and advisor", () => {
   db.$client.close();
   db = dbWith('report-v6');
-  const sums = unitSums(
-    listUnits(db, 'run').map((unit) => unit.merged),
-    listUnits(db, 'session').map((unit) => unit.merged),
-  );
+  const runs = listUnits(db, 'run').map((unit) => unit.merged);
+  const sessions = listUnits(db, 'session').map((unit) => unit.merged);
+  const sums = unitSums(runs, sessions, cr6Of(runs, sessions));
   expect(sums.dispatchGuard).toEqual(V6.scoreboard.dispatch_guard);
   expect(sums.startup).toEqual(V6.scoreboard.startup);
   const { cost, share, ...rest } = sums.advisor!;
@@ -143,16 +142,16 @@ test("unitSums over every unit of report-v6 equals the reporter's dispatch guard
 
 test('the share is 0 when the advisor and Fable dollars are both 0', () => {
   const advisor = { calls: 0, cost: 0, tokens: {}, by_role: {}, failed: {}, weeks: [] };
-  expect(unitSums([], [{ file: 'a', refusals: {}, startup: true, advisor }]).advisor?.share).toBe(0);
+  const sessions = [{ file: 'a', refusals: {}, startup: true, advisor }];
+  expect(unitSums([], sessions, cr6Of([], sessions)).advisor?.share).toBe(0);
 });
 
 test('on an export from before CR6, the dispatch guard, startup and advisor are null, never partial sums', () => {
   db.$client.close();
   db = dbWith('report-full');
-  const sums = unitSums(
-    listUnits(db, 'run').map((unit) => unit.merged),
-    listUnits(db, 'session').map((unit) => unit.merged),
-  );
+  const runs = listUnits(db, 'run').map((unit) => unit.merged);
+  const sessions = listUnits(db, 'session').map((unit) => unit.merged);
+  const sums = unitSums(runs, sessions, cr6Of(runs, sessions));
   expect(sums).toEqual({ dispatchGuard: null, startup: null, advisor: null });
 });
 
@@ -186,10 +185,37 @@ test('a project filter keeps the sessions whose root has its key', async () => {
 test('a path filter leaves the sessions out', async () => {
   db.$client.close();
   db = dbWith('report-v6');
-  // The full runs' advisors only: 5 and 3 calls, not the Nov 9 session's 1.
+  // The full runs' advisors and refusals only: 5 and 3 calls and the webhooks runs' refusals, not the Nov 9 session's.
   const full = (await steps('?path=full')).rules;
   expect(full.advisor?.calls).toBe(8);
+  expect(full.dispatchGuard).toEqual({ no_model: 1, no_simplify: 1 });
+  // A session has no path.
   expect(full.startup).toBeNull();
+});
+
+test('whether the export is CR6 is decided over every stored unit: a CR6 period with no units sums to zeros', async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  // A project key no unit has: no run and no session, so every figure is 0, as the Steps page's Empty story shows.
+  const { rules } = await steps('?project=0000000000000000');
+  expect({ dispatchGuard: rules.dispatchGuard, startup: rules.startup, advisor: rules.advisor }).toEqual({
+    dispatchGuard: {},
+    startup: { with: 0, without: 0 },
+    advisor: { calls: 0, notes: 0, changed: 0, cost: 0, share: 0 },
+  });
+});
+
+test('on an export from before CR6 the period sums are null too, whatever the filters', async () => {
+  db.$client.close();
+  db = dbWith('report-full');
+  for (const query of ['?weeks=52', '?weeks=52&path=full']) {
+    const { rules } = await steps(query);
+    expect({ dispatchGuard: rules.dispatchGuard, startup: rules.startup, advisor: rules.advisor }).toEqual({
+      dispatchGuard: null,
+      startup: null,
+      advisor: null,
+    });
+  }
 });
 
 test('the period and path filters choose the runs summed', async () => {

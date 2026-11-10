@@ -2,7 +2,6 @@ import {
   PATHS,
   reporterTotals,
   toPath,
-  type AdvisorFacts,
   type FindingsQuery,
   type ModelsResponse,
   type Path,
@@ -12,7 +11,7 @@ import {
 import type { StoredUnit } from '../db/read.ts';
 import { addCount, periodUnits } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
-import { unitSums } from './steps.ts';
+import { cr6Of, unitSums } from './steps.ts';
 
 type ModelSums = {
   agents: Record<string, { requested: Record<string, number>; actual: Record<string, number> }>;
@@ -39,6 +38,22 @@ export function modelSums(runs: RunEntry[]): ModelSums {
     if (path && run.main) addCount(sums.main[path], pair(run.main.model, run.main.effort));
   }
   return sums;
+}
+
+type UnitAdvisor = RunEntry['advisor'];
+
+/** A unit's advisor with its roles' labels and failed calls' codes masked (maskText), those that mask alike merged. */
+function maskAdvisor(scope: Scope | null, advisor: UnitAdvisor): UnitAdvisor {
+  if (!scope || !advisor) return advisor;
+  const byRole: NonNullable<NonNullable<UnitAdvisor>['by_role']> = {};
+  for (const [label, role] of Object.entries(advisor.by_role ?? {})) {
+    const row = (byRole[maskText(scope, label)] ??= { calls: 0, flagged: false });
+    row.calls = (row.calls ?? 0) + (role.calls ?? 0);
+    row.flagged ||= role.flagged ?? false;
+  }
+  const failed: Record<string, number> = {};
+  for (const [code, n] of Object.entries(advisor.failed ?? {})) addCount(failed, maskText(scope, code), n);
+  return { ...advisor, by_role: advisor.by_role && byRole, failed: advisor.failed && failed };
 }
 
 /**
@@ -70,6 +85,7 @@ export function modelsView(input: {
         effort: maskText(input.scope, d.effort),
       })),
       main: run.main && { model: maskText(input.scope, run.main.model), effort: maskText(input.scope, run.main.effort) },
+      advisor: maskAdvisor(input.scope, run.advisor),
     }));
   const sums = modelSums(runs);
   const totals = reporterTotals(input.totals);
@@ -81,19 +97,14 @@ export function modelsView(input: {
     if (count > 0) sums.agents[name] ??= { requested: {}, actual: {} };
   }
   const advisor = totals?.advisor;
-  const summed = unitSums(inPeriod, sessions).advisor;
-  let facts: AdvisorFacts | null = null;
-  if (summed) {
-    const byRole: AdvisorFacts['byRole'] = {};
-    for (const [label, role] of Object.entries(summed.byRole)) {
-      const row = (byRole[maskText(input.scope, label)] ??= { calls: 0, flagged: false });
-      row.calls += role.calls;
-      row.flagged ||= role.flagged;
-    }
-    const failed: Record<string, number> = {};
-    for (const [code, n] of Object.entries(summed.failed)) addCount(failed, maskText(input.scope, code), n);
-    facts = { ...summed, byRole, failed };
-  }
+  const facts = unitSums(
+    runs,
+    sessions.map((session) => ({ ...session, advisor: maskAdvisor(input.scope, session.advisor) })),
+    cr6Of(
+      input.runs.map((unit) => unit.merged),
+      input.sessions.map((unit) => unit.merged),
+    ),
+  ).advisor;
   return {
     agents: Object.entries(sums.agents)
       .sort(([a], [b]) => a.localeCompare(b))
