@@ -43,7 +43,7 @@ export const Empty: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText('No runs in this period.')).toBeVisible();
-    const weeks = within(canvas.getByRole('table', { name: 'Weeks' }));
+    const weeks = within(within(canvas.getByRole('region', { name: 'Weeks' })).getByRole('table'));
     await expect(weeks.getAllByRole('row')).toHaveLength(13);
     await expect(cells(weeks.getAllByRole('row')[1])).toEqual(['none', '0', 'none', '0', '0', '–', '–', '–', '–', '0']);
     const runTime = within(canvas.getByRole('table', { name: 'Full runs' }));
@@ -61,7 +61,10 @@ export const Full: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/weeks?weeks=12': weeksFull });
   },
   play: async ({ canvas }) => {
-    const weeks = within(await canvas.findByRole('table', { name: 'Weeks' }));
+    // The scroll region names the table, so the table has no name of its own.
+    const table = within(await canvas.findByRole('region', { name: 'Weeks' })).getByRole('table');
+    await expect(table).not.toHaveAccessibleName();
+    const weeks = within(table);
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('12');
     for (const title of CHARTS) await expect(canvas.getByRole('heading', { name: title })).toBeVisible();
     await expect(canvas.getAllByRole('img')).toHaveLength(4);
@@ -104,7 +107,7 @@ export const Filters: Story = {
     });
   },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('table', { name: 'Weeks' });
+    await canvas.findByRole('region', { name: 'Weeks' });
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '4');
     await expect(fetch).toHaveBeenCalledWith('/api/weeks?path=full&weeks=4');

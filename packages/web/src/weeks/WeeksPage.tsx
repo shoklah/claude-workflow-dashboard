@@ -60,7 +60,7 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
 
 function WeeksTable({ weeks }: { weeks: Week[] }) {
   return (
-    <Table aria-label="Weeks" containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Weeks' }}>
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Weeks' }}>
       <TableHeader>
         <TableRow>
           {COLUMNS.map((column) => (
