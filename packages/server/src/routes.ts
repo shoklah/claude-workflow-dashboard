@@ -129,15 +129,17 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   });
 
   // Slice 2b, task 4: the Skills page, with the reporter's all-time missing counts from the last good import's totals.
-  app.get('/api/skills', (c) =>
-    c.json(
+  app.get('/api/skills', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    return c.json(
       skillsView({
-        runs: listUnits(deps.db, 'run'),
+        runs,
         sessions: listUnits(deps.db, 'session'),
         totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),
+        scope: scopeFor(runs),
       }),
-    ),
-  );
+    );
+  });
 }

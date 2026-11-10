@@ -44,7 +44,8 @@ export const Empty: Story = {
 
 /**
  * Full: the last 4 weeks' skills by name, under the static page's columns, each with its outcomes counted; "required
- * but missing" is marked as the reporter's all-time figure, and a dash where the export has none.
+ * but missing" is marked as the reporter's all-time figure, and a dash where the export has none; a skill required but
+ * never loaded in the period has a row with no loads.
  */
 export const Full: Story = {
   beforeEach: () => {
@@ -71,6 +72,8 @@ export const Full: Story = {
     expect(cells[4]).toBe('1');
     const plans = within(canvas.getByRole('row', { name: /^writing-plans/ })).getAllByRole('cell');
     await expect(plans[4]).toHaveTextContent('–');
+    const never = within(canvas.getByRole('row', { name: /^requesting-code-review/ })).getAllByRole('cell');
+    expect(never.map((c) => c.textContent)).toEqual(['requesting-code-review', '0', '–', '–', '3']);
     await expect(canvas.getByText(/every session counts/)).toBeVisible();
   },
 };

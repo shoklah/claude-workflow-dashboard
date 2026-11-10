@@ -2,9 +2,10 @@ import type { SkillsResponse } from '@cwd/shared';
 
 // Invented answers of GET /api/skills for the Skills page's stories.
 
-export const skillsEmpty: SkillsResponse = { skills: [] };
+export const skillsEmpty: SkillsResponse = { skills: [], missingSource: 'reporter' };
 
-/** Four skills, by name; grill-me's missing count is the reporter's, and writing-plans has none from an old export. */
+/** Five skills, by name: requesting-code-review was required but never loaded in the period, and writing-plans has no
+ * missing count from an old export. */
 export const skillsFull: SkillsResponse = {
   skills: [
     { name: 'brainstorming', runs: 6, last: '2026-11-10T09:07:00Z', outcomes: { 'wrote a file': 6 }, missing: 0 },
@@ -16,6 +17,8 @@ export const skillsFull: SkillsResponse = {
       outcomes: { 'applied 2, skipped 1': 3, 'applied 0, skipped 0': 2 },
       missing: 1,
     },
+    { name: 'requesting-code-review', runs: 0, last: null, outcomes: {}, missing: 3 },
     { name: 'writing-plans', runs: 2, last: '2026-11-08T08:58:00Z', outcomes: { 'wrote a file': 2 }, missing: null },
   ],
+  missingSource: 'reporter',
 };

@@ -112,6 +112,18 @@ test("the Skills page lists the period's skills by name, each with the reporter'
     outcomes: { ran: 2, 'record written': 1 },
     missing: 0,
   });
+  expect(body.missingSource).toBe('reporter');
+});
+
+test('a skill required but missing that no unit loaded in the period still has its row, with no loads', async () => {
+  db.$client.close();
+  db = dbWith('never loaded', (raw) => {
+    // A typed grill-me never loaded, as skill_totals counts it: no runs, no last load.
+    raw.totals.skills['grill-me'] = { runs: 0, last: null, outcomes: {}, missing: 2 };
+  });
+  const body = await skills();
+  expect(body.skills.map((row) => row.name).slice(0, 3)).toEqual(['brainstorming', 'graphify', 'grill-me']);
+  expect(byName(body.skills).get('grill-me')).toEqual({ name: 'grill-me', runs: 0, last: null, outcomes: {}, missing: 2 });
 });
 
 test("a load outside the period's weeks doesn't count", async () => {
@@ -161,8 +173,16 @@ test("with showing on, the sums count every project and hold no hidden project's
   ];
   const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds);
   expect(strings.forbidden).toContain('feature/webhooks');
+  expect(strings.forbidden).toContain('tidepool-api');
+  db.$client.close();
+  db = dbWith('showing', (raw) => {
+    // A project-local skill named after the hidden tidepool-api: loaded by its webhooks run, and missing in another.
+    raw.runs[5].skills[1].name = 'tidepool-api-release';
+    raw.totals.skills['tidepool-api-release'] = { runs: 1, last: raw.runs[5].skills[1].time, missing: 1 };
+  });
   setShowing(db, [projectKey(LANTERN)]);
   const body = await skills('?weeks=52');
-  expect(byName(body.skills).get('graphify')?.runs).toBe(1);
+  expect(byName(body.skills).get('another project-release')).toMatchObject({ runs: 1, missing: 1 });
+  expect(byName(body.skills).get('subagent-driven-development')?.runs).toBe(3);
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
