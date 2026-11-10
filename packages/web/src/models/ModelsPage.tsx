@@ -8,6 +8,7 @@ import {
   advisorRolesLabel,
   countsLabel,
   formatCost,
+  formatCount,
   formatShare,
   formatTokens,
   stageTableLabel,
@@ -71,7 +72,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
             <TableHead scope="row">{row.name}</TableHead>
             <TableCell>{countsLabel(row.requested)}</TableCell>
             <TableCell>{countsLabel(row.actual)}</TableCell>
-            <TableCell>{row.mismatches ?? NONE}</TableCell>
+            <TableCell>{formatCount(row.mismatches)}</TableCell>
           </TableRow>
         ))}
       </ModelsTable>
@@ -82,7 +83,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
             <TableHead scope="row">{row.path}</TableHead>
             <TableCell>{stageTableLabel(row.recommended)}</TableCell>
             <TableCell>{countsLabel(row.actual)}</TableCell>
-            <TableCell>{row.differs ?? NONE}</TableCell>
+            <TableCell>{formatCount(row.differs)}</TableCell>
           </TableRow>
         ))}
       </ModelsTable>

@@ -4,7 +4,7 @@ import { useLiveQuery } from '../api.ts';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { NONE, outcomesLabel } from '../lib/format.ts';
+import { NONE, formatCount, outcomesLabel } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 // The static page's columns; the last is the reporter's all-time figure.
@@ -52,7 +52,7 @@ export function SkillsPage() {
                 <TableCell>{skill.runs}</TableCell>
                 <TableCell>{skill.last === null ? NONE : <Time iso={skill.last} />}</TableCell>
                 <TableCell>{outcomesLabel(skill.outcomes)}</TableCell>
-                <TableCell>{skill.missing ?? NONE}</TableCell>
+                <TableCell>{formatCount(skill.missing)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
