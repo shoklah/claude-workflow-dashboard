@@ -1,5 +1,5 @@
 import {
-  ReportSchema,
+  reporterTotals,
   STEP_KINDS,
   type FindingsQuery,
   type RuleSums,
@@ -127,7 +127,7 @@ export function stepsView(input: {
   const { matches } = period(input.query, input.now);
   const names = storedNames(input.runs);
   const runs = input.runs.filter((unit) => matches(storedFacts(unit, names))).map((unit) => unit.merged);
-  const board = ReportSchema.shape.totals.safeParse(input.totals).data?.scoreboard;
+  const board = reporterTotals(input.totals)?.scoreboard;
   const advisor = board?.advisor;
   const startup = board?.startup;
   return {

@@ -7,9 +7,10 @@ import {
   NONE,
   RULE_LABELS,
   STEP_LABELS,
+  advisorLabel,
   countsLabel,
   formatCost,
-  formatPercent,
+  formatCount,
   formatTokens,
   reporterMark,
 } from '../lib/format.ts';
@@ -37,7 +38,6 @@ function ReporterMark() {
   );
 }
 
-const known = (n: number | null | undefined) => (n == null ? NONE : String(n));
 const sum = (counts: Record<string, number> | null) =>
   counts === null ? null : Object.values(counts).reduce((total, n) => total + n, 0);
 
@@ -46,8 +46,8 @@ function RuleRow(props: { name: ReactNode; ran: number | null; found?: number | 
   return (
     <TableRow>
       <TableHead scope="row">{props.name}</TableHead>
-      <TableCell>{known(props.ran)}</TableCell>
-      <TableCell>{known(props.found)}</TableCell>
+      <TableCell>{formatCount(props.ran)}</TableCell>
+      <TableCell>{formatCount(props.found ?? null)}</TableCell>
       <TableCell>{props.counts}</TableCell>
       <TableCell colSpan={5} />
       <TableCell>{props.cost}</TableCell>
@@ -103,17 +103,13 @@ function StepsTable({ response }: { response: StepsResponse }) {
         <RuleRow
           name={<>{RULE_LABELS.advisor}<ReporterMark /></>}
           ran={advisor?.calls ?? null}
-          counts={
-            advisor
-              ? `notes ${known(advisor.notes)} · changed ${known(advisor.changed)} · share ${formatPercent(advisor.share === null ? null : Math.round(advisor.share))}`
-              : NONE
-          }
+          counts={advisor ? advisorLabel(advisor) : NONE}
           cost={formatCost(advisor?.cost ?? null)}
         />
         <RuleRow
           name={<>{RULE_LABELS.startup}<ReporterMark /></>}
           ran={startup && startup.with !== null && startup.without !== null ? startup.with + startup.without : null}
-          counts={startup ? `with ${known(startup.with)} · without ${known(startup.without)}` : NONE}
+          counts={countsLabel(startup)}
         />
         <RuleRow name={RULE_LABELS.fixRoundCap} ran={null} counts={countsLabel(rules.fixRoundCap)} />
         <RuleRow name={RULE_LABELS.stopRule} ran={null} counts={countsLabel({ stops: rules.stopRule })} />

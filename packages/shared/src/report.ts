@@ -244,6 +244,12 @@ export type StepKind = (typeof STEP_KINDS)[number];
 export type Outcome = (typeof OUTCOMES)[number];
 export type Path = (typeof PATHS)[number];
 
+/** The stored totals of an export (lastGoodImport's) as the schema reads them, or null when there are none or the
+ * schema rejects them. */
+export function reporterTotals(totals: unknown): Totals | null {
+  return TotalsSchema.safeParse(totals).data ?? null;
+}
+
 /** A value as a run path, or undefined when it isn't one. */
 export function toPath(value: unknown): Path | undefined {
   return PATHS.find((p) => p === value);

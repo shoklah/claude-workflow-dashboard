@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { loadReport } from '../src/load.ts';
+import { reporterTotals } from '../src/report.ts';
 import { fixture } from './fixture.ts';
 
 describe('loadReport', () => {
@@ -88,5 +89,19 @@ describe('loadReport', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.fields).toEqual(['runs[].models{}.cost']);
+  });
+});
+
+describe('reporterTotals', () => {
+  test('parses the stored totals as the schema reads them', () => {
+    const totals = reporterTotals(fixture('report-v5').totals);
+    expect(totals?.scoreboard?.dispatch_guard).toEqual({ no_model: 1, no_simplify: 1 });
+    expect(reporterTotals(fixture('report-full').totals)?.scoreboard).toBeUndefined();
+  });
+
+  test('is null with no import, or for totals the schema rejects', () => {
+    expect(reporterTotals(undefined)).toBeNull();
+    expect(reporterTotals(null)).toBeNull();
+    expect(reporterTotals({ weeks: 'not a list' })).toBeNull();
   });
 });

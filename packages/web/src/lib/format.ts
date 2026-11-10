@@ -32,12 +32,25 @@ export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
 }
 
-/** A count line as words: "cuts 11 · flags 5"; a dash when it has no counts or isn't known. */
-export function countsLabel(counts: Record<string, number> | null): string {
+/** A count, or a dash when it isn't known. */
+export function formatCount(count: number | null): string {
+  return count === null ? NONE : String(count);
+}
+
+/** A count line as words: "cuts 11 · flags 5", a count that isn't known as a dash; a dash when it has no counts or
+ * isn't known. */
+export function countsLabel(counts: Record<string, number | null> | null): string {
   if (!counts || Object.keys(counts).length === 0) return NONE;
   return Object.entries(counts)
-    .map(([key, n]) => `${countLabel(key)} ${n}`)
+    .map(([key, n]) => `${countLabel(key)} ${formatCount(n)}`)
     .join(' · ');
+}
+
+/** The advisor's notes, those that changed something and its share of Fable spend, as a whole percent: "notes 12 ·
+ * changed 9 · share 8%". */
+export function advisorLabel(advisor: { notes: number | null; changed: number | null; share: number | null }): string {
+  const share = formatPercent(advisor.share === null ? null : Math.round(advisor.share));
+  return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${share}`;
 }
 
 /** The tokens of every kind together, compact: "9.8M", "333K"; a dash when they aren't known. */
