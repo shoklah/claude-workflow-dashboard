@@ -10,6 +10,7 @@ import {
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
 import { period, storedFacts, storedNames } from './runs.ts';
+import { maskText, type Scope } from './scope.ts';
 
 // The reporter's token labels, its failing-test results (TEST_RESULTS) and its offer outcomes (OFFER_OUTCOMES).
 const TOKENS = ['input', 'output', 'cache_read', 'cache_write'] as const;
@@ -116,17 +117,22 @@ export function ruleSums(runs: RunEntry[]): RuleSums {
 /**
  * The Steps and rules page: each step kind and rule summed over the stored runs in the query's period (period), and
  * the reporter's all-time figures from `totals`, the last good import's (dispatch-guard refusals, the advisor and the
- * startup guidelines), each null when the export has none. The sums count every project, so it needs no scope.
+ * startup guidelines), each null when the export has none. The sums count every project; with a scope, each offer's
+ * skill is masked (maskText) first, so names that mask alike merge.
  */
 export function stepsView(input: {
   runs: StoredUnit<RunEntry>[];
   totals: unknown;
   query: FindingsQuery;
   now: Date;
+  scope: Scope | null;
 }): StepsResponse {
   const { matches } = period(input.query, input.now);
   const names = storedNames(input.runs);
-  const runs = input.runs.filter((unit) => matches(storedFacts(unit, names))).map((unit) => unit.merged);
+  const mask = (skill: string | null | undefined) => (input.scope && skill ? maskText(input.scope, skill) : skill);
+  const runs = input.runs
+    .filter((unit) => matches(storedFacts(unit, names)))
+    .map(({ merged: run }) => ({ ...run, offers: run.offers?.map((o) => ({ ...o, skill: mask(o.skill) })) }));
   const board = reporterTotals(input.totals)?.scoreboard;
   const advisor = board?.advisor;
   const startup = board?.startup;

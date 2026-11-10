@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { FindingsQuery, RunsResponse, StepsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { Badge } from '../components/ui/badge.tsx';
+import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import {
   NONE,
@@ -12,7 +12,6 @@ import {
   formatCost,
   formatCount,
   formatTokens,
-  reporterMark,
 } from '../lib/format.ts';
 import { ListFilters, listPath } from '../runs/RunsPage.tsx';
 
@@ -28,15 +27,6 @@ const COLUMNS = [
   'Tokens',
   'Est. cost',
 ];
-
-/** The dashed mark on a figure from the latest export's totals, not summed over the period. */
-function ReporterMark() {
-  return (
-    <Badge variant="outline" className="ml-2 border-dashed font-normal" title={reporterMark.tooltip}>
-      {reporterMark.text}
-    </Badge>
-  );
-}
 
 const sum = (counts: Record<string, number> | null) =>
   counts === null ? null : Object.values(counts).reduce((total, n) => total + n, 0);

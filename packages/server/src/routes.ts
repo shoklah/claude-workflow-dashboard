@@ -136,16 +136,18 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   );
 
   // Slice 2b, task 3: the Steps and rules page, with the reporter's all-time figures from the last good import.
-  app.get('/api/steps', (c) =>
-    c.json(
+  app.get('/api/steps', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    return c.json(
       stepsView({
-        runs: listUnits(deps.db, 'run'),
+        runs,
         totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),
+        scope: scopeFor(runs),
       }),
-    ),
-  );
+    );
+  });
   // Slice 2b, task 4: the Skills page, with the reporter's all-time missing counts from the last good import's totals.
   app.get('/api/skills', (c) => {
     const runs = listUnits(deps.db, 'run');

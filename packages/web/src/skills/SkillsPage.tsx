@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { FindingsQuery, RunsResponse, SkillsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { Badge } from '../components/ui/badge.tsx';
+import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { NONE, outcomesLabel, reporterMark } from '../lib/format.ts';
+import { NONE, outcomesLabel } from '../lib/format.ts';
 import { ListFilters, listPath } from '../runs/RunsPage.tsx';
 
 // The static page's columns; the last is the reporter's all-time figure.
@@ -35,9 +35,7 @@ export function SkillsPage() {
               ))}
               <TableHead>
                 Required but missing
-                <Badge variant="outline" className="ml-2 border-dashed" title={reporterMark.tooltip}>
-                  {reporterMark.text}
-                </Badge>
+                <ReporterMark />
               </TableHead>
             </TableRow>
           </TableHeader>

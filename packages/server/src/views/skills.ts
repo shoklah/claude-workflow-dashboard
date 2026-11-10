@@ -1,6 +1,6 @@
 import {
   parseTime,
-  ReportSchema,
+  reporterTotals,
   weekOf,
   type FindingsQuery,
   type RunEntry,
@@ -64,7 +64,7 @@ export function skillsView(input: {
     ...input.runs.filter((run) => filters(storedFacts(run, names))),
     ...input.sessions,
   ].map((unit) => inPeriod(unit.merged));
-  const totals = ReportSchema.shape.totals.pick({ skills: true }).safeParse(input.totals).data?.skills;
+  const totals = reporterTotals(input.totals)?.skills;
   const missing = new Map<string, number>();
   for (const [name, row] of Object.entries(totals ?? {})) {
     if (row.missing != null) missing.set(mask(name), (missing.get(mask(name)) ?? 0) + row.missing);

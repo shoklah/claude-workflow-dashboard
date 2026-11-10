@@ -2,14 +2,14 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadReport, STEP_KINDS, type StepsResponse } from '@cwd/shared';
+import { loadReport, projectRoot, STEP_KINDS, type StepsResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
-import { leaks } from '../src/views/scope.ts';
+import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 import { ruleSums, stepSums } from '../src/views/steps.ts';
 
 const PORT = 4317;
@@ -18,10 +18,11 @@ const NOW = new Date('2026-11-12T12:00:00Z');
 let dir: string;
 let db: Db;
 
-/** A fresh database in the test's folder, holding the named fixture's import. */
-function dbWith(name: string): Db {
+/** A fresh database in the test's folder, holding the named fixture's import, changed first by `change`. */
+function dbWith(name: string, change: (raw: any) => void = () => {}): Db {
   const fresh = openDb(join(dir, name, 'dashboard.sqlite'));
   const raw = fixture(name);
+  change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
   if (!loaded.ok) throw new Error(`${name} does not load`);
   importReport(fresh, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
@@ -142,4 +143,25 @@ test('with showing on, the response holds no hidden project text and no session 
   expectScoreboard(body.steps);
   const hidden = ['/Users/example', 'tidepool-api', 'fix/retry-backoff', 'feature/rate-limits', 'feature/webhooks'];
   expect(leaks(body, [...hidden, '7d1e4b90-3c2a-4f6e-8b5d-1a9c0e2f6b47'], [])).toEqual([]);
+});
+
+test("with showing on, an offered skill named after a hidden project is masked, and the offers still count it", async () => {
+  const raw = fixture('report-v5');
+  const branches = new Map<string, string[]>();
+  for (const run of raw.runs) {
+    const root = projectRoot(run.record.project);
+    branches.set(root, [...(branches.get(root) ?? []), run.record.branch]);
+  }
+  const lantern = '/Users/example/Work/lantern-notes';
+  const strings = forbiddenStrings([...branches.keys()], branches, [lantern], []);
+  expect(strings.forbidden).toContain('tidepool-api');
+  db.$client.close();
+  db = dbWith('report-v5', (raw) => {
+    // A project-local skill named after the hidden tidepool-api, offered in its webhooks run.
+    raw.runs[5].offers[1].skill = 'tidepool-api-release';
+  });
+  setShowing(db, [projectKey(lantern)]);
+  const body = await steps('?weeks=52');
+  expect(body.rules.offers['another project-release']).toMatchObject({ offered: 1, skipped: 1 });
+  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
