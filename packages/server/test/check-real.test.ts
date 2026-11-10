@@ -59,14 +59,14 @@ afterEach(() => {
 describe('check:real', () => {
   test('prints version, fields and key counts only', () => {
     const { stdout, status } = checkReal(['cat', fixturePath('report-full')]);
-    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n${OLD_TOTALS}showing: pass\n`);
+    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\n${OLD_TOTALS}showing: pass\n`);
     expect(status).toBe(0);
   });
 
   test("compares the new pages' sums with the reporter's totals and checks their routes", () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v5')]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\nshowing: pass\n',
     );
@@ -91,7 +91,7 @@ describe('check:real', () => {
     });
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
         'run time: compared, 1 differ\nwith_waves\nsteps: 7 compared, 2 differ\ntask_review\nfinal_review\n' +
         'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\nshowing: pass\n',
     );
@@ -104,7 +104,7 @@ describe('check:real', () => {
   test("compares the units' sums and skills' missing with the reporter's totals and checks the sessions route", () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v6')]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\nshowing: pass\n',
     );
@@ -124,7 +124,7 @@ describe('check:real', () => {
     });
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
         'models: 0 differ\nunits: 3 differ\ndispatch_guard\nstartup\nadvisor\nshowing: pass\n',
     );
@@ -136,6 +136,16 @@ describe('check:real', () => {
       raw.totals.scoreboard.advisor.share += 0.01;
     });
     expect(checkReal(['cat', file]).stdout).toContain('units: 1 differ\nadvisor\n');
+  });
+
+  test('counts reporter keys that differ', () => {
+    const file = changed('report-v6', (raw) => {
+      raw.runs[0].key = '0000000000000000';
+      raw.sessions[0].key = '0000000000000000';
+    });
+    const { stdout, stderr } = checkReal(['cat', file]);
+    expect(stdout).toContain('\nreporter keys: 12 compared, 2 differ\n');
+    expect(`${stdout}${stderr}`).not.toContain('0000000000000000');
   });
 
   test('counts the leaks in the sessions route', () => {
@@ -170,7 +180,7 @@ describe('check:real', () => {
 
   test('prints field paths for a bad shape', () => {
     const { stdout, status } = checkReal(['cat', fixturePath('report-shape')]);
-    expect(stdout).toBe('version: 1\nruns[].steps\nrun keys: 0 duplicates, 0 missing\n');
+    expect(stdout).toBe('version: 1\nruns[].steps\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\n');
     expect(status).toBe(1);
   });
 
@@ -184,7 +194,7 @@ describe('check:real', () => {
     writeFileSync(file, JSON.stringify(report));
     // The extra run and the one with no date also change their weeks' sums.
     expect(checkReal(['cat', file]).stdout).toBe(
-      `version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\nweeks: 4 compared, 2 differ\n2026-10-04\n2026-10-18\n${OLD_TOTALS}showing: pass\n`,
+      `version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\nreporter keys: not in the export\nweeks: 4 compared, 2 differ\n2026-10-04\n2026-10-18\n${OLD_TOTALS}showing: pass\n`,
     );
   });
 
@@ -197,7 +207,7 @@ describe('check:real', () => {
     const file = join(dir, 'report weeks.json');
     writeFileSync(file, JSON.stringify(report));
     const { stdout, status } = checkReal(['cat', file]);
-    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 1 differ\n2026-11-01\n${OLD_TOTALS}showing: pass\n`);
+    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-11-01\n${OLD_TOTALS}showing: pass\n`);
     expect(status).toBe(0);
   });
 
