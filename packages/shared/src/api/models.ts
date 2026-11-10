@@ -19,17 +19,18 @@ export type MainModels = {
   differs: number | null;
 };
 
-/** The reporter's all-time advisor facts, from the latest export's totals. */
+/** The advisor's facts summed over units, as the reporter's advisor_facts: its calls, tokens, cost, calls by role,
+ * failed calls by error code, notes, and its share in percent of the advisor and Fable dollars. */
 export type AdvisorFacts = {
-  calls: number | null;
-  tokens: Record<string, number | null> | null;
-  cost: number | null;
+  calls: number;
+  tokens: Record<string, number>;
+  cost: number;
   byRole: Record<string, { calls: number; flagged: boolean }>;
   failed: Record<string, number>;
-  notes: number | null;
-  changed: number | null;
-  missing: number | null;
-  trial: string | null;
+  notes: number;
+  changed: number;
+  missing: number;
+  share: number;
 };
 
 /** A week's advisor spend against Fable spend, its share in percent and whether it passed the stop share. */
@@ -43,13 +44,16 @@ export type AdvisorWeek = {
 
 /**
  * `GET /api/models`: the period's dispatches by agent and its main sessions by path, with the reporter's all-time
- * mismatches (`mismatchesSource`), stage table and differs (`stageSource`); and the reporter's advisor facts, null
- * when the export has none, with its weeks within the period.
+ * mismatches (`mismatchesSource`), stage table and differs (`stageSource`); the advisor's facts over the period's runs
+ * and sessions, null on an export from before CR6; and the reporter's trial and its advisor weeks within the period.
  */
 export type ModelsResponse = {
   agents: AgentModels[];
   mismatchesSource: 'reporter';
   main: MainModels[];
   stageSource: 'reporter';
-  advisor: { source: 'reporter'; facts: AdvisorFacts | null; weeks: AdvisorWeek[] };
+  advisor: {
+    facts: AdvisorFacts | null;
+    reporter: { source: 'reporter'; trial: string | null; weeks: AdvisorWeek[] };
+  };
 };

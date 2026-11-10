@@ -47,7 +47,8 @@ export const Failed: Story = {
   },
 };
 
-/** Empty: no dispatches, main sessions or advisor weeks in the period; the reporter's stage table and facts show. */
+/** Empty: no dispatches, main sessions, advisor calls or advisor weeks in the period; the reporter's stage table and
+ * trial show. */
 export const Empty: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/models?weeks=4': modelsEmpty });
@@ -58,13 +59,16 @@ export const Empty: Story = {
     const full = canvas.getByRole('rowheader', { name: 'full' }).closest('tr')!;
     await expect(cells(full)).toEqual(['1=opus-5-5/medium 2=opus-5-5/medium 3=opus-5-5/medium out=opus-5-5/medium', '–', '0']);
     const notes = canvas.getByRole('rowheader', { name: 'notes' }).closest('tr')!;
-    await expect(cells(notes)).toEqual(['notes 12 · changed 9 · missing 2']);
+    await expect(cells(notes)).toEqual(['notes 0 · changed 0 · missing 0']);
+    const trial = canvas.getByRole('rowheader', { name: /^trial/ }).closest('tr')!;
+    await expect(cells(trial)).toEqual(['runs 8/5, weeks 0/3 CHECKPOINT']);
   },
 };
 
 /**
  * Full: the static page's tables, agents, main sessions, the advisor's facts and its weeks, the reporter's all-time
- * figures marked "reporter, all time".
+ * figures (mismatches, the stage table, differs, the trial and the advisor's weeks) marked "reporter, all time", the
+ * advisor's facts summed over the period unmarked.
  */
 export const Full: Story = {
   beforeEach: () => {
@@ -94,14 +98,18 @@ export const Full: Story = {
       '2',
     ]);
 
-    await expect(columns(facts)).toEqual(['Advisorreporter, all time', 'Value']);
+    await expect(columns(facts)).toEqual(['Advisor', 'Value']);
     await expect(cells(row('calls by role'))).toEqual([
       'implementer 3 · main 9 · task-reviewer 2 (should not consult)',
     ]);
     await expect(cells(row('failed calls'))).toEqual(['overloaded error 1']);
     await expect(cells(row('tokens'))).toEqual(['43.5K']);
     await expect(cells(row('est. cost'))).toEqual(['$3.20']);
-    await expect(cells(row('trial'))).toEqual(['runs 8/5, weeks 0/3 CHECKPOINT']);
+    const trial = canvas.getByRole('rowheader', { name: /^trial/ }).closest('tr')!;
+    await expect(cells(trial)).toEqual(['runs 8/5, weeks 0/3 CHECKPOINT']);
+    // Only the trial is the reporter's among the advisor's facts.
+    await expect(within(facts).getAllByText('reporter, all time')).toHaveLength(1);
+    await expect(within(trial).getByText('reporter, all time')).toBeVisible();
 
     await expect(columns(weeks)).toEqual(['Weekreporter, all time', 'Advisor', 'Fable', 'Share', 'Stop']);
     await expect(cells(row('Nov 1'))).toEqual(['$9.80', '$25.10', '39%', 'STOP']);
@@ -112,7 +120,7 @@ export const Full: Story = {
   },
 };
 
-/** An export from the old reporter: its all-time figures show as dashes, still marked. */
+/** An export from the old reporter: its all-time figures and the advisor's facts show as dashes. */
 export const OldReporter: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/models?weeks=4': modelsOldReporter });
@@ -121,9 +129,10 @@ export const OldReporter: Story = {
     const row = async (name: string) => (await canvas.findByRole('rowheader', { name })).closest('tr')!;
     await expect(cells(await row('implementer'))).toEqual(['opus-5-5/medium 22', 'opus-5-5/medium 22', '–']);
     await expect(cells(await row('full'))).toEqual(['–', 'opus-5-5/medium 5', '–']);
-    for (const name of ['calls by role', 'failed calls', 'tokens', 'est. cost', 'notes', 'trial']) {
+    for (const name of ['calls by role', 'failed calls', 'tokens', 'est. cost', 'notes']) {
       await expect(cells(await row(name))).toEqual(['–']);
     }
+    await expect(cells(canvas.getByRole('rowheader', { name: /^trial/ }).closest('tr')!)).toEqual(['–']);
   },
 };
 

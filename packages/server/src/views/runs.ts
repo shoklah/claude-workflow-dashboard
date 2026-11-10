@@ -102,10 +102,14 @@ export function currentWarnings(
 export function period(
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
-): { weeks: string[]; filters: (row: RunFacts) => boolean; matches: (row: RunFacts) => boolean } {
+): {
+  weeks: string[];
+  filters: (row: Pick<RunFacts, 'path' | 'projectKey'>) => boolean;
+  matches: (row: RunFacts) => boolean;
+} {
   const start = weekStart(now).getTime();
   const weeks = Array.from({ length: query.weeks }, (_, i) => weekOf(new Date(start - (query.weeks - 1 - i) * WEEK)));
-  const filters = (row: RunFacts) =>
+  const filters = (row: Pick<RunFacts, 'path' | 'projectKey'>) =>
     (!query.path || row.path === query.path) && (!query.project || row.projectKey === query.project);
   // A stored run always has its finish time (finishedAt), the date its key is made from.
   const matches = (row: RunFacts) => weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) && filters(row);
@@ -131,6 +135,24 @@ export function periodRuns(
 /** The stored sessions that started in one of `weeks` (a period's weeks); a session with no start is in none. */
 export function periodSessions(sessions: StoredUnit<SessionEntry>[], weeks: string[]): StoredUnit<SessionEntry>[] {
   return sessions.filter(({ merged: { start } }) => !!start && weeks.includes(weekOf(parseTime(start))));
+}
+
+/**
+ * The query's period's units, as their merged entries: its runs (periodRuns) and its sessions (periodSessions) that
+ * match period's filters, a session having no path, so a path filter leaves every session out, and its project's key
+ * from its root ('' with no project, which no project filter matches); and its weeks.
+ */
+export function periodUnits(
+  runs: StoredUnit<RunEntry>[],
+  sessions: StoredUnit<SessionEntry>[],
+  query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
+  now: Date,
+): { weeks: string[]; runs: RunEntry[]; sessions: SessionEntry[] } {
+  const { filters } = period(query, now);
+  const { weeks, runs: inPeriod } = periodRuns(runs, query, now);
+  const kept = ({ project }: SessionEntry) =>
+    filters({ path: null, projectKey: project ? projectKey(projectRoot(project)) : '' });
+  return { weeks, runs: inPeriod, sessions: periodSessions(sessions, weeks).map((unit) => unit.merged).filter(kept) };
 }
 
 /**

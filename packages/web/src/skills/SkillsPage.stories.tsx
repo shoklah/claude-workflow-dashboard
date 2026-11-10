@@ -43,9 +43,9 @@ export const Empty: Story = {
 };
 
 /**
- * Full: the last 4 weeks' skills by name, under the static page's columns, each with its outcomes counted; "required
- * but missing" is marked as the reporter's all-time figure, and a dash where the export has none; a skill required but
- * never loaded in the period has a row with no loads.
+ * Full: the last 4 weeks' skills by name, under the static page's columns, each with its outcomes counted and its
+ * "required but missing" count over the period, unmarked; a skill required but never loaded in the period has a row
+ * with no loads.
  */
 export const Full: Story = {
   beforeEach: () => {
@@ -59,22 +59,20 @@ export const Full: Story = {
       'Runs',
       'Last',
       'Outcomes',
-      'Required but missingreporter, all time',
+      'Required but missing',
     ]);
-    await expect(canvas.getByText('reporter, all time')).toHaveAttribute(
-      'title',
-      "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
-    );
+    await expect(canvas.queryByText('reporter, all time')).toBeNull();
     const cells = within(simplify).getAllByRole('cell').map((c) => c.textContent);
     expect(cells[0]).toBe('simplify');
     expect(cells[1]).toBe('5');
     expect(cells[3]).toBe('applied 2, skipped 1 × 3 · applied 0, skipped 0 × 2');
     expect(cells[4]).toBe('1');
     const plans = within(canvas.getByRole('row', { name: /^writing-plans/ })).getAllByRole('cell');
-    await expect(plans[4]).toHaveTextContent('–');
+    await expect(plans[4]).toHaveTextContent('0');
     const never = within(canvas.getByRole('row', { name: /^requesting-code-review/ })).getAllByRole('cell');
     expect(never.map((c) => c.textContent)).toEqual(['requesting-code-review', '0', '–', '–', '3']);
-    await expect(canvas.getByText(/every session counts/)).toBeVisible();
+    await expect(canvas.getByText(/every session's loads count/)).toBeVisible();
+    await expect(canvas.getByText(/a path filter leaving the sessions out/)).toBeVisible();
   },
 };
 

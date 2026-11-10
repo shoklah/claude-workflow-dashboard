@@ -55,13 +55,13 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
   const { agents, main, advisor } = response;
   const facts = advisor.facts;
   const notes = facts ? countsLabel({ notes: facts.notes, changed: facts.changed, missing: facts.missing }) : NONE;
-  const advisorRows: [string, string][] = [
+  const advisorRows: [ReactNode, string][] = [
     ['calls by role', advisorRolesLabel(facts?.byRole ?? null)],
     ['failed calls', countsLabel(facts?.failed ?? null)],
     ['tokens', formatTokens(facts?.tokens ?? null)],
     ['est. cost', formatCost(facts?.cost ?? null)],
     ['notes', notes],
-    ['trial', facts?.trial ?? NONE],
+    [marked('trial'), advisor.reporter.trial ?? NONE],
   ];
   return (
     <>
@@ -88,9 +88,9 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
         ))}
       </ModelsTable>
       <h2 className="font-semibold">Advisor</h2>
-      <ModelsTable label="Advisor" columns={[marked('Advisor'), 'Value']}>
-        {advisorRows.map(([name, value]) => (
-          <TableRow key={name}>
+      <ModelsTable label="Advisor" columns={['Advisor', 'Value']}>
+        {advisorRows.map(([name, value], i) => (
+          <TableRow key={i}>
             <TableHead scope="row">{name}</TableHead>
             <TableCell>{value}</TableCell>
           </TableRow>
@@ -101,7 +101,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
         columns={[marked('Week'), 'Advisor', 'Fable', 'Share', 'Stop']}
         empty="No advisor weeks in this period."
       >
-        {advisor.weeks.map((week) => (
+        {advisor.reporter.weeks.map((week) => (
           <TableRow key={week.week}>
             <TableHead scope="row">{weekLabel(week.week)}</TableHead>
             <TableCell>{formatCost(week.advisor)}</TableCell>
@@ -115,7 +115,8 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
   );
 }
 
-/** The Models and advisor page: the period's models by agent and path, and the reporter's advisor facts. */
+/** The Models and advisor page: the period's models by agent and path and its advisor facts, and the reporter's trial
+ * and advisor weeks. */
 export function ModelsPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
   const models = useLiveQuery<ModelsResponse>(listPath('/api/models', query));

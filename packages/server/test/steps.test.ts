@@ -10,7 +10,7 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
-import { ruleSums, stepSums } from '../src/views/steps.ts';
+import { ruleSums, stepSums, unitSums } from '../src/views/steps.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -103,22 +103,93 @@ test("ruleSums over every stored run equals the scoreboard's rules and the offer
 test("over a 52-week period, the steps and rules are the reporter's", async () => {
   const body = await steps('?weeks=52');
   expectScoreboard(body.steps);
-  expect(body.rules).toEqual(rules);
+  expect(body.rules).toMatchObject(rules);
 });
 
-test("the reporter's all-time figures come from the last good import's totals, marked as the reporter's", async () => {
-  expect((await steps()).reporter).toEqual({
-    source: 'reporter',
-    dispatchGuard: { no_model: 1, no_simplify: 1 },
-    advisor: board.advisor,
-    startup: { with: 1, without: 0 },
+const V6 = fixture('report-v6').totals;
+const LANTERN = '/Users/example/Work/lantern-notes';
+const TIDEPOOL = '/Users/example/Work/tidepool-api';
+
+test("unitSums over every unit of report-v6 equals the reporter's dispatch guard, startup and advisor", () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  const sums = unitSums(
+    listUnits(db, 'run').map((unit) => unit.merged),
+    listUnits(db, 'session').map((unit) => unit.merged),
+  );
+  expect(sums.dispatchGuard).toEqual(V6.scoreboard.dispatch_guard);
+  expect(sums.startup).toEqual(V6.scoreboard.startup);
+  const { cost, share, ...rest } = sums.advisor!;
+  const totals = V6.advisor;
+  expect(rest).toEqual({
+    calls: totals.calls,
+    tokens: totals.tokens,
+    byRole: totals.by_role,
+    failed: totals.failed,
+    notes: totals.notes,
+    changed: totals.changed,
+    missing: totals.missing,
   });
+  expect({ calls: rest.calls, notes: rest.notes, changed: rest.changed }).toEqual({
+    calls: V6.scoreboard.advisor.calls,
+    notes: V6.scoreboard.advisor.notes,
+    changed: V6.scoreboard.advisor.changed,
+  });
+  // Cost to the cent and share to 0.01 points: the reporter's are float sums.
+  expect(cost).toBeCloseTo(totals.cost, 2);
+  expect(cost).toBeCloseTo(V6.scoreboard.advisor.cost, 2);
+  expect(share).toBeCloseTo(V6.scoreboard.advisor.share, 2);
 });
 
-test("an export from the old reporter has no scoreboard, so the reporter's figures are null", async () => {
+test('the share is 0 when the advisor and Fable dollars are both 0', () => {
+  const advisor = { calls: 0, cost: 0, tokens: {}, by_role: {}, failed: {}, weeks: [] };
+  expect(unitSums([], [{ file: 'a', refusals: {}, startup: true, advisor }]).advisor?.share).toBe(0);
+});
+
+test('on an export from before CR6, the dispatch guard, startup and advisor are null, never partial sums', () => {
   db.$client.close();
   db = dbWith('report-full');
-  expect((await steps()).reporter).toEqual({ source: 'reporter', dispatchGuard: null, advisor: null, startup: null });
+  const sums = unitSums(
+    listUnits(db, 'run').map((unit) => unit.merged),
+    listUnits(db, 'session').map((unit) => unit.merged),
+  );
+  expect(sums).toEqual({ dispatchGuard: null, startup: null, advisor: null });
+});
+
+test("the Steps page's rules sum the period's runs, by finish, and sessions, by start", async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  const { rules } = await steps('?weeks=52');
+  expect(rules.dispatchGuard).toEqual({ no_model: 2, no_simplify: 1 });
+  // The session with no start is in no period.
+  expect(rules.startup).toEqual({ with: 1, without: 3 });
+  expect(rules.advisor).toMatchObject({ calls: 10, notes: 10, changed: 4 });
+  expect(rules.advisor?.cost).toBeCloseTo(0.78, 2);
+  expect(rules.advisor?.share).toBeCloseTo(V6.scoreboard.advisor.share, 2);
+  expect(Object.keys(rules.advisor!).sort()).toEqual(['calls', 'changed', 'cost', 'notes', 'share']);
+  // This week leaves out the Scratch session of Nov 5.
+  expect((await steps('?weeks=1')).rules.startup).toEqual({ with: 1, without: 2 });
+});
+
+test('a project filter keeps the sessions whose root has its key', async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  // tidepool-api: the webhooks run's no_simplify and its advisor's 3 calls, the Nov 9 session's no_model and 1 call.
+  const tidepool = (await steps(`?project=${projectKey(TIDEPOOL)}`)).rules;
+  expect(tidepool.dispatchGuard).toEqual({ no_model: 1, no_simplify: 1 });
+  expect(tidepool.startup).toEqual({ with: 0, without: 1 });
+  expect(tidepool.advisor?.calls).toBe(4);
+  // lantern-notes: its worktree's session folds into it.
+  expect((await steps(`?project=${projectKey(LANTERN)}`)).rules.startup).toEqual({ with: 1, without: 1 });
+});
+
+test('a path filter leaves the sessions out', async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  // The full runs' advisors only: 5 and 3 calls, not the Nov 9 session's 1.
+  const full = (await steps('?path=full')).rules;
+  expect(full.advisor?.calls).toBe(8);
+  expect(full.startup).toBeNull();
 });
 
 test('the period and path filters choose the runs summed', async () => {

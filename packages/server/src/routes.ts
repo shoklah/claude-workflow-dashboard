@@ -151,13 +151,13 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     c.json(weeksView({ runs: listUnits(deps.db, 'run'), query: periodQuery(c), now: deps.now() })),
   );
 
-  // Slice 2b, task 3: the Steps and rules page, with the reporter's all-time figures from the last good import.
+  // Slice 2b, task 3: the Steps and rules page, its refusals, startup and advisor over runs and sessions (2c, task 4).
   app.get('/api/steps', (c) => {
     const runs = listUnits(deps.db, 'run');
     return c.json(
       stepsView({
         runs,
-        totals: lastGoodImport(deps.db)?.totals,
+        sessions: listUnits(deps.db, 'session'),
         query: periodQuery(c),
         now: deps.now(),
         scope: scopeFor(runs),
@@ -165,14 +165,13 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     );
   });
 
-  // Slice 2b, task 4: the Skills page, with the reporter's all-time missing counts from the last good import's totals.
+  // Slice 2b, task 4: the Skills page, its missing counts over runs and sessions (2c, task 4).
   app.get('/api/skills', (c) => {
     const runs = listUnits(deps.db, 'run');
     return c.json(
       skillsView({
         runs,
         sessions: listUnits(deps.db, 'session'),
-        totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),
         scope: scopeFor(runs),
@@ -180,12 +179,14 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     );
   });
 
-  // Slice 2b, task 5: the Models and advisor page, with the reporter's all-time figures from the last good import.
+  // Slice 2b, task 5: the Models and advisor page, with the reporter's all-time figures from the last good import, and
+  // the advisor's facts over runs and sessions (2c, task 4).
   app.get('/api/models', (c) => {
     const runs = listUnits(deps.db, 'run');
     return c.json(
       modelsView({
         runs,
+        sessions: listUnits(deps.db, 'session'),
         totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),
