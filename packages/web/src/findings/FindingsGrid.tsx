@@ -35,7 +35,11 @@ export function FindingsGrid({
   const rows = response.rows.filter((row) => row.area === area);
   const max = measure === 'raised' ? Math.max(0, ...rows.flatMap((row) => row.cells.map((c) => c.raised))) : 100;
   return (
-    <Table aria-label="Findings by category and week" className="w-auto">
+    // It scrolls sideways over many weeks, so its container is a named tab stop for keyboard users.
+    <Table
+      className="w-auto"
+      containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Findings by category and week' }}
+    >
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <TableHead>Category</TableHead>

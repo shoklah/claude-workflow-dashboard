@@ -35,11 +35,12 @@ describe('countLabel', () => {
 });
 
 describe('cellShade', () => {
-  it('shades a value on five steps of the blue ramp by its share of the max, white text on the two darkest', () => {
+  it('shades a value on five steps of the blue ramp by its share of the max, black text on step 4, white on the darkest', () => {
     expect(cellShade(1, 10)).toBe('bg-[#cde2fb]');
     expect(cellShade(4, 10)).toBe('bg-[#9ec5f4]');
     expect(cellShade(6, 10)).toBe('bg-[#6da7ec]');
-    expect(cellShade(8, 10)).toBe('bg-[#2a78d6] text-white');
+    // White on #2a78d6 is 4.42:1, under AA's 4.5:1 for the grid's small text; black is 4.76:1.
+    expect(cellShade(8, 10)).toBe('bg-[#2a78d6] text-black');
     expect(cellShade(10, 10)).toBe('bg-[#184f95] text-white');
   });
 

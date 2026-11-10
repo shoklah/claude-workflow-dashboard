@@ -45,6 +45,8 @@ export const Full: Story = {
     await expect(rowCells(canvasElement, 'tests')).toEqual(['0', '0', '1', '2']);
     await expect(rowCells(canvasElement, 'unlabelled')).toEqual(['0', '0', '1', '0']);
     await expect(canvas.getAllByRole('rowheader').at(-1)).toHaveTextContent('unlabelled');
+    // It scrolls sideways over many weeks, so its container is a named tab stop.
+    await expect(canvas.getByRole('region', { name: 'Findings by category and week' })).toHaveAttribute('tabindex', '0');
     await expect(within(canvas.getByRole('rowheader', { name: 'tests' })).getByText('tests')).toHaveAttribute(
       'title',
       "The app's label",

@@ -18,7 +18,7 @@ test('the findings page lists a cell’s findings, says the labeller is off and 
 
   // The Full run's correctness findings, in the week of Nov 8.
   await page.getByRole('button', { name: /^correctness, week of Nov 8: [1-9]/ }).click();
-  const list = page.getByRole('region', { name: 'Findings' });
+  const list = page.getByRole('region', { name: 'Findings', exact: true });
   await expect(list.getByText('Retry loop never gives up after the third failure')).toBeVisible();
   await list.getByRole('link', { name: 'lantern-notes · feature/offline-sync' }).first().click();
   await expect(page.getByRole('heading', { name: 'lantern-notes · feature/offline-sync' })).toBeVisible();
@@ -27,6 +27,6 @@ test('the findings page lists a cell’s findings, says the labeller is off and 
 test('the selected cell’s findings have no axe violations', async ({ page }) => {
   await page.goto('/findings');
   await page.getByRole('button', { name: /^correctness, week of Nov 8: [1-9]/ }).click();
-  await expect(page.getByRole('region', { name: 'Findings' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Findings', exact: true })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
