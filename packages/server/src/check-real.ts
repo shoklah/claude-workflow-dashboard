@@ -1,13 +1,21 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
 // paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
 // groups, step kinds, rules and unit figures whose sums differ from the reporter's totals, the count of skills and of
-// models that differ, and the leaks showing mode lets through. It prints no value from the data but those weeks'
-// dates, and no skill or agent name, since a project can name one. Usage: `pnpm --filter @cwd/server check:real
-// [dataDir]`; the data dir defaults to the real one.
+// models that differ, and the leaks showing mode lets through, each by route and kind. It prints no value from the data
+// but those weeks' dates, and no skill or agent name, since a project can name one. Usage: `pnpm --filter @cwd/server
+// check:real [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadReport, PATHS, splitSessionId, type RunEntry, type RunsResponse, type SessionEntry } from '@cwd/shared';
+import {
+  folderName,
+  loadReport,
+  PATHS,
+  splitSessionId,
+  type RunEntry,
+  type RunsResponse,
+  type SessionEntry,
+} from '@cwd/shared';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { importReport } from './db/import.ts';
@@ -22,6 +30,16 @@ import { forbiddenStrings, leaks } from './views/scope.ts';
 import { skillSums } from './views/skills.ts';
 import { cr6Of, ruleSums, stepSums, unitSums } from './views/steps.ts';
 import { runTime } from './views/weeks.ts';
+
+/** A JSON value's object keys, at any depth. */
+const objectKeys = (json: unknown): string[] =>
+  json && typeof json === 'object'
+    ? Object.entries(json).flatMap(([key, value]) => [...(Array.isArray(json) ? [] : [key]), ...objectKeys(value)])
+    : [];
+
+/** A JSON value's leaf values, at any depth. */
+const values = (json: unknown): unknown[] =>
+  json && typeof json === 'object' ? Object.values(json).flatMap(values) : [json];
 
 type Counts = Record<string, number | null | undefined> | null | undefined;
 
@@ -303,17 +321,39 @@ else {
       '/api/sessions?weeks=52',
     ];
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
+    const routes = ['/api/runs?weeks=52', ...paths, ...pages.map(() => '/api/runs/:key')];
     const bodies = [list, ...(await Promise.all([...paths, ...pages].map(get)))];
+    // A leak's kinds of hidden string, never the string itself.
+    const allRoots = [...roots, ...sessionRoots];
+    const kindsOf = (s: string) =>
+      [
+        s === homedir() && 'home folder',
+        sessionIds.includes(s) && 'session ID',
+        allRoots.includes(s) && 'project path',
+        allRoots.some((root) => folderName(root) === s) && 'project folder name',
+        [...branches.values()].some((names) => names.includes(s)) && 'branch',
+      ]
+        .filter(Boolean)
+        .join(', ');
     // A leak found as a whole word in no response (leaks' words) is counted apart, since it may be part of a key or a
-    // word, as a folder named app is in appDiffers; it still fails.
+    // word, as a folder named app is in appDiffers; it still fails. Each leak's line names its route, kinds and place.
     let [count, inside] = [0, 0];
-    for (const body of bodies) {
+    const lines = new Set<string>();
+    for (const [i, body] of bodies.entries()) {
       const found = leaks(body, forbidden, strings.shown);
       const words = leaks(body, forbidden, strings.shown, true);
       count += found.length;
       inside += found.filter((s) => !words.includes(s)).length;
+      for (const s of found) {
+        const inKey = leaks(objectKeys(body), [s], strings.shown).length > 0;
+        const inValue = leaks(values(body), [s], strings.shown).length > 0;
+        const place = [inKey && 'a key', inValue && 'a value'].filter(Boolean).join(' and ');
+        const word = words.includes(s) ? '' : ', inside a word';
+        lines.add(`showing leak: ${routes[i]}: ${kindsOf(s)}, in ${place}${word}`);
+      }
     }
     console.log(count === 0 ? 'showing: pass' : `showing: ${count} leaks (${inside} inside words)`);
+    for (const line of lines) console.log(line);
     if (count > 0) process.exitCode = 1;
   } catch {
     // A fixed message: an error's text can quote the data.

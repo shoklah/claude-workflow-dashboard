@@ -182,6 +182,8 @@ describe('check:real', () => {
     const [, leakCount, inside] = /^showing: (\d+) leaks \((\d+) inside words\)$/m.exec(stdout) ?? [];
     expect(Number(inside)).toBeGreaterThan(0);
     expect(Number(inside)).toBe(Number(leakCount));
+    // Each leak named by its route and kind, in a key here.
+    expect(stdout).toContain('\nshowing leak: /api/steps?weeks=52: project folder name, in a key, inside a word\n');
     for (const value of ['/Users/', 'app']) expect(`${stdout}${stderr}`).not.toContain(value);
     expect(status).toBe(1);
   });
@@ -242,6 +244,11 @@ describe('check:real', () => {
     const aliases = { '/Users/example/Archive/lantern-notes': 'tidepool-api' };
     const { stdout, stderr, status, tmp } = checkReal(['cat', fixturePath('report-projects')], { aliases });
     expect(stdout).toMatch(/^showing: [1-9]\d* leaks \(0 inside words\)$/m);
+    // Each leak named by its route (a run's key as :key) and kind, once per route.
+    expect(stdout).toContain(
+      '\nshowing leak: /api/home: project folder name, in a value\n' +
+        'showing leak: /api/runs/:key: project folder name, in a value\n',
+    );
     expect(`${stdout}${stderr}`).not.toContain('tidepool-api');
     expect(status).toBe(1);
     expect(tmp).toEqual([]);
