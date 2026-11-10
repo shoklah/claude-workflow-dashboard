@@ -257,7 +257,7 @@ After CR10, the table also lists the reviewers' strengths.
   - **A cell** lists its warnings below the grid, with their runs and "new" marks.
   - **Home's step boxes** turn orange, with the count written in them, when a current warning in the diagram's period names that step. A box opens Compliance filtered to that step.
   - **In showing mode,** only picked projects' run warnings show. Session and "other" warnings are left out, as 2a leaves out session warnings.
-- **Sessions:** one row per session, showing:
+- **Sessions** (moved to 2c, below, which replaces this item and the next one): one row per session, showing:
   - its name (decision 31) and project (as above), and when it was first seen
   - the skills it loaded, and the skill commands typed, marked when the skill never loaded
   - model and effort, estimated cost, startup guidelines, warnings
@@ -275,10 +275,59 @@ After CR10, the table also lists the reviewers' strengths.
   - **Strengths:** a review step's `strengths` list on the run page, and strengths by category as a measure on the Findings page.
   - **Turned on:** "App differs" and the per-cell "by the app" split (decision 49). The page line saying every label is the app's shows only while no finding carries a workflow label.
   - **Labels shown by name:** responses carry the list's labels, so a category shows by its `label`.
-- **Home's skills and commands section,** below the charts. For each skill or command:
+- **Home's skills and commands section** (moved to 2c, below), below the charts. For each skill or command:
   - the share of the period's sessions that loaded it, as a bar
   - how many runs loaded it
   - how often it was typed, and how often typed but never loaded
+
+### 2c. Sessions, Home's skills and commands, and the reporter's totals as sums
+
+**What changed upstream.** CR6 (the incremental export) and CR11 (session facts) are merged and installed:
+- **Every transcript row belongs to exactly one unit.** A main transcript has one session unit (keyed by its file, as the dashboard keys sessions), holding its rows outside every run window. A transcript that holds a run therefore also has a session. So the 2b rule "a session a run covers counts with its run" is obsolete: runs and sessions each count their own rows.
+- **What each session carries:** `start` and `end` (the main transcript's first and last row times), `project` (its first working directory), `commands` (each slash command by name and time, never its arguments), and CR6's `advisor`, `notes` and `refusals`. Runs gain `typed`.
+- **The reporter's totals** are now sums over runs and sessions, or functions of them.
+- **`--json` has a top-level `stage_table`.**
+
+**The Sessions page** (decision 52; mockup `docs/design/2026-11-10-slice-2c/sessions.html`): one row per stored session, newest start first. Each row shows:
+- its name (decision 31: its title, else its ID's first eight characters) and its project's display name
+- its start and end
+- the skills it loaded, and every slash command typed, a skill command whose skill never loaded (`typed` with `met: false`) marked
+- model and effort, estimated cost, startup guidelines, current warnings
+- the runs its transcript holds (runs whose window's `transcript` is its `file`), as links
+
+A row opens the session's skill loads and commands in time order. The filters are `ListFilters`' period, project, path (which applies to its runs only) and "has warnings".
+
+**A session's time and project:**
+- A session counts in the week of its `start`. A session with no `start` counts in no period.
+- Its project is `projectRoot(project)` behind `projectKey`, as runs' are. A session with no `project` is "other project".
+
+**Showing mode with sessions:**
+- Session warnings come back for picked projects: in Compliance's list, Home's feed and the Sessions page.
+- Other projects' sessions, and those with no project, count only in sums.
+- Skill and command names go through `maskText`, as Skills' do.
+
+**Home's skills and commands section,** below the charts. For each skill or command in the period:
+- the share of the period's sessions that loaded or typed it, as a bar
+- how many runs loaded it
+- how often it was typed
+- how often a skill command was typed but its skill never loaded
+
+**The reporter's totals as sums** (CR6). These figures, marked "reporter, all time" in 2b, become sums over the period's runs and sessions:
+- dispatch-guard refusals (units' `refusals`)
+- startup counts (sessions' `startup`)
+- the advisor's calls, cost, tokens, calls by role and failed calls (units' `advisor`), its notes (units' `notes`), and its share over the period (its summed dollars, as the reporter's `share_pct`)
+- each skill's "required but missing" (runs' `missing_skills` plus every unit's unmet `typed`)
+
+`check:real` compares each with the reporter's totals.
+
+**Still the reporter's:**
+- the agents' mismatches and the main sessions' "differs" (the model-matching rule isn't exported per dispatch)
+- the advisor's trial and its weekly table, which is already by week
+- the stage table, now read from `stage_table`
+
+**Later, not 2c:**
+- importing with `--changed-since`, decision 19's target
+- a page for CR13's spend by phase, still to design
 
 ### Left to the builder (slice 2)
 
@@ -407,6 +456,16 @@ CR6 can land at any point without a visible change. To check in planning: that e
     - During the one-time relabel, findings show as unlabelled, not under 2a's labels.
     - With no exported list, nothing is labelled.
     - The four basics pages' views keep their leak checks.
+
+### 2026-11-10, the owner, slice 2c
+
+52. **2c is the wider one:**
+    - the Sessions page and Home's skills-and-commands section on CR11's facts
+    - session warnings back in showing mode for picked projects
+    - 2b's "reporter, all time" figures becoming period sums over CR6's units
+    - the stage table from `stage_table`
+
+    Importing with `--changed-since` and a page for CR13's spend by phase come later.
 
 ## Claude's calls, open to correction
 
