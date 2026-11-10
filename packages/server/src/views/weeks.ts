@@ -17,7 +17,7 @@ export function runTime(runs: RunEntry[]): RunTime {
 }
 
 /**
- * The Weeks page: over the stored runs in the query's period (period), each of its weeks' sums (weekSums), newest
+ * The Weeks page: over the stored runs in the query's period (period), each of its weeks' sums (weekSums), oldest
  * first, a week with no runs empty, and the Full runs' run time. It holds no project text, so showing mode changes
  * nothing: its sums count every project, as every page's do.
  */
@@ -25,7 +25,7 @@ export function weeksView(input: { runs: StoredUnit<RunEntry>[]; query: Findings
   const { weeks, runs } = periodRuns(input.runs, input.query, input.now);
   const sums = weekSums(runs);
   return {
-    weeks: weeks.toReversed().map((week) => ({ week, ...(sums.get(week) ?? emptyWeek()) })),
+    weeks: weeks.map((week) => ({ week, ...(sums.get(week) ?? emptyWeek()) })),
     runTime: runTime(runs),
     coverageFrom: coverageFrom(input.runs),
   };

@@ -51,8 +51,8 @@ test("each week's row matches the fixture's totals.weeks row", async () => {
   const body = await weeks('?weeks=52');
   const totals = fixture('report-v5').totals;
   expect(body.weeks).toHaveLength(52);
-  // Newest first: NOW's week, then the ones before it.
-  expect(body.weeks.slice(0, 2).map((w) => w.week)).toEqual(['2026-11-08', '2026-11-01']);
+  // Oldest first, ending with NOW's week.
+  expect(body.weeks.slice(-2).map((w) => w.week)).toEqual(['2026-11-01', '2026-11-08']);
   for (const want of totals.weeks) {
     const row = body.weeks.find((w) => w.week === want.week)!;
     expect(row).toMatchObject({
@@ -122,6 +122,6 @@ test('coverageFrom is the earliest readable run', async () => {
 test('with showing on, the response holds no project text', async () => {
   setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
   const body = await weeks('?weeks=52');
-  expect(body.weeks[0].runs).toEqual({ small: 1, full: 2, plan: 1 });
+  expect(body.weeks.at(-1)!.runs).toEqual({ small: 1, full: 2, plan: 1 });
   expect(leaks(body, ['/Users/example', 'tidepool-api', 'feature/webhooks', 'fix/retry-backoff'], [])).toEqual([]);
 });

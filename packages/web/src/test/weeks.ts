@@ -1,6 +1,7 @@
 import type { WeekRow, WeeksResponse } from '@cwd/shared';
 
-// Invented answers of GET /api/weeks for the Weeks page's stories: twelve weeks, newest first.
+// Invented answers of GET /api/weeks for the Weeks page's stories: twelve weeks, oldest first as the API gives them
+// (the lists below are written newest first, then reversed).
 
 const WEEKS = [
   '2026-11-08',
@@ -80,7 +81,7 @@ const ROWS: WeekRow[] = [
 
 /** Full: runs in most weeks, the reporter's coverage starting in the week of Oct 11. */
 export const weeksFull: WeeksResponse = {
-  weeks: WEEKS.map((w, i) => ({ week: w, ...ROWS[i] })),
+  weeks: WEEKS.map((w, i) => ({ week: w, ...ROWS[i] })).toReversed(),
   runTime: {
     withWaves: { runs: 3, timed: 3, medianMinutes: 150 },
     withoutWaves: { runs: 4, timed: 3, medianMinutes: 185.4 },
@@ -90,7 +91,7 @@ export const weeksFull: WeeksResponse = {
 
 /** Empty: twelve weeks with no runs, and no coverage known. */
 export const weeksEmpty: WeeksResponse = {
-  weeks: WEEKS.map((w) => ({ week: w, ...empty })),
+  weeks: WEEKS.map((w) => ({ week: w, ...empty })).toReversed(),
   runTime: {
     withWaves: { runs: 0, timed: 0, medianMinutes: null },
     withoutWaves: { runs: 0, timed: 0, medianMinutes: null },

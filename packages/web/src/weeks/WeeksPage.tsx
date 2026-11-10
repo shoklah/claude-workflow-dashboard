@@ -29,19 +29,18 @@ const RUN_TIMES: { key: keyof RunTime; label: string }[] = [
 ];
 
 
-/** The four small multiples, one measure each on its own axis, the weeks oldest first; the week table is their table
- * view. */
+/** The four small multiples, one measure each on its own axis, the weeks oldest first as the API gives them; the week
+ * table is their table view. */
 function SmallMultiples({ weeks }: { weeks: Week[] }) {
-  const oldestFirst = weeks.toReversed();
-  const names = oldestFirst.map((w) => w.week);
+  const names = weeks.map((w) => w.week);
   const charts = [
-    { title: 'Runs', data: oldestFirst.map((w) => total(w.runs)) },
-    { title: 'Final review findings', data: oldestFirst.map((w) => total(w.findings)) },
-    { title: 'Estimated dollars', data: oldestFirst.map((w) => w.cost), cost: true },
+    { title: 'Runs', data: weeks.map((w) => total(w.runs)) },
+    { title: 'Final review findings', data: weeks.map((w) => total(w.findings)) },
+    { title: 'Estimated dollars', data: weeks.map((w) => w.cost), cost: true },
     // A duration is rounded to whole minutes first.
     {
       title: 'Minutes per run',
-      data: oldestFirst.map((w) => (w.minutesPerRun === null ? null : Math.round(w.minutesPerRun))),
+      data: weeks.map((w) => (w.minutesPerRun === null ? null : Math.round(w.minutesPerRun))),
     },
   ];
   return (
@@ -58,6 +57,7 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
   );
 }
 
+/** The week table, newest first for display. */
 function WeeksTable({ weeks }: { weeks: Week[] }) {
   return (
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Weeks' }}>
@@ -69,7 +69,7 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {weeks.map((w) => (
+        {weeks.toReversed().map((w) => (
           <TableRow key={w.week}>
             <TableHead scope="row">{weekLabel(w.week)}</TableHead>
             <TableCell>{nonZeroCountsLabel(w.runs)}</TableCell>
@@ -139,7 +139,7 @@ export function WeeksPage() {
             Findings here are the final review's, as the reporter counts them per week.
           </p>
           {data.weeks.every((w) => total(w.runs) === 0) && <p className="text-sm">No runs in this period.</p>}
-          <CoverageNote coverageFrom={data.coverageFrom} firstWeek={data.weeks.at(-1)!.week} />
+          <CoverageNote coverageFrom={data.coverageFrom} firstWeek={data.weeks[0].week} />
           <WeeksTable weeks={data.weeks} />
           <RunTimeTable runTime={data.runTime} />
         </>

@@ -20,6 +20,6 @@ export type WeekRow = {
  * minutes (null when none has one). */
 export type RunTime = Record<'withWaves' | 'withoutWaves', { runs: number; timed: number; medianMinutes: number | null }>;
 
-/** `GET /api/weeks`: the period's weeks, newest first, each with its sums; the period's Full run time; and the earliest
+/** `GET /api/weeks`: the period's weeks, oldest first, each with its sums; the period's Full run time; and the earliest
  * finish time of the runs whose transcript the reporter could read. */
 export type WeeksResponse = { weeks: (WeekRow & { week: string })[]; runTime: RunTime; coverageFrom: string | null };
