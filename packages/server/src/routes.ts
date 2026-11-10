@@ -20,6 +20,7 @@ import { homeView } from './views/home.ts';
 import { rootOf, runView, runsList, storedBranches, storedNames } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
 import { showingView } from './views/showing.ts';
+import { skillsView } from './views/skills.ts';
 import { statusView } from './views/status.ts';
 import { stepsView } from './views/steps.ts';
 import { weeksView } from './views/weeks.ts';
@@ -145,4 +146,18 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       }),
     ),
   );
+  // Slice 2b, task 4: the Skills page, with the reporter's all-time missing counts from the last good import's totals.
+  app.get('/api/skills', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    return c.json(
+      skillsView({
+        runs,
+        sessions: listUnits(deps.db, 'session'),
+        totals: lastGoodImport(deps.db)?.totals,
+        query: periodQuery(c),
+        now: deps.now(),
+        scope: scopeFor(runs),
+      }),
+    );
+  });
 }

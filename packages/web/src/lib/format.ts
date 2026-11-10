@@ -165,3 +165,8 @@ export function labellerLabel(labeller: FindingsResponse['labeller']): string {
   const tokens = labeller.tokensThisWeek.input + labeller.tokensThisWeek.output;
   return `${labeller.labelled} labelled · ${labeller.waiting} waiting · ${tokens.toLocaleString('en-US')} tokens this week`;
 }
+
+/** A skill's loads by outcome: "ran × 2 · applied 2, skipped 1 × 1"; a dash with none. */
+export function outcomesLabel(outcomes: Record<string, number>): string {
+  return joined(Object.entries(outcomes).map(([label, count]) => `${label} × ${count}`)) || NONE;
+}

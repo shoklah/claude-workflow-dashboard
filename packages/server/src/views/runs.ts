@@ -82,21 +82,20 @@ export function currentWarnings(runs: StoredUnit<RunEntry>[], warnings: StoredWa
 
 /**
  * A query's period: its last `weeks` weeks (this week and the ones before it, weeks starting Sunday 07:00 UTC), oldest
- * first, each named by weekOf, and whether a run's facts are in it, finished in one of those weeks, and match the
- * query's path and project key.
+ * first, each named by weekOf, whether a run's facts match the query's path and project key (`filters`), and whether
+ * they are in it (`matches`): finished in one of those weeks, and matching the filters.
  */
 export function period(
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
-): { weeks: string[]; matches: (row: RunFacts) => boolean } {
+): { weeks: string[]; filters: (row: RunFacts) => boolean; matches: (row: RunFacts) => boolean } {
   const start = weekStart(now).getTime();
   const weeks = Array.from({ length: query.weeks }, (_, i) => weekOf(new Date(start - (query.weeks - 1 - i) * WEEK)));
+  const filters = (row: RunFacts) =>
+    (!query.path || row.path === query.path) && (!query.project || row.projectKey === query.project);
   // A stored run always has its finish time (finishedAt), the date its key is made from.
-  const matches = (row: RunFacts) =>
-    weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) &&
-    (!query.path || row.path === query.path) &&
-    (!query.project || row.projectKey === query.project);
-  return { weeks, matches };
+  const matches = (row: RunFacts) => weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) && filters(row);
+  return { weeks, filters, matches };
 }
 
 /**
