@@ -72,7 +72,8 @@ const RunRecordSchema = z.object({
   tasks: num,
   fix_rounds: num,
   stops: num,
-  failing_test: z.array(z.object({ task: num, result: str })).nullish(),
+  // The raw record as a session wrote it; only `result` is read, so a task that isn't a number never fails an import.
+  failing_test: z.array(z.object({ result: str })).nullish(),
 });
 
 // A WARN line as an object: its text is the warns line beside it, its kind one the reporter may add to.

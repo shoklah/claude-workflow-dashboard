@@ -30,12 +30,23 @@ describe('loadReport', () => {
     expect(findings.find((f) => f.id === 'F4')).toMatchObject({ category: null, validity: null });
     expect(run.steps!.filter((s) => s.strengths?.length).map((s) => s.step)).toEqual(['task_review', 'final_review']);
     expect(run.offers?.[0]).toEqual({ skill: 'graphify', outcome: 'accepted' });
-    expect(run.record?.failing_test?.[1]).toEqual({ task: 2, result: 'no_tests' });
+    expect(run.record?.failing_test?.[1]).toEqual({ result: 'no_tests' });
     expect(report.categories?.areas?.[0].list?.[0].id).toBe('scope');
     expect(report.categories?.validity?.invalid).toBe("The problem isn't there, or the reviewer misread the brief or the code.");
     expect(report.totals.scoreboard?.task_review?.ran).toBe(12);
     expect(report.totals.run_time?.with_waves?.runs).toBe(1);
     expect(report.totals.advisor?.weeks?.[0].stop).toBe(false);
+  });
+
+  test('accepts a failing-test entry whose task isn\u2019t a number, as the raw record a session wrote', () => {
+    const json = fixture('report-v5');
+    const run = json.runs.find((r: { schema: number }) => r.schema === 5);
+    run.record.failing_test = [{ task: 'wave A', result: 'passed' }, { task: null, result: 'exempt' }];
+    const result = loadReport(json);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = result.report.runs.find((r) => r.schema === 5)!;
+    expect(loaded.record?.failing_test?.map((item) => item.result)).toEqual(['passed', 'exempt']);
   });
 
   test('refuses version 2', () => {
