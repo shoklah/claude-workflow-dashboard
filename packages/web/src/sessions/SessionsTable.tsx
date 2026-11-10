@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
 import { SessionChip } from '../components/SessionChip.tsx';
+import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
@@ -34,8 +35,6 @@ const COLUMNS = [
   'Warnings',
   'Holds',
 ];
-
-const TAG = 'mr-1 mb-1 inline-block rounded-sm border px-1.5 text-xs whitespace-nowrap';
 
 type Hold = SessionRow['holds'][number];
 
@@ -117,18 +116,22 @@ function SessionRows({ session }: { session: SessionRow }) {
         <TableCell className="whitespace-normal">
           {skills.length === 0 && <span className="text-muted-foreground">{NO_NAMES}</span>}
           {skills.map((skill) => (
-            <span key={skill} className={TAG}>
+            <Badge key={skill} variant="outline" className="mr-1 mb-1">
               {skill}
-            </span>
+            </Badge>
           ))}
         </TableCell>
         <TableCell className="whitespace-normal">
           {commands.size === 0 && <span className="text-muted-foreground">{NO_NAMES}</span>}
           {[...commands].map(([command, neverLoaded]) => (
-            <span key={command} className={cn(TAG, 'font-mono', neverLoaded && [WARNING_BORDER, WARNING_INK])}>
+            <Badge
+              key={command}
+              variant="outline"
+              className={cn('mr-1 mb-1 font-mono', neverLoaded && [WARNING_BORDER, WARNING_INK])}
+            >
               {usageName({ name: command, kind: 'command' })}
               {neverLoaded && ' · never loaded'}
-            </span>
+            </Badge>
           ))}
         </TableCell>
         <TableCell>{modelsLabel(session.models)}</TableCell>

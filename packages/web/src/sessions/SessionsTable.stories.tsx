@@ -41,6 +41,10 @@ export const Full: Story = {
     await expect(two.getByText('brainstorming')).toBeVisible();
     await expect(two.getByText('/grill-me · never loaded')).toBeVisible();
     await expect(two.getByText('/graphify')).toBeVisible();
+    // Each skill and command is an outline badge, a never-loaded command's in the warning orange.
+    for (const tag of ['brainstorming', '/graphify', '/grill-me · never loaded']) {
+      await expect(two.getByText(tag)).toHaveAttribute('data-variant', 'outline');
+    }
     await expect(two.getByText('claude-opus-5-5 · medium')).toBeVisible();
     await expect(two.getByText('2 h 40')).toBeVisible();
     await expect(two.getByRole('link', { name: 'atlas · feat/search · full' })).toHaveAttribute(
