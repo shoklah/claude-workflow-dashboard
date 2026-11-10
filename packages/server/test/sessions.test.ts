@@ -113,6 +113,18 @@ describe('with showing off', () => {
     ]);
   });
 
+  test("a held run with no window start is held first, and its timeline entry is at the session's start", async () => {
+    db.$client.close();
+    rmSync(dir, { recursive: true, force: true });
+    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
+    db = dbWith((raw) => {
+      raw.runs[5].window.start = null;
+    });
+    const row = twoRuns(await sessions());
+    expect(row.holds.map((h) => h.branch)).toEqual(['feature/webhooks', 'feature/offline-sync']);
+    expect(row.timeline[0]).toMatchObject({ at: row.start, kind: 'run', name: 'feature/webhooks' });
+  });
+
   test('the period\'s sessions, newest start first; the one with no start is never listed', async () => {
     const body = await sessions('?weeks=52');
     expect(body.sessions.map((s) => s.title)).toEqual([

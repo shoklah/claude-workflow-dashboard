@@ -29,7 +29,8 @@ const time = (at: string) => parseTime(at).getTime();
 /**
  * A session's timeline, in time order: its skill loads with their outcome (skillOutcomeLabel), its commands, a command
  * `x:y` never loaded when an unmet typed trigger in `typed` (the session's and its held runs') has skill `y` and its
- * time, and its shown held runs' window starts; an untimed load or command is left out. Names are masked (maskText).
+ * time, and its shown held runs' window starts (the session's start for a run with none); an untimed load or command
+ * is left out. Names are masked (maskText).
  */
 function timelineOf(
   session: SessionEntry,
@@ -57,7 +58,7 @@ function timelineOf(
         : [],
     ),
     ...runs.flatMap(({ run, facts }) => {
-      const at = run.merged.window?.start;
+      const at = run.merged.window?.start ?? session.start;
       return at ? [{ ...item(at, 'run', facts.branch ?? ''), runKey: run.key }] : [];
     }),
   ].sort((a, b) => time(a.at) - time(b.at));
@@ -68,9 +69,10 @@ function timelineOf(
  * project filter keeps a session whose root is that project's (a session in no stored run's root is "other project",
  * with no key, which no project filter matches), the path filter one holding a run of that path, and "has warnings"
  * one with a current warning (currentWarnings). A session holds the runs whose window is in its transcript, by window
- * start. With a scope, only sessions in a shown project are listed (showSession), named by the scope, with no session
- * ID; a hidden held run is left out of its holds, timeline and path filter, the shown ones as showFacts gives them;
- * titles and names are masked (maskText); `hidden` counts the sessions that match the filters but aren't shown.
+ * start, a run with none at the session's start. With a scope, only sessions in a shown project are listed
+ * (showSession), named by the scope, with no session ID; a hidden held run is left out of its holds, timeline and path
+ * filter, the shown ones as showFacts gives them; titles and names are masked (maskText); `hidden` counts the sessions
+ * that match the filters but aren't shown.
  */
 export function sessionsView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -97,9 +99,12 @@ export function sessionsView(input: {
   for (const unit of periodSessions(input.sessions, weeks)) {
     const session = unit.merged;
     const key = sessionProjectKey(session.project, runRoots);
+    // A session in a period always has its start.
+    const start = session.start!;
+    const runStart = ({ run }: { run: StoredUnit<RunEntry> }) => time(run.merged.window?.start ?? start);
     const held = (byTranscript.get(session.file) ?? [])
       .map((run) => ({ run, facts: storedFacts(run, names) }))
-      .sort((a, b) => time(a.run.merged.window?.start ?? '') - time(b.run.merged.window?.start ?? ''));
+      .sort((a, b) => runStart(a) - runStart(b));
     const warnings = warned.get(unit.key) ?? 0;
     // period's filters over the held runs, a session holding none matching no path filter.
     const matches = (holds: Pick<RunFacts, 'path'>[]) =>
@@ -119,8 +124,6 @@ export function sessionsView(input: {
     const efforts = session.efforts ?? {};
     const mostUsed = (model: string) => Object.entries(efforts[model] ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     const models = Object.entries(session.models ?? {}).sort((a, b) => (b[1].cost ?? 0) - (a[1].cost ?? 0));
-    // A session in a period always has its start.
-    const start = session.start!;
     const end = session.end ?? null;
     sessions.push({
       key: unit.key,
