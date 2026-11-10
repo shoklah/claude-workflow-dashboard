@@ -12,6 +12,7 @@ import {
   type HomeResponse,
   type RunEntry,
   type RunFacts,
+  type SessionEntry,
   type Step,
   type StepKind,
   type WeekNumbers,
@@ -124,14 +125,15 @@ function fixLine(steps: Step[]): FixLine {
  * scope, the numbers still count every run, but the feed holds only the shown projects' runs and run warnings. */
 export function homeView(input: {
   runs: StoredUnit<RunEntry>[];
+  sessions: StoredUnit<SessionEntry>[];
   warnings: StoredWarning[];
   seenAt: Date | null;
   now: Date;
   scope: Scope | null;
 }): HomeResponse {
   const { seenAt, now, scope } = input;
-  // Only the current warnings show: a run's are the texts in its latest warns.
-  const warnings = currentWarnings(input.runs, input.warnings);
+  // Only the current warnings show (currentWarnings).
+  const warnings = currentWarnings(input.runs, input.sessions, input.warnings);
   // Stored runs always have a date: the import skips a run without one.
   const names = storedNames(input.runs);
   const runs: Run[] = input.runs.map((unit) => {

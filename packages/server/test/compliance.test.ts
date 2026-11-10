@@ -176,18 +176,35 @@ test("with showing on, the cells count every warning, but the list holds only sh
   expect(strings.forbidden).toContain('0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35');
   db.$client.close();
   db = dbWith('showing', (raw) => {
-    // The shown tidy-imports run's warning, of a kind no family holds, names the hidden project.
+    // The shown tidy-imports run's no_transcript warning names the hidden project and one of its branches.
     raw.runs[2].warns[0] = 'WARN: chore/tidy-imports (2026-11-03): tidepool-api feature/webhooks looked odd';
-    raw.runs[2].warnings[0] = { ...raw.runs[2].warnings[0], text: raw.runs[2].warns[0], kind: 'brand_new_check' };
+    raw.runs[2].warnings[0] = { ...raw.runs[2].warnings[0], text: raw.runs[2].warns[0] };
+    // The shown plan run gets a warning of a kind no family holds, which can name anything.
+    const other = 'WARN: feature/offline-sync (2026-11-08): a check from a later reporter flagged this run';
+    raw.runs[3].warns = [other];
+    raw.runs[3].warnings = [{ text: other, kind: 'brand_new_check', step: null }];
   });
   setShowing(db, [projectKey(LANTERN)]);
   const body = await compliance('?resolved=1&weeks=52');
   const count = body.rows.reduce((n, row) => n + row.cells.reduce((a, b) => a + b, 0), 0);
-  expect(count).toBe(6);
-  // Only the shown offline-sync run's simplify warning: no session warning, no "other" one.
-  expect(body.warnings.map((w) => ({ kind: w.kind, project: w.project }))).toEqual([
-    { kind: 'simplify_record_differs', project: 'lantern-notes' },
+  expect(count).toBe(7);
+  // The shown runs' in-family warnings, masked; no session warning, no "other" one.
+  expect(body.warnings.map((w) => ({ kind: w.kind, project: w.project, text: w.text }))).toEqual([
+    {
+      kind: 'simplify_record_differs',
+      project: 'lantern-notes',
+      text: 'WARN: feature/offline-sync (2026-11-10): record says simplify ran (agents) but the transcript has no simplify call',
+    },
+    {
+      kind: 'no_transcript',
+      project: 'lantern-notes',
+      text: 'WARN: chore/tidy-imports (2026-11-03): another project another branch looked odd',
+    },
   ]);
+  // The hidden webhooks run's step_agent_missing and brand_new_check, the retry-backoff run's, the session's and the
+  // plan run's "other" one.
+  expect(body.warnings.some((w) => w.kind === 'step_agent_missing' || w.project === 'tidepool-api')).toBe(false);
+  expect(body.rows.find((r) => r.kind === 'step_agent_missing')?.cells.at(-1)).toBe(1);
   expect(body.hidden).toBe(5);
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });

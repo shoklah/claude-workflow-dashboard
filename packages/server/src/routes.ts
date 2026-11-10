@@ -84,6 +84,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     return c.json(
       homeView({
         runs,
+        sessions: listUnits(deps.db, 'session'),
         warnings: listWarnings(deps.db),
         seenAt: getSeenAt(deps.db),
         now: deps.now(),

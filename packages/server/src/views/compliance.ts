@@ -68,9 +68,8 @@ export function familyOf(kind: string | null): string {
 }
 
 /**
- * The Compliance page: the warnings in the query's period, by kind and week. Current warnings are the runs' current
- * ones (currentWarnings) and those in the latest warns of each session the latest export still holds; `resolved` adds
- * every other stored warning. A run's warning is in the period when its run is (period), in its run's week; a
+ * The Compliance page: the warnings in the query's period, by kind and week: the current ones (currentWarnings), and
+ * with `resolved` every other stored warning. A run's warning is in the period when its run is (period), in its run's week; a
  * session's, of any path or project, in the week it was first seen. `step` keeps the warnings naming that step. The
  * rows are the kinds with a warning, in FAMILIES' order, then "other" kinds, the one with no kind last. With a scope,
  * the cells still count every warning, but the list holds only the shown projects' run warnings outside "other"
@@ -89,15 +88,10 @@ export function complianceView(input: {
   const { weeks, matches } = period(query, input.now);
   const names = storedNames(input.runs);
   const runs = new Map(input.runs.map((unit) => [unit.key, { unit, facts: storedFacts(unit, names) }]));
-  const currentRun = new Set(currentWarnings(input.runs, input.warnings).filter((w) => w.kind === 'run'));
-  const sessionWarns = new Map(
-    input.sessions.filter((s) => s.missingSince === null).map((s) => [s.key, s.merged.warns ?? []]),
-  );
-  const isCurrent = (w: StoredWarning) =>
-    w.kind === 'run' ? currentRun.has(w) : (sessionWarns.get(w.key)?.includes(w.text) ?? false);
+  const current = new Set(currentWarnings(input.runs, input.sessions, input.warnings));
 
   const inPeriod = input.warnings.flatMap((w) => {
-    if ((!query.resolved && !isCurrent(w)) || (query.step && w.stepKind !== query.step)) return [];
+    if ((!query.resolved && !current.has(w)) || (query.step && w.stepKind !== query.step)) return [];
     const run = w.kind === 'run' ? runs.get(w.key) : undefined;
     if (w.kind === 'run' && !(run && matches(run.facts))) return [];
     // Stored runs always have a finish time: the import skips a run without one.
