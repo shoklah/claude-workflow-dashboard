@@ -15,12 +15,12 @@ import {
   type Step,
   type StepKind,
   type WeekNumbers,
+  type WeekRow,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
 import { showFacts, showWarning, type Scope } from './scope.ts';
 
-type WeekSum = { runs: WeekNumbers['runs']; cost: number | null };
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -31,24 +31,72 @@ const FULL_STEPS: StepKind[] = ['plan_simplify', 'plan_review', 'task_review', '
 const SMALL_STEPS: StepKind[] = ['task_review', 'simplify', 'final_review'];
 const FIX_CHECKS: StepKind[] = ['fix_check', 'final_fix_check'];
 // No runs on any path, a fresh object each time since weekSums adds to it.
-const noRuns = (): WeekSum['runs'] => Object.fromEntries(PATHS.map((p) => [p, 0])) as Record<Path, number>;
+const noRuns = (): WeekRow['runs'] => Object.fromEntries(PATHS.map((p) => [p, 0])) as Record<Path, number>;
+
+/** The median of the values that aren't null, or null when there are none, as the reporter's median_or_none. */
+export function median(values: (number | null)[]): number | null {
+  const known = values.filter((v) => v !== null).sort((a, b) => a - b);
+  if (known.length === 0) return null;
+  const mid = Math.floor(known.length / 2);
+  return known.length % 2 ? known[mid] : (known[mid - 1] + known[mid]) / 2;
+}
+
+/** A week with no runs: every count 0, every sum of known values null. */
+export function emptyWeek(): WeekRow {
+  return {
+    runs: noRuns(),
+    tasks: 0,
+    findings: { critical: 0, important: 0, minor: 0, unneeded: 0 },
+    fixRounds: 0,
+    stops: 0,
+    fablePoints: null,
+    allPoints: null,
+    cost: null,
+    minutesPerRun: null,
+    laterFixes: 0,
+  };
+}
+
+// A sum of known values: null until one is known.
+const addKnown = (sum: number | null, value: number | null | undefined) => (value == null ? sum : (sum ?? 0) + value);
 
 /**
- * Per week start date, over the runs with a date, as the reporter's week_rows: `runs`, the runs by path; `cost`, the
- * sum of the runs' costs (RunFacts.cost), null when no run of the week has one.
+ * Per week start date, over the runs with a date, as the reporter's week_rows: `runs`, the runs by path; `tasks`,
+ * `fixRounds` and `stops`, the sums of the records' (a missing one 0); `findings`, the sum of the runs'
+ * final_findings; `fablePoints` and `allPoints`, the sums of the runs' known points, null when none has them; `cost`,
+ * the sum of the runs' costs (RunFacts.cost), null when no run of the week has one; `minutesPerRun`, the median of the
+ * runs' known minutes; `laterFixes`, the runs' later fix commits.
  */
-export function weekSums(runs: RunEntry[]): Map<string, WeekSum> {
-  const sums = new Map<string, WeekSum>();
+export function weekSums(runs: RunEntry[]): Map<string, WeekRow> {
+  const sums = new Map<string, WeekRow>();
+  const minutes = new Map<string, (number | null)[]>();
   for (const run of runs) {
     if (!run.record?.date) continue;
     const facts = runFacts(run);
     const week = weekOf(parseTime(run.record.date));
-    const sum = sums.get(week) ?? { runs: noRuns(), cost: null };
+    const sum = sums.get(week) ?? emptyWeek();
     if (facts.path) sum.runs[facts.path] += 1;
-    if (facts.cost !== null) sum.cost = (sum.cost ?? 0) + facts.cost;
+    sum.tasks += run.record.tasks ?? 0;
+    sum.fixRounds += run.record.fix_rounds ?? 0;
+    sum.stops += run.record.stops ?? 0;
+    for (const key of ['critical', 'important', 'minor', 'unneeded'] as const) {
+      sum.findings[key] += run.final_findings?.[key] ?? 0;
+    }
+    sum.fablePoints = addKnown(sum.fablePoints, run.fable_points);
+    sum.allPoints = addKnown(sum.allPoints, run.all_points);
+    sum.cost = addKnown(sum.cost, facts.cost);
+    sum.laterFixes += run.later_fixes?.length ?? 0;
+    minutes.set(week, [...(minutes.get(week) ?? []), facts.minutes]);
     sums.set(week, sum);
   }
+  for (const [week, sum] of sums) sum.minutesPerRun = median(minutes.get(week)!);
   return sums;
+}
+
+/** The earliest finish time of the runs whose transcript the reporter could read, null when none is readable. */
+export function coverageFrom(runs: StoredUnit<RunEntry>[]): string | null {
+  const times = runs.filter((r) => r.readable).map((r) => r.merged.record?.date ?? '');
+  return times.sort((a, b) => parseTime(a).getTime() - parseTime(b).getTime())[0] ?? null;
 }
 
 /** A diagram tab's step boxes: per step kind, the steps that ran, their findings and those acted on. */
@@ -165,8 +213,6 @@ export function homeView(input: {
       };
     });
 
-  const readable = runs.filter((r) => r.unit.readable).sort((a, b) => a.finished.getTime() - b.finished.getTime());
-
   return {
     thisWeek: numbers[CHART_WEEKS - 1],
     lastWeek: numbers[CHART_WEEKS - 2],
@@ -190,7 +236,6 @@ export function homeView(input: {
     },
     // The feed: the runs and warnings first seen after seenAt, newest first; a run at its finish time.
     feed: [...runItems, ...warningItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, FEED_SIZE),
-    // coverageFrom: the earliest finish time of the runs whose transcript the reporter could read.
-    coverageFrom: readable[0]?.facts.finishedAt ?? null,
+    coverageFrom: coverageFrom(input.runs),
   };
 }
