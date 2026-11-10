@@ -39,6 +39,7 @@ function cell({ findings, strengths }: Bucket): FindingCell {
  * fix checks' findings not proportionate, findings declined or ruled, and findings the session judged invalid. */
 function signals(runs: RunEntry[]): FindingsResponse['signals'] {
   const steps = runs.flatMap((run) => run.steps ?? []);
+  const findings = steps.flatMap((s) => s.findings ?? []);
   const found = (of: Step[]) => sum(of, (s) => s.findings?.length ?? 0);
   return {
     laterFixes: sum(runs, (run) => run.later_fixes?.length ?? 0),
@@ -51,10 +52,8 @@ function signals(runs: RunEntry[]): FindingsResponse['signals'] {
       steps.filter((s) => s.step === 'fix_check' || s.step === 'final_fix_check'),
       (s) => s.counts?.not_proportionate ?? 0,
     ),
-    declinedOrRuled: steps
-      .flatMap((s) => s.findings ?? [])
-      .filter((f) => f.outcome === 'declined' || f.outcome === 'ruled').length,
-    judgedInvalid: steps.flatMap((s) => s.findings ?? []).filter((f) => f.validity === 'invalid').length,
+    declinedOrRuled: findings.filter((f) => f.outcome === 'declined' || f.outcome === 'ruled').length,
+    judgedInvalid: findings.filter((f) => f.validity === 'invalid').length,
   };
 }
 
@@ -90,7 +89,10 @@ export function findingsView(input: {
     [...(list?.areas[area].map((c) => c.id) ?? []), null].map((category) => ({ area, category })),
   );
   const byRow = new Map(
-    rowKeys.map(({ area, category }) => [`${area} ${category}`, weeks.map((): Bucket => ({ findings: [], strengths: 0 }))]),
+    rowKeys.map(({ area, category }) => [
+      `${area} ${category}`,
+      weeks.map((): Bucket => ({ findings: [], strengths: 0 })),
+    ]),
   );
   const findings: FindingItem[] = [];
   let hidden = 0;

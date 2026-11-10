@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import { AREAS, RELEVANCE, type Area, type Relevance } from '@cwd/shared';
-import { labellable, type ActiveList } from './categories.ts';
+import { inArea, labellable, type ActiveList } from './categories.ts';
 import { labelInputs, labelledOn, pendingInputs, saveBatch, type StoredLabel } from './db/labels.ts';
 import type { Db } from './db/open.ts';
 import { listUnits } from './db/read.ts';
@@ -63,7 +63,7 @@ export async function labelPending(
     const labels = new Map<string, StoredLabel>();
     for (const { id, category, relevance, reason } of reply.results) {
       const input = batch.get(id);
-      if (!input || labels.has(id) || !list.areas[input.area].some((c) => c.id === category)) continue;
+      if (!input || labels.has(id) || !inArea(list, input.area, category)) continue;
       const { runKey, findingId, hash } = input;
       labels.set(id, { runKey, findingId, hash, model: settings.model, category, relevance, reason, labelledAt: now });
     }

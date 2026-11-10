@@ -42,6 +42,11 @@ export function labellable<T extends { area: Area }>(inputs: T[], list: ActiveLi
   return inputs.filter((input) => list.areas[input.area].length > 0);
 }
 
+/** Whether `id` is one of `list`'s categories for `area`. */
+export function inArea(list: ActiveList, area: Area, id: string): boolean {
+  return list.areas[area].some((c) => c.id === id);
+}
+
 /** Each category's display label by its id, as responses carry them; none with no active list. */
 export function categoryLabels(list: ActiveList | null): Record<string, string> {
   return Object.fromEntries(AREAS.flatMap((area) => list?.areas[area].map((c) => [c.id, c.label]) ?? []));

@@ -1,6 +1,7 @@
 import {
   reporterTotals,
   STEP_KINDS,
+  toStepKind,
   type FindingsQuery,
   type RuleSums,
   type RunEntry,
@@ -9,7 +10,7 @@ import {
   type StepsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { period, storedFacts, storedNames } from './runs.ts';
+import { addCount, periodRuns } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
 // The reporter's token labels, its failing-test results (TEST_RESULTS) and its offer outcomes (OFFER_OUTCOMES).
@@ -47,7 +48,7 @@ export function stepSums(runs: RunEntry[]): StepRow[] {
     const row = rows.get(step)!;
     row.ran += 1;
     if (Object.values(counts).some(Boolean)) row.found += 1;
-    for (const [key, n] of Object.entries(counts)) row.counts[key] = (row.counts[key] ?? 0) + (n ?? 0);
+    for (const [key, n] of Object.entries(counts)) addCount(row.counts, key, n ?? 0);
   };
   for (const run of runs) {
     for (const step of run.steps ?? []) {
@@ -69,7 +70,8 @@ export function stepSums(runs: RunEntry[]): StepRow[] {
       }
     }
     for (const dispatch of run.dispatches ?? []) {
-      const row = rows.get(dispatch.kind as StepKind);
+      const kind = toStepKind(dispatch.kind);
+      const row = kind && rows.get(kind);
       if (!row?.tokens || !dispatch.models) continue;
       for (const m of Object.values(dispatch.models)) {
         for (const label of TOKENS) row.tokens[label] += m[label] ?? 0;
@@ -127,12 +129,10 @@ export function stepsView(input: {
   now: Date;
   scope: Scope | null;
 }): StepsResponse {
-  const { matches } = period(input.query, input.now);
-  const names = storedNames(input.runs);
-  const mask = (skill: string | null | undefined) => (input.scope && skill ? maskText(input.scope, skill) : skill);
-  const runs = input.runs
-    .filter((unit) => matches(storedFacts(unit, names)))
-    .map(({ merged: run }) => ({ ...run, offers: run.offers?.map((o) => ({ ...o, skill: mask(o.skill) })) }));
+  const runs = periodRuns(input.runs, input.query, input.now).runs.map((run) => ({
+    ...run,
+    offers: run.offers?.map((o) => ({ ...o, skill: maskText(input.scope, o.skill) })),
+  }));
   const board = reporterTotals(input.totals)?.scoreboard;
   const advisor = board?.advisor;
   const startup = board?.startup;

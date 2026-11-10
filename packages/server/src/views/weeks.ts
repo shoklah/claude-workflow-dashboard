@@ -1,7 +1,7 @@
 import type { FindingsQuery, RunEntry, RunTime, WeeksResponse } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
 import { coverageFrom, emptyWeek, median, weekSums } from './home.ts';
-import { period, storedFacts, storedNames } from './runs.ts';
+import { periodRuns } from './runs.ts';
 
 /** Full runs with waves and without, as the reporter's run_time: how many, how many have minutes, and their median. */
 export function runTime(runs: RunEntry[]): RunTime {
@@ -22,9 +22,7 @@ export function runTime(runs: RunEntry[]): RunTime {
  * nothing: its sums count every project, as every page's do.
  */
 export function weeksView(input: { runs: StoredUnit<RunEntry>[]; query: FindingsQuery; now: Date }): WeeksResponse {
-  const { weeks, matches } = period(input.query, input.now);
-  const names = storedNames(input.runs);
-  const runs = input.runs.filter((unit) => matches(storedFacts(unit, names))).map((unit) => unit.merged);
+  const { weeks, runs } = periodRuns(input.runs, input.query, input.now);
   const sums = weekSums(runs);
   return {
     weeks: weeks.toReversed().map((week) => ({ week, ...(sums.get(week) ?? emptyWeek()) })),

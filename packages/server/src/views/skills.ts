@@ -9,7 +9,7 @@ import {
   type SkillsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { period, skillOutcomeLabel, storedFacts, storedNames } from './runs.ts';
+import { addCount, period, skillOutcomeLabel, storedFacts, storedNames } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
 type Loads = { skills?: RunEntry['skills'] };
@@ -31,7 +31,7 @@ export function skillSums(units: Loads[]): SkillRow[] {
       const entry = row(s.name ?? '');
       if (s.time && (entry.last === null || parseTime(s.time) > parseTime(entry.last))) entry.last = s.time;
       const label = skillOutcomeLabel(s.outcome);
-      entry.outcomes[label] = (entry.outcomes[label] ?? 0) + 1;
+      addCount(entry.outcomes, label);
     }
   }
   return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -54,11 +54,10 @@ export function skillsView(input: {
 }): SkillsResponse {
   const { weeks, filters } = period(input.query, input.now);
   const names = storedNames(input.runs);
-  const mask = (name: string) => (input.scope ? maskText(input.scope, name) : name);
   const inPeriod = (unit: Loads): Loads => ({
     skills: (unit.skills ?? [])
       .filter((s) => s.time && weeks.includes(weekOf(parseTime(s.time))))
-      .map((s) => ({ ...s, name: mask(s.name ?? '') })),
+      .map((s) => ({ ...s, name: maskText(input.scope, s.name ?? '') })),
   });
   const units = [
     ...input.runs.filter((run) => filters(storedFacts(run, names))),
@@ -67,7 +66,9 @@ export function skillsView(input: {
   const totals = reporterTotals(input.totals)?.skills;
   const missing = new Map<string, number>();
   for (const [name, row] of Object.entries(totals ?? {})) {
-    if (row.missing != null) missing.set(mask(name), (missing.get(mask(name)) ?? 0) + row.missing);
+    if (row.missing == null) continue;
+    const key = maskText(input.scope, name);
+    missing.set(key, (missing.get(key) ?? 0) + row.missing);
   }
   const rows = skillSums(units);
   const loaded = new Set(rows.map((row) => row.name));

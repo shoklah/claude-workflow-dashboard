@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Relevance } from '@cwd/shared';
 import { builtWebDist, serveApp } from './app.ts';
-import { activeList } from './categories.ts';
+import { activeList, inArea } from './categories.ts';
 import { loadConfig } from './config.ts';
 import { labelInputs, saveBatch } from './db/labels.ts';
 import { openDb } from './db/open.ts';
@@ -54,7 +54,7 @@ const labels = fixtureLabels.map(({ date, branch, findingId, category, relevance
   const run = runs.find((r) => r.merged.record?.date === date && r.merged.record?.branch === branch);
   const input = inputs.find((i) => i.runKey === run?.key && i.findingId === findingId);
   if (!input) throw new Error(`labels.json: no finding ${findingId} in the run of ${date} on ${branch}`);
-  if (!list.areas[input.area].some((c) => c.id === category)) {
+  if (!inArea(list, input.area, category)) {
     throw new Error(`labels.json: ${category} isn't a ${input.area} category`);
   }
   const { runKey, hash } = input;

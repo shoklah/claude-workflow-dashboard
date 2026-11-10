@@ -105,13 +105,17 @@ export function complianceView(input: {
     ...[...others].filter((kind): kind is string => kind !== null).sort().map((kind) => ({ family: OTHER, kind })),
     ...(others.has(null) ? [{ family: OTHER, kind: null }] : []),
   ];
-  const rows: ComplianceRow[] = rowKeys
-    .map(({ family, kind }) => ({
-      family,
-      kind,
-      cells: weeks.map((week) => inPeriod.filter((x) => x.w.warningKind === kind && x.week === week).length),
-    }))
-    .filter((row) => row.cells.some((n) => n > 0));
+  // Each kind's count by week in one pass; a kind with no warning in the period gets no row.
+  const counts = new Map<string | null, number[]>();
+  for (const x of inPeriod) {
+    const cells = counts.get(x.w.warningKind) ?? weeks.map(() => 0);
+    cells[weeks.indexOf(x.week)] += 1;
+    counts.set(x.w.warningKind, cells);
+  }
+  const rows: ComplianceRow[] = rowKeys.flatMap(({ family, kind }) => {
+    const cells = counts.get(kind);
+    return cells ? [{ family, kind, cells }] : [];
+  });
 
   const warnings = inPeriod.flatMap(({ w, run, week, family }): ComplianceWarning[] => {
     const facts = run && showFacts(scope, run.facts);

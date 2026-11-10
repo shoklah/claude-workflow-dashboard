@@ -9,7 +9,7 @@ import {
   type RunEntry,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { period, storedFacts, storedNames } from './runs.ts';
+import { addCount, periodRuns } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
 type ModelSums = {
@@ -19,10 +19,6 @@ type ModelSums = {
 
 // A model and effort as the reporter's model_totals pairs them, '-' for a side that isn't known.
 const pair = (model: string | null | undefined, effort: string | null | undefined) => `${model || '-'}/${effort || '-'}`;
-
-const add = (counts: Record<string, number>, key: string, n = 1) => {
-  counts[key] = (counts[key] ?? 0) + n;
-};
 
 /**
  * The runs' models as the reporter's model_totals counts them: per agent type (a dispatch with none is
@@ -34,11 +30,11 @@ export function modelSums(runs: RunEntry[]): ModelSums {
   for (const run of runs) {
     for (const d of run.dispatches ?? []) {
       const row = (sums.agents[d.agent || 'general-purpose'] ??= { requested: {}, actual: {} });
-      add(row.requested, pair(d.requested_model, d.requested_effort));
-      add(row.actual, pair(d.model, d.effort));
+      addCount(row.requested, pair(d.requested_model, d.requested_effort));
+      addCount(row.actual, pair(d.model, d.effort));
     }
     const path = toPath(run.record?.path);
-    if (path && run.main) add(sums.main[path], pair(run.main.model, run.main.effort));
+    if (path && run.main) addCount(sums.main[path], pair(run.main.model, run.main.effort));
   }
   return sums;
 }
@@ -57,41 +53,36 @@ export function modelsView(input: {
   now: Date;
   scope: Scope | null;
 }): ModelsResponse {
-  const { weeks, matches } = period(input.query, input.now);
-  const names = storedNames(input.runs);
-  const mask = <T extends string | null | undefined>(text: T): T =>
-    input.scope && text ? (maskText(input.scope, text) as T) : text;
-  const runs = input.runs
-    .filter((unit) => matches(storedFacts(unit, names)))
-    .map(({ merged: run }) => ({
+  const { weeks, runs: inPeriod } = periodRuns(input.runs, input.query, input.now);
+  const runs = inPeriod.map((run) => ({
       ...run,
       dispatches: run.dispatches?.map((d) => ({
         ...d,
-        agent: mask(d.agent),
-        requested_model: mask(d.requested_model),
-        requested_effort: mask(d.requested_effort),
-        model: mask(d.model),
-        effort: mask(d.effort),
+        agent: maskText(input.scope, d.agent),
+        requested_model: maskText(input.scope, d.requested_model),
+        requested_effort: maskText(input.scope, d.requested_effort),
+        model: maskText(input.scope, d.model),
+        effort: maskText(input.scope, d.effort),
       })),
-      main: run.main && { model: mask(run.main.model), effort: mask(run.main.effort) },
+      main: run.main && { model: maskText(input.scope, run.main.model), effort: maskText(input.scope, run.main.effort) },
     }));
   const sums = modelSums(runs);
   const totals = reporterTotals(input.totals);
   const mismatches: Record<string, number> = {};
   for (const [name, row] of Object.entries(totals?.models?.agents ?? {})) {
-    if (row.mismatches != null) add(mismatches, mask(name), row.mismatches);
+    if (row.mismatches != null) addCount(mismatches, maskText(input.scope, name), row.mismatches);
   }
   const advisor = totals?.advisor;
   let facts: AdvisorFacts | null = null;
   if (advisor) {
     const byRole: AdvisorFacts['byRole'] = {};
     for (const [label, role] of Object.entries(advisor.by_role ?? {})) {
-      const row = (byRole[mask(label)] ??= { calls: 0, flagged: false });
+      const row = (byRole[maskText(input.scope, label)] ??= { calls: 0, flagged: false });
       row.calls += role.calls ?? 0;
       row.flagged ||= role.flagged ?? false;
     }
     const failed: Record<string, number> = {};
-    for (const [code, n] of Object.entries(advisor.failed ?? {})) add(failed, mask(code), n);
+    for (const [code, n] of Object.entries(advisor.failed ?? {})) addCount(failed, maskText(input.scope, code), n);
     facts = {
       calls: advisor.calls ?? null,
       tokens: advisor.tokens ?? null,

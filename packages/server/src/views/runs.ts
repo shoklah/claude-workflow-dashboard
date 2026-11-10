@@ -5,6 +5,7 @@ import {
   runFacts,
   weekOf,
   weekStart,
+  type Finding,
   type FindingRow,
   type RunEntry,
   type RunFacts,
@@ -28,7 +29,6 @@ const WEEK = 7 * 24 * 60 * 60 * 1000;
 // A logged step whose kind the reporter gave; it always gives one.
 type KnownStep = Step & { step: StepKind };
 
-type Finding = NonNullable<Step['findings']>[number];
 
 // A finding's label fields: the workflow's it carries, and the app's.
 type LabelOf = (
@@ -110,6 +110,22 @@ export function period(
   // A stored run always has its finish time (finishedAt), the date its key is made from.
   const matches = (row: RunFacts) => weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) && filters(row);
   return { weeks, filters, matches };
+}
+
+/** Adds `n` to a count record's `key`. */
+export function addCount(counts: Record<string, number>, key: string, n = 1): void {
+  counts[key] = (counts[key] ?? 0) + n;
+}
+
+/** The stored runs in the query's period (period), as their merged entries, and its weeks. */
+export function periodRuns(
+  runs: StoredUnit<RunEntry>[],
+  query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
+  now: Date,
+): { weeks: string[]; runs: RunEntry[] } {
+  const { weeks, matches } = period(query, now);
+  const names = storedNames(runs);
+  return { weeks, runs: runs.filter((unit) => matches(storedFacts(unit, names))).map((unit) => unit.merged) };
 }
 
 /**
@@ -226,19 +242,18 @@ export function runView(
   const entry = run.merged;
   const facts = showFacts(scope, storedFacts(run, names));
   if (!facts) return null;
-  const mask = (text: string | null | undefined) => (scope && text ? maskText(scope, text) : text);
   const steps = (entry.steps ?? [])
     .filter((s): s is KnownStep => s.step != null)
     .map((s) => ({
       ...s,
       findings: s.findings?.map((f) => ({
         ...f,
-        kind: mask(f.kind),
-        summary: mask(f.summary),
-        reason: mask(f.reason),
-        verdicts: f.verdicts?.map((v) => mask(v) ?? v),
+        kind: maskText(scope, f.kind),
+        summary: maskText(scope, f.summary),
+        reason: maskText(scope, f.reason),
+        verdicts: f.verdicts?.map((v) => maskText(scope, v)),
       })),
-      strengths: s.strengths?.map((strength) => ({ ...strength, summary: mask(strength.summary) })),
+      strengths: s.strengths?.map((strength) => ({ ...strength, summary: maskText(scope, strength.summary) })),
     }));
   const labelOf: LabelOf = (f) => {
     const label = f.id ? labels.get(findingKey(run.key, f.id)) : undefined;
@@ -249,7 +264,7 @@ export function runView(
       validity,
       judge: workflow !== null ? 'workflow' : label ? 'app' : null,
       relevance: label?.relevance ?? null,
-      labelReason: mask(label?.reason) ?? null,
+      labelReason: maskText(scope, label?.reason ?? null),
       appCategory: workflow !== null && label && label.category !== workflow ? label.category : null,
       appRelevance: validity !== null && label && label.relevance !== validity ? label.relevance : null,
     };
@@ -272,8 +287,7 @@ export function runView(
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
-    warnings: currentWarnings([run], [], warnings)
-      .map((w) => showWarning(scope, w.text)),
+    warnings: currentWarnings([run], [], warnings).map((w) => showWarning(scope, w.text)),
     categoryLabels: categoryLabels(list),
   };
 }

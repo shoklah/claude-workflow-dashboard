@@ -87,7 +87,8 @@ export function weekSums(runs: RunEntry[]): Map<string, WeekRow> {
     sum.allPoints = addKnown(sum.allPoints, run.all_points);
     sum.cost = addKnown(sum.cost, facts.cost);
     sum.laterFixes += run.later_fixes?.length ?? 0;
-    minutes.set(week, [...(minutes.get(week) ?? []), facts.minutes]);
+    if (!minutes.has(week)) minutes.set(week, []);
+    minutes.get(week)!.push(facts.minutes);
     sums.set(week, sum);
   }
   for (const [week, sum] of sums) sum.minutesPerRun = median(minutes.get(week)!);
@@ -183,10 +184,10 @@ export function homeView(input: {
   const recentSessions = scope
     ? []
     : warnings.filter((w) => w.kind === 'session' && w.firstSeenAt.getTime() > now.getTime() - 7 * DAY);
-  const warningsOf = (of: Run[]) => [
-    ...warnings.filter((w) => w.kind === 'run' && of.some((r) => r.unit.key === w.key)),
-    ...recentSessions,
-  ];
+  const warningsOf = (of: Run[]) => {
+    const keys = new Set(of.map((r) => r.unit.key));
+    return [...warnings.filter((w) => w.kind === 'run' && keys.has(w.key)), ...recentSessions];
+  };
 
   // The feed's runs: with a scope, the shown projects' runs, named by the scope.
   const shown = runs.flatMap((r) => {

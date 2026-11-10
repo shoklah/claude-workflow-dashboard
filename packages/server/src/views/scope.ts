@@ -52,9 +52,11 @@ export function scopeOf(
  * A text as showing mode lets it out: its paths trimmed (trimPaths), each session ID, bare or as `<uuid>.jsonl`,
  * written "a session", and each whole-word hidden branch and project name, in any case, written "another branch" and
  * "another project", unless it is part of a whole-word shown folder name (kept), which stays as it is. A word holds
- * letters, digits and `_`, so `-` ends one, as in a transcript folder's `-Users-me-Work-<name>`.
+ * letters, digits and `_`, so `-` ends one, as in a transcript folder's `-Users-me-Work-<name>`. With no scope, or no
+ * text, the text as it is.
  */
-export function maskText(scope: Scope, text: string): string {
+export function maskText<T extends string | null | undefined>(scope: Scope | null, text: T): T {
+  if (!scope || !text) return text;
   const masked = trimPaths(text).replace(SESSION_IDS, 'a session');
   // By lower case, a mask wins over a kept string, and a branch's over a name's.
   const masks = new Map<string, string | null>([
@@ -62,9 +64,9 @@ export function maskText(scope: Scope, text: string): string {
     ...scope.hidden.map((word): [string, string] => [word.toLowerCase(), 'another project']),
     ...scope.branches.map((word): [string, string] => [word.toLowerCase(), 'another branch']),
   ]);
-  if (masks.size === 0) return masked;
+  if (masks.size === 0) return masked as T;
   const words = new RegExp(`(?<!\\w)${anyOf([...masks.keys()])}(?!\\w)`, 'gi');
-  return masked.replace(words, (word) => masks.get(word.toLowerCase()) ?? word);
+  return masked.replace(words, (word) => masks.get(word.toLowerCase()) ?? word) as T;
 }
 
 /**
@@ -74,7 +76,7 @@ export function maskText(scope: Scope, text: string): string {
 export function showFacts(scope: Scope | null, facts: RunFacts): RunFacts | null {
   if (!scope) return facts;
   if (!scope.shown.has(facts.projectKey)) return null;
-  const branch = facts.branch && maskText(scope, facts.branch);
+  const branch = maskText(scope, facts.branch);
   return { ...facts, project: scope.names.get(facts.projectKey)!, branch };
 }
 
