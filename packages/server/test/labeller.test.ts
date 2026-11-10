@@ -1,14 +1,22 @@
 import { mkdtempSync, rmSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { CATEGORIES, loadReport } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { listUnits } from '../src/db/read.ts';
 import { currentLabels, labelInputs, tokensSince, type LabelInput } from '../src/db/labels.ts';
-import { labellerSettings, labelPending, type LabelClient } from '../src/labeller.ts';
+import {
+  anthropicLabelClient,
+  LabelError,
+  labellerSettings,
+  labelPending,
+  type LabelClient,
+} from '../src/labeller.ts';
 
 const IMPORTED = new Date('2026-11-10T18:00:00Z');
 const NOW = new Date('2026-11-10T20:00:00Z');
@@ -132,19 +140,78 @@ describe('labelPending', () => {
     expect(labels.every((l) => l.relevance === 'valid')).toBe(true);
   });
 
-  test('a throwing client stores nothing from its batch, stops, and labelPending rejects', async () => {
+  test('a throwing batch stores nothing and is logged without its text; the next batches are labelled', async () => {
     const db = imported(withFindings(60));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { batches, client: answering } = stubClient();
     let calls = 0;
+    let text = '';
     const client: LabelClient = async (batch) => {
-      if (++calls === 2) throw new Error('529 overloaded');
+      // The first batch fails every time, with an error that quotes a finding.
+      if (++calls === 1) {
+        text = batch[0]!.text;
+        throw new Error(`no label for ${text}`);
+      }
       return answering(batch);
     };
-    await expect(labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW)).rejects.toThrow('529 overloaded');
-    expect(calls).toBe(2);
-    expect(batches).toHaveLength(1);
-    expect(stored(db)).toBe(25);
-    expect(tokensSince(db, IMPORTED)).toEqual({ input: 1000, output: 200 });
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW);
+    expect(calls).toBe(3);
+    expect(batches.map((b) => b.length)).toEqual([25, 10]);
+    expect(stored(db)).toBe(35);
+    expect(tokensSince(db, IMPORTED)).toEqual({ input: 2000, output: 400 });
+    expect(error).toHaveBeenCalledWith('label batch failed:', 'Error');
+    expect(JSON.stringify(error.mock.calls)).not.toContain(text);
+    error.mockRestore();
+  });
+
+  test("a LabelError's fixed message is logged", async () => {
+    const db = imported(fixture('report-projects'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const message = "the labeller's reply did not parse (stop reason: max_tokens)";
+    const client: LabelClient = async () => {
+      throw new LabelError(message);
+    };
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW);
+    expect(error).toHaveBeenCalledWith('label batch failed:', message);
+    error.mockRestore();
+  });
+});
+
+describe('anthropicLabelClient', () => {
+  test('a reply cut off at max_tokens throws a LabelError naming the stop reason, not the reply', async () => {
+    // A local stand-in for the API, never the API itself, answering with an invented, cut-off reply.
+    const reply = '{"labels":[{"id":"f1","category":"invented-cut-off';
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          id: 'msg_invented',
+          type: 'message',
+          role: 'assistant',
+          model: MODEL,
+          content: [{ type: 'text', text: reply }],
+          stop_reason: 'max_tokens',
+          stop_sequence: null,
+          usage: { input_tokens: 10, output_tokens: 4096 },
+        }),
+      );
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const env = { key: process.env.ANTHROPIC_API_KEY, url: process.env.ANTHROPIC_BASE_URL };
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      const client = anthropicLabelClient(MODEL);
+      const result = client([{ id: 'f1', area: 'plan', text: 'An invented finding.' }]);
+      await expect(result).rejects.toThrow(LabelError);
+      await expect(result).rejects.toThrow("the labeller's reply did not parse (stop reason: max_tokens)");
+    } finally {
+      for (const [name, value] of [['ANTHROPIC_API_KEY', env.key], ['ANTHROPIC_BASE_URL', env.url]] as const) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 });
 
@@ -163,6 +230,12 @@ describe('labellerSettings', () => {
       model: 'claude-haiku-5-5',
       dailyMax: 500,
     });
+  });
+
+  test("a daily max that isn't a positive whole number means the default", () => {
+    for (const max of ['lots', '-3', '0', '2.5']) {
+      expect(labellerSettings({ ANTHROPIC_API_KEY: 'k', LABELLER_DAILY_MAX: max })?.dailyMax).toBe(500);
+    }
   });
 
   test('reads the model and the daily max', () => {

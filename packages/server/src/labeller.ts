@@ -14,17 +14,27 @@ export type LabelClient = (batch: { id: string; area: Area; text: string }[]) =>
 }>;
 
 const BATCH = 25;
+const DAILY_MAX = 500;
 
-/** The labeller's settings from the data folder's `.env`, or null with no key, which turns the labeller off. */
+/** A label client's failure whose message is fixed, with no finding text and no key, so labelPending logs it. */
+export class LabelError extends Error {}
+
+/**
+ * The labeller's settings from the data folder's `.env`, or null with no key, which turns the labeller off. A daily max
+ * that isn't a positive whole number means the default.
+ */
 export function labellerSettings(env: Record<string, string | undefined>): { model: string; dailyMax: number } | null {
   if (!env.ANTHROPIC_API_KEY) return null;
-  return { model: env.LABELLER_MODEL || 'claude-haiku-5-5', dailyMax: Number(env.LABELLER_DAILY_MAX || 500) };
+  const max = Number(env.LABELLER_DAILY_MAX);
+  const dailyMax = Number.isInteger(max) && max > 0 ? max : DAILY_MAX;
+  return { model: env.LABELLER_MODEL || 'claude-haiku-5-5', dailyMax };
 }
 
 /**
  * Labels the findings with no label from the model, in batches, up to the daily max. A result whose category isn't in
- * its finding's area, or whose id wasn't sent or was answered already, is dropped. A throwing client stops the run with
- * nothing stored from its batch, so the queue logs it and the next import retries.
+ * its finding's area, or whose id wasn't sent or was answered already, is dropped. A batch whose client throws stores
+ * nothing and is logged, as a LabelError's message or else the error's name, since another error's text can quote the
+ * findings; the next batches still go, and the next import retries it.
  */
 export async function labelPending(
   db: Db,
@@ -36,7 +46,14 @@ export async function labelPending(
   const pending = pendingInputs(db, labelInputs(listUnits(db, 'run')), settings.model).slice(0, Math.max(0, left));
   for (let start = 0; start < pending.length; start += BATCH) {
     const batch = new Map(pending.slice(start, start + BATCH).map((input, n) => [`f${n + 1}`, input]));
-    const reply = await client([...batch].map(([id, { area, text }]) => ({ id, area, text })));
+    let reply;
+    try {
+      reply = await client([...batch].map(([id, { area, text }]) => ({ id, area, text })));
+    } catch (error) {
+      const kind = error instanceof Error ? error.name : 'unknown';
+      console.error('label batch failed:', error instanceof LabelError ? error.message : kind);
+      continue;
+    }
     const labels = new Map<string, StoredLabel>();
     for (const { id, category, relevance, reason } of reply.results) {
       const input = batch.get(id);
@@ -69,29 +86,27 @@ const SYSTEM = [
 
 /**
  * The label client over the Anthropic API, with the key from `ANTHROPIC_API_KEY`. A reply that doesn't parse throws a
- * fixed message, since the parser's own message quotes the reply, which holds finding text.
+ * LabelError naming its stop reason, never the parser's own message, which quotes the reply, which holds finding text.
  */
 export function anthropicLabelClient(model: string): LabelClient {
   const client = new Anthropic();
+  const format = zodOutputFormat(LabelsSchema);
   return async (batch) => {
-    let response;
+    const response = await client.messages.create({
+      model,
+      max_tokens: 4096,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: JSON.stringify(batch) }],
+      output_config: { format },
+    });
+    let parsed;
     try {
-      response = await client.messages.parse({
-        model,
-        max_tokens: 4096,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: JSON.stringify(batch) }],
-        output_config: { format: zodOutputFormat(LabelsSchema) },
-      });
-    } catch (error) {
-      if (error instanceof Anthropic.AnthropicError && !(error instanceof Anthropic.APIError)) {
-        throw new Error("the labeller's reply did not parse");
-      }
-      throw error;
+      parsed = format.parse(response.content.find((block) => block.type === 'text')?.text ?? '');
+    } catch {
+      throw new LabelError(`the labeller's reply did not parse (stop reason: ${response.stop_reason})`);
     }
-    if (!response.parsed_output) throw new Error("the labeller's reply did not parse");
     return {
-      results: response.parsed_output.labels,
+      results: parsed.labels,
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
     };
