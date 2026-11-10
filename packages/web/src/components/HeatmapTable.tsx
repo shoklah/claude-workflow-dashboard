@@ -17,7 +17,7 @@ export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
  * Rows down and the weeks across, each cell a button with its number written in it (`format`, a count by default), so
  * the heatmap is its own table view. One blue ramp shades the cells against `max`, the grey for 0 or an unknown value.
  * It scrolls sideways over many weeks, in a region named `label`; `corner` heads the rows' column. With `total`, a last
- * "Total" column holds each row's values summed.
+ * "Total" column holds each row's values summed, written by `format` too.
  */
 export function HeatmapTable({
   label,
