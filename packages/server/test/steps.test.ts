@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadReport, projectRoot, STEP_KINDS, type StepsResponse } from '@cwd/shared';
+import { loadReport, projectRoot, STEP_KINDS, type SessionEntry, type StepsResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -147,6 +147,21 @@ test('the share is 0 when the advisor and Fable dollars are both 0', () => {
   expect(unitSums([], sessions, cr6Of([], sessions)).advisor?.share).toBe(0);
 });
 
+test("a stored advisor from before CR6, with no by_role, is not summed beside CR6's", () => {
+  const advisor = { calls: 2, cost: 1, tokens: { input: 10 }, by_role: { 'task-reviewer': { calls: 2 } }, weeks: [] };
+  // A pre-CR6 advisor still stored on another unit: its calls, cost, tokens, failed codes and Fable are left out.
+  const old = { calls: 5, cost: 3, tokens: { input: 40 }, failed: { overloaded: 1 }, weeks: [{ fable: 9 }] };
+  const sessions = [
+    { file: 'a', refusals: {}, startup: true, advisor },
+    { file: 'b', refusals: {}, startup: true, advisor: old },
+  ];
+  const sums = unitSums([], sessions as SessionEntry[], cr6Of([], sessions as SessionEntry[])).advisor!;
+  expect(sums).toMatchObject({ calls: 2, cost: 1, failed: {}, share: 100 });
+  expect(sums.tokens.input).toBe(10);
+  // Its calls then equal its roles' sum, as the Models page shows them.
+  expect(Object.values(sums.byRole).reduce((n, role) => n + role.calls, 0)).toBe(sums.calls);
+});
+
 test('on an export from before CR6, the dispatch guard, startup and advisor are null, never partial sums', () => {
   db.$client.close();
   db = dbWith('report-full');
@@ -264,6 +279,17 @@ test("with showing on, an offered skill named after a hidden project is masked, 
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
   // The session-only root is hidden too.
   expect(strings.forbidden).toEqual(expect.arrayContaining(['/Users/example/Scratch/lantern', 'lantern']));
+});
+
+test('with showing on, a refusal key named after a hidden project is masked, and the refusals still count it', async () => {
+  db.$client.close();
+  db = dbWith('report-v6', (raw) => {
+    raw.sessions[3].refusals = { 'tidepool-api-guard': 1 };
+  });
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await steps('?weeks=52');
+  expect(body.rules.dispatchGuard?.['another project-guard']).toBe(1);
+  expect(leaks(body, [...v6Strings(LANTERN).forbidden, '/Users/example'], v6Strings(LANTERN).shown)).toEqual([]);
 });
 
 /** What a showing-mode response over report-v6, stored in `db`, may not hold with `shown` picked: its runs' and

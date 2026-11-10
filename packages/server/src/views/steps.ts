@@ -139,8 +139,9 @@ export function cr6Of(runs: RunEntry[], sessions: SessionEntry[]): Cr6 {
  * sum them over runs and sessions alike (CR6): the refusals by reason, the sessions with and without the startup
  * guidelines, and the advisor's facts and notes, its share of the advisor and Fable dollars as share_pct gives it.
  * Each is null on an export from before CR6, as `cr6` (cr6Of over every stored unit) tells: the refusals and startup
- * unless `sessions`, the advisor unless `advisor`; on CR6 data, units with nothing sum to zeros. `name` maps each role
- * label and failed code as it is summed (a view's maskText under a scope), so labels that map alike merge.
+ * unless `sessions`, the advisor unless `advisor`; on CR6 data, units with nothing sum to zeros, and a unit's advisor
+ * with no `by_role` (stored before CR6) is not summed. `name` maps each refusal key, role label and failed code as it is
+ * summed (a view's maskText under a scope), so keys that map alike merge.
  */
 export function unitSums(
   runs: RunEntry[],
@@ -150,7 +151,7 @@ export function unitSums(
 ): UnitSums {
   const units = [...runs, ...sessions];
   const guard: Record<string, number> = {};
-  for (const unit of units) for (const [key, n] of Object.entries(unit.refusals ?? {})) addCount(guard, key, n);
+  for (const unit of units) for (const [key, n] of Object.entries(unit.refusals ?? {})) addCount(guard, name(key), n);
   const startup = { with: 0, without: 0 };
   for (const s of sessions) startup[s.startup ? 'with' : 'without'] += 1;
   let advisor: AdvisorFacts | null = null;
@@ -170,7 +171,8 @@ export function unitSums(
       sums.notes += notes?.notes ?? 0;
       sums.changed += notes?.changed ?? 0;
       sums.missing += notes?.missing ?? 0;
-      if (!a) continue;
+      // A stored advisor from before CR6 has no by_role, and is not summed beside CR6's.
+      if (!a?.by_role) continue;
       sums.calls += a.calls ?? 0;
       sums.cost += a.cost ?? 0;
       for (const [label, n] of Object.entries(a.tokens ?? {})) addCount(sums.tokens, label, n);
@@ -193,7 +195,8 @@ export function unitSums(
  * The Steps and rules page: each step kind and rule summed over the stored runs in the query's period, and the
  * dispatch-guard refusals, startup guidelines (null under a path filter) and advisor over its runs and sessions
  * (periodUnits, unitSums, with cr6Of over every stored unit). The sums
- * count every project; with a scope, each offer's skill is masked (maskText) first, so names that mask alike merge.
+ * count every project; with a scope, each offer's skill and refusal key is masked (maskText) first, so names that mask
+ * alike merge.
  */
 export function stepsView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -211,7 +214,9 @@ export function stepsView(input: {
     input.runs.map((unit) => unit.merged),
     input.sessions.map((unit) => unit.merged),
   );
-  const { advisor, dispatchGuard, startup } = unitSums(units.runs, units.sessions, cr6);
+  const { advisor, dispatchGuard, startup } = unitSums(units.runs, units.sessions, cr6, (label) =>
+    maskText(input.scope, label),
+  );
   return {
     steps: stepSums(runs),
     rules: {
