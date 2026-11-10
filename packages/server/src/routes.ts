@@ -7,6 +7,7 @@ import {
   type FindingsQuery,
   type RunEntry,
   type RunsQuery,
+  type SessionsQuery,
 } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { activeList, labellable } from './categories.ts';
@@ -30,6 +31,7 @@ import { homeView } from './views/home.ts';
 import { modelsView } from './views/models.ts';
 import { rootOf, runView, runsList, storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
+import { sessionsView } from './views/sessions.ts';
 import { showingView } from './views/showing.ts';
 import { skillsView } from './views/skills.ts';
 import { statusView } from './views/status.ts';
@@ -214,6 +216,22 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
         query,
         now: deps.now(),
         seenAt: getSeenAt(deps.db),
+        scope: scopeFor(runs),
+      }),
+    );
+  });
+
+  // Slice 2c, task 6: the Sessions page, each session's facts, held runs and timeline.
+  app.get('/api/sessions', (c) => {
+    const query: SessionsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
+    const runs = listUnits(deps.db, 'run');
+    return c.json(
+      sessionsView({
+        runs,
+        sessions: listUnits(deps.db, 'session'),
+        warnings: listWarnings(deps.db),
+        query,
+        now: deps.now(),
         scope: scopeFor(runs),
       }),
     );

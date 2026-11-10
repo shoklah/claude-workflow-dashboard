@@ -28,6 +28,9 @@ import {
   runName,
   stepWarningsLabel,
   weekLabel,
+  modelsLabel,
+  sessionsSummary,
+  yesNoLabel,
 } from './format.ts';
 
 describe('formatMinutes', () => {
@@ -298,5 +301,32 @@ describe('ofLabel', () => {
   it('writes a count out of its whole, a count that isn’t known as a dash', () => {
     expect(ofLabel(8, 23)).toBe('8 of 23');
     expect(ofLabel(null, 6)).toBe('–');
+  });
+});
+
+describe('modelsLabel', () => {
+  it('writes each model with its effort, a dash with none', () => {
+    expect(
+      modelsLabel([
+        { model: 'claude-opus-5-5', effort: 'medium' },
+        { model: 'claude-sonnet-5-5', effort: null },
+      ]),
+    ).toBe('claude-opus-5-5 · medium, claude-sonnet-5-5');
+    expect(modelsLabel([])).toBe('–');
+  });
+});
+
+describe('yesNoLabel', () => {
+  it('writes yes or no, a dash when it isn’t known', () => {
+    expect(yesNoLabel(true)).toBe('yes');
+    expect(yesNoLabel(false)).toBe('no');
+    expect(yesNoLabel(null)).toBe('–');
+  });
+});
+
+describe('sessionsSummary', () => {
+  it('counts the sessions and those holding a run', () => {
+    expect(sessionsSummary([{ holds: [{}] }, { holds: [] }, { holds: [{}, {}] }])).toBe('3 sessions · 2 hold a run');
+    expect(sessionsSummary([{ holds: [{}] }])).toBe('1 session · 1 holds a run');
   });
 });

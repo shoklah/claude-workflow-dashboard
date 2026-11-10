@@ -213,6 +213,22 @@ export function usageName(row: { name: string; kind: 'skill' | 'command' }): str
   return row.kind === 'command' ? `/${row.name}` : row.name;
 }
 
+/** A session's models, each with its most-used effort: "claude-opus-5-5 · medium, claude-sonnet-5-5"; a dash with none. */
+export function modelsLabel(models: { model: string; effort: string | null }[]): string {
+  return models.map(({ model, effort }) => joined([model, effort])).join(', ') || NONE;
+}
+
+/** A yes-or-no fact: "yes", "no", or a dash when it isn't known. */
+export function yesNoLabel(value: boolean | null): string {
+  return value === null ? NONE : value ? 'yes' : 'no';
+}
+
+/** The Sessions page's line: "31 sessions · 6 hold a run". */
+export function sessionsSummary(sessions: { holds: unknown[] }[]): string {
+  const holding = sessions.filter((s) => s.holds.length > 0).length;
+  return `${plural(sessions.length, 'session')} · ${holding} ${holding === 1 ? 'holds' : 'hold'} a run`;
+}
+
 /** A count with its noun, plural unless it is 1: "1 run", "2 runs". */
 export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
