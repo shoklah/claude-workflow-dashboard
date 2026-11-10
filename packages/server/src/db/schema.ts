@@ -3,7 +3,7 @@ import { RELEVANCE, type CategoryList } from '@cwd/shared';
 
 // unitVersions holds every raw JSON a run or session had, in order; units' merged, readable and firstSeenAt, and
 // the warnings table, are derived from it and can be rebuilt (rebuildDerived). missingSince is not derived: it
-// records which exports a unit was absent from.
+// records the full exports a unit was absent from, or the incremental exports whose `removed` list named it.
 
 const kind = () => text('kind', { enum: ['run', 'session'] }).notNull();
 const time = (name: string) => integer(name, { mode: 'timestamp_ms' });

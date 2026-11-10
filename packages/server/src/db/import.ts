@@ -1,9 +1,9 @@
-import { and, asc, desc, eq, isNull, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import type { Report, Warning } from '@cwd/shared';
 import { runKey, sessionKey } from '../keys.ts';
 import { mergeKnown } from './merge.ts';
 import type { Db, Tx } from './open.ts';
-import { setSeenAt } from './read.ts';
+import { setCursor, setSeenAt } from './read.ts';
 import { imports, units, unitVersions, warnings } from './schema.ts';
 
 type Kind = 'run' | 'session';
@@ -63,18 +63,38 @@ function importUnit(tx: Tx, kind: Kind, key: string, raw: unknown, at: Date): vo
 }
 
 /**
+ * Whether an export is incremental: `sent` is the cursor sent to the reporter and `got` the export's, each a state id
+ * and a sequence split at the last `:`; true only when the ids are equal and `got`'s sequence is the higher.
+ */
+export function isIncremental(sent: string | null, got: string | null | undefined): boolean {
+  const split = (cursor: string | null | undefined) => {
+    if (!cursor) return null;
+    const at = cursor.lastIndexOf(':');
+    const seq = cursor.slice(at + 1);
+    return at < 0 || !/^\d+$/.test(seq) ? null : { id: cursor.slice(0, at), seq: Number(seq) };
+  };
+  const a = split(sent);
+  const b = split(got);
+  return a !== null && b !== null && a.id === b.id && b.seq > a.seq;
+}
+
+/**
  * Stores an export in one transaction. `rawUnits` holds the export's runs and sessions as received, in the report's
  * order, and its totals; the export's category list is stored as the loader read it. A run with no key is skipped.
- * A stored unit absent from the export is marked missing, never deleted. The first successful import sets the "seen"
- * time, so the feed starts empty.
+ * `sent` is the cursor sent to the reporter: an export is incremental when `isIncremental` holds for it and the
+ * export's cursor, and then only its `removed` keys are marked missing; any other export is full, and a stored unit
+ * absent from it is marked missing. A unit is never deleted. The export's cursor, when it has one, is stored with the
+ * import. The first successful import sets the "seen" time, so the feed starts empty.
  */
 export function importReport(
   db: Db,
   report: Report,
   rawUnits: { runs: unknown[]; sessions: unknown[]; totals: unknown },
   at: Date,
+  sent: string | null = null,
 ): void {
   db.transaction((tx) => {
+    const incremental = isIncremental(sent, report.cursor);
     const first = !tx.select({ id: imports.id }).from(imports).where(eq(imports.ok, true)).limit(1).get();
     const exported = {
       run: report.runs.map((run, i) => ({ key: runKey(run), raw: rawUnits.runs[i] })),
@@ -89,9 +109,18 @@ export function importReport(
       }
       tx.update(units)
         .set({ missingSince: at })
-        .where(and(eq(units.kind, kind), isNull(units.missingSince), notInArray(units.key, keys)))
+        .where(
+          and(
+            eq(units.kind, kind),
+            isNull(units.missingSince),
+            incremental
+              ? inArray(units.key, report.removed?.[kind === 'run' ? 'runs' : 'sessions'] ?? [])
+              : notInArray(units.key, keys),
+          ),
+        )
         .run();
     }
+    if (report.cursor) setCursor(tx, report.cursor);
     tx.insert(imports).values({ at, ok: true, totals: rawUnits.totals, categories: report.categories ?? null }).run();
     if (first) setSeenAt(tx, at);
   });

@@ -10,8 +10,8 @@ import { loadReport, type Report } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { runKey, sessionKey } from '../src/keys.ts';
-import { importReport, rebuildDerived, recordImportFailure } from '../src/db/import.ts';
-import { getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings } from '../src/db/read.ts';
+import { importReport, isIncremental, rebuildDerived, recordImportFailure } from '../src/db/import.ts';
+import { getCursor, getSeenAt, lastGoodImport, lastImport, listUnits, listWarnings } from '../src/db/read.ts';
 import { units, unitVersions } from '../src/db/schema.ts';
 
 const FIRST = new Date('2026-11-10T18:00:00Z');
@@ -30,12 +30,22 @@ function freshDb(): { db: Db; file: string } {
   return { db, file };
 }
 
-/** Imports a fixture as the server will: the loaded report, with the same parsed JSON's raw units and totals. */
-function importFixture(db: Db, name: string, at: Date): Report {
+/**
+ * Imports a fixture as the server will: the loaded report, with the same parsed JSON's raw units and totals. `sent` is
+ * the cursor sent to the reporter, and `change` edits the fixture's JSON before loading.
+ */
+function importFixture(
+  db: Db,
+  name: string,
+  at: Date,
+  sent: string | null = null,
+  change?: (raw: any) => void,
+): Report {
   const raw = fixture(name);
+  change?.(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
   if (!loaded.ok) throw new Error(`fixture ${name} does not load`);
-  importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, at);
+  importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, at, sent);
   return loaded.report;
 }
 
@@ -334,5 +344,129 @@ describe('importReport', () => {
     rebuildDerived(db);
 
     expect(listWarnings(db)).toEqual(warnings);
+  });
+});
+
+describe('isIncremental', () => {
+  test.each<[string | null, string | null, boolean]>([
+    [null, 'a:2', false],
+    ['a:1', 'a:2', true],
+    ['a:2', 'a:2', false],
+    ['a:3', 'a:2', false],
+    ['a:1', 'b:2', false],
+    ['a:1', null, false],
+    ['a:1', 'a2', false],
+    ['a:1', 'a:x', false],
+    ['a:b:1', 'a:b:2', true],
+  ])('sent %s, got %s: %s', (sent, got, expected) => {
+    expect(isIncremental(sent, got)).toBe(expected);
+  });
+});
+
+describe('importReport with a cursor', () => {
+  const LAST = new Date('2026-11-13T10:00:00Z');
+  const FOURTH = new Date('2026-11-14T10:00:00Z');
+
+  /** Each stored unit's missingSince, by key. */
+  function missing(db: Db, kind: 'run' | 'session'): Record<string, Date | null> {
+    const stored = kind === 'run' ? listUnits(db, 'run') : listUnits(db, 'session');
+    return Object.fromEntries(stored.map((u) => [u.key, u.missingSince]));
+  }
+
+  /** A full import of report-full with cursor 's1:1' at FIRST, and its run and session keys. */
+  function start(db: Db): { runs: string[]; sessions: string[] } {
+    const report = importFixture(db, 'report-full', FIRST, null, (raw) => {
+      raw.cursor = 's1:1';
+    });
+    return { runs: report.runs.map((r) => runKey(r)!), sessions: report.sessions.map(sessionKey) };
+  }
+
+  test('an incremental export marks only removed units missing', () => {
+    const { db } = freshDb();
+    const { runs, sessions } = start(db);
+    importFixture(db, 'report-full', LATER, 's1:1', (raw) => {
+      raw.runs = [raw.runs[0]];
+      raw.sessions = [];
+      raw.cursor = 's1:2';
+      raw.removed = { runs: [runs[1]], sessions: [sessions[0]] };
+    });
+    expect(missing(db, 'run')).toEqual({
+      [runs[0]!]: null,
+      [runs[1]!]: LATER,
+      [runs[2]!]: null,
+      [runs[3]!]: null,
+      [runs[4]!]: null,
+    });
+    expect(missing(db, 'session')).toEqual({ [sessions[0]!]: LATER, [sessions[1]!]: null });
+    expect(getCursor(db)).toBe('s1:2');
+  });
+
+  test('a removed key already missing keeps its first time', () => {
+    const { db } = freshDb();
+    const { runs } = start(db);
+    const incremental = (cursor: string, carried: number[], removed: string[]) => (raw: any) => {
+      raw.runs = carried.map((i) => raw.runs[i]);
+      raw.sessions = [];
+      raw.cursor = cursor;
+      raw.removed = { runs: removed, sessions: [] };
+    };
+    importFixture(db, 'report-full', LATER, 's1:1', incremental('s1:2', [0], [runs[1]!]));
+    importFixture(db, 'report-full', LAST, 's1:2', incremental('s1:3', [], [runs[1]!]));
+    expect(missing(db, 'run')[runs[1]!]).toEqual(LATER);
+    importFixture(db, 'report-full', FOURTH, 's1:3', incremental('s1:4', [1], []));
+    expect(missing(db, 'run')[runs[1]!]).toBeNull();
+    expect(getCursor(db)).toBe('s1:4');
+  });
+
+  test('a removed key that was never stored is ignored', () => {
+    const { db } = freshDb();
+    start(db);
+    importFixture(db, 'report-full', LATER, 's1:1', (raw) => {
+      raw.runs = [];
+      raw.sessions = [];
+      raw.cursor = 's1:2';
+      raw.removed = { runs: ['0000000000000000'], sessions: [] };
+    });
+    expect(listUnits(db, 'run')).toHaveLength(5);
+    expect(listUnits(db, 'run').every((u) => u.missingSince === null)).toBe(true);
+    expect(listUnits(db, 'session')).toHaveLength(2);
+  });
+
+  test('another state id is a full export', () => {
+    const { db } = freshDb();
+    const { runs, sessions } = start(db);
+    importFixture(db, 'report-full', LATER, 's1:1', (raw) => {
+      raw.runs = [raw.runs[0]];
+      raw.sessions = [raw.sessions[0]];
+      raw.cursor = 's2:1';
+      raw.removed = { runs: [], sessions: [] };
+    });
+    expect(missing(db, 'run')).toEqual({
+      [runs[0]!]: null,
+      [runs[1]!]: LATER,
+      [runs[2]!]: LATER,
+      [runs[3]!]: LATER,
+      [runs[4]!]: LATER,
+    });
+    expect(missing(db, 'session')).toEqual({ [sessions[0]!]: null, [sessions[1]!]: LATER });
+    expect(getCursor(db)).toBe('s2:1');
+  });
+
+  test('an export with no cursor is full and keeps the stored cursor', () => {
+    const { db } = freshDb();
+    const { runs, sessions } = start(db);
+    importFixture(db, 'report-full', LATER, 's1:1', (raw) => {
+      raw.runs = [raw.runs[0]];
+      raw.sessions = [raw.sessions[0]];
+    });
+    expect(missing(db, 'run')).toEqual({
+      [runs[0]!]: null,
+      [runs[1]!]: LATER,
+      [runs[2]!]: LATER,
+      [runs[3]!]: LATER,
+      [runs[4]!]: LATER,
+    });
+    expect(missing(db, 'session')).toEqual({ [sessions[0]!]: null, [sessions[1]!]: LATER });
+    expect(getCursor(db)).toBe('s1:1');
   });
 });
