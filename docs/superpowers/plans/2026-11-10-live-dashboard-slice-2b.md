@@ -50,6 +50,11 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
   - gets a route, `ListFilters` for its filters, stories (Empty, Full, Loading and Error)
   - gets an axe check in `e2e/<page>.spec.ts` and a screenshot in `e2e/<page>.screens.ts`
 - **Charts** (Weeks' small multiples) use ECharts under the chart conventions, with the `dataviz` skill loaded.
+- **In a wave,** each task:
+  - runs its Playwright checks with its own `E2E_PORT` (4400 plus its task number)
+  - leaves `shell.screens.ts` out of its `pnpm test:screens` run, since every new menu entry changes the menu baseline
+
+  After each wave merges, the session running implementation re-renders the menu baseline once and commits it.
 - **Headings and labels:** a reporter-sourced figure's mark reads "reporter, all time". The four basics tables reuse the static page's column names. Display text lives in `format.ts`.
 - **Failing-test check** after each task, as in 2a: `/usr/bin/python3 -I ~/.claude/scripts/failing-test-check.py --base <task start SHA> --link node_modules --link packages/shared/node_modules --link packages/server/node_modules --link packages/web/node_modules --timeout 240 -- pnpm vitest run <the task's test files>`, with a `--test-file` for each.
 - **Commit messages** end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
@@ -73,6 +78,7 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
 - Modify: `packages/server/src/dev-fixtures.ts` (default fixtures `report-full report-later report-v5`)
 - Modify: `packages/web/src/lib/format.ts` (`reporterMark`)
 - Modify: `packages/web/src/lib/format.test.ts`
+- Modify: `packages/web/playwright.config.ts` (its port from `E2E_PORT`, default 4399)
 - Modify: `packages/web/e2e/*.spec.ts`, where a count changes with the third import
 - Modify: `packages/web/e2e/*.screens.ts-snapshots/*`, re-rendered by `pnpm test:screens`
 
@@ -108,7 +114,7 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
   - `report-v5` loads, and its new fields parse: a warning's `kind` and `step.step`, a finding's `validity`, a step's `strengths`, `categories.areas[0].list[0].id === 'scope'`, and `totals.scoreboard.task_review.ran`.
   - In `format.test.ts`: `reporterMark` gives its text and tooltip.
 - [ ] **Step 2: Run** `pnpm vitest run packages/shared/test/load.test.ts`. Expected: FAIL.
-- [ ] **Step 3: Implement.** Change dev:fixtures' default list. Run `pnpm --filter @cwd/web exec playwright test --project=checks`, update only the assertions the third import changes, then run `pnpm test:screens --update-snapshots` and commit the baselines.
+- [ ] **Step 3: Implement.** `playwright.config.ts` reads its port from `E2E_PORT` (default 4399), so tasks in a wave can run their Playwright checks side by side. Change dev:fixtures' default list. Run `pnpm --filter @cwd/web exec playwright test --project=checks`, update only the assertions the third import changes, then run `pnpm test:screens --update-snapshots` and commit the baselines.
 - [ ] **Step 4: Run** `pnpm vitest run`, `pnpm typecheck`, the Playwright checks and `pnpm test:screens`. Expected: PASS.
 - [ ] **Step 5: Commit:** `feat: the loader reads the merged reporter's warnings, titles, labels, strengths, category list and totals`.
 
@@ -133,8 +139,8 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
 
 **Interfaces:**
 - `WeekSum` gains `tasks`, `findings: { critical, important, minor, unneeded }` (from `final_findings`), `fixRounds`, `stops`, `fablePoints` and `allPoints` (each null when no run has it), `minutesPerRun` (the median of the known `minutes`, null when none is known), and `laterFixes`.
-- `runTime(runs: RunEntry[]): Record<'withWaves' | 'withoutWaves', { runs: number; timed: number; medianMinutes: number | null }>`, in `weeks.ts`, over Full runs.
-- `WeeksResponse = { weeks: (WeekSum & { week: string })[]; runTime: ReturnType<typeof runTime>; coverageFrom: string | null }`, with the weeks newest first.
+- `type RunTime = Record<'withWaves' | 'withoutWaves', { runs: number; timed: number; medianMinutes: number | null }>` in `packages/shared/src/api/weeks.ts`, and `runTime(runs: RunEntry[]): RunTime` in the server's `views/weeks.ts`, over Full runs.
+- `WeeksResponse = { weeks: (WeekRow & { week: string })[]; runTime: RunTime; coverageFrom: string | null }`, with the weeks newest first. `WeekRow` is declared in shared with `WeekSum`'s fields, and `weekSums` returns it.
 - `weeksView(input: { runs: StoredUnit<RunEntry>[]; query: FindingsQuery; now: Date }): WeeksResponse`.
 - Route: `GET /api/weeks`, through `periodQuery`.
 
@@ -175,7 +181,7 @@ The page:
   - a schema 1 run adds its final review from `final_findings`, and its simplify when `simplify.ran` is `agents` or `inline`
   - tokens and cost come from `dispatches` of that kind with `models`
   - simplify's tokens and cost are null
-- `ruleSums(runs: RunEntry[]): { failingTest: Record<string, number>; fixRoundCap: { runs: number; ruled: number }; stopRule: number; offers: Record<string, Record<string, number> & { offered: number }> }`.
+- `ruleSums(runs: RunEntry[])`, where `failingTest` counts only the reporter's five results (`passed`, `failed`, `no_tests`, `couldnt_run`, `exempt`), as `read_runs` keeps them: `{ failingTest: Record<string, number>; fixRoundCap: { runs: number; ruled: number }; stopRule: number; offers: Record<string, Record<string, number> & { offered: number }> }`.
 - `StepsResponse = { steps: StepRow[]; rules: { failingTest; fixRoundCap; stopRule; offers }; reporter: { dispatchGuard: Record<string, number> | null; advisor: { calls; notes; changed; cost; share } | null; startup: { with: number; without: number } | null } }`.
 - `stepsView({ runs, totals, query, now })`, and the route `GET /api/steps`.
 - The reporter's figures carry `reporterMark` (Task 1).
@@ -192,6 +198,10 @@ The page:
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** the full checks, as in Task 2. Expected: PASS.
 - [ ] **Step 5: Commit:** `feat: the Steps and rules page: each step and rule over the period, the reporter's all-time rules marked`.
+
+Conventions lines for the report:
+- A figure that isn't a sum over units comes from `lastGoodImport(db).totals`, which the route passes to its view as `totals`. It carries `source: 'reporter'` and shows with `reporterMark`.
+- The page-response line's route reads gain `lastGoodImport`.
 
 ### Task 4: Skills
 
@@ -279,7 +289,7 @@ The page:
 - Modify: `index.ts` (one line)
 - Create: `packages/server/src/views/compliance.ts`
 - Modify: `packages/server/src/views/home.ts` (the diagram's `warnings`)
-- Modify: `routes.ts` (a compliance block, and home's `warnings` input)
+- Modify: `routes.ts` (a compliance block)
 - Modify: `packages/server/src/main.ts` (`rebuildDerived` after `openDb`)
 - Create: `packages/server/test/compliance.test.ts`
 - Modify: `packages/server/test/home.test.ts`
@@ -287,7 +297,7 @@ The page:
 
 **Interfaces:**
 - `warnings` gains the derived columns `warning_kind` and `step_kind` (text, nullable; the warning's `kind` and `step.step`). `StoredWarning` gains them as `warningKind` and `stepKind`, since its `kind` already says run or session.
-  - `applyVersion` writes them from the version's `warnings` object whose `text` equals the warns line, and null when there is none. `rebuildDerived` gives the same rows.
+  - `applyVersion` writes them from the version's `warnings` object whose `text` equals the warns line. On a conflict with a stored row, it sets them when this version has them and keeps them otherwise, so the latest known kind wins, as `mergeKnown` does for units. `first_seen_at` never changes. `rebuildDerived` gives the same rows.
   - `main.ts` calls the existing `rebuildDerived(db)` right after `openDb`, so rows stored before this task gain their kinds. A rebuild always gives the same rows (the convention), so rebuilding at every start is safe.
 - `FAMILIES: { family: string; kinds: readonly string[] }[]` in `packages/server/src/views/compliance.ts` has five families: `review_flow`, `steps_record`, `agents_models`, `skills_offers`, `sessions`. Their kinds come from PR #8's table, plus CR10's `findings_unlabelled` and `strengths_unrecorded` under `steps_record`. `familyOf(kind: string | null): string` gives `'other'` for an unknown or null kind.
 - `ComplianceQuery = FindingsQuery & { resolved: boolean; step?: StepKind }`.
@@ -303,10 +313,13 @@ The page:
 - Route: `GET /api/compliance`, through `periodQuery`, plus `resolved=1` and `step`.
 
 - [ ] **Step 1: Write the failing tests.**
-  - In `import.test.ts`: importing report-v5 stores each warning's `warningKind` and `stepKind`, a report-full warning stores nulls, and `rebuildDerived` gives the same rows.
+  - In `import.test.ts`:
+    - Importing report-full then report-v5 gives a warning first stored from report-full the kind that report-v5's object carries, with its first-seen time unchanged.
+    - A warning that report-v5 no longer reports keeps null.
+    - `rebuildDerived` gives the same rows.
   - In `compliance.test.ts`, on report-full then report-v5:
     - `step_agent_missing` sits in the steps family, in its run's week.
-    - `brand_new_check` and every pre-CR4 warning sit under "other".
+    - `brand_new_check`, and a warning only report-full reported, which has no object, sit under "other".
     - `resolved` adds a warning that report-v5 no longer reports.
     - `step=final_review` filters.
     - `isNew` follows `seenAt`.
@@ -332,7 +345,7 @@ Conventions lines for the report:
 - Modify: `packages/web/src/test/home.ts`
 - Modify: `router.tsx` (`/compliance`, with a `step` search param)
 - Modify: `Menu.tsx` (Compliance, after Findings)
-- Modify: `format.ts` (`kindLabel`, `FAMILY_LABELS`)
+- Modify: `format.ts` (`KIND_LABELS`, `kindLabel`, `FAMILY_LABELS`)
 - Create: `e2e/compliance.spec.ts`
 - Create: `e2e/compliance.screens.ts` with its baseline
 - Modify: the home screens baseline
@@ -344,7 +357,7 @@ Conventions lines for the report:
   - The table scrolls in `containerProps`' named region.
 
   `FindingsGrid` keeps its props and renders through it, so its stories and the Findings e2e pass unchanged.
-- `kindLabel(kind: string | null): string`: the kind's slug in words, `step_agent_missing` → "step has no agent id" as PR #8's table words it, and "other" for null.
+- `KIND_LABELS: Record<string, string>` in `format.ts`: a hand-written short wording for each of the 31 kinds, from PR #8's and CR10's "sentence" column, for example `step_agent_missing` → "step has no agent id" and `model_less_dispatch` → "model-less dispatch". `kindLabel(kind)` gives the map's wording, the slug with spaces for a kind it doesn't hold, and "other" for null.
 - `FAMILY_LABELS: Record<string, string>` in `format.ts`: Review flow, Steps and the record, Agents and models, Skills and offers, Sessions, Other.
 - **The page:**
   - `ListFilters` with a current/resolved switch (the 2a switch convention).
@@ -379,6 +392,9 @@ Conventions lines for the report:
 - Modify: `packages/server/src/db/labels.ts` (the list's number in place of `CATEGORY_LIST_VERSION`)
 - Modify: `packages/server/src/labeller.ts` (the list, rule and validity definitions in its prompt and checks)
 - Modify: `packages/server/src/main.ts` (the label job reads the active list)
+- Modify: `packages/server/src/routes.ts` (the findings and run blocks pass `activeList(db)` and its labels)
+- Modify: `packages/web/src/findings/FindingsPage.tsx` (`categoryLabel` with the response's labels)
+- Modify: `packages/web/e2e/findings.spec.ts` (labels are now title-case: "Correctness")
 - Modify: `packages/shared/src/api/findings.ts` and `api/runs.ts` (`categoryLabels`)
 - Modify: `packages/server/src/views/findings.ts` and `views/runs.ts` (rows in the active list's order, labels in responses)
 - Modify: `packages/shared/src/categories.ts` (keeps `AREAS`, `areaOf` and `RELEVANCE`; `CATEGORIES` and `CATEGORY_LIST_VERSION` go)
@@ -397,7 +413,8 @@ Conventions lines for the report:
 - `labelInputs` gives each input its area as today. `currentLabels(db, inputs, list)`, `pendingInputs(db, inputs, model, list)` and `saveBatch(db, labels, usage, list)` take the list's number.
 - `labelPending(db, client, settings, now, list)`:
   - It keeps a result only when its category is one of `list.areas[area]`'s ids.
-  - `anthropicLabelClient`'s schema and prompt are built from the list. The prompt's category lines become `id: means`, it adds the rule, and relevance is defined by the list's `validity` definitions when present.
+  - `LabelClient` takes the list per call, `(batch, list) => ...`, and `anthropicLabelClient(model)`'s schema and prompt are built from that list on each call, since an import can change the active list.
+  - `main.ts`'s label job reads `activeList(db)` and skips when it is null. The prompt's category lines become `id: means`, it adds the rule, and relevance is defined by the list's `validity` definitions when present.
 - `FindingsResponse` and `RunResponse` gain `categoryLabels: Record<string, string>`, and `categoryLabel(category, labels)` uses it. `FindingsView`'s rows follow `activeList`'s order.
 
 - [ ] **Step 1: Write the failing tests.**
@@ -409,7 +426,7 @@ Conventions lines for the report:
   - The `FindingsTable` stories show the label from `categoryLabels`.
 - [ ] **Step 2: Run** `pnpm vitest run packages/server/test/labels.test.ts packages/server/test/labeller.test.ts packages/server/test/findings.test.ts packages/web/src/runs packages/web/src/findings`. Expected: FAIL.
 - [ ] **Step 3: Implement.** Generate the migration. Read its SQL, and check that it is a single `ALTER TABLE imports ADD COLUMN` that keeps every stored row.
-- [ ] **Step 4: Run** `pnpm vitest run` and `pnpm typecheck`. Expected: PASS.
+- [ ] **Step 4: Run** `pnpm vitest run`, `pnpm typecheck` and the Playwright checks. Expected: PASS.
 - [ ] **Step 5: Commit:** `feat: the workflow's category list replaces the app's; every finding is relabelled once under it`.
 
 Conventions lines for the report:
@@ -438,6 +455,7 @@ Conventions lines for the report:
   - `invalid` counts the workflow's `validity` when set, else the app's relevance.
   - A strength counts in its step's area row under its category, in its run's week.
 - `Measure` gains `'appDiffers'` and `'strengths'`, both enabled.
+- `FindingsResponse.signals` gains `judgedInvalid`: the period's findings whose `validity` is `invalid`. `SignalsPanel` shows it beside "declined or ruled", as the spec's side panel asks after CR10.
 - When some of a cell's count is the app's, the cell shows "N · M by the app".
 - The page line "every label is the app's" shows only while no finding in the period has `judge: 'workflow'`.
 - **`FindingsTable`:**
@@ -452,7 +470,7 @@ Conventions lines for the report:
     - the finding cleaned to nulls has `judge: 'app'`
     - `strengths` lists two entries
     - with showing on, `leaks` finds nothing
-  - In `findings.test.ts`: `strengths`, `byApp` and `appDiffers` in the run's week and category.
+  - In `findings.test.ts`: `strengths`, `byApp` and `appDiffers` in the run's week and category, and `signals.judgedInvalid`.
   - Stories:
     - `FindingsTable`: `WorkflowLabels`.
     - The Findings page: the `appDiffers` and `strengths` measures.
@@ -472,7 +490,7 @@ Conventions line for the report: the CR10 entry in `CLAUDE.md` changes from "tit
 - Modify: `README.md` (the "Checking your real data" lines)
 
 **Interfaces:**
-- Consumes `weekSums`, `runTime`, `stepSums`, `ruleSums`, `skillSums` (with `from` null) and `modelSums`, over the export's runs and sessions.
+- Consumes `weekSums`, `runTime`, `stepSums`, `ruleSums`, `skillSums` (over every run and session of the export) and `modelSums`.
 
 **`check:real` gains these lines:**
 - `weeks:` now compares every `WeekSum` field with `totals.weeks`, cost to the cent.
