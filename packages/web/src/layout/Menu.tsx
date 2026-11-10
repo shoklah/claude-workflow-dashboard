@@ -6,6 +6,7 @@ const ENTRIES = [
   { to: '/', label: 'Home', exact: true },
   { to: '/runs', label: 'Runs', exact: false },
   { to: '/findings', label: 'Findings', exact: false },
+  { to: '/steps', label: 'Steps and rules', exact: false },
   { to: '/weeks', label: 'Weeks', exact: false },
 ] as const;
 

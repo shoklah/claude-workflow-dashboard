@@ -3,7 +3,7 @@ import type { FindingsQuery, RunTime, RunsResponse, WeeksResponse } from '@cwd/s
 import { useLiveQuery } from '../api.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
-import { NONE, countsLabel, formatCost, formatMinutes, weekLabel } from '../lib/format.ts';
+import { NONE, formatCost, formatMinutes, nonZeroCountsLabel, weekLabel } from '../lib/format.ts';
 import { ListFilters, listPath } from '../runs/RunsPage.tsx';
 
 type Week = WeeksResponse['weeks'][number];
@@ -73,9 +73,9 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
         {weeks.map((w) => (
           <TableRow key={w.week}>
             <TableHead scope="row">{weekLabel(w.week)}</TableHead>
-            <TableCell>{countsLabel(w.runs)}</TableCell>
+            <TableCell>{nonZeroCountsLabel(w.runs)}</TableCell>
             <TableCell>{w.tasks}</TableCell>
-            <TableCell>{countsLabel(w.findings)}</TableCell>
+            <TableCell>{nonZeroCountsLabel(w.findings)}</TableCell>
             <TableCell>{w.fixRounds}</TableCell>
             <TableCell>{w.stops}</TableCell>
             <TableCell>{w.fablePoints ?? NONE}</TableCell>

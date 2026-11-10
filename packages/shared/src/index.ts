@@ -10,3 +10,4 @@ export * from './categories.ts';
 export * from './api/showing.ts';
 export * from './api/findings.ts';
 export * from './api/weeks.ts';
+export * from './api/steps.ts';

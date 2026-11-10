@@ -1,0 +1,145 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, expect, test } from 'vitest';
+import { loadReport, STEP_KINDS, type StepsResponse } from '@cwd/shared';
+import { fixture } from '../../shared/test/fixture.ts';
+import { createApp } from '../src/app.ts';
+import { openDb, type Db } from '../src/db/open.ts';
+import { importReport } from '../src/db/import.ts';
+import { listUnits, setShowing } from '../src/db/read.ts';
+import { projectKey } from '../src/keys.ts';
+import { leaks } from '../src/views/scope.ts';
+import { ruleSums, stepSums } from '../src/views/steps.ts';
+
+const PORT = 4317;
+const NOW = new Date('2026-11-12T12:00:00Z');
+
+let dir: string;
+let db: Db;
+
+/** A fresh database in the test's folder, holding the named fixture's import. */
+function dbWith(name: string): Db {
+  const fresh = openDb(join(dir, name, 'dashboard.sqlite'));
+  const raw = fixture(name);
+  const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+  if (!loaded.ok) throw new Error(`${name} does not load`);
+  importReport(fresh, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
+  return fresh;
+}
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'cwd steps '));
+  db = dbWith('report-v5');
+});
+
+afterEach(() => {
+  db.$client.close();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+async function steps(query = ''): Promise<StepsResponse> {
+  const app = createApp({
+    db,
+    port: PORT,
+    requestImport: () => {},
+    importing: () => false,
+    webDist: null,
+    now: () => NOW,
+    aliases: {},
+    labeller: null,
+  });
+  const res = await app.request(`/api/steps${query}`, { headers: { Host: `localhost:${PORT}` } });
+  expect(res.status).toBe(200);
+  return res.json();
+}
+
+const board = fixture('report-v5').totals.scoreboard;
+
+/** A step row as the reporter's scoreboard row for its kind reads, with the static page's outcome columns. */
+function scoreRow(kind: string) {
+  const row = board[kind];
+  const out = (key: string) => row.outcomes[key] ?? 0;
+  return {
+    step: kind,
+    ran: row.ran,
+    found: row.found,
+    counts: row.counts,
+    fixedOrApplied: out('fixed') + out('applied'),
+    declined: out('declined'),
+    deferred: out('deferred'),
+    openOrToOwner: out('open') + out('to_owner'),
+    tokens: row.tokens,
+  };
+}
+
+function expectScoreboard(rows: StepsResponse['steps']): void {
+  expect(rows.map((r) => r.step)).toEqual([...STEP_KINDS]);
+  for (const row of rows) {
+    const { cost, ...rest } = row;
+    expect(rest).toEqual(scoreRow(row.step));
+    // Costs to the cent: the reporter's are float sums.
+    if (board[row.step].cost === null) expect(cost).toBeNull();
+    else expect(cost).toBeCloseTo(board[row.step].cost, 2);
+  }
+}
+
+const rules = {
+  failingTest: board.failing_test,
+  fixRoundCap: board.fix_round_cap,
+  stopRule: board.stop_rule.stops,
+  offers: fixture('report-v5').totals.offers,
+};
+
+test("stepSums over every stored run equals the reporter's scoreboard, per step kind", () => {
+  expectScoreboard(stepSums(listUnits(db, 'run').map((unit) => unit.merged)));
+});
+
+test("ruleSums over every stored run equals the scoreboard's rules and the offers' totals", () => {
+  expect(ruleSums(listUnits(db, 'run').map((unit) => unit.merged))).toEqual(rules);
+});
+
+test("over a 52-week period, the steps and rules are the reporter's", async () => {
+  const body = await steps('?weeks=52');
+  expectScoreboard(body.steps);
+  expect(body.rules).toEqual(rules);
+});
+
+test("the reporter's all-time figures come from the last good import's totals, marked as the reporter's", async () => {
+  expect((await steps()).reporter).toEqual({
+    source: 'reporter',
+    dispatchGuard: { no_model: 1, no_simplify: 1 },
+    advisor: board.advisor,
+    startup: { with: 1, without: 0 },
+  });
+});
+
+test("an export from the old reporter has no scoreboard, so the reporter's figures are null", async () => {
+  db.$client.close();
+  db = dbWith('report-full');
+  expect((await steps()).reporter).toEqual({ source: 'reporter', dispatchGuard: null, advisor: null, startup: null });
+});
+
+test('the period and path filters choose the runs summed', async () => {
+  const final = (body: StepsResponse) => body.steps.find((r) => r.step === 'final_review')!.ran;
+  // The default 4 weeks leave out the schema 1 run of Oct 6, whose final review the reporter adds from its totals.
+  expect(final(await steps())).toBe(board.final_review.ran - 1);
+  // The plan record has only plan steps.
+  const plan = await steps('?weeks=52&path=plan');
+  expect(plan.steps.filter((r) => r.ran > 0).map((r) => r.step)).toEqual(['plan_simplify', 'plan_review']);
+  expect(plan.rules.failingTest).toEqual({ passed: 0, failed: 0, no_tests: 0, couldnt_run: 0, exempt: 0 });
+});
+
+test("ruleSums counts only the reporter's five failing-test results", () => {
+  const runs = [{ record: { failing_test: [{ result: 'passed' }, { result: 'flaky' }, { result: null }] } }];
+  expect(ruleSums(runs).failingTest).toEqual({ passed: 1, failed: 0, no_tests: 0, couldnt_run: 0, exempt: 0 });
+});
+
+test('with showing on, the response holds no hidden project text and no session ID', async () => {
+  setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
+  const body = await steps('?weeks=52');
+  // Sums still count every project.
+  expectScoreboard(body.steps);
+  const hidden = ['/Users/example', 'tidepool-api', 'fix/retry-backoff', 'feature/rate-limits', 'feature/webhooks'];
+  expect(leaks(body, [...hidden, '7d1e4b90-3c2a-4f6e-8b5d-1a9c0e2f6b47'], [])).toEqual([]);
+});

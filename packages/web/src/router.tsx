@@ -4,6 +4,7 @@ import { HomePage } from './home/HomePage.tsx';
 import { Shell } from './layout/Shell.tsx';
 import { RunPage } from './runs/RunPage.tsx';
 import { RunsPage } from './runs/RunsPage.tsx';
+import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
 
 const rootRoute = createRootRoute({
@@ -40,6 +41,12 @@ const findingsRoute = createRoute({
   component: FindingsPage,
 });
 
+const stepsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/steps',
+  component: StepsPage,
+});
+
 const weeksRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/weeks',
@@ -47,7 +54,7 @@ const weeksRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute, findingsRoute, weeksRoute]),
+  routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute, findingsRoute, stepsRoute, weeksRoute]),
 });
 
 declare module '@tanstack/react-router' {

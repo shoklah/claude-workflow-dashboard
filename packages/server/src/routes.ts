@@ -21,6 +21,7 @@ import { rootOf, runView, runsList, storedBranches, storedNames } from './views/
 import { scopeOf, type Scope } from './views/scope.ts';
 import { showingView } from './views/showing.ts';
 import { statusView } from './views/status.ts';
+import { stepsView } from './views/steps.ts';
 import { weeksView } from './views/weeks.ts';
 
 /** The answer to any method but POST on a POST-only route. */
@@ -131,5 +132,17 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   // Slice 2b, task 2: the Weeks page.
   app.get('/api/weeks', (c) =>
     c.json(weeksView({ runs: listUnits(deps.db, 'run'), query: periodQuery(c), now: deps.now() })),
+  );
+
+  // Slice 2b, task 3: the Steps and rules page, with the reporter's all-time figures from the last good import.
+  app.get('/api/steps', (c) =>
+    c.json(
+      stepsView({
+        runs: listUnits(deps.db, 'run'),
+        totals: lastGoodImport(deps.db)?.totals,
+        query: periodQuery(c),
+        now: deps.now(),
+      }),
+    ),
   );
 }

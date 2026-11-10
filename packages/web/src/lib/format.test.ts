@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  advisorLabel,
   cellShade,
   countLabel,
   countsLabel,
+  formatCount,
   formatMinutes,
   formatPercent,
+  formatTokens,
   labellerLabel,
+  nonZeroCountsLabel,
   reporterMark,
   runName,
   weekLabel,
@@ -45,13 +49,56 @@ describe('countLabel', () => {
 });
 
 describe('countsLabel', () => {
+  it('writes each count after its key as words, a dash for a count that isn’t known', () => {
+    expect(countsLabel({ cuts: 11, not_proportionate: 0 })).toBe('cuts 11 · not proportionate 0');
+    expect(countsLabel({ with: 38, without: null })).toBe('with 38 · without –');
+  });
+
+  it('shows a dash for no counts, or counts that aren’t known', () => {
+    expect(countsLabel({})).toBe('–');
+    expect(countsLabel(null)).toBe('–');
+  });
+});
+
+describe('nonZeroCountsLabel', () => {
   it('writes the counts that are not 0, in their order, as words', () => {
-    expect(countsLabel({ small: 4, full: 0, plan: 1 })).toBe('small 4 · plan 1');
-    expect(countsLabel({ fix_rounds: 2 })).toBe('fix rounds 2');
+    expect(nonZeroCountsLabel({ small: 4, full: 0, plan: 1 })).toBe('small 4 · plan 1');
+    expect(nonZeroCountsLabel({ fix_rounds: 2 })).toBe('fix rounds 2');
   });
   it('writes "none" when every count is 0', () => {
-    expect(countsLabel({ critical: 0, important: 0 })).toBe('none');
-    expect(countsLabel({})).toBe('none');
+    expect(nonZeroCountsLabel({ critical: 0, important: 0 })).toBe('none');
+    expect(nonZeroCountsLabel({})).toBe('none');
+  });
+});
+
+describe('formatCount', () => {
+  it('writes a count, or a dash when it isn’t known', () => {
+    expect(formatCount(0)).toBe('0');
+    expect(formatCount(14)).toBe('14');
+    expect(formatCount(null)).toBe('–');
+  });
+});
+
+describe('formatTokens', () => {
+  it('writes every kind of token together, compact', () => {
+    expect(formatTokens({ input: 210_000, output: 90_000, cache_read: 9_200_000, cache_write: 300_000 })).toBe('9.8M');
+    expect(formatTokens({ input: 333_000 })).toBe('333K');
+  });
+
+  it('writes 0 for no tokens, and a dash when they aren’t known', () => {
+    expect(formatTokens({ input: 0, output: 0 })).toBe('0');
+    expect(formatTokens({})).toBe('0');
+    expect(formatTokens(null)).toBe('–');
+  });
+});
+
+describe('advisorLabel', () => {
+  it('writes the notes, the changed ones and the share as a whole percent', () => {
+    expect(advisorLabel({ notes: 12, changed: 9, share: 7.8 })).toBe('notes 12 · changed 9 · share 8%');
+  });
+
+  it('shows a dash for each figure that isn’t known', () => {
+    expect(advisorLabel({ notes: null, changed: 3, share: null })).toBe('notes – · changed 3 · share –');
   });
 });
 

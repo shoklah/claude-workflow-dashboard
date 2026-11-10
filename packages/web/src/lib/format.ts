@@ -32,11 +32,48 @@ export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
 }
 
-/** Counts by key without the zeros, as the approved basics mockup writes them: "small 4 · full 2", or "none". */
-export function countsLabel(counts: Record<string, number>): string {
-  const known = Object.entries(counts).filter(([, n]) => n > 0);
-  return joined(known.map(([key, n]) => `${countLabel(key)} ${n}`)) || 'none';
+/** A count, or a dash when it isn't known. */
+export function formatCount(count: number | null): string {
+  return count === null ? NONE : String(count);
 }
+
+/** A count line as words: "cuts 11 · flags 5", a count that isn't known as a dash; a dash when it has no counts or
+ * isn't known. */
+export function countsLabel(counts: Record<string, number | null> | null): string {
+  if (!counts || Object.keys(counts).length === 0) return NONE;
+  return joined(Object.entries(counts).map(([key, n]) => `${countLabel(key)} ${formatCount(n)}`));
+}
+
+/** Counts by key without the zeros, as the approved basics mockup writes them: "small 4 · full 2", or "none". */
+export function nonZeroCountsLabel(counts: Record<string, number>): string {
+  const nonZero = Object.entries(counts).filter(([, n]) => n > 0);
+  return nonZero.length === 0 ? 'none' : countsLabel(Object.fromEntries(nonZero));
+}
+
+/** The advisor's notes, those that changed something and its share of Fable spend, as a whole percent: "notes 12 ·
+ * changed 9 · share 8%". */
+export function advisorLabel(advisor: { notes: number | null; changed: number | null; share: number | null }): string {
+  const share = formatPercent(advisor.share === null ? null : Math.round(advisor.share));
+  return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${share}`;
+}
+
+/** The tokens of every kind together, compact: "9.8M", "333K"; a dash when they aren't known. */
+export function formatTokens(tokens: Record<string, number> | null): string {
+  if (tokens === null) return NONE;
+  const total = Object.values(tokens).reduce((sum, n) => sum + n, 0);
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(total);
+}
+
+/** A rule's name on the Steps and rules page, as the static page names it; an offer's is followed by its skill. */
+export const RULE_LABELS = {
+  failingTest: 'failing-test check',
+  dispatchGuard: 'dispatch guard',
+  advisor: 'advisor',
+  startup: 'startup guidelines',
+  fixRoundCap: 'fix-round cap',
+  stopRule: 'stop rule',
+  offer: 'offer',
+};
 
 // The categories whose display label adds the spec's parentheses; the others show as they are stored.
 const CATEGORY_LABELS: Record<string, string> = {
