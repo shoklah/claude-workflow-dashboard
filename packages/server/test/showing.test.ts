@@ -16,6 +16,7 @@ import { openDb, type Db } from '../src/db/open.ts';
 import { importReport, recordImportFailure } from '../src/db/import.ts';
 import { getShowing, setSeenAt, setShowing } from '../src/db/read.ts';
 import { projectKey, runKey } from '../src/keys.ts';
+import { sessionRootOf } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks, maskText, scopeOf, showFacts } from '../src/views/scope.ts';
 
 const PORT = 4317;
@@ -39,7 +40,8 @@ for (const run of RAW.runs) {
 const SESSION_IDS = [
   ...new Set(JSON.stringify(RAW).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
 ];
-const STRINGS = forbiddenStrings(ROOTS, BRANCHES, [WORK], SESSION_IDS);
+const SESSION_ROOTS: string[] = RAW.sessions.flatMap((s: any) => sessionRootOf(s.project) ?? []);
+const STRINGS = forbiddenStrings(ROOTS, BRANCHES, [WORK], SESSION_IDS, SESSION_ROOTS);
 const FORBIDDEN = [...STRINGS.forbidden, '/Users/example'];
 
 let dir: string;
@@ -185,7 +187,7 @@ test('maskText keeps a shown name that holds a hidden one, and masks the bare hi
 });
 
 test('leaks skips a hidden name inside a shown one, and finds it alone', () => {
-  const { forbidden, shown } = forbiddenStrings([LANTERN, WORK], PREFIX_BRANCHES, [WORK], []);
+  const { forbidden, shown } = forbiddenStrings([LANTERN, WORK], PREFIX_BRANCHES, [WORK], [], []);
   expect(leaks({ project: 'lantern-notes' }, forbidden, shown)).toEqual([]);
   expect(leaks('see lantern', forbidden, shown)).toEqual(['lantern']);
   // A hidden string that holds a shown one is still found.
@@ -254,14 +256,14 @@ test('an empty list turns showing off, and GET then lists every stored project',
 });
 
 // report-v6: lantern-notes and tidepool-api runs, and sessions in lantern-notes (one in a worktree), tidepool-api, the
-// Scratch notes folder (no run's root) and no project.
+// Scratch lantern folder (no run's root, its name the start of the shown lantern-notes) and no project.
 const V6 = fixture('report-v6');
 const V6_BRANCHES = new Map<string, string[]>();
 for (const run of V6.runs) {
   const root = projectRoot(run.record.project);
   V6_BRANCHES.set(root, [...(V6_BRANCHES.get(root) ?? []), run.record.branch]);
 }
-const V6_SESSION_ROOTS: string[] = V6.sessions.flatMap((s: any) => (s.project ? [projectRoot(s.project)] : []));
+const V6_SESSION_ROOTS: string[] = V6.sessions.flatMap((s: any) => sessionRootOf(s.project) ?? []);
 
 /** Replaces the test's database with report-v6's import, showing lantern-notes, everything seen before it. */
 function useV6(): void {
@@ -274,16 +276,16 @@ function useV6(): void {
   setSeenAt(db, new Date('2026-01-01T00:00:00Z'));
 }
 
-test("maskText masks a session root's folder name that no run has", () => {
+test("maskText masks a session root's folder name that no run has, and keeps the shown name holding it", () => {
   const scope = scopeOf([projectKey(WORK)], V6_BRANCHES, {}, V6_SESSION_ROOTS)!;
-  expect(maskText(scope, 'lantern-notes copies notes')).toBe('lantern-notes copies another project');
+  expect(maskText(scope, 'lantern-notes copies lantern')).toBe('lantern-notes copies another project');
 });
 
 test('with report-v6 and showing on, home and compliance hold no hidden root, branch or session ID', async () => {
   useV6();
   const ids = [...new Set(JSON.stringify(V6).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g))];
   const strings = forbiddenStrings([...V6_BRANCHES.keys()], V6_BRANCHES, [WORK], ids, V6_SESSION_ROOTS);
-  expect(strings.forbidden).toEqual(expect.arrayContaining(['/Users/example/Scratch/notes', 'notes']));
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['/Users/example/Scratch/lantern', 'lantern']));
   const home = await get<HomeResponse>('/api/home');
   expect(home.feed.some((item) => item.type === 'warning' && item.runKey === null)).toBe(true);
   for (const body of [home, await get('/api/compliance?resolved=1&weeks=52')]) {

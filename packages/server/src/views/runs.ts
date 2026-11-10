@@ -54,6 +54,11 @@ export function rootOf(unit: StoredUnit<RunEntry>): string {
   return projectRoot(unit.merged.record?.project ?? '');
 }
 
+/** A session's project root, from its project; null with no project. */
+export function sessionRootOf(project: string | null | undefined): string | null {
+  return project ? projectRoot(project) : null;
+}
+
 /** The display name of every stored run's project, by root. */
 export function storedNames(runs: StoredUnit<RunEntry>[]): Map<string, string> {
   return projectNames(runs.map(rootOf));
@@ -73,7 +78,7 @@ export function storedBranches(runs: StoredUnit<RunEntry>[]): Map<string, string
 
 /** Every stored session's project root, for a session with a project. */
 export function storedSessionRoots(sessions: StoredUnit<SessionEntry>[]): string[] {
-  return sessions.flatMap(({ merged: { project } }) => (project ? [projectRoot(project)] : []));
+  return sessions.flatMap(({ merged: { project } }) => sessionRootOf(project) ?? []);
 }
 
 /** A stored run's facts: runFacts plus its stored key, its project's key and its project's name from `names`. */
@@ -145,7 +150,8 @@ export function periodSessions(sessions: StoredUnit<SessionEntry>[], weeks: stri
 /**
  * The query's period's units, as their merged entries: its runs (periodRuns) and its sessions (periodSessions) that
  * match period's filters, a session having no path, so a path filter leaves every session out, and its project's key
- * from its root ('' with no project, which no project filter matches); and its weeks.
+ * from its root (sessionRootOf) when that is a stored run's root, else '', which no project filter matches; and its
+ * weeks.
  */
 export function periodUnits(
   runs: StoredUnit<RunEntry>[],
@@ -155,8 +161,9 @@ export function periodUnits(
 ): { weeks: string[]; runs: RunEntry[]; sessions: SessionEntry[] } {
   const { filters } = period(query, now);
   const { weeks, runs: inPeriod } = periodRuns(runs, query, now);
-  const kept = ({ project }: SessionEntry) =>
-    filters({ path: null, projectKey: project ? projectKey(projectRoot(project)) : '' });
+  const runRoots = new Set(runs.map(rootOf));
+  const keyOf = (root: string | null) => (root && runRoots.has(root) ? projectKey(root) : '');
+  const kept = ({ project }: SessionEntry) => filters({ path: null, projectKey: keyOf(sessionRootOf(project)) });
   return { weeks, runs: inPeriod, sessions: periodSessions(sessions, weeks).map((unit) => unit.merged).filter(kept) };
 }
 

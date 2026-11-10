@@ -3251,10 +3251,10 @@
   ],
   "sessions": [
     {
-      "file": "/Users/example/.claude/projects/-Users-example-Scratch-notes/6b1f4d27-3e9a-4c58-a0d2-7e5c9b3f1a84.jsonl",
+      "file": "/Users/example/.claude/projects/-Users-example-Scratch-lantern/6b1f4d27-3e9a-4c58-a0d2-7e5c9b3f1a84.jsonl",
       "start": "2026-11-05T21:14:03.118Z",
       "end": "2026-11-09T08:30:41.902Z",
-      "project": "/Users/example/Scratch/notes",
+      "project": "/Users/example/Scratch/lantern",
       "commands": [
         {
           "name": "compact",
@@ -3308,7 +3308,7 @@
           "skill": null,
           "agent": null,
           "run": null,
-          "session": "/Users/example/.claude/projects/-Users-example-Scratch-notes/6b1f4d27-3e9a-4c58-a0d2-7e5c9b3f1a84.jsonl"
+          "session": "/Users/example/.claude/projects/-Users-example-Scratch-lantern/6b1f4d27-3e9a-4c58-a0d2-7e5c9b3f1a84.jsonl"
         }
       ],
       "title": "Release checklist draft",

@@ -1,6 +1,7 @@
-import { folderName, projectNames, projectRoot, SESSION_ID, splitSessionId, type RunFacts } from '@cwd/shared';
+import { folderName, projectNames, SESSION_ID, splitSessionId, type RunFacts } from '@cwd/shared';
 import { projectKey } from '../keys.ts';
 import { trimPaths } from '../text.ts';
+import { sessionRootOf } from './runs.ts';
 
 /**
  * Showing mode's scope: the shown project keys, each one's display name (its alias, else its folder name), the shown
@@ -85,9 +86,12 @@ export function showFacts(scope: Scope | null, facts: RunFacts): RunFacts | null
   return { ...facts, project: scope.names.get(facts.projectKey)!, branch };
 }
 
-/** Whether a view lists a session, or its warning, by its project: with a scope, only in a shown root. */
+/**
+ * Whether a view lists a session, or its warning, by its project: with a scope, only in a shown root (sessionRootOf).
+ */
 export function showSession(scope: Scope | null, project: string | null | undefined): boolean {
-  return !scope || (!!project && scope.shown.has(projectKey(projectRoot(project))));
+  const root = sessionRootOf(project);
+  return !scope || (root !== null && scope.shown.has(projectKey(root)));
 }
 
 /** A warning as a view shows it: with a scope, its masked text and no session ID; else split by splitSessionId. */
@@ -116,7 +120,7 @@ export function forbiddenStrings(
   branches: Map<string, string[]>,
   shownRoots: string[],
   sessionIds: string[],
-  sessionRoots: string[] = [],
+  sessionRoots: string[],
 ): { forbidden: string[]; shown: string[] } {
   const strings = (root: string) => [root, folderName(root), ...(branches.get(root) ?? [])];
   const shown = new Set(shownRoots.flatMap(strings));

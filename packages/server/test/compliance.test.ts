@@ -7,9 +7,10 @@ import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { setSeenAt, setShowing } from '../src/db/read.ts';
+import { listUnits, setSeenAt, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { FAMILIES, familyOf } from '../src/views/compliance.ts';
+import { storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
@@ -173,7 +174,8 @@ test("with showing on, the grid counts all but \"other\" warnings, the list only
       JSON.stringify([fixture('report-full'), raw]).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g),
     ),
   ];
-  const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds);
+  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+  const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds, sessionRoots);
   expect(strings.forbidden).toContain('feature/webhooks');
   expect(strings.forbidden).toContain('0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35');
   db.$client.close();

@@ -10,6 +10,7 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { storedSessionRoots } from '../src/views/runs.ts';
 import { skillSums } from '../src/views/skills.ts';
 
 const PORT = 4317;
@@ -184,7 +185,18 @@ test('the path and project filters choose the runs; every session still counts',
 });
 
 test("with showing on, the sums count every project and hold no hidden project's name, path or branch", async () => {
-  const raw = fixture('report-v5');
+  db.$client.close();
+  db = dbWith('showing', (raw) => {
+    // A project-local skill named after the hidden tidepool-api: loaded by its webhooks run, missing in another run,
+    // and typed and never met in its session of Nov 9.
+    raw.runs[5].skills[1].name = 'tidepool-api-release';
+    raw.runs[6].missing_skills = ['tidepool-api-release'];
+    raw.sessions[3].typed = [{ skill: 'tidepool-api-release', time: '2026-11-09T13:45:00.000Z', met: false }];
+    // A skill named after the session-only Scratch lantern folder, loaded and typed and never met in its session.
+    raw.sessions[0].skills = [{ name: 'lantern-checklist', time: '2026-11-05T21:20:00.000Z', outcome: 'ran' }];
+    raw.sessions[0].typed = [{ skill: 'lantern-checklist', time: '2026-11-05T21:16:00.000Z', met: false }];
+  }, 'report-v6');
+  const raw = fixture('report-v6');
   const branches = new Map<string, string[]>();
   for (const run of raw.runs) {
     const root = projectRoot(run.record.project);
@@ -193,18 +205,15 @@ test("with showing on, the sums count every project and hold no hidden project's
   const sessionIds = [
     ...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
   ];
-  const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds);
-  expect(strings.forbidden).toContain('feature/webhooks');
-  expect(strings.forbidden).toContain('tidepool-api');
-  db.$client.close();
-  db = dbWith('showing', (raw) => {
-    // A project-local skill named after the hidden tidepool-api: loaded by its webhooks run, and missing in another.
-    raw.runs[5].skills[1].name = 'tidepool-api-release';
-    raw.runs[6].missing_skills = ['tidepool-api-release'];
-  });
+  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+  const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds, sessionRoots);
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['feature/webhooks', 'tidepool-api', 'lantern']));
+  const off = await skills('?weeks=52');
   setShowing(db, [projectKey(LANTERN)]);
   const body = await skills('?weeks=52');
-  expect(byName(body.skills).get('another project-release')).toMatchObject({ runs: 1, missing: 1 });
-  expect(byName(body.skills).get('subagent-driven-development')?.runs).toBe(3);
+  expect(byName(body.skills).get('another project-release')).toMatchObject({ runs: 1, missing: 2 });
+  expect(byName(body.skills).get('another project-checklist')).toMatchObject({ runs: 1, missing: 1 });
+  const sum = (rows: SkillsResponse['skills'], key: 'runs' | 'missing') => rows.reduce((n, row) => n + row[key], 0);
+  for (const key of ['runs', 'missing'] as const) expect(sum(body.skills, key)).toBe(sum(off.skills, key));
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });

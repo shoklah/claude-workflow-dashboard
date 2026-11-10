@@ -10,6 +10,7 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { modelSums } from '../src/views/models.ts';
+import { storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
@@ -215,17 +216,6 @@ test("the reporter's figures are null when the last export's totals have none", 
 });
 
 test("with showing on, the sums count every project and hold no hidden project's name, path or branch", async () => {
-  const raw = fixture('report-v5');
-  const branches = new Map<string, string[]>();
-  for (const run of raw.runs) {
-    const root = projectRoot(run.record.project);
-    branches.set(root, [...(branches.get(root) ?? []), run.record.branch]);
-  }
-  const sessionIds = [
-    ...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
-  ];
-  const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds);
-  expect(strings.forbidden).toContain('tidepool-api');
   db.$client.close();
   db = dbWith('showing', (raw) => {
     // A project-local agent named after the hidden tidepool-api, dispatched by its webhooks run on a model named after
@@ -242,22 +232,46 @@ test("with showing on, the sums count every project and hold no hidden project's
     // Two codes named after the hidden project's branches, which mask alike within one unit.
     raw.runs[5].advisor.failed['feature/webhooks.limit'] = 1;
     raw.runs[5].advisor.failed['fix/retry-backoff.limit'] = 2;
-  });
+    // Roles and codes named after the hidden tidepool-api in its session of Nov 9, and after the session-only Scratch
+    // lantern folder in its session.
+    raw.sessions[3].advisor.by_role['tidepool-api-planner'] = { calls: 1, flagged: false };
+    raw.sessions[3].advisor.failed['tidepool-api.timeout'] = 2;
+    raw.sessions[0].advisor.by_role['lantern-scribe'] = { calls: 1, flagged: true };
+    raw.sessions[0].advisor.failed['lantern.limit'] = 1;
+  }, 'report-v6');
+  const raw = fixture('report-v6');
+  const branches = new Map<string, string[]>();
+  for (const run of raw.runs) {
+    const root = projectRoot(run.record.project);
+    branches.set(root, [...(branches.get(root) ?? []), run.record.branch]);
+  }
+  const sessionIds = [
+    ...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
+  ];
+  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+  const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds, sessionRoots);
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['tidepool-api', 'lantern']));
+  const off = await models('?weeks=52');
   setShowing(db, [projectKey(LANTERN)]);
   const body = await models('?weeks=52');
   expect(byName(body.agents).get('another project-deployer')).toMatchObject({
     requested: { 'another branch/-': 1 },
     mismatches: 1,
   });
-  expect(byName(body.agents).get('implementer')?.actual).toEqual({ 'claude-opus-5-5/medium': 3 });
+  expect(byName(body.agents).get('implementer')?.actual).toEqual(byName(off.agents).get('implementer')?.actual);
   // Their names mask alike, so their rows merge.
   expect(body.agents.filter((row) => row.name.endsWith('-auditor'))).toEqual([
     { name: 'another branch-auditor', requested: {}, actual: {}, mismatches: 3 },
   ]);
-  expect(body.advisor.facts?.byRole['another project-deployer']).toEqual({ calls: 1, flagged: false });
+  expect(body.advisor.facts?.byRole).toMatchObject({
+    'another project-deployer': { calls: 1, flagged: false },
+    'another project-planner': { calls: 1, flagged: false },
+    'another project-scribe': { calls: 1, flagged: true },
+  });
   expect(body.advisor.facts?.failed).toEqual({
     'another branch.limit': 3,
-    'another project.timeout': 1,
+    'another project.limit': 1,
+    'another project.timeout': 3,
     overloaded_error: 1,
   });
   // Masked before summing, so the roles and codes come out in the reporter's sorted order.

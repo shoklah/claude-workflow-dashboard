@@ -10,6 +10,7 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { storedSessionRoots } from '../src/views/runs.ts';
 import { cr6Of, ruleSums, stepSums, unitSums } from '../src/views/steps.ts';
 
 const PORT = 4317;
@@ -182,6 +183,13 @@ test('a project filter keeps the sessions whose root has its key', async () => {
   expect((await steps(`?project=${projectKey(LANTERN)}`)).rules.startup).toEqual({ with: 1, without: 1 });
 });
 
+test("a session-only root has no key, so its root's key as a project filter keeps no session", async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  const scratch = (await steps(`?weeks=52&project=${projectKey('/Users/example/Scratch/lantern')}`)).rules;
+  expect(scratch.startup).toEqual({ with: 0, without: 0 });
+});
+
 test('a path filter leaves the sessions out', async () => {
   db.$client.close();
   db = dbWith('report-v6');
@@ -243,22 +251,30 @@ test('with showing on, the response holds no hidden project text and no session 
 });
 
 test("with showing on, an offered skill named after a hidden project is masked, and the offers still count it", async () => {
-  const raw = fixture('report-v5');
+  db.$client.close();
+  db = dbWith('report-v6', (raw) => {
+    // A project-local skill named after the hidden tidepool-api, offered in its webhooks run.
+    raw.runs[5].offers[1].skill = 'tidepool-api-release';
+  });
+  const strings = v6Strings(LANTERN);
+  expect(strings.forbidden).toContain('tidepool-api');
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await steps('?weeks=52');
+  expect(body.rules.offers['another project-release']).toMatchObject({ offered: 1, skipped: 1 });
+  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  // The session-only root is hidden too.
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['/Users/example/Scratch/lantern', 'lantern']));
+});
+
+/** What a showing-mode response over report-v6, stored in `db`, may not hold with `shown` picked: its runs' and
+ * sessions' hidden roots, folder names and branches, and every session ID. */
+function v6Strings(shown: string): { forbidden: string[]; shown: string[] } {
+  const raw = fixture('report-v6');
   const branches = new Map<string, string[]>();
   for (const run of raw.runs) {
     const root = projectRoot(run.record.project);
     branches.set(root, [...(branches.get(root) ?? []), run.record.branch]);
   }
-  const lantern = '/Users/example/Work/lantern-notes';
-  const strings = forbiddenStrings([...branches.keys()], branches, [lantern], []);
-  expect(strings.forbidden).toContain('tidepool-api');
-  db.$client.close();
-  db = dbWith('report-v5', (raw) => {
-    // A project-local skill named after the hidden tidepool-api, offered in its webhooks run.
-    raw.runs[5].offers[1].skill = 'tidepool-api-release';
-  });
-  setShowing(db, [projectKey(lantern)]);
-  const body = await steps('?weeks=52');
-  expect(body.rules.offers['another project-release']).toMatchObject({ offered: 1, skipped: 1 });
-  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
-});
+  const ids = [...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g))];
+  return forbiddenStrings([...branches.keys()], branches, [shown], ids, storedSessionRoots(listUnits(db, 'session')));
+}
