@@ -46,10 +46,9 @@ export function CompliancePage({ step }: { step?: StepKind }) {
   const compliance = useLiveQuery<ComplianceResponse>(listPath('/api/compliance', { ...query, resolved, step }));
   const projects = useProjects();
   const data = compliance.data;
-  const listed =
-    data && selected
-      ? data.warnings.filter((w) => (w.kind ?? '') === selected.id && w.week === selected.week)
-      : [];
+  // A selected cell counts only while its row is in the grid, which showing mode can leave out.
+  const cell = data && selected && data.rows.some((row) => (row.kind ?? '') === selected.id) ? selected : null;
+  const listed = data && cell ? data.warnings.filter((w) => (w.kind ?? '') === cell.id && w.week === cell.week) : [];
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Compliance</h1>
@@ -88,7 +87,9 @@ export function CompliancePage({ step }: { step?: StepKind }) {
       {compliance.isError && <p className="text-sm">Couldn't load the warnings.</p>}
       {data &&
         (data.rows.length === 0 ? (
-          <p className="text-sm">No warnings in this period.</p>
+          <p className="text-sm">
+            {data.hidden > 0 ? 'No warnings to show in this period.' : 'No warnings in this period.'}
+          </p>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
@@ -105,15 +106,15 @@ export function CompliancePage({ step }: { step?: StepKind }) {
               groups={groupsOf(data.rows)}
               max={Math.max(0, ...data.rows.flatMap((row) => row.cells))}
               total
-              selected={selected}
+              selected={cell}
               onSelect={setSelected}
             />
           </>
         ))}
-      {data && data.rows.length > 0 && selected && (
+      {cell && (
         <>
           <h2 className="font-semibold">
-            {`${kindLabel(selected.id || null)} · week of ${weekLabel(selected.week)} · ${plural(listed.length, 'warning')}`}
+            {`${kindLabel(cell.id || null)} · week of ${weekLabel(cell.week)} · ${plural(listed.length, 'warning')}`}
           </h2>
           <ul aria-label="Warnings" className="flex flex-col gap-2 text-sm">
             {listed.map((w) => (
@@ -135,7 +136,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           </ul>
         </>
       )}
-      {data && data.rows.length > 0 && !selected && (
+      {data && data.rows.length > 0 && !cell && (
         <p className="text-sm text-muted-foreground">Select a cell to list its warnings.</p>
       )}
       {data && data.hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenWarningsLabel(data.hidden)}</p>}
