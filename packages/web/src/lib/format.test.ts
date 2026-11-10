@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { cellShade, countLabel, formatMinutes, formatPercent, labellerLabel, runName, weekLabel } from './format.ts';
+import {
+  cellShade,
+  countLabel,
+  formatMinutes,
+  formatPercent,
+  labellerLabel,
+  reporterMark,
+  runName,
+  weekLabel,
+} from './format.ts';
 
 describe('formatMinutes', () => {
   it('shows minutes alone below an hour, and hours with two-digit minutes above', () => {
@@ -77,6 +86,15 @@ describe('labellerLabel', () => {
   it('counts the labelled and waiting findings and the week’s tokens, input and output together', () => {
     expect(labellerLabel({ on: true, labelled: 8, waiting: 1, tokensThisWeek })).toBe(
       '8 labelled · 1 waiting · 43,350 tokens this week',
+    );
+  });
+});
+
+describe('reporterMark', () => {
+  it('names the latest export\'s all-time figure, and says why in its tooltip', () => {
+    expect(reporterMark.text).toBe('reporter, all time');
+    expect(reporterMark.tooltip).toBe(
+      "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
     );
   });
 });

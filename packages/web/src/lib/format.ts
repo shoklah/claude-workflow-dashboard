@@ -21,6 +21,12 @@ export const AREA_LABELS: Record<Area, string> = {
   cleanup: 'Cleanup',
 };
 
+/** The badge on a figure taken from the latest export's totals, not summed over the period's runs. */
+export const reporterMark = {
+  text: 'reporter, all time',
+  tooltip: "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
+};
+
 /** A key of a step's count line as words: `not_proportionate` as "not proportionate". */
 export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');

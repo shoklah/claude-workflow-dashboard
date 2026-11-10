@@ -2,8 +2,8 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, then report-later, with labels.json's invented labels for the lantern-notes Full
-// and plan runs, and the labeller off.
+// dev:fixtures' data: report-full, report-later and report-v5, with labels.json's invented labels for the lantern-notes
+// Full and plan runs, and the labeller off.
 
 test.beforeEach(async ({ page }) => {
   await pinClock(page);
