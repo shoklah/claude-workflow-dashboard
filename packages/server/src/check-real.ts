@@ -16,7 +16,7 @@ import { projectKey, runKey } from './keys.ts';
 import { runReporter } from './reporter.ts';
 import { weekSums } from './views/home.ts';
 import { modelSums } from './views/models.ts';
-import { storedBranches } from './views/runs.ts';
+import { storedBranches, storedSessionRoots } from './views/runs.ts';
 import { forbiddenStrings, leaks } from './views/scope.ts';
 import { skillSums } from './views/skills.ts';
 import { ruleSums, stepSums } from './views/steps.ts';
@@ -211,8 +211,9 @@ else {
     setShowing(db, shown.map(projectKey));
     const files = [...sessionEntries.map((s) => s.file), ...entries.map((run) => run.window?.transcript)];
     const sessionIds = files.flatMap((file) => splitSessionId(file ?? '').sessionId ?? []);
+    const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
     // The home folder too, so any path under it is a leak.
-    const strings = forbiddenStrings(roots, branches, shown, sessionIds);
+    const strings = forbiddenStrings(roots, branches, shown, sessionIds, sessionRoots);
     const forbidden = [...strings.forbidden, homedir()];
     const app = createApp({
       db,

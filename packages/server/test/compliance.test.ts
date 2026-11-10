@@ -217,3 +217,26 @@ test("with showing on, the grid counts all but \"other\" warnings, the list only
   expect(body.warnings.filter((w) => w.isNew)).toHaveLength(1);
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
+
+test("with showing on, the list holds the shown project's session warnings, masked; hidden counts the others", async () => {
+  db.$client.close();
+  db = openDb(join(dir, 'v6', 'dashboard.sqlite'));
+  const raw = fixture('report-v6');
+  const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+  if (!loaded.ok) throw new Error('report-v6 does not load');
+  importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, SECOND);
+  const off = await compliance('?resolved=1&weeks=52');
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await compliance('?resolved=1&weeks=52');
+  // The lantern-notes session's warning, masked; not the tidepool-api, Scratch or no-project sessions'.
+  expect(body.warnings.filter((w) => w.runKey === null)).toEqual([
+    expect.objectContaining({
+      kind: 'startup_missing',
+      family: 'sessions',
+      text: 'WARN: session a session: startup guidelines missing',
+      sessionId: null,
+    }),
+  ]);
+  expect(off.warnings.filter((w) => w.runKey === null)).toHaveLength(4);
+  expect(body.hidden).toBe(off.warnings.length - body.warnings.length);
+});

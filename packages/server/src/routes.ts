@@ -28,7 +28,7 @@ import { complianceView } from './views/compliance.ts';
 import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
 import { modelsView } from './views/models.ts';
-import { rootOf, runView, runsList, storedBranches, storedNames } from './views/runs.ts';
+import { rootOf, runView, runsList, storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
 import { showingView } from './views/showing.ts';
 import { skillsView } from './views/skills.ts';
@@ -57,10 +57,13 @@ function periodQuery(c: Context): FindingsQuery {
 
 /** The API routes, one block per task. The request rules (Host, the POST header and Origin) are app.ts's middleware. */
 export function registerRoutes(app: Hono, deps: AppDeps): void {
-  // Showing mode's scope over the stored runs (listed here when the caller has none), null while it is off.
+  // Showing mode's scope over the stored runs (listed here when the caller has none) and sessions, null while it is
+  // off.
   const scopeFor = (runs?: StoredUnit<RunEntry>[]): Scope | null => {
     const showing = getShowing(deps.db);
-    return showing && scopeOf(showing, storedBranches(runs ?? listUnits(deps.db, 'run')), deps.aliases);
+    if (!showing) return null;
+    const branches = storedBranches(runs ?? listUnits(deps.db, 'run'));
+    return scopeOf(showing, branches, deps.aliases, storedSessionRoots(listUnits(deps.db, 'session')));
   };
 
   // Task 4: the import's status, the refresh and "mark all seen".
