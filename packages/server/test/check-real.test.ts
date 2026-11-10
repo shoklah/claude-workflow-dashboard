@@ -146,12 +146,26 @@ describe('check:real', () => {
     const leakCount = (file: string) => {
       const { stdout, stderr } = checkReal(['cat', file], { aliases });
       expect(`${stdout}${stderr}`).not.toContain('tidepool-api');
-      return Number(/^showing: (\d+) leaks$/m.exec(stdout)?.[1]);
+      return Number(/^showing: (\d+) leaks \(0 inside words\)$/m.exec(stdout)![1]);
     };
     const unlisted = changed('report-v6', (raw) => {
       for (const s of raw.sessions) if (s.project?.startsWith(LANTERN)) s.start = null;
     });
     expect(leakCount(fixturePath('report-v6'))).toBe(leakCount(unlisted) + 1);
+  });
+
+  test('counts the leaks found only inside words apart, still failing, never printing a value', () => {
+    // A hidden session folder named app is inside response keys and words (appDiffers, "applied") as a whole word nowhere.
+    const file = changed('report-v6', (raw) => {
+      raw.sessions.find((s: { project?: string }) => s.project === '/Users/example/Scratch/lantern').project =
+        '/Users/example/Work/app';
+    });
+    const { stdout, stderr, status } = checkReal(['cat', file]);
+    const [, leakCount, inside] = /^showing: (\d+) leaks \((\d+) inside words\)$/m.exec(stdout) ?? [];
+    expect(Number(inside)).toBeGreaterThan(0);
+    expect(Number(inside)).toBe(Number(leakCount));
+    for (const value of ['/Users/', 'app']) expect(`${stdout}${stderr}`).not.toContain(value);
+    expect(status).toBe(1);
   });
 
   test('prints field paths for a bad shape', () => {
@@ -209,7 +223,7 @@ describe('check:real', () => {
     // The shown project (the first root, Archive lantern-notes) aliased as the hidden tidepool-api.
     const aliases = { '/Users/example/Archive/lantern-notes': 'tidepool-api' };
     const { stdout, stderr, status, tmp } = checkReal(['cat', fixturePath('report-projects')], { aliases });
-    expect(stdout).toMatch(/^showing: [1-9]\d* leaks$/m);
+    expect(stdout).toMatch(/^showing: [1-9]\d* leaks \(0 inside words\)$/m);
     expect(`${stdout}${stderr}`).not.toContain('tidepool-api');
     expect(status).toBe(1);
     expect(tmp).toEqual([]);
@@ -222,7 +236,7 @@ describe('check:real', () => {
     // The shown project's alias, a path under home, is in every shown run's name.
     const aliases = { '/Users/example/Archive/lantern-notes': '/Users/example/notes' };
     const { stdout, status } = checkReal(['cat', fixturePath('report-projects')], { aliases }, home);
-    expect(stdout).toMatch(/^showing: [1-9]\d* leaks$/m);
+    expect(stdout).toMatch(/^showing: [1-9]\d* leaks \(0 inside words\)$/m);
     expect(status).toBe(1);
   });
 

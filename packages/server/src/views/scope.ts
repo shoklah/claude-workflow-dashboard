@@ -26,6 +26,11 @@ function anyOf(strings: string[]): string {
   return `(?:${escaped.join('|')})`;
 }
 
+// The strings as whole words only: a word holds letters, digits and `_`, so `-` ends one.
+function asWords(strings: string[]): string {
+  return `(?<!\\w)${anyOf(strings)}(?!\\w)`;
+}
+
 /**
  * The scope of showing mode's picked keys over the stored runs' branches by root and the stored sessions' roots; null
  * while showing mode is off.
@@ -71,7 +76,7 @@ export function maskText<T extends string | null | undefined>(scope: Scope | nul
     ...scope.branches.map((word): [string, string] => [word.toLowerCase(), 'another branch']),
   ]);
   if (masks.size === 0) return masked as T;
-  const words = new RegExp(`(?<!\\w)${anyOf([...masks.keys()])}(?!\\w)`, 'gi');
+  const words = new RegExp(asWords([...masks.keys()]), 'gi');
   return masked.replace(words, (word) => masks.get(word.toLowerCase()) ?? word) as T;
 }
 
@@ -100,13 +105,15 @@ export function showWarning(scope: Scope | null, text: string): { text: string; 
 }
 
 /**
- * The forbidden strings found in the JSON, but not those found only inside a shown string (forbiddenStrings): the leak
- * check of the views' tests and check:real.
+ * The forbidden strings found anywhere in the serialized JSON, keys and inside words included, but not those found only
+ * inside a shown string (forbiddenStrings): the leak check of the views' tests and check:real. With `words`, only those
+ * found as whole words, by maskText's word rule, which check:real counts apart.
  */
-export function leaks(json: unknown, forbidden: string[], shown: string[]): string[] {
+export function leaks(json: unknown, forbidden: string[], shown: string[], words = false): string[] {
   if (forbidden.length === 0) return [];
   const hidden = new Set(forbidden);
-  const found = JSON.stringify(json).match(new RegExp(anyOf([...forbidden, ...shown]), 'g')) ?? [];
+  const strings = [...forbidden, ...shown];
+  const found = JSON.stringify(json).match(new RegExp(words ? asWords(strings) : anyOf(strings), 'g')) ?? [];
   return [...new Set(found.filter((s) => hidden.has(s)))];
 }
 

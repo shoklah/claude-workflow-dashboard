@@ -287,8 +287,16 @@ else {
     ];
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
     const bodies = [list, ...(await Promise.all([...paths, ...pages].map(get)))];
-    const count = bodies.reduce((sum: number, body) => sum + leaks(body, forbidden, strings.shown).length, 0);
-    console.log(count === 0 ? 'showing: pass' : `showing: ${count} leaks`);
+    // A leak found as a whole word in no response (leaks' words) is counted apart, since it may be part of a key or a
+    // word, as a folder named app is in appDiffers; it still fails.
+    let [count, inside] = [0, 0];
+    for (const body of bodies) {
+      const found = leaks(body, forbidden, strings.shown);
+      const words = leaks(body, forbidden, strings.shown, true);
+      count += found.length;
+      inside += found.filter((s) => !words.includes(s)).length;
+    }
+    console.log(count === 0 ? 'showing: pass' : `showing: ${count} leaks (${inside} inside words)`);
     if (count > 0) process.exitCode = 1;
   } catch {
     // A fixed message: an error's text can quote the data.

@@ -194,6 +194,14 @@ test('leaks skips a hidden name inside a shown one, and finds it alone', () => {
   expect(leaks('lantern-notes-v2', ['lantern-notes-v2'], shown)).toEqual(['lantern-notes-v2']);
 });
 
+test("leaks' whole words: only the matches maskText's word rule would mask, a shown name still winning", () => {
+  const { forbidden, shown } = forbiddenStrings([LANTERN, WORK], PREFIX_BRANCHES, [WORK], [], []);
+  expect(leaks({ lanterns: 'see lantern' }, forbidden, shown)).toEqual(['lantern']);
+  expect(leaks({ lanterns: 'see lantern' }, forbidden, shown, true)).toEqual(['lantern']);
+  expect(leaks({ lanterns: 'lanternfish' }, forbidden, shown, true)).toEqual([]);
+  expect(leaks({ project: 'lantern-notes' }, forbidden, shown, true)).toEqual([]);
+});
+
 test("showFacts masks a hidden project's name in a shown run's branch", () => {
   const scope = scopeOf([projectKey(WORK)], BRANCHES, {}, [])!;
   const facts = { projectKey: projectKey(WORK), project: 'lantern-notes', branch: 'fix/tidepool-api-client' };
