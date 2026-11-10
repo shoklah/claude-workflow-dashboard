@@ -24,8 +24,7 @@
 1. The reporter's state was lost or rebuilt: the returned cursor has another state id, so the export is full and every stored unit it lacks is marked missing (Task 1 test).
 2. The import fails after the reporter already advanced its state: the stored cursor is unchanged, so the next run sends the old one and gets every change since (Task 2 test).
 3. A key in `removed` that is already missing keeps its first `missingSince` (Task 1 test).
-4. A unit in `removed` that comes back in a later incremental export has its missing mark cleared (Task 1 test).
-5. A plain export with no `cursor` after a stored one: imported as full, the stored cursor kept (Task 1 test).
+4. A plain export with no `cursor` after a stored one: imported as full, the stored cursor kept (Task 1 test).
 
 ---
 
@@ -50,14 +49,11 @@
 Extend the `importFixture` helper with an optional `sent` and a `change(raw)` callback applied to the fixture's JSON before loading, so a test can set `cursor`, `removed` and a subset of `runs`/`sessions`. Tests (keys from `runKey`/`sessionKey` of the loaded report; `report-full` has 5 runs and 2 sessions):
 
 - `isIncremental`: `(null, 'a:2')` false; `('a:1', 'a:2')` true; `('a:2', 'a:2')` false; `('a:3', 'a:2')` false; `('a:1', 'b:2')` false; `('a:1', null)` false; `('a:1', 'a2')` false; `('a:1', 'a:x')` false; an id holding `:` (`('a:b:1', 'a:b:2')`) true, since the sequence is after the last `:`.
-- 'stores the export\'s cursor': full import of `report-full` with `cursor: 's1:1'` → `getCursor(db)` is `'s1:1'`.
-- 'an incremental export marks only removed units missing': full import with `cursor 's1:1'` at FIRST; then at LATER, sent `'s1:1'`, the export carries only run 0 (changed: a field edited so it gets a second version), `cursor 's1:2'`, `removed: { runs: [key of run 1], sessions: [key of session 0] }` → run 1 and session 0 have `missingSince` LATER; runs 0, 2, 3, 4 and session 1 have `missingSince` null; run 0 has 2 versions; `getCursor` is `'s1:2'`; `lastGoodImport(db)?.totals` equals the export's totals.
+- 'an incremental export marks only removed units missing': full import with `cursor 's1:1'` at FIRST; then at LATER, sent `'s1:1'`, the export carries only run 0, `cursor 's1:2'`, `removed: { runs: [key of run 1], sessions: [key of session 0] }` → run 1 and session 0 have `missingSince` LATER; runs 0, 2, 3, 4 and session 1 have `missingSince` null; `getCursor` is `'s1:2'`.
 - 'a removed key already missing keeps its first time': as above, then a third incremental at a later time (sent `'s1:2'`, cursor `'s1:3'`) removing run 1 again → its `missingSince` stays LATER.
-- 'a removed unit that comes back is present again': after run 1 is removed, an incremental export carrying run 1 (cursor `'s1:3'`) → its `missingSince` is null.
 - 'a removed key that was never stored is ignored': `removed.runs: ['0000000000000000']` → no throw, no unit added.
 - 'another state id is a full export': stored `'s1:1'`, then sent `'s1:1'`, export holds only run 0 and session 0 with `cursor 's2:1'` and an empty `removed` → runs 1–4 and session 1 are marked missing; `getCursor` is `'s2:1'`.
 - 'an export with no cursor is full and keeps the stored cursor': stored `'s1:1'`, then a plain export (no `cursor`) holding only run 0 and session 0, sent `'s1:1'` → the other units are marked missing; `getCursor` is still `'s1:1'`.
-- 'rebuildDerived keeps the cursor': after an import with a cursor, `rebuildDerived(db)` → `getCursor` unchanged.
 
 - [ ] **Step 2: Run them and see them fail**
 
@@ -68,7 +64,7 @@ Expected: FAIL (`isIncremental`, `getCursor` not exported).
 
 - `report.ts`: the two nullish fields above.
 - `read.ts`: `getCursor`/`setCursor` as `getSeenAt`/`setSeenAt` do, the value stored as given.
-- `import.ts`: `isIncremental` splits each cursor at its last `:`; true only when `sent` and `got` are both strings with that `:`, the ids are equal, both sequences match `/^\d+$/` and `got`'s is the larger (compare as numbers). In `importReport`, inside the transaction: `const incremental = isIncremental(sent, report.cursor)`; upsert the carried units as today; then, per kind, if incremental, set `missingSince: at` where kind matches, `missingSince` is null and the key is in `report.removed?.[kind === 'run' ? 'runs' : 'sessions'] ?? []` (skip the update when that list is empty); else today's `notInArray` absence update. After the units, `if (report.cursor) setCursor(tx, report.cursor)`. Update the doc comment: what's incremental, what's full, and that the cursor is stored with the import.
+- `import.ts`: `isIncremental` splits each cursor at its last `:`; true only when `sent` and `got` are both strings with that `:`, the ids are equal, both sequences match `/^\d+$/` and `got`'s is the larger (compare as numbers). In `importReport`, inside the transaction: `const incremental = isIncremental(sent, report.cursor)`; upsert the carried units as today; then, per kind, today's one `missingSince: at` update with only its key condition chosen: `incremental ? inArray(units.key, report.removed?.[kind === 'run' ? 'runs' : 'sessions'] ?? []) : notInArray(units.key, keys)` (drizzle's `inArray` with `[]` is `false`, as `notInArray` with `[]` is `true`). After the units, `if (report.cursor) setCursor(tx, report.cursor)`. Update the doc comment: what's incremental, what's full, and that the cursor is stored with the import.
 - `schema.ts`: the `missingSince` comment.
 - `CLAUDE.md`, under `## Code conventions`: "The reporter's cursor (`state`'s `cursor`, `getCursor`/`setCursor` in `db/read.ts`) is a stored fact, written only by `importReport` in the import's transaction from the export's `cursor`; an export is incremental only when `isIncremental` holds for the cursor sent and the one returned (same state id, higher sequence), and then only its `removed` keys are marked missing; any other export is full, and every stored unit it lacks is marked missing."
 
@@ -129,7 +125,6 @@ git commit -m "feat: importOnce sends the stored cursor with --changed-since"
 
 **Files:**
 - Modify: `packages/server/src/check-real.ts` (after the `run keys:` line)
-- Modify: `docs/superpowers/specs/2026-11-10-incremental-import-design.md` (design item 7's output wording, to match)
 - Test: `packages/server/test/check-real.test.ts`
 
 **Interfaces:**
@@ -149,7 +144,7 @@ A new line right after `run keys: …`: `reporter keys: N compared, M differ` (c
 Run: `pnpm exec vitest run packages/server/test/check-real.test.ts`
 Expected: FAIL (no `reporter keys` line).
 
-- [ ] **Step 3: Implement** the line in `check-real.ts`, beside the `run keys` count, with a one-line comment on why (`removed` matches stored keys only if the recipes agree). Update design item 7 to say `reporter keys: N compared, M differ` or `not in the export`.
+- [ ] **Step 3: Implement** the line in `check-real.ts` beside the `run keys` count, through the existing `differLine('reporter keys', `${compared} compared, `, differ, false)` (`differ` null when no unit carries a string `key`), with a one-line comment on why (`removed` matches stored keys only if the recipes agree).
 
 - [ ] **Step 4: Run the tests**
 
@@ -159,6 +154,6 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/server/src/check-real.ts packages/server/test/check-real.test.ts docs/superpowers/specs/2026-11-10-incremental-import-design.md
+git add packages/server/src/check-real.ts packages/server/test/check-real.test.ts
 git commit -m "feat: check:real compares the reporter's unit keys with the app's"
 ```
