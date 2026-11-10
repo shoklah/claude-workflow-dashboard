@@ -1,9 +1,9 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
 // paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
 // groups, step kinds, rules and unit figures whose sums differ from the reporter's totals, the count of skills and of
-// models that differ, and the leaks showing mode lets through. It prints
-// no value from the data but those weeks' dates, and no skill or agent name, since a project can name one. Usage:
-// `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
+// models that differ, and the leaks showing mode lets through. It prints no value from the data but those weeks'
+// dates, and no skill or agent name, since a project can name one. Usage: `pnpm --filter @cwd/server check:real
+// [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -72,7 +72,8 @@ const sessions = Array.isArray(json?.sessions) ? (json.sessions as unknown[]) : 
 type Keyed = { key: string; file?: unknown };
 const keyed = (units: unknown[]) =>
   units.filter((unit): unit is Keyed => typeof (unit as Keyed | null)?.key === 'string');
-const [keyedRuns, keyedSessions] = [keyed(runs), keyed(sessions)];
+const keyedRuns = keyed(runs);
+const keyedSessions = keyed(sessions);
 const keysDiffer = [
   ...keyedRuns.filter((run) => run.key !== runKey(run as RunEntry)),
   ...keyedSessions.filter((s) => typeof s.file !== 'string' || s.key !== sessionKey(s as SessionEntry)),
