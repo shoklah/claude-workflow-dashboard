@@ -202,6 +202,16 @@ test('leaks finds a hidden name holding a character JSON escapes, and names it a
   expect(leaks({ a: 'x"y-notes' }, ['x"y'], ['x"y-notes'])).toEqual([]);
 });
 
+test('leaks reads keys and strings as written: a name after an escape is a whole word, an escape is none', () => {
+  expect(leaks({ a: 'line one\nlantern is hidden' }, ['lantern'], [], true)).toEqual(['lantern']);
+  expect(leaks({ a: 'esc \u001b here' }, ['u001b'], [], true)).toEqual([]);
+});
+
+test('leaks finds a hidden name in any case, as maskText masks it, and names it as given', () => {
+  expect(leaks({ a: 'see Tidepool-API here' }, ['tidepool-api'], [])).toEqual(['tidepool-api']);
+  expect(leaks({ a: 'see LANTERN-notes' }, ['lantern'], ['lantern-notes'])).toEqual([]);
+});
+
 test("leaks' whole words: only the matches maskText's word rule would mask, a shown name still winning", () => {
   const { forbidden, shown } = forbiddenStrings([LANTERN, WORK], PREFIX_BRANCHES, [WORK], [], []);
   expect(leaks({ lanterns: 'see lantern' }, forbidden, shown)).toEqual(['lantern']);
