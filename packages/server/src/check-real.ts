@@ -3,7 +3,7 @@
 // through. It prints no value from the data but those weeks' dates. Usage: `pnpm --filter @cwd/server check:real
 // [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadReport, PATHS, splitSessionId, type RunEntry, type RunsResponse } from '@cwd/shared';
 import { createApp } from './app.ts';
@@ -55,7 +55,7 @@ else {
   for (const week of differ) console.log(week.week);
 
   // Showing mode on the first root, in a fresh database in a temp folder (never the real one): every response's
-  // forbidden strings (forbiddenStrings) are counted, never printed.
+  // forbidden strings (forbiddenStrings, and the home folder) are counted, never printed.
   const dir = mkdtempSync(join(tmpdir(), 'cwd check real '));
   const db = openDb(join(dir, 'dashboard.sqlite'));
   try {
@@ -69,7 +69,9 @@ else {
     const { sessions, runs } = loaded.report;
     const files = [...sessions.map((s) => s.file), ...runs.map((run) => run.window?.transcript)];
     const sessionIds = files.flatMap((file) => splitSessionId(file ?? '').sessionId ?? []);
-    const forbidden = forbiddenStrings(roots, branches, shown, sessionIds);
+    // The home folder too, so any path under it is a leak.
+    const strings = forbiddenStrings(roots, branches, shown, sessionIds);
+    const forbidden = [...strings.forbidden, homedir()];
     const app = createApp({
       db,
       port: config.port,
@@ -90,7 +92,7 @@ else {
     const paths = ['/api/status', '/api/showing', '/api/home', '/api/findings?weeks=52'];
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
     const bodies = [list, ...(await Promise.all([...paths, ...pages].map(get)))];
-    const count = bodies.reduce((sum: number, body) => sum + leaks(body, forbidden).length, 0);
+    const count = bodies.reduce((sum: number, body) => sum + leaks(body, forbidden, strings.shown).length, 0);
     console.log(count === 0 ? 'showing: pass' : `showing: ${count} leaks`);
     if (count > 0) process.exitCode = 1;
   } catch {

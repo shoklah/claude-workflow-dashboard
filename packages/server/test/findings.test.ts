@@ -175,7 +175,7 @@ test("with a scope, only the shown projects' findings are listed, masked; the ce
   expect(body.findings.find((f) => f.runKey === TIDY && f.id === 'F1')?.labelReason).toBe(
     'as another project does in x.ts',
   );
-  expect(leaks(body, ['/Users/example', 'tidepool-api', 'fix/retry-backoff'])).toEqual([]);
+  expect(leaks(body, ['/Users/example', 'tidepool-api', 'fix/retry-backoff'], [])).toEqual([]);
 });
 
 test("the labeller's state: off with no labeller, else the findings waiting for its model", async () => {

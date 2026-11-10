@@ -2,14 +2,21 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadReport, projectRoot, type HomeResponse, type RunsResponse, type ShowingResponse } from '@cwd/shared';
+import {
+  loadReport,
+  projectRoot,
+  type HomeResponse,
+  type RunFacts,
+  type RunsResponse,
+  type ShowingResponse,
+} from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport, recordImportFailure } from '../src/db/import.ts';
 import { getShowing, setSeenAt, setShowing } from '../src/db/read.ts';
 import { projectKey, runKey } from '../src/keys.ts';
-import { forbiddenStrings, leaks, maskText, scopeOf } from '../src/views/scope.ts';
+import { forbiddenStrings, leaks, maskText, scopeOf, showFacts } from '../src/views/scope.ts';
 
 const PORT = 4317;
 const HOST = `localhost:${PORT}`;
@@ -32,7 +39,8 @@ for (const run of RAW.runs) {
 const SESSION_IDS = [
   ...new Set(JSON.stringify(RAW).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
 ];
-const FORBIDDEN = [...forbiddenStrings(ROOTS, BRANCHES, [WORK], SESSION_IDS), '/Users/example'];
+const STRINGS = forbiddenStrings(ROOTS, BRANCHES, [WORK], SESSION_IDS);
+const FORBIDDEN = [...STRINGS.forbidden, '/Users/example'];
 
 let dir: string;
 let file: string;
@@ -110,7 +118,7 @@ test("with showing on, no response holds a path, a session ID or a hidden projec
   bodies.push(await get('/api/findings?weeks=52'));
   for (const row of list.runs) bodies.push(await get(`/api/runs/${row.key}`));
   expect(list.runs).toHaveLength(2);
-  for (const body of bodies) expect(leaks(body, FORBIDDEN)).toEqual([]);
+  for (const body of bodies) expect(leaks(body, FORBIDDEN, STRINGS.shown)).toEqual([]);
 });
 
 test('the Runs list counts the hidden runs and names the shown ones by alias', async () => {
@@ -136,7 +144,7 @@ test("maskText masks a hidden project's name and path inside a shown project's t
 });
 
 test('maskText replaces only whole words', () => {
-  const scope = { shown: new Set<string>(), names: new Map<string, string>(), hidden: ['api'], branches: [] };
+  const scope = { shown: new Set<string>(), names: new Map<string, string>(), kept: [], hidden: ['api'], branches: [] };
   expect(maskText(scope, 'rapid api')).toBe('rapid another project');
   expect(maskText(scope, 'rapid-api')).toBe('rapid-another project');
 });
@@ -160,6 +168,34 @@ test("maskText masks a hidden run's branch and a bare session ID, not a shown ru
   expect(
     maskText(scope, 'as on fix/retry-backoff and chore/tidy-imports, see 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35'),
   ).toBe('as on another branch and chore/tidy-imports, see a session');
+});
+
+// Invented prefix-related roots: the hidden lantern, whose name is the start of the shown lantern-notes.
+const LANTERN = '/Users/example/Work/lantern';
+const PREFIX_BRANCHES = new Map([
+  [LANTERN, ['fix/lamp-wick']],
+  [WORK, ['feature/offline-sync']],
+]);
+
+test('maskText keeps a shown name that holds a hidden one, and masks the bare hidden one', () => {
+  const scope = scopeOf([projectKey(WORK)], PREFIX_BRANCHES, {})!;
+  expect(maskText(scope, 'lantern-notes reads Lantern on fix/lamp-wick')).toBe(
+    'lantern-notes reads another project on another branch',
+  );
+});
+
+test('leaks skips a hidden name inside a shown one, and finds it alone', () => {
+  const { forbidden, shown } = forbiddenStrings([LANTERN, WORK], PREFIX_BRANCHES, [WORK], []);
+  expect(leaks({ project: 'lantern-notes' }, forbidden, shown)).toEqual([]);
+  expect(leaks('see lantern', forbidden, shown)).toEqual(['lantern']);
+  // A hidden string that holds a shown one is still found.
+  expect(leaks('lantern-notes-v2', ['lantern-notes-v2'], shown)).toEqual(['lantern-notes-v2']);
+});
+
+test("showFacts masks a hidden project's name in a shown run's branch", () => {
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {})!;
+  const facts = { projectKey: projectKey(WORK), project: 'lantern-notes', branch: 'fix/tidepool-api-client' };
+  expect(showFacts(scope, facts as RunFacts)?.branch).toBe('fix/another project-client');
 });
 
 test('a folder name a shown project also has is not hidden', () => {

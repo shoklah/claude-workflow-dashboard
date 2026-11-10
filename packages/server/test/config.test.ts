@@ -46,6 +46,15 @@ describe('loadConfig', () => {
     expect(config.reporterTimeoutMs).toBe(120000);
   });
 
+  test("aliases that aren't an object mean none", () => {
+    const dataDir = join(tempDir(), 'data dir');
+    mkdirSync(dataDir);
+    for (const aliases of [null, 'Notes app', 3]) {
+      writeFileSync(join(dataDir, 'config.json'), JSON.stringify({ aliases }));
+      expect(loadConfig(dataDir).aliases).toEqual({});
+    }
+  });
+
   test('the data dir is created with mode 0700', () => {
     const dataDir = join(tempDir(), 'data dir');
     loadConfig(dataDir);

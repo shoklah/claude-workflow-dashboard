@@ -12,11 +12,12 @@ const dirs: string[] = [];
 
 /**
  * Runs check:real against a temp data dir whose config.json sets the reporter command and any other config, with its
- * own temp folder (TMPDIR), and returns what is left in both.
+ * own temp folder (TMPDIR) and any other env, and returns what is left in both.
  */
 function checkReal(
   reporterCommand: string[],
   config: Record<string, unknown> = {},
+  env: Record<string, string> = {},
 ): { stdout: string; stderr: string; status: number | null; dataDir: string[]; tmp: string[] } {
   const dir = mkdtempSync(join(tmpdir(), 'cwd check real '));
   dirs.push(dir);
@@ -27,7 +28,7 @@ function checkReal(
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({ ...config, reporterCommand }));
   const result = spawnSync(process.execPath, [SCRIPT, dataDir], {
     encoding: 'utf8',
-    env: { ...process.env, TMPDIR: tmp },
+    env: { ...process.env, TMPDIR: tmp, ...env },
   });
   const { stdout, stderr, status } = result;
   return { stdout, stderr, status, dataDir: readdirSync(dataDir), tmp: readdirSync(tmp) };
@@ -105,9 +106,21 @@ describe('check:real', () => {
     expect(tmp).toEqual([]);
   });
 
+  test('counts a path under the home folder as a leak', () => {
+    // With the fixture's /Users/example as home, no response holds a path under it.
+    const home = { HOME: '/Users/example' };
+    expect(checkReal(['cat', fixturePath('report-projects')], {}, home).stdout).toMatch(/^showing: pass$/m);
+    // The shown project's alias, a path under home, is in every shown run's name.
+    const aliases = { '/Users/example/Archive/lantern-notes': '/Users/example/notes' };
+    const { stdout, status } = checkReal(['cat', fixturePath('report-projects')], { aliases }, home);
+    expect(stdout).toMatch(/^showing: [1-9]\d* leaks$/m);
+    expect(status).toBe(1);
+  });
+
   test("a failing showing check's error text is never printed", () => {
-    // Null aliases make the views throw a TypeError that names a root.
-    const { stdout, stderr, status, tmp } = checkReal(['cat', fixturePath('report-projects')], { aliases: null });
+    // A port holding a newline and a root makes the request's Host header throw a TypeError that quotes it.
+    const port = '1\n/Users/example/Archive/lantern-notes';
+    const { stdout, stderr, status, tmp } = checkReal(['cat', fixturePath('report-projects')], { port });
     expect(`${stdout}${stderr}`).not.toContain('/Users/');
     expect(stderr).toBe('showing: the check failed\n');
     expect(status).toBe(1);
