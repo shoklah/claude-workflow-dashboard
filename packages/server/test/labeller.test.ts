@@ -94,16 +94,16 @@ afterEach(() => {
 });
 
 describe('labelPending', () => {
-  test('sends 60 pending findings in batches of 25, 25 and 10, ids f1 to f25, and stores 60 labels', async () => {
+  test('sends 60 pending findings (37 plan, 16 implementation, 7 cleanup) in batches of one area, at most 25, ids from f1', async () => {
     const db = imported(withFindings(60));
     expect(inputs(db)).toHaveLength(60);
     const { batches, client } = stubClient();
     await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
-    expect(batches.map((b) => b.length)).toEqual([25, 25, 10]);
+    expect(batches.map((b) => b.length)).toEqual([25, 12, 16, 7]);
     expect(batches[0]!.map((i) => i.id)).toEqual(Array.from({ length: 25 }, (_, n) => `f${n + 1}`));
-    expect(batches[2]!.map((i) => i.id)).toEqual(Array.from({ length: 10 }, (_, n) => `f${n + 1}`));
+    expect(batches[1]!.map((i) => i.id)).toEqual(Array.from({ length: 12 }, (_, n) => `f${n + 1}`));
     expect(stored(db)).toBe(60);
-    expect(tokensSince(db, IMPORTED)).toEqual({ input: 3000, output: 600 });
+    expect(tokensSince(db, IMPORTED)).toEqual({ input: 4000, output: 800 });
   });
 
   test('stops at the daily max, and a second run the same day stores none', async () => {
@@ -113,7 +113,16 @@ describe('labelPending', () => {
     expect(stored(db)).toBe(30);
     await labelPending(db, client, { model: MODEL, dailyMax: 30 }, LATER_SAME_DAY, list(db));
     expect(stored(db)).toBe(30);
-    expect(batches.map((b) => b.length)).toEqual([25, 5]);
+    expect(batches.map((b) => b.length)).toEqual([23, 4, 3]);
+  });
+
+  test("each batch holds one area's findings, so its reply's schema can hold that area's ids only", async () => {
+    const db = imported(withFindings(60));
+    expect(new Set(inputs(db).map((i) => i.area)).size).toBeGreaterThan(1);
+    const { batches, client } = stubClient();
+    await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
+    for (const batch of batches) expect(new Set(batch.map((i) => i.area)).size).toBe(1);
+    expect(stored(db)).toBe(60);
   });
 
   test("doesn't store a category outside the finding's area", async () => {
@@ -221,10 +230,10 @@ describe('labelPending', () => {
       return answering(batch, active);
     };
     await labelPending(db, client, { model: MODEL, dailyMax: 500 }, NOW, list(db));
-    expect(calls).toBe(3);
-    expect(batches.map((b) => b.length)).toEqual([25, 10]);
+    expect(calls).toBe(4);
+    expect(batches.map((b) => b.length)).toEqual([12, 16, 7]);
     expect(stored(db)).toBe(35);
-    expect(tokensSince(db, IMPORTED)).toEqual({ input: 2000, output: 400 });
+    expect(tokensSince(db, IMPORTED)).toEqual({ input: 3000, output: 600 });
     expect(error).toHaveBeenCalledWith('label batch failed:', 'Error');
     expect(JSON.stringify(error.mock.calls)).not.toContain(text);
     error.mockRestore();
@@ -329,6 +338,31 @@ describe('anthropicLabelClient', () => {
       expect(requests[1].system).toContain('invented_plan: An invented meaning.');
       expect(requests[1].system).not.toContain('task_split');
       expect(JSON.stringify(requests[1].output_config.format.schema)).not.toContain('code_facts');
+    });
+  });
+
+  test("a plan batch's prompt and schema hold only plan ids, and an implementation batch's only its own", async () => {
+    const active = list(imported(fixture('report-v5')));
+    const reply = JSON.stringify({ labels: [] });
+    await withStandIn(reply, 'end_turn', async (requests) => {
+      const client = anthropicLabelClient(MODEL);
+      await client([{ id: 'f1', area: 'plan', text: 'An invented finding.' }], active);
+      await client([{ id: 'f1', area: 'implementation', text: 'An invented finding.' }], active);
+      const [plan, implementation] = requests.map((r) => ({
+        system: r.system as string,
+        schema: JSON.stringify(r.output_config.format.schema),
+      }));
+      for (const { id } of active.areas.plan) {
+        expect(plan!.schema).toContain(`"${id}"`);
+        expect(plan!.system).toContain(`${id}: `);
+        expect(implementation!.schema).not.toContain(`"${id}"`);
+        expect(implementation!.system).not.toContain(`${id}: `);
+      }
+      for (const { id } of active.areas.implementation) {
+        expect(plan!.schema).not.toContain(`"${id}"`);
+        expect(plan!.system).not.toContain(`${id}: `);
+        expect(implementation!.schema).toContain(`"${id}"`);
+      }
     });
   });
 });

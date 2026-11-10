@@ -7,8 +7,8 @@ import { labelInputs, labelledOn, pendingInputs, saveBatch, type StoredLabel } f
 import type { Db } from './db/open.ts';
 import { listUnits } from './db/read.ts';
 
-/** Labels a batch of findings under the list it is given, each under its id in the batch, and says the tokens it
- * used. */
+/** Labels a batch of findings, all of one area, under the list it is given, each under its id in the batch, and says
+ * the tokens it used. */
 export type LabelClient = (batch: { id: string; area: Area; text: string }[], list: ActiveList) => Promise<{
   results: { id: string; category: string; relevance: Relevance; reason: string }[];
   inputTokens: number;
@@ -33,10 +33,11 @@ export function labellerSettings(env: Record<string, string | undefined>): { mod
 }
 
 /**
- * Labels the findings with no label from the model under `list` (the active list), in batches, up to the daily max;
- * only findings whose area has categories in the list are sent (labellable), so no request has no ids to pick from. A
- * result whose category isn't one of the list's ids for its finding's area, or whose id wasn't sent or was answered
- * already, is dropped. A batch whose client throws stores nothing and is logged, as a LabelError's message or else the
+ * Labels the findings with no label from the model under `list` (the active list), in batches of one area each, up to
+ * the daily max; only findings whose area has categories in the list are sent (labellable), so no request has no ids to
+ * pick from. The daily max counts stored labels only, so a batch's reply can name only its area's ids. A result whose
+ * category isn't one of the list's ids for its finding's area, or whose id wasn't sent or was answered already, is
+ * dropped. A batch whose client throws stores nothing and is logged, as a LabelError's message or else the
  * error's name, since another error's text can quote the findings; the next batches still go, and the next import
  * retries it.
  */
@@ -50,8 +51,12 @@ export async function labelPending(
   const left = settings.dailyMax - labelledOn(db, now);
   const inputs = labellable(labelInputs(listUnits(db, 'run')), list);
   const pending = pendingInputs(db, inputs, settings.model, list.number).slice(0, Math.max(0, left));
-  for (let start = 0; start < pending.length; start += BATCH) {
-    const batch = new Map(pending.slice(start, start + BATCH).map((input, n) => [`f${n + 1}`, input]));
+  const batches = AREAS.flatMap((area) => {
+    const ofArea = pending.filter((input) => input.area === area);
+    return Array.from({ length: Math.ceil(ofArea.length / BATCH) }, (_, n) => ofArea.slice(n * BATCH, (n + 1) * BATCH));
+  });
+  for (const inputs of batches) {
+    const batch = new Map(inputs.map((input, n) => [`f${n + 1}`, input]));
     let reply;
     try {
       reply = await client([...batch].map(([id, { area, text }]) => ({ id, area, text })), list);
@@ -72,9 +77,9 @@ export async function labelPending(
   }
 }
 
-/** The reply's schema: each label's category is one of the list's ids. */
-function labelsSchema(list: ActiveList) {
-  const ids = [...new Set(AREAS.flatMap((area) => list.areas[area].map((c) => c.id)))] as [string, ...string[]];
+/** The reply's schema: each label's category is one of the list's ids for `area`, the batch's. */
+function labelsSchema(list: ActiveList, area: Area) {
+  const ids = list.areas[area].map((c) => c.id) as [string, ...string[]];
   return z.object({
     labels: z.array(
       z.object({ id: z.string(), category: z.enum(ids), relevance: z.enum(RELEVANCE), reason: z.string() }),
@@ -83,10 +88,10 @@ function labelsSchema(list: ActiveList) {
 }
 
 /**
- * The system prompt: each area's categories as `id: means`, the list's rule for picking one, and relevance by the
- * list's validity definitions when it has them, where valid means only that the problem is real.
+ * The system prompt: `area`'s categories (the batch's) as `id: means`, the list's rule for picking one, and relevance
+ * by the list's validity definitions when it has them, where valid means only that the problem is real.
  */
-function systemPrompt(list: ActiveList): string {
+function systemPrompt(list: ActiveList, area: Area): string {
   const validity = RELEVANCE.filter((r) => list.validity[r]).map((r) => `${r}: ${list.validity[r]}`);
   return [
     'Each finding you are given comes from a code review step in an agentic workflow.',
@@ -98,23 +103,27 @@ function systemPrompt(list: ActiveList): string {
       : ["Judge whether it names a real problem (valid), not one (invalid), or you can't tell (unclear)."]),
     'Give a reason in one sentence.',
     'Answer once for each finding, under its id.',
-    ...AREAS.flatMap((area) => ['', `${area}:`, ...list.areas[area].map((c) => `${c.id}: ${c.means}`)]),
+    '',
+    `${area}:`,
+    ...list.areas[area].map((c) => `${c.id}: ${c.means}`),
   ].join('\n');
 }
 
 /**
  * The label client over the Anthropic API, with the key from `ANTHROPIC_API_KEY`. Its prompt and the reply's schema are
- * built from the list on each call, since an import can change the active list. A reply that doesn't parse throws a
- * LabelError naming its stop reason, never the parser's own message, which quotes the reply, which holds finding text.
+ * built from the list and the batch's area on each call, since an import can change the active list. A reply that
+ * doesn't parse throws a LabelError naming its stop reason, never the parser's own message, which quotes the reply,
+ * which holds finding text.
  */
 export function anthropicLabelClient(model: string): LabelClient {
   const client = new Anthropic();
   return async (batch, list) => {
-    const format = zodOutputFormat(labelsSchema(list));
+    const area = batch[0]!.area;
+    const format = zodOutputFormat(labelsSchema(list, area));
     const response = await client.messages.create({
       model,
       max_tokens: 4096,
-      system: systemPrompt(list),
+      system: systemPrompt(list, area),
       messages: [{ role: 'user', content: JSON.stringify(batch) }],
       output_config: { format },
     });
