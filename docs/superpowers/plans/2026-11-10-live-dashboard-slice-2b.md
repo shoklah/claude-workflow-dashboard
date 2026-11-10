@@ -44,7 +44,7 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
   - A run counts by its finish time.
   - A skill counts when one of its loads (`skills[].time`) falls in the period's weeks.
   - A run's warning counts in its run's week, a session's in the week it was first seen.
-- **Showing mode** applies in every new view through `scope.ts`, as 2a's conventions say. Sums count every project. Lists hold only shown projects, masked. Session warnings and the totals' "other" warnings are left out. Each new view's tests run `leaks`.
+- **Showing mode** applies in every new view through `scope.ts`, as 2a's conventions say. Sums count every project. Lists hold only shown projects, masked. Session warnings are left out. Each new view's tests run `leaks`.
 - **Every new page:**
   - gets a menu entry, in decision 22's order: Home, Runs, Findings, Compliance, Steps and rules, Skills, Models and advisor, Weeks
   - gets a route, `ListFilters` for its filters, stories (Empty, Full, Loading and Error)
@@ -56,11 +56,11 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
 
 ## Review Focus
 
-1. **An export from the old reporter.** It has no `warnings` objects, no `categories`, and only `weeks` in its totals. Every page renders, reporter-sourced figures show "–", warnings stored before CR4 count under "Other", and the labeller keeps the app's built-in list. Pinned in Tasks 1, 6 and 8.
+1. **An export from the old reporter.** It has no `warnings` objects, no `categories`, and only `weeks` in its totals. Every page renders, reporter-sourced figures show "–", and warnings stored before CR4 count under "Other". With no category list, the labeller labels nothing and every finding sits in its area's unlabelled row. Pinned in Tasks 1, 6 and 8.
 2. **A warning kind the dashboard's family table doesn't know,** or a null `kind`. It lands under "Other", never dropped. Pinned in Task 6.
 3. **A schema 5 finding the reporter cleaned to `category: null` or `validity: null`.** It reads as not labelled by the workflow, and the app's label shows, marked as the app's. Pinned in Task 9.
 4. **Showing mode on every new route.** Warning texts hold branches and session files, and agent and skill names are safe. Each new route's response holds no hidden project's name, path or branch and no session ID. Pinned in each page task through `leaks`, and on real data in Task 10.
-5. **The switch to CR10's list relabels every stored finding.** The daily cap still holds, and findings waiting to be relabelled keep showing their old app label until the new one lands. They never show as unlabelled. Pinned in Task 8.
+5. **The switch to CR10's list relabels every stored finding.** The daily cap still holds, and a finding waiting for its new label sits in its area's unlabelled row, never in a row of the old list. Pinned in Task 8.
 
 ---
 
@@ -77,27 +77,26 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
 - Modify: `packages/web/e2e/*.screens.ts-snapshots/*`, re-rendered by `pnpm test:screens`
 
 **Interfaces** (all in `report.ts`):
-- `WarningSchema`: `{ text: z.string(), kind: str, run: { date: str, project: str, branch: str }.nullish(), session: str, step: { step: str, task: num, round: num, wave: str }.nullish(), skill: str, agent: str }`, with `type Warning`.
+- `WarningSchema`: `{ text: z.string(), kind: str, step: z.object({ step: str }).nullish() }`, the fields 2b reads, with `type Warning`.
 - `FindingSchema` gains `category: str` and `validity: z.enum(RELEVANCE).nullish()`. `RELEVANCE` comes from `categories.ts`.
 - `StepSchema` gains `strengths: z.array(z.object({ category: str, summary: str })).nullish()`.
 - `RunRecordSchema` gains `failing_test: z.array(z.object({ task: num, result: str })).nullish()`.
-- `RunEntrySchema` gains `title: str`, `categories: num`, `offers: z.array(z.object({ skill: str, outcome: str })).nullish()` and `warnings: z.array(WarningSchema).nullish()`.
-- `SessionEntrySchema` gains `title: str` and `warnings: z.array(WarningSchema).nullish()`.
-- `CategoryListSchema`: `{ version: num, rule: str, validity: z.record(z.string(), z.string()).nullish(), areas: z.array(z.object({ area: str, steps: strings, list: z.array(z.object({ id: z.string(), label: str, means: str })).nullish() })).nullish() }`, with `type CategoryList`. `ReportSchema` gains `categories: CategoryListSchema.nullish()`.
+- `RunEntrySchema` gains `offers: z.array(z.object({ skill: str, outcome: str })).nullish()` and `warnings: z.array(WarningSchema).nullish()`.
+- `SessionEntrySchema` gains `warnings: z.array(WarningSchema).nullish()`.
+- `CategoryListSchema`: `{ version: num, rule: str, validity: z.record(z.string(), z.string()).nullish(), areas: z.array(z.object({ area: str, list: z.array(z.object({ id: z.string(), label: str, means: str })).nullish() })).nullish() }`, with `type CategoryList`. The export's `areas` already include cleanup, with the implementation list. `ReportSchema` gains `categories: CategoryListSchema.nullish()`.
 - `reporterMark` in `format.ts` gives the "reporter, all time" badge's text and tooltip: "The latest export's figure over everything the reporter reads; it isn't summed by period yet." Tasks 3–5 use it.
 - `TotalsSchema` gains:
   - `scoreboard`: a record keyed by step kind, with `{ ran, found, counts, outcomes, tokens, cost }`, plus `failing_test`, `dispatch_guard`, `advisor: { calls, notes, changed, cost, share }`, `startup: { with, without }`, `fix_round_cap: { runs, ruled }` and `stop_rule: { stops }`
   - `run_time: { with_waves, without_waves }`, each `{ runs, timed, median_minutes }`
-  - `skills`: a record keyed by skill, with `{ runs, last, outcomes, missing }`
+  - `skills`: a record keyed by skill, with `{ runs, last, missing }`
   - `models: { agents: record → { requested, actual, mismatches }, main: record → { recommended: record → str, actual, differs } }`
   - `advisor: { calls, tokens, cost, by_role: record → { calls, flagged }, failed, notes, changed, missing, weeks: [{ week, advisor, fable, share, stop }], trial }`
   - `offers`: a record of counts
-  - `health: { warns, warnings, info }`
 
   Every leaf is nullish. For their exact shapes, read the reporter's `scoreboard`, `run_time`, `skill_totals`, `model_totals`, `advisor_facts` and `offer_totals` on `origin/main`.
 
 **The fixture `report-v5.json`** is report-later's units plus the merged reporter's keys, all invented:
-- every run and session gets a `title` and its `warnings` objects (one per `warns` line, same order and text)
+- every run and session gets its `warnings` objects (one per `warns` line, same order and text)
 - a new schema 5 Full run in `/Users/example/Work/tidepool-api` (branch `feature/webhooks`, finishing 2026-11-12T08:00:00Z) with:
   - labelled findings in each area: one with `category` and `validity`, one cleaned to nulls
   - `strengths` on two review steps
@@ -107,8 +106,6 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
 
 - [ ] **Step 1: Write the failing tests** in `load.test.ts`:
   - `report-v5` loads, and its new fields parse: a warning's `kind` and `step.step`, a finding's `validity`, a step's `strengths`, `categories.areas[0].list[0].id === 'scope'`, and `totals.scoreboard.task_review.ran`.
-  - `report-full`, which has none of the new keys, still loads.
-  - A warning with an unknown `kind` loads.
   - In `format.test.ts`: `reporterMark` gives its text and tooltip.
 - [ ] **Step 2: Run** `pnpm vitest run packages/shared/test/load.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement.** Change dev:fixtures' default list. Run `pnpm --filter @cwd/web exec playwright test --project=checks`, update only the assertions the third import changes, then run `pnpm test:screens --update-snapshots` and commit the baselines.
@@ -127,7 +124,7 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
 - Modify: `packages/server/src/routes.ts` (a weeks block)
 - Create: `packages/server/test/weeks.test.ts`
 - Create: `packages/web/src/weeks/WeeksPage.tsx` with its `.stories.tsx`
-- Create: `packages/web/src/weeks/WeeksCharts.tsx` with its `.stories.tsx`
+- Modify: `packages/web/src/home/WeeklyCharts.tsx` (exports `Chart` and `singleBars`)
 - Create: `packages/web/src/test/weeks.ts`
 - Modify: `router.tsx` (one route)
 - Modify: `Menu.tsx` (one entry)
@@ -142,7 +139,7 @@ Read them with `git -C ~/Work/claude-workflow show origin/main:<path>`. They des
 - Route: `GET /api/weeks`, through `periodQuery`.
 
 The page:
-- four ECharts small multiples (runs, final-review findings, cost, minutes per run), one measure each on its own axis
+- four small multiples (runs, final-review findings, cost, minutes per run), one measure each on its own axis, each a `<Chart option={singleBars(...)} />` reused from Home's `WeeklyCharts.tsx`. The week table below them is their table view.
 - the week table with the static page's columns
 - the Full runs table, with and without waves
 
@@ -214,15 +211,18 @@ The page:
 - Create: `e2e/skills.screens.ts` with its baseline
 
 **Interfaces:**
-- `skillSums(runs: RunEntry[], sessions: SessionEntry[], from: Date | null, to: Date): SkillRow[]`, where `SkillRow = { name: string; runs: number; sessions: number; last: string | null; outcomes: Record<string, number> }`.
-  - A unit counts once per skill when it has a load of that skill in `[from, to)`. `from` null means all time.
-  - `last` is the latest such load.
+- `skillSums(units: { skills?: RunEntry['skills'] }[]): SkillRow[]`, the same shape as the reporter's `skill_totals(units)`. Here `SkillRow = { name: string; runs: number; last: string | null; outcomes: Record<string, number> }`:
+  - `runs` counts the units, runs and sessions alike, that loaded the skill, which is the static page's "runs" column.
+  - `last` is the latest load.
   - `outcomes` counts the loads by `skillOutcomeLabel`.
 - `SkillsResponse = { skills: (SkillRow & { missing: number | null })[] }`, where `missing` is the reporter's all-time `totals.skills[name].missing`.
-- `skillsView({ runs, sessions, totals, query, now })`, where the path and project filters apply to runs only. The route is `GET /api/skills`, which reads `listUnits(db, 'session')` too.
+- `skillsView({ runs, sessions, totals, query, now })`:
+  - It keeps each unit's loads whose `weekOf(parseTime(time))` is in `period(query, now).weeks`, then calls `skillSums`.
+  - The path and project filters apply to runs only.
+  - The route is `GET /api/skills`, which reads `listUnits(db, 'session')` too.
 
 - [ ] **Step 1: Write the failing tests.**
-  - In `skills.test.ts`, with `from` null over report-v5: each skill's `runs + sessions` equals `totals.skills[name].runs`, and `last` equals its `last`.
+  - In `skills.test.ts`, with `skillSums` over every stored run and session from report-v5: each skill's `runs` equals `totals.skills[name].runs`, and `last` equals its `last`.
   - A load outside the period doesn't count.
   - `leaks` finds nothing with showing on.
   - Stories and the e2e axe check.
@@ -275,22 +275,21 @@ The page:
 - Create: the generated migration
 - Modify: `packages/server/src/db/import.ts` (`applyVersion` writes them)
 - Modify: `packages/server/src/db/read.ts` (`StoredWarning` gains them)
-- Create: `packages/shared/src/compliance.ts`
 - Create: `packages/shared/src/api/compliance.ts`
-- Modify: `index.ts` (two lines)
+- Modify: `index.ts` (one line)
 - Create: `packages/server/src/views/compliance.ts`
 - Modify: `packages/server/src/views/home.ts` (the diagram's `warnings`)
 - Modify: `routes.ts` (a compliance block, and home's `warnings` input)
-- Modify: `packages/server/src/main.ts` and `dev-fixtures.ts` (`ensureDerived` after `openDb`)
+- Modify: `packages/server/src/main.ts` (`rebuildDerived` after `openDb`)
 - Create: `packages/server/test/compliance.test.ts`
 - Modify: `packages/server/test/home.test.ts`
 - Modify: `packages/server/test/import.test.ts`
 
 **Interfaces:**
-- `warnings` gains the derived columns `kind` (text, nullable) and `step` (text, nullable: the warning's `step.step`).
+- `warnings` gains the derived columns `warning_kind` and `step_kind` (text, nullable; the warning's `kind` and `step.step`). `StoredWarning` gains them as `warningKind` and `stepKind`, since its `kind` already says run or session.
   - `applyVersion` writes them from the version's `warnings` object whose `text` equals the warns line, and null when there is none. `rebuildDerived` gives the same rows.
-  - `ensureDerived(db: Db): void`, in `import.ts`, runs `rebuildDerived` once when `state`'s `derivedVersion` is below `DERIVED_VERSION` (2), then sets it, so rows stored before this task gain their kinds. `main.ts` and dev:fixtures call it right after `openDb`.
-- `FAMILIES: { family: string; label: string; kinds: readonly string[] }[]` in `compliance.ts` has five families: review flow, steps and the record, agents and models, skills and offers, sessions. Their kinds come from PR #8's table, plus CR10's `findings_unlabelled` and `strengths_unrecorded` under steps and the record. `familyOf(kind: string | null): string` gives `'other'` for an unknown or null kind.
+  - `main.ts` calls the existing `rebuildDerived(db)` right after `openDb`, so rows stored before this task gain their kinds. A rebuild always gives the same rows (the convention), so rebuilding at every start is safe.
+- `FAMILIES: { family: string; kinds: readonly string[] }[]` in `packages/server/src/views/compliance.ts` has five families: `review_flow`, `steps_record`, `agents_models`, `skills_offers`, `sessions`. Their kinds come from PR #8's table, plus CR10's `findings_unlabelled` and `strengths_unrecorded` under `steps_record`. `familyOf(kind: string | null): string` gives `'other'` for an unknown or null kind.
 - `ComplianceQuery = FindingsQuery & { resolved: boolean; step?: StepKind }`.
 - `ComplianceResponse = { weeks: string[]; rows: { family: string; kind: string | null; cells: number[] }[]; warnings: { kind: string | null; family: string; week: string; text: string; sessionId: string | null; runKey: string | null; project: string | null; branch: string | null; step: StepKind | null; isNew: boolean }[]; hidden: number }`.
   - Rows only for kinds with a warning in the period, in `FAMILIES` order, with "other" last.
@@ -304,9 +303,7 @@ The page:
 - Route: `GET /api/compliance`, through `periodQuery`, plus `resolved=1` and `step`.
 
 - [ ] **Step 1: Write the failing tests.**
-  - In `import.test.ts`:
-    - Importing report-v5 stores each warning's kind and step, a report-full warning stores nulls, and `rebuildDerived` gives the same rows.
-    - On a database whose warnings rows have null kinds and no `derivedVersion`, `ensureDerived` fills the kinds once, and a second call changes nothing.
+  - In `import.test.ts`: importing report-v5 stores each warning's `warningKind` and `stepKind`, a report-full warning stores nulls, and `rebuildDerived` gives the same rows.
   - In `compliance.test.ts`, on report-full then report-v5:
     - `step_agent_missing` sits in the steps family, in its run's week.
     - `brand_new_check` and every pre-CR4 warning sit under "other".
@@ -321,8 +318,8 @@ The page:
 - [ ] **Step 5: Commit:** `feat: warnings keep their kind and step; Compliance by kind and week; the diagram counts warnings by step`.
 
 Conventions lines for the report:
-- A warning's kind and step are derived by `applyVersion`, and the family table is `FAMILIES`.
-- A change to a derived value's shape bumps `DERIVED_VERSION`, so `ensureDerived` rebuilds once.
+- A warning's kind and step are derived by `applyVersion`, and the family table is `FAMILIES` in `views/compliance.ts`.
+- `main.ts` rebuilds the derived values at every start.
 
 ### Task 7: The Compliance page, the heatmap component and the orange boxes
 
@@ -335,7 +332,7 @@ Conventions lines for the report:
 - Modify: `packages/web/src/test/home.ts`
 - Modify: `router.tsx` (`/compliance`, with a `step` search param)
 - Modify: `Menu.tsx` (Compliance, after Findings)
-- Modify: `format.ts` (`kindLabel`, `familyLabel`)
+- Modify: `format.ts` (`kindLabel`, `FAMILY_LABELS`)
 - Create: `e2e/compliance.spec.ts`
 - Create: `e2e/compliance.screens.ts` with its baseline
 - Modify: the home screens baseline
@@ -347,7 +344,8 @@ Conventions lines for the report:
   - The table scrolls in `containerProps`' named region.
 
   `FindingsGrid` keeps its props and renders through it, so its stories and the Findings e2e pass unchanged.
-- `kindLabel(kind: string | null): string`: the kind's slug in words, `step_agent_missing` → "step has no agent id" as PR #8's table words it, and "other" for null. `familyLabel(family: string): string`.
+- `kindLabel(kind: string | null): string`: the kind's slug in words, `step_agent_missing` → "step has no agent id" as PR #8's table words it, and "other" for null.
+- `FAMILY_LABELS: Record<string, string>` in `format.ts`: Review flow, Steps and the record, Agents and models, Skills and offers, Sessions, Other.
 - **The page:**
   - `ListFilters` with a current/resolved switch (the 2a switch convention).
   - The grid by family.
@@ -383,18 +381,20 @@ Conventions lines for the report:
 - Modify: `packages/server/src/main.ts` (the label job reads the active list)
 - Modify: `packages/shared/src/api/findings.ts` and `api/runs.ts` (`categoryLabels`)
 - Modify: `packages/server/src/views/findings.ts` and `views/runs.ts` (rows in the active list's order, labels in responses)
-- Modify: `packages/web/src/lib/format.ts` (`categoryLabel(category, labels)`)
+- Modify: `packages/shared/src/categories.ts` (keeps `AREAS`, `areaOf` and `RELEVANCE`; `CATEGORIES` and `CATEGORY_LIST_VERSION` go)
+- Modify: `packages/web/src/lib/format.ts` (`categoryLabel(category, labels)`; `CATEGORY_LABELS` goes)
 - Modify: `FindingsTable.tsx`, `FindingsGrid.tsx` and their stories
-- Modify: `packages/server/test/labels.test.ts`, `labeller.test.ts` and `findings.test.ts`
+- Modify: `packages/server/src/dev-fixtures.ts` (saves `labels.json` under the active list)
+- Modify: `packages/shared/fixtures/labels.json` (CR10's ids)
+- Modify: `packages/server/test/labels.test.ts`, `labeller.test.ts` and `findings.test.ts`, moving their labelled cases to report-v5 and CR10's ids
 
 **Interfaces:**
-- `type ActiveList = { number: number; areas: Record<Area, { id: string; label: string; means: string | null }[]>; rule: string | null; validity: Record<string, string> | null }`.
-- `activeList(db: Db): ActiveList`:
-  - From the latest good import's `categories`, when it has areas: `number` is `100 + version`, the plan area takes the `plan` list, and implementation and cleanup take the `implementation` list.
-  - Otherwise the app's built-in `CATEGORIES`: `number` is `CATEGORY_LIST_VERSION` (1), the labels are the 2a display labels, and `means` is null.
-  - The `list_version` column keeps its type and primary key, so no stored label moves. App and workflow lists never share a number.
+- `type ActiveList = { number: number; areas: Record<Area, { id: string; label: string; means: string }[]>; rule: string; validity: Record<string, string> }`.
+- `activeList(db: Db): ActiveList | null`:
+  - It is built from the latest good import's `categories`, whose `areas` already map each area to its list.
+  - `number` is `100 + version`, so it never meets 2a's labels (list 1), which keep their row and simply stop showing. The `list_version` column keeps its type and primary key, so no stored label moves.
+  - It is null when the export has no category list. Then nothing is labelled, every finding sits in its area's unlabelled row, and `categoryLabels` is `{}`.
 - `labelInputs` gives each input its area as today. `currentLabels(db, inputs, list)`, `pendingInputs(db, inputs, model, list)` and `saveBatch(db, labels, usage, list)` take the list's number.
-  - **Fallback:** when the active list has no label for a finding yet, `currentLabels` falls back to that finding's latest label from any list, so a finding waiting to be relabelled keeps its old label (Review Focus 5).
 - `labelPending(db, client, settings, now, list)`:
   - It keeps a result only when its category is one of `list.areas[area]`'s ids.
   - `anthropicLabelClient`'s schema and prompt are built from the list. The prompt's category lines become `id: means`, it adds the rule, and relevance is defined by the list's `validity` definitions when present.
@@ -402,10 +402,8 @@ Conventions lines for the report:
 
 - [ ] **Step 1: Write the failing tests.**
   - `labels.test.ts`:
-    - After importing report-v5, `activeList.number` is 101, with `code_facts` in its plan list.
-    - On report-full alone, it is 1.
-    - A label saved under 1 still shows through the fallback while every finding is pending under 101.
-    - With `dailyMax` 30, only 30 are relabelled on the first day.
+    - After importing report-v5, `activeList.number` is 101, with `code_facts` in its plan list. On report-full alone, it is null.
+    - A label saved under list 1 no longer shows once list 101 is active, and its finding sits in the unlabelled row and is pending.
   - `labeller.test.ts`: a stubbed reply naming `task split and order` under list 101 is not stored, and `task_split` is.
   - `findings.test.ts`: the plan rows are the six workflow ids in order, and `categoryLabels.task_split` is "Task split and order".
   - The `FindingsTable` stories show the label from `categoryLabels`.
