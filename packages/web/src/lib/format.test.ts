@@ -3,6 +3,9 @@ import {
   advisorLabel,
   cellShade,
   countLabel,
+  FAMILY_LABELS,
+  KIND_LABELS,
+  kindLabel,
   countsLabel,
   formatCount,
   formatMinutes,
@@ -163,5 +166,32 @@ describe('outcomesLabel', () => {
   it('writes each outcome with its count, or a dash with none', () => {
     expect(outcomesLabel({ ran: 2, 'applied 2, skipped 1': 1 })).toBe('ran × 2 · applied 2, skipped 1 × 1');
     expect(outcomesLabel({})).toBe('–');
+  });
+});
+
+describe('kindLabel', () => {
+  it('words each of PR #8’s and CR10’s 31 kinds by hand', () => {
+    expect(Object.keys(KIND_LABELS)).toHaveLength(31);
+    expect(kindLabel('step_agent_missing')).toBe('step has no agent id');
+    expect(kindLabel('model_less_dispatch')).toBe('model-less dispatch');
+    expect(kindLabel('findings_unlabelled')).toBe('findings unlabelled');
+  });
+
+  it('shows a kind it doesn’t hold as its slug with spaces, and no kind as "other"', () => {
+    expect(kindLabel('brand_new_check')).toBe('brand new check');
+    expect(kindLabel(null)).toBe('other');
+  });
+});
+
+describe('FAMILY_LABELS', () => {
+  it('names the families, "other" included', () => {
+    expect(FAMILY_LABELS).toEqual({
+      review_flow: 'Review flow',
+      steps_record: 'Steps and the record',
+      agents_models: 'Agents and models',
+      skills_offers: 'Skills and offers',
+      sessions: 'Sessions',
+      other: 'Other',
+    });
   });
 });

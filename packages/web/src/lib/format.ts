@@ -32,6 +32,56 @@ export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
 }
 
+/** A warning kind's short wording, from PR #8's and CR10's sentences. */
+export const KIND_LABELS: Record<string, string> = {
+  simplify_not_run: 'simplify not run',
+  no_transcript: 'no session transcript',
+  final_review_without_simplify: 'final review without simplify',
+  simplify_record_differs: 'simplify record differs',
+  agent_not_found: 'agent type not found',
+  count_line_missing: 'count line missing',
+  final_findings_differ: 'final findings differ',
+  named_role_by_general_purpose: 'named role by general-purpose',
+  model_less_dispatch: 'model-less dispatch',
+  startup_missing: 'startup guidelines missing',
+  step_count_differs: 'step count differs',
+  step_counts_differ: 'step counts differ',
+  findings_dont_add_up: "findings don't add up",
+  verdicts_dont_add_up: "fix-check verdicts don't add up",
+  required_skill_missing: 'required skill did not run',
+  agent_off_pin: 'agent off its pin',
+  agent_skill_missing: 'agent ran without its skill',
+  risk_area_small_path: 'risk area on the Small path',
+  wave_unchecked: 'wave has no wave check',
+  offer_not_recorded: 'offer not recorded',
+  fix_added_differs: "fix_added differs from git's",
+  conventions_not_added: 'conventions entry not added',
+  unrecorded_session: 'session wrote no run record',
+  plan_review_without_simplify: 'plan review without plan simplify',
+  typed_skill_not_loaded: 'typed skill never loaded',
+  step_agent_missing: 'step has no agent id',
+  step_agent_unknown: "step's agent id matches no dispatch",
+  step_agent_mismatch: "step's agent id is another kind's",
+  step_agent_duplicate: 'steps share an agent id',
+  findings_unlabelled: 'findings unlabelled',
+  strengths_unrecorded: 'strengths unrecorded',
+};
+
+/** A warning kind on screen: its wording, a kind the dashboard doesn't know as its slug with spaces, none as "other". */
+export function kindLabel(kind: string | null): string {
+  return kind === null ? 'other' : (KIND_LABELS[kind] ?? countLabel(kind));
+}
+
+/** A warning family's name on screen, as the Compliance page heads its rows. */
+export const FAMILY_LABELS: Record<string, string> = {
+  review_flow: 'Review flow',
+  steps_record: 'Steps and the record',
+  agents_models: 'Agents and models',
+  skills_offers: 'Skills and offers',
+  sessions: 'Sessions',
+  other: 'Other',
+};
+
 /** A count, or a dash when it isn't known. */
 export function formatCount(count: number | null): string {
   return count === null ? NONE : String(count);
@@ -162,6 +212,11 @@ const SHADES = [
   'bg-[#184f95] text-white',
 ];
 const ZERO_SHADE = 'bg-[#f0efec] text-[#52514e]';
+
+// The dataviz palette's reserved status orange ("serious") for a warned step box's border, and the approved mockup's
+// darker orange for the warning text beside it, readable on white (5.9:1).
+export const WARNING_BORDER = 'border-[#ec835a]';
+export const WARNING_INK = 'text-[#a8461c]';
 
 /** A heatmap cell's classes: its value's step of the ramp by its share of `max`, the grey for 0. */
 export function cellShade(value: number, max: number): string {

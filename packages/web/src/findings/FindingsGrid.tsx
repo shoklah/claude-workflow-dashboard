@@ -1,8 +1,7 @@
 import type { Area, FindingCell, FindingsResponse } from '@cwd/shared';
-import { cn } from 'cn';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
+import { HeatmapTable } from '../components/HeatmapTable.tsx';
 import { CategoryBadge } from '../runs/FindingsTable.tsx';
-import { categoryLabel, cellShade, formatPercent, weekLabel } from '../lib/format.ts';
+import { categoryLabel, formatCount, formatPercent } from '../lib/format.ts';
 
 export type Measure = 'raised' | 'actedOn' | 'invalid';
 
@@ -16,8 +15,8 @@ function value(cell: FindingCell, measure: Measure): number | null {
 }
 
 /**
- * The area's categories down and the weeks across, each cell a button with its number written in it, so the grid is
- * its own table view. One blue ramp shades the cells: a count against the grid's largest, a share against 100%.
+ * The area's categories down and the weeks across, in the heatmap: a count shaded against the grid's largest, a share
+ * against 100%.
  */
 export function FindingsGrid({
   response,
@@ -35,53 +34,26 @@ export function FindingsGrid({
   const rows = response.rows.filter((row) => row.area === area);
   const max = measure === 'raised' ? Math.max(0, ...rows.flatMap((row) => row.cells.map((c) => c.raised))) : 100;
   return (
-    // It scrolls sideways over many weeks, so its container is a named tab stop for keyboard users.
-    <Table
-      className="w-auto"
-      containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Findings by category and week' }}
-    >
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead>Category</TableHead>
-          {response.weeks.map((week) => (
-            <TableHead key={week} className="text-center">
-              {weekLabel(week)}
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.category} className="border-0 hover:bg-transparent">
-            <TableHead scope="row" className="font-normal">
-              <CategoryBadge category={row.category} />
-            </TableHead>
-            {row.cells.map((cell, i) => {
-              const week = response.weeks[i];
-              const shown = value(cell, measure);
-              const text = measure === 'raised' ? String(shown) : formatPercent(shown);
-              const pressed = selected?.category === row.category && selected.week === week;
-              return (
-                <TableCell key={week} className="p-0.5">
-                  <button
-                    type="button"
-                    aria-pressed={pressed}
-                    aria-label={`${categoryLabel(row.category)}, week of ${weekLabel(week)}: ${text}`}
-                    onClick={() => onSelect({ category: row.category, week })}
-                    className={cn(
-                      'h-7 w-12 rounded-sm text-xs tabular-nums',
-                      cellShade(shown ?? 0, max),
-                      pressed && 'outline-2 outline-offset-1 outline-foreground',
-                    )}
-                  >
-                    {text}
-                  </button>
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <HeatmapTable
+      label="Findings by category and week"
+      corner="Category"
+      weeks={response.weeks}
+      groups={[
+        {
+          heading: null,
+          rows: rows.map((row) => ({
+            key: categoryLabel(row.category),
+            header: <CategoryBadge category={row.category} />,
+            values: row.cells.map((cell) => value(cell, measure)),
+          })),
+        },
+      ]}
+      max={max}
+      format={measure === 'raised' ? formatCount : formatPercent}
+      selected={selected && { key: categoryLabel(selected.category), week: selected.week }}
+      onSelect={(cell) =>
+        onSelect({ category: rows.find((row) => categoryLabel(row.category) === cell.key)!.category, week: cell.week })
+      }
+    />
   );
 }

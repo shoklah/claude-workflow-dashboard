@@ -1,4 +1,6 @@
 import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { toStepKind, type StepKind } from '@cwd/shared';
+import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
 import { HomePage } from './home/HomePage.tsx';
 import { Shell } from './layout/Shell.tsx';
@@ -43,6 +45,15 @@ const findingsRoute = createRoute({
   component: FindingsPage,
 });
 
+const complianceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance',
+  validateSearch: (search: Record<string, unknown>): { step?: StepKind } => ({ step: toStepKind(search.step) }),
+  component: function Compliance() {
+    return <CompliancePage step={complianceRoute.useSearch().step} />;
+  },
+});
+
 const stepsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/steps',
@@ -68,7 +79,7 @@ const modelsRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute, findingsRoute, stepsRoute, skillsRoute, modelsRoute, weeksRoute]),
+  routeTree: rootRoute.addChildren([homeRoute, runsRoute, runRoute, findingsRoute, complianceRoute, stepsRoute, skillsRoute, modelsRoute, weeksRoute]),
 });
 
 declare module '@tanstack/react-router' {

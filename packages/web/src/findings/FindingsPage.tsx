@@ -16,7 +16,7 @@ const MEASURES: { measure: Measure; label: string }[] = [
 ];
 
 /** One option of a switch, pressed while it is the switch's value. */
-function Option({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
+export function Option({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <Button size="sm" variant={pressed ? 'default' : 'outline'} aria-pressed={pressed} onClick={onClick}>
       {children}
