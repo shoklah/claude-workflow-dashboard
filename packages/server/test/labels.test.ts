@@ -10,6 +10,7 @@ import { hash } from '../src/keys.ts';
 import { listUnits } from '../src/db/read.ts';
 import {
   currentLabels,
+  findingKey,
   labelInputs,
   labelledOn,
   pendingInputs,
@@ -70,7 +71,7 @@ function labelled(): { db: Db; input: LabelInput; label: StoredLabel } {
   return { db, input, label };
 }
 
-const keyOf = (i: LabelInput) => `${i.runKey} ${i.findingId}`;
+const keyOf = (i: LabelInput) => findingKey(i.runKey, i.findingId);
 
 afterEach(() => {
   for (const db of dbs.splice(0)) db.$client.close();

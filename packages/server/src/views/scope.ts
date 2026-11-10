@@ -1,4 +1,4 @@
-import { folderName, projectNames, SESSION_FILE, splitSessionId, type RunFacts } from '@cwd/shared';
+import { folderName, projectNames, SESSION_ID, splitSessionId, type RunFacts } from '@cwd/shared';
 import { projectKey } from '../keys.ts';
 import { trimPaths } from '../text.ts';
 
@@ -10,7 +10,7 @@ import { trimPaths } from '../text.ts';
 export type Scope = { shown: Set<string>; names: Map<string, string>; hidden: string[]; branches: string[] };
 
 // A session ID, bare or as its `<uuid>.jsonl` file.
-const SESSION_IDS = new RegExp(`${SESSION_FILE.source.replace('\\.jsonl', '')}(?:\\.jsonl)?`, 'gi');
+const SESSION_IDS = new RegExp(`${SESSION_ID.source}(?:\\.jsonl)?`, 'gi');
 
 /** The scope of showing mode's picked keys over the stored runs' branches by root; null while showing mode is off. */
 export function scopeOf(

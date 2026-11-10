@@ -58,7 +58,9 @@ export function storedBranches(runs: StoredUnit<RunEntry>[]): Map<string, string
   const branches = new Map<string, string[]>();
   for (const run of runs) {
     const root = rootOf(run);
-    branches.set(root, [...(branches.get(root) ?? []), run.merged.record?.branch ?? '']);
+    const list = branches.get(root) ?? [];
+    list.push(run.merged.record?.branch ?? '');
+    branches.set(root, list);
   }
   return branches;
 }

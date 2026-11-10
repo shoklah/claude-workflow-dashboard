@@ -5,7 +5,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadReport, PATHS, SESSION_FILE, type RunEntry, type RunsResponse } from '@cwd/shared';
+import { loadReport, PATHS, splitSessionId, type RunEntry, type RunsResponse } from '@cwd/shared';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { importReport } from './db/import.ts';
@@ -59,8 +59,7 @@ else {
   const dir = mkdtempSync(join(tmpdir(), 'cwd check real '));
   const db = openDb(join(dir, 'dashboard.sqlite'));
   try {
-    const raw = result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
-    importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, new Date());
+    importReport(db, loaded.report, result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown }, new Date());
     // Everything was seen before the import, so the home feed holds every run and warning.
     setSeenAt(db, new Date(0));
     const branches = storedBranches(listUnits(db, 'run'));
@@ -69,7 +68,7 @@ else {
     setShowing(db, shown.map(projectKey));
     const { sessions, runs } = loaded.report;
     const files = [...sessions.map((s) => s.file), ...runs.map((run) => run.window?.transcript)];
-    const sessionIds = files.flatMap((file) => SESSION_FILE.exec(file ?? '')?.[1] ?? []);
+    const sessionIds = files.flatMap((file) => splitSessionId(file ?? '').sessionId ?? []);
     const forbidden = forbiddenStrings(roots, branches, shown, sessionIds);
     const app = createApp({
       db,

@@ -82,10 +82,11 @@ export function findingsView(input: {
   const findings: FindingItem[] = [];
   let hidden = 0;
   for (const { unit, week } of runs) {
-    // runView gives null only for a hidden project's run, so never with no scope.
-    const all = runView(unit, [], names, null, labels)!;
+    // runView gives null only for a hidden project's run, so never with no scope. Masking changes no step, category,
+    // outcome or relevance, so a shown run's masked rows count in the cells as they are.
+    const shown = runView(unit, [], names, scope, labels);
+    const all = shown ?? runView(unit, [], names, null, labels)!;
     for (const f of all.findings) byRow.get(`${areaOf(f.step)} ${f.category}`)?.[weeks.indexOf(week)].push(f);
-    const shown = scope ? runView(unit, [], names, scope, labels) : all;
     if (!shown) {
       hidden += all.findings.length;
       continue;

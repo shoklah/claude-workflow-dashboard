@@ -18,9 +18,8 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 const db = openDb(join(config.dataDir, 'dashboard.sqlite'));
 const now = () => new Date();
 const settings = labellerSettings(process.env);
-const labels = settings
-  ? createQueue(() => labelPending(db, anthropicLabelClient(settings.model), settings, now()), 'label')
-  : null;
+const client = settings && anthropicLabelClient(settings.model);
+const labels = settings && client ? createQueue(() => labelPending(db, client, settings, now()), 'label') : null;
 const queue = createQueue(async () => {
   await importOnce(db, config, now);
   labels?.request();

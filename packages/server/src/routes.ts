@@ -43,14 +43,16 @@ function periodQuery(c: Context): FindingsQuery {
 
 /** The API routes, one block per task. The request rules (Host, the POST header and Origin) are app.ts's middleware. */
 export function registerRoutes(app: Hono, deps: AppDeps): void {
-  // Showing mode's scope over the stored runs, null while it is off.
-  const scopeFor = (runs: StoredUnit<RunEntry>[]): Scope | null =>
-    scopeOf(getShowing(deps.db), storedBranches(runs), deps.aliases);
+  // Showing mode's scope over the stored runs (listed here when the caller has none), null while it is off.
+  const scopeFor = (runs?: StoredUnit<RunEntry>[]): Scope | null => {
+    const showing = getShowing(deps.db);
+    return showing && scopeOf(showing, storedBranches(runs ?? listUnits(deps.db, 'run')), deps.aliases);
+  };
 
   // Task 4: the import's status, the refresh and "mark all seen".
   app.get('/api/status', (c) =>
     c.json(
-      statusView(lastImport(deps.db), lastGoodImport(deps.db), deps.importing(), scopeFor(listUnits(deps.db, 'run'))),
+      statusView(lastImport(deps.db), lastGoodImport(deps.db), deps.importing(), scopeFor()),
     ),
   );
   app.post('/api/refresh', (c) => {

@@ -4,7 +4,7 @@ import { useLiveQuery } from '../api.ts';
 import { hiddenLabel } from '../lib/format.ts';
 import { RunsTable } from './RunsTable.tsx';
 
-export const PERIODS = [
+const PERIODS = [
   { weeks: 1, label: 'This week' },
   { weeks: 4, label: 'Last 4 weeks' },
   { weeks: 12, label: 'Last 12 weeks' },
@@ -21,7 +21,7 @@ export function listPath(base: string, query: FindingsQuery & { warnings?: boole
   return `${base}?${params}`;
 }
 
-export const SELECT = 'rounded-md border bg-background px-2 py-1';
+const SELECT = 'rounded-md border bg-background px-2 py-1';
 
 /** A list's path, project and period filters, then the page's own controls; `projects` are the project options. */
 export function ListFilters({
