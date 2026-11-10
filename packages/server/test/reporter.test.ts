@@ -6,6 +6,7 @@ import { fixture, fixturePath } from '../../shared/test/fixture.ts';
 import type { Config } from '../src/config.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { getCursor, lastGoodImport, lastImport, listUnits } from '../src/db/read.ts';
+import { runKey } from '../src/keys.ts';
 import { importOnce, runReporter } from '../src/reporter.ts';
 
 const AT = new Date('2026-11-10T18:00:00Z');
@@ -178,16 +179,45 @@ describe('importOnce', () => {
    * A reporter stand-in that records its appended arguments in `argsFile` and prints `file`, which `write` fills with
    * a fixture's content and a cursor.
    */
-  function recording(): { command: string[]; write: (name: string, cursor: string) => void; sent: () => string[] } {
+  function recording(): {
+    command: string[];
+    write: (name: string, cursor: string, change?: (raw: any) => void) => void;
+    sent: () => string[];
+  } {
     const dir = tempDir();
     const file = join(dir, 'report.json');
     const argsFile = join(dir, 'args.txt');
     return {
       command: ['sh', '-c', 'echo "$2 $3" >> "$1"; cat "$0"', file, argsFile],
-      write: (name, cursor) => writeFileSync(file, JSON.stringify({ ...fixture(name), cursor })),
+      write: (name, cursor, change) => {
+        const raw = { ...fixture(name), cursor };
+        change?.(raw);
+        writeFileSync(file, JSON.stringify(raw));
+      },
       sent: () => readFileSync(argsFile, 'utf8').trim().split('\n'),
     };
   }
+
+  test('an incremental export marks only its removed units missing', async () => {
+    const reporter = recording();
+    const { db, config } = setup(reporter.command);
+    reporter.write('report-full', 's1:1');
+    await importOnce(db, config, () => AT);
+    const runs = listUnits(db, 'run').map((u) => u.key);
+    const removed = runKey(fixture('report-full').runs[1]) as string;
+    reporter.write('report-full', 's1:2', (raw) => {
+      raw.runs = [raw.runs[0]];
+      raw.sessions = [];
+      raw.removed = { runs: [removed], sessions: [] };
+    });
+    const LATER = new Date(AT.getTime() + 60_000);
+    await importOnce(db, config, () => LATER);
+    expect(lastImport(db)).toMatchObject({ ok: true });
+    expect(Object.fromEntries(listUnits(db, 'run').map((u) => [u.key, u.missingSince]))).toEqual(
+      Object.fromEntries(runs.map((key) => [key, key === removed ? LATER : null])),
+    );
+    expect(listUnits(db, 'session').map((u) => u.missingSince)).toEqual([null, null]);
+  });
 
   test('sends 0 when no cursor is stored, then the stored cursor', async () => {
     const reporter = recording();
@@ -223,7 +253,7 @@ describe('importOnce', () => {
       'CREATE TRIGGER fail_import BEFORE INSERT ON imports WHEN NEW.ok = 1 ' +
         "BEGIN SELECT RAISE(ABORT, 'database is locked'); END",
     );
-    reporter.write('report-full', 's1:2');
+    reporter.write('report-later', 's1:2');
     await importOnce(db, config, () => AT);
     expect(lastImport(db)).toEqual({ at: AT, ok: false, error: 'import failed: database is locked' });
     expect(getCursor(db)).toBe('s1:1');
