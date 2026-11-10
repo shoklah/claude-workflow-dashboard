@@ -10,8 +10,9 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvas }) => {
     const links = await canvas.findAllByRole('link');
-    await expect(links.map((link) => link.textContent)).toEqual(['Home', 'Runs', 'Findings']);
+    await expect(links.map((link) => link.textContent)).toEqual(['Home', 'Runs', 'Findings', 'Steps and rules']);
     await expect(canvas.getByRole('link', { name: 'Findings' })).toHaveAttribute('href', '/findings');
+    await expect(canvas.getByRole('link', { name: 'Steps and rules' })).toHaveAttribute('href', '/steps');
     await expect(canvas.getByRole('link', { name: 'Runs' })).toHaveAttribute('href', '/runs');
     await expect(canvas.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
   },

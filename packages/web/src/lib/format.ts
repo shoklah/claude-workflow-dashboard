@@ -32,6 +32,32 @@ export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
 }
 
+/** A count line as words: "cuts 11 · flags 5"; a dash when it has no counts or isn't known. */
+export function countsLabel(counts: Record<string, number> | null): string {
+  if (!counts || Object.keys(counts).length === 0) return NONE;
+  return Object.entries(counts)
+    .map(([key, n]) => `${countLabel(key)} ${n}`)
+    .join(' · ');
+}
+
+/** The tokens of every kind together, compact: "9.8M", "333K"; a dash when they aren't known. */
+export function formatTokens(tokens: Record<string, number> | null): string {
+  if (tokens === null) return NONE;
+  const total = Object.values(tokens).reduce((sum, n) => sum + n, 0);
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(total);
+}
+
+/** A rule's name on the Steps and rules page, as the static page names it; an offer's is followed by its skill. */
+export const RULE_LABELS = {
+  failingTest: 'failing-test check',
+  dispatchGuard: 'dispatch guard',
+  advisor: 'advisor',
+  startup: 'startup guidelines',
+  fixRoundCap: 'fix-round cap',
+  stopRule: 'stop rule',
+  offer: 'offer',
+};
+
 // The categories whose display label adds the spec's parentheses; the others show as they are stored.
 const CATEGORY_LABELS: Record<string, string> = {
   scope: 'scope (missing or extra work)',
