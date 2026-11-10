@@ -1,5 +1,5 @@
-import { and, asc, desc, eq, isNull, notInArray } from 'drizzle-orm';
-import type { Report } from '@cwd/shared';
+import { and, asc, desc, eq, isNull, notInArray, sql } from 'drizzle-orm';
+import type { Report, Warning } from '@cwd/shared';
 import { runKey, sessionKey } from '../keys.ts';
 import { mergeKnown } from './merge.ts';
 import type { Db, Tx } from './open.ts';
@@ -8,14 +8,17 @@ import { imports, units, unitVersions, warnings } from './schema.ts';
 
 type Kind = 'run' | 'session';
 // The fields of a unit's raw JSON its derived rows read; the loader has already checked their shape.
-type RawUnit = { window?: unknown; warns?: string[] | null };
+type RawUnit = { window?: unknown; warns?: string[] | null; warnings?: Warning[] | null };
 
 /**
  * Folds one raw version of a unit into its derived row and its warnings, and returns the new merged facts. `prev` is
- * the unit's merged facts before this version, undefined for its first version, which also sets firstSeenAt.
+ * the unit's merged facts before this version, undefined for its first version, which also sets firstSeenAt. A
+ * warning's kind and step come from the version's warning object of the same text; one this version doesn't give
+ * keeps its stored value, so the latest known one wins, as mergeKnown keeps a fact. A warning's firstSeenAt never
+ * changes.
  */
 function applyVersion(tx: Tx, kind: Kind, key: string, raw: unknown, receivedAt: Date, prev: unknown): unknown {
-  const { window, warns } = raw as RawUnit;
+  const { window, warns, warnings: objects } = raw as RawUnit;
   const merged = mergeKnown(prev, raw);
   const readable = kind === 'session' || window != null;
   tx.insert(units)
@@ -26,7 +29,17 @@ function applyVersion(tx: Tx, kind: Kind, key: string, raw: unknown, receivedAt:
     })
     .run();
   for (const text of warns ?? []) {
-    tx.insert(warnings).values({ kind, key, text, firstSeenAt: receivedAt }).onConflictDoNothing().run();
+    const object = objects?.find((w) => w.text === text);
+    tx.insert(warnings)
+      .values({ kind, key, text, firstSeenAt: receivedAt, warningKind: object?.kind, stepKind: object?.step?.step })
+      .onConflictDoUpdate({
+        target: [warnings.kind, warnings.key, warnings.text],
+        set: {
+          warningKind: sql`coalesce(excluded.warning_kind, ${warnings.warningKind})`,
+          stepKind: sql`coalesce(excluded.step_kind, ${warnings.stepKind})`,
+        },
+      })
+      .run();
   }
   return merged;
 }
@@ -51,8 +64,9 @@ function importUnit(tx: Tx, kind: Kind, key: string, raw: unknown, at: Date): vo
 
 /**
  * Stores an export in one transaction. `rawUnits` holds the export's runs and sessions as received, in the report's
- * order, and its totals; a run with no key is skipped. A stored unit absent from the export is marked missing, never
- * deleted. The first successful import sets the "seen" time, so the feed starts empty.
+ * order, and its totals; the export's category list is stored as the loader read it. A run with no key is skipped.
+ * A stored unit absent from the export is marked missing, never deleted. The first successful import sets the "seen"
+ * time, so the feed starts empty.
  */
 export function importReport(
   db: Db,
@@ -78,7 +92,7 @@ export function importReport(
         .where(and(eq(units.kind, kind), isNull(units.missingSince), notInArray(units.key, keys)))
         .run();
     }
-    tx.insert(imports).values({ at, ok: true, totals: rawUnits.totals }).run();
+    tx.insert(imports).values({ at, ok: true, totals: rawUnits.totals, categories: report.categories ?? null }).run();
     if (first) setSeenAt(tx, at);
   });
 }

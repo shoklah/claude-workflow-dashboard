@@ -1,32 +1,10 @@
 import type { StepKind } from './report.ts';
 
-// The app's finding categories, by the area of the step that found them. A label records the list's version, so a
-// changed list makes the old labels stale.
-
-export const CATEGORY_LIST_VERSION = 1;
+// The areas a finding's step belongs to, each with its own category list, and the labeller's relevance calls. The
+// category lists themselves are the workflow's, from the export (the server's activeList).
 
 export const AREAS = ['plan', 'implementation', 'cleanup'] as const;
 export type Area = (typeof AREAS)[number];
-
-const IMPLEMENTATION = [
-  'correctness',
-  'error handling',
-  'data safety',
-  'security and privacy',
-  'reuse and duplication',
-  'conventions',
-  'simplicity',
-  'tests',
-  'naming and clarity',
-  'performance',
-  'docs',
-] as const;
-
-export const CATEGORIES: Record<Area, readonly string[]> = {
-  plan: ['scope', 'task split and order', 'spec gap', 'risk missed', 'test plan'],
-  implementation: IMPLEMENTATION,
-  cleanup: IMPLEMENTATION,
-};
 
 export const RELEVANCE = ['valid', 'invalid', 'unclear'] as const;
 export type Relevance = (typeof RELEVANCE)[number];

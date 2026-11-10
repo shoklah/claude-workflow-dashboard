@@ -18,12 +18,12 @@ const WEEKS = [
 ];
 
 const zeros = () => WEEKS.map(() => 0);
-const step = (kind: StepKind, ran: number, findings: number, actedOn: number): DiagramStep => ({
+const step = (kind: StepKind, ran: number, findings: number, actedOn: number, warnings = 0): DiagramStep => ({
   step: kind,
   ran,
   findings,
   actedOn,
-  warnings: 0,
+  warnings,
 });
 
 export const emptyWeek: WeekNumbers = {
@@ -154,4 +154,16 @@ export const emptyHome: HomeResponse = {
   },
   feed: [],
   coverageFrom: null,
+};
+
+/** The Full path's diagram as in the approved Compliance mockup: current warnings name the task and final reviews. */
+export const warnedDiagram: HomeResponse['diagram'] = {
+  ...fullHome.diagram,
+  full: [
+    step('plan_simplify', 2, 5, 4),
+    step('plan_review', 2, 3, 2),
+    step('task_review', 11, 9, 8, 2),
+    step('simplify', 2, 6, 6),
+    step('final_review', 2, 5, 4, 1),
+  ],
 };

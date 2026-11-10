@@ -11,8 +11,12 @@ export type RunRow = RunFacts;
  * name of every stored run's project, by name, and how many matching runs showing mode left out. */
 export type RunsResponse = { runs: RunRow[]; projects: { key: string; name: string }[]; hidden: number };
 
-/** A finding of a step, with that step's kind, task, wave and round, and the app's label of it, null while unlabelled:
- * its category, relevance call and the label's reason (`reason` stays the session's). */
+/**
+ * A finding of a step, with that step's kind, task, wave and round, and its labels. `category` is the workflow's when
+ * the finding carries one, else the app's, and `judge` says whose it is (null while it has neither); `validity` is the
+ * workflow's call. `relevance` and `labelReason` are the app's call and reason (`reason` stays the session's), and
+ * `appCategory` and `appRelevance` the app's label only where it differs from the workflow's category or validity.
+ */
 export type FindingRow = {
   id: string | null;
   step: StepKind;
@@ -27,8 +31,12 @@ export type FindingRow = {
   reason: string | null;
   verdicts: string[];
   category: string | null;
+  validity: Relevance | null;
+  judge: 'workflow' | 'app' | null;
   relevance: Relevance | null;
   labelReason: string | null;
+  appCategory: string | null;
+  appRelevance: Relevance | null;
 };
 
 export type TimelineStep = {
@@ -49,13 +57,25 @@ export type TimelineGroup = {
   steps: TimelineStep[];
 };
 
-/** `GET /api/runs/:key`: one run, its timeline, every finding, and its skills, models, advisor notes and warnings. */
+/** A reviewer's strength, with its step's kind, task and round. */
+export type StrengthRow = {
+  step: StepKind;
+  task: number | null;
+  round: number | null;
+  category: string | null;
+  summary: string | null;
+};
+
+/** `GET /api/runs/:key`: one run, its timeline, every finding, its review steps' strengths, and its skills, models,
+ * advisor notes and warnings; `categoryLabels` names each category id of the active list for display, empty with none. */
 export type RunResponse = {
   facts: RunFacts;
   timeline: TimelineGroup[];
   findings: FindingRow[];
+  strengths: StrengthRow[];
   skills: { name: string; outcome: string }[];
   models: { model: string; cost: number | null }[];
   advisor: { calls: number; notes: number } | null;
   warnings: { text: string; sessionId: string | null }[];
+  categoryLabels: Record<string, string>;
 };

@@ -1,7 +1,9 @@
+import { Link } from '@tanstack/react-router';
 import { Handle, Position, ReactFlow, type Edge, type Node, type NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { cn } from 'cn';
 import type { DiagramStep, FixLine, HomeResponse } from '@cwd/shared';
-import { STEP_LABELS, plural } from '../lib/format.ts';
+import { STEP_LABELS, WARNING_BORDER, WARNING_INK, plural, stepWarningsLabel } from '../lib/format.ts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
 
 type StepNode = Node<DiagramStep, 'step'>;
@@ -9,16 +11,37 @@ type StepNode = Node<DiagramStep, 'step'>;
 const BOX_WIDTH = 132;
 const GAP = 40;
 
-/** A step box: the step, how many ran, their findings and how many were acted on. */
+/**
+ * A step box: the step, how many ran, their findings and how many were acted on; with current warnings naming its step,
+ * an orange border and their count, a link to Compliance filtered to that step.
+ */
 function StepBox({ data }: NodeProps<StepNode>) {
+  const warned = data.warnings > 0;
   return (
-    <div style={{ width: BOX_WIDTH }} className="rounded-md border bg-card px-2 py-1.5 text-center text-xs">
+    <div
+      style={{ width: BOX_WIDTH }}
+      className={cn(
+        'rounded-md bg-card px-2 py-1.5 text-center text-xs',
+        warned ? cn('border-2', WARNING_BORDER) : 'border',
+      )}
+    >
       <Handle type="target" position={Position.Left} isConnectable={false} style={{ visibility: 'hidden' }} />
       <div className="font-semibold">{STEP_LABELS[data.step]}</div>
       <div>ran {data.ran}</div>
       <div>
         {data.findings} found · {data.actedOn} acted on
       </div>
+      {warned && (
+        // React Flow turns pointer events off on a node no one can select, drag or click, so the link turns them on.
+        <Link
+          to="/compliance"
+          search={{ step: data.step }}
+          aria-label={stepWarningsLabel(data.warnings, data.step)}
+          className={cn('pointer-events-auto underline underline-offset-2', WARNING_INK)}
+        >
+          {plural(data.warnings, 'warning')}
+        </Link>
+      )}
       <Handle type="source" position={Position.Right} isConnectable={false} style={{ visibility: 'hidden' }} />
     </div>
   );

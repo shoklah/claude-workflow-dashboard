@@ -4,7 +4,9 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { builtWebDist, serveApp } from './app.ts';
+import { activeList } from './categories.ts';
 import { loadConfig } from './config.ts';
+import { rebuildDerived } from './db/import.ts';
 import { openDb } from './db/open.ts';
 import { lastGoodImport } from './db/read.ts';
 import { anthropicLabelClient, labelPending, labellerSettings } from './labeller.ts';
@@ -16,10 +18,19 @@ const config = loadConfig();
 const envFile = join(config.dataDir, '.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 const db = openDb(join(config.dataDir, 'dashboard.sqlite'));
+// The derived values are rebuilt at every start, so rows stored before a new derived value gain it.
+rebuildDerived(db);
 const now = () => new Date();
 const settings = labellerSettings(process.env);
 const client = settings && anthropicLabelClient(settings.model);
-const labels = settings && client ? createQueue(() => labelPending(db, client, settings, now()), 'label') : null;
+// The label job reads the active list each time, since an import can change it; with no list it labels nothing.
+const labels =
+  settings && client
+    ? createQueue(async () => {
+        const list = activeList(db);
+        if (list) await labelPending(db, client, settings, now(), list);
+      }, 'label')
+    : null;
 const queue = createQueue(async () => {
   await importOnce(db, config, now);
   labels?.request();

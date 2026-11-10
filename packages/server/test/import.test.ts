@@ -1,8 +1,11 @@
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
+import Database from 'better-sqlite3';
 import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { loadReport, type Report } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -150,10 +153,55 @@ describe('importReport', () => {
       key: runKey(report.runs[1]!),
       text: 'WARN: fix/retry-backoff (2026-10-21): no session transcript found',
       firstSeenAt: FIRST,
+      warningKind: null,
+      stepKind: null,
     });
     const added = warnings.find((w) => w.key === runKey(report.runs[2]!))!;
     expect(added.text).toBe('WARN: chore/tidy-imports (2026-11-03): no session transcript found');
     expect(added.firstSeenAt).toEqual(LATER);
+  });
+
+  test("a warning first stored before CR4 takes a later export's kind and step, and keeps its first-seen time", () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-full', FIRST);
+    expect(listWarnings(db).every((w) => w.warningKind === null && w.stepKind === null)).toBe(true);
+    importFixture(db, 'report-v5', LATER);
+    const warnings = listWarnings(db);
+    expect(warnings.find((w) => w.key === runKey(report.runs[1]!))).toMatchObject({
+      firstSeenAt: FIRST,
+      warningKind: 'no_transcript',
+      stepKind: null,
+    });
+    expect(warnings.find((w) => w.key === runKey(report.runs[4]!))).toMatchObject({
+      firstSeenAt: FIRST,
+      warningKind: 'simplify_record_differs',
+      stepKind: 'simplify',
+    });
+  });
+
+  test('a warning a later export no longer reports keeps its null kind and step', () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-full', FIRST);
+    importFixture(db, 'report-v5', LATER);
+    expect(listWarnings(db).find((w) => w.key === sessionKey(report.sessions[1]!))).toEqual({
+      kind: 'session',
+      key: sessionKey(report.sessions[1]!),
+      text: 'WARN: session 0f3c9a2e-5b7d-4c1e-9a8f-2d6b4e1c7a35.jsonl: startup guidelines missing',
+      firstSeenAt: FIRST,
+      warningKind: null,
+      stepKind: null,
+    });
+  });
+
+  test('a later export with no warning objects keeps the known kind', () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-v5', FIRST);
+    importFixture(db, 'report-full', LATER);
+    expect(listWarnings(db).find((w) => w.key === runKey(report.runs[4]!))).toMatchObject({
+      firstSeenAt: FIRST,
+      warningKind: 'simplify_record_differs',
+      stepKind: 'simplify',
+    });
   });
 
   test('a failure leaves the stored data unchanged', () => {
@@ -183,8 +231,43 @@ describe('importReport', () => {
   test('stores the export raw totals with the import', () => {
     const { db } = freshDb();
     importFixture(db, 'report-later', FIRST);
-    expect(lastGoodImport(db)).toEqual({ at: FIRST, totals: fixture('report-later').totals });
+    expect(lastGoodImport(db)).toEqual({ at: FIRST, totals: fixture('report-later').totals, categories: null });
     expect(lastImport(db)).toEqual({ at: FIRST, ok: true, error: null });
+  });
+
+  test("stores the export's category list with the import, as the loader read it", () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-v5', FIRST);
+    expect(lastGoodImport(db)!.categories).toEqual(report.categories);
+    expect(lastGoodImport(db)!.categories?.areas?.[0]?.list?.[1]).toEqual({
+      id: 'task_split',
+      label: 'Task split and order',
+      means: expect.stringMatching(/^Tasks too big or too small/),
+    });
+    importFixture(db, 'report-later', LATER);
+    expect(lastGoodImport(db)!.categories).toBeNull();
+  });
+
+  test('an import stored before the categories column keeps its row and its totals, with no list', () => {
+    // The migrations before 0003, which adds the column, applied to a database that then stores an import.
+    const dir = mkdtempSync(join(tmpdir(), 'cwd migrate '));
+    dirs.push(dir);
+    const before = join(dir, 'drizzle');
+    const migrations = new URL('../drizzle', import.meta.url);
+    cpSync(migrations, before, { recursive: true });
+    rmSync(join(before, '0003_import_categories.sql'));
+    const journal = JSON.parse(readFileSync(join(before, 'meta', '_journal.json'), 'utf8'));
+    journal.entries = journal.entries.filter((e: { tag: string }) => e.tag < '0003');
+    writeFileSync(join(before, 'meta', '_journal.json'), JSON.stringify(journal));
+    const file = join(dir, 'dashboard.sqlite');
+    const old = new Database(file);
+    migrate(drizzle(old), { migrationsFolder: before });
+    old.prepare('INSERT INTO imports (at, ok, error, totals) VALUES (?, 1, NULL, ?)').run(FIRST.getTime(), '{"runs":3}');
+    old.close();
+
+    const db = openDb(file);
+    dbs.push(db);
+    expect(lastGoodImport(db)).toEqual({ at: FIRST, totals: { runs: 3 }, categories: null });
   });
 
   test('a run with no key is skipped', () => {
@@ -213,6 +296,19 @@ describe('importReport', () => {
 
     expect(listUnits(db, 'run')).toEqual(runs);
     expect(listUnits(db, 'session')).toEqual(sessions);
+    expect(listWarnings(db)).toEqual(warnings);
+  });
+
+  test("rebuild gives the same warnings' kinds and steps", () => {
+    const { db } = freshDb();
+    importFixture(db, 'report-full', FIRST);
+    importFixture(db, 'report-v5', LATER);
+    const warnings = listWarnings(db);
+    expect(warnings.filter((w) => w.warningKind !== null)).toHaveLength(5);
+
+    db.$client.exec('UPDATE warnings SET warning_kind = NULL, step_kind = NULL');
+    rebuildDerived(db);
+
     expect(listWarnings(db)).toEqual(warnings);
   });
 });

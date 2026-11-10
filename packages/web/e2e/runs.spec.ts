@@ -2,7 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML.
+// dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML, then report-v5.
 const HTML_TEXT = '<img src=x onerror=alert(1)>';
 
 /** Opens the Runs list, then the Full run of feature/offline-sync from it. */
@@ -70,4 +70,16 @@ test('the toggle switches between timeline and findings', async ({ page }) => {
   await page.getByRole('tab', { name: 'Timeline' }).click();
   await expect(page.getByText('Started')).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);
+});
+
+test('the schema 5 run page lists its strengths under the findings table', async ({ page }) => {
+  await page.goto('/runs');
+  await page.getByRole('link', { name: 'tidepool-api · feature/webhooks' }).click();
+  await expect(page.getByRole('heading', { name: 'tidepool-api · feature/webhooks' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Findings' }).click();
+  const strengths = page.getByRole('region', { name: 'Strengths' });
+  await expect(strengths.getByRole('listitem')).toHaveCount(2);
+  await expect(strengths.getByText('Each retry delay has its own test')).toBeVisible();
+  await expect(strengths.getByText('The signing secret never reaches a log')).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

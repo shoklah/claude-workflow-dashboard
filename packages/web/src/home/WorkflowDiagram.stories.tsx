@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { emptyHome, fullHome } from '../test/home.ts';
+import { emptyHome, fullHome, warnedDiagram } from '../test/home.ts';
 import { WorkflowDiagram } from './WorkflowDiagram.tsx';
 
 const meta = { component: WorkflowDiagram } satisfies Meta<typeof WorkflowDiagram>;
@@ -56,5 +56,25 @@ export const OneRunBeforeSteps: Story = {
   args: { diagram: { ...fullHome.diagram, beforeSteps: 1 } },
   play: async ({ canvas }) => {
     await expect(canvas.getByText('1 run before steps, not counted')).toBeVisible();
+  },
+};
+
+/**
+ * Boxes whose step a current warning names: an orange border, the count written in it, and a link to Compliance
+ * filtered to that step; the others stay plain.
+ */
+export const WithWarnings: Story = {
+  args: { diagram: warnedDiagram },
+  play: async ({ canvas }) => {
+    const boxes = await within(canvas.getByRole('tabpanel')).findAllByRole('figure');
+    const task = within(boxes[2]);
+    await expect(task.getByRole('link', { name: '2 warnings on Task review' })).toHaveAttribute('href', '/compliance?step=task_review');
+    await expect(task.getByText('2 warnings').closest('.border-2')).toHaveClass('border-[#ec835a]');
+    await expect(within(boxes[4]).getByRole('link', { name: '1 warning on Final review' })).toHaveAttribute(
+      'href',
+      '/compliance?step=final_review',
+    );
+    await expect(within(boxes[0]).queryByRole('link')).toBeNull();
+    await expect(within(boxes[0]).queryByText(/warning/)).toBeNull();
   },
 };

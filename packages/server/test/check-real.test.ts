@@ -10,6 +10,22 @@ const SCRIPT = fileURLToPath(new URL('../src/check-real.ts', import.meta.url));
 
 const dirs: string[] = [];
 
+// An export from the old reporter, as report-full, has no totals but its weeks.
+const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models']
+  .map((name) => `${name}: not in the export\n`)
+  .join('');
+
+/** Writes a changed copy of a fixture to a temp file and returns its path. */
+function changed(name: string, change: (raw: any) => void): string {
+  const raw = fixture(name);
+  change(raw);
+  const dir = mkdtempSync(join(tmpdir(), 'cwd check real '));
+  dirs.push(dir);
+  const file = join(dir, `${name}.json`);
+  writeFileSync(file, JSON.stringify(raw));
+  return file;
+}
+
 /**
  * Runs check:real against a temp data dir whose config.json sets the reporter command and any other config, with its
  * own temp folder (TMPDIR) and any other env, and returns what is left in both.
@@ -41,8 +57,46 @@ afterEach(() => {
 describe('check:real', () => {
   test('prints version, fields and key counts only', () => {
     const { stdout, status } = checkReal(['cat', fixturePath('report-full')]);
-    expect(stdout).toBe('version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\nshowing: pass\n');
+    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n${OLD_TOTALS}showing: pass\n`);
     expect(status).toBe(0);
+  });
+
+  test("compares the new pages' sums with the reporter's totals and checks their routes", () => {
+    const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v5')]);
+    expect(stdout).toBe(
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
+        'models: 0 differ\nshowing: pass\n',
+    );
+    for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
+    expect(status).toBe(0);
+  });
+
+  test('names the differing weeks, groups, step kinds and rules, and counts the skills and models only', () => {
+    const file = changed('report-v5', (raw) => {
+      const { totals } = raw;
+      totals.weeks.find((w: { week: string }) => w.week === '2026-10-18').tasks += 1;
+      totals.run_time.with_waves.timed += 1;
+      totals.scoreboard.task_review.outcomes.fixed += 1;
+      totals.scoreboard.final_review.cost += 0.01;
+      totals.scoreboard.stop_rule.stops += 1;
+      totals.offers.graphify.accepted += 1;
+      totals.skills['test-driven-development'].runs += 1;
+      totals.models.agents['plan-reviewer'].actual['claude-fable-5-1/high'] += 1;
+      totals.models.main.small.actual = {};
+      // A skill required but never loaded, as skill_totals counts it: neither compared nor a difference.
+      totals.skills['grill-me'] = { runs: 0, last: null, outcomes: {}, missing: 1 };
+    });
+    const { stdout, stderr } = checkReal(['cat', file]);
+    expect(stdout).toBe(
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
+        'run time: compared, 1 differ\nwith_waves\nsteps: 7 compared, 2 differ\ntask_review\nfinal_review\n' +
+        'rules: 2 differ\nstop_rule\noffers\nskills: 6 compared, 1 differ\nmodels: 2 differ\nshowing: pass\n',
+    );
+    // A skill or agent name can come from a project, so neither is printed.
+    for (const name of ['test-driven-development', 'plan-reviewer', 'graphify', 'grill-me']) {
+      expect(`${stdout}${stderr}`).not.toContain(name);
+    }
   });
 
   test('prints field paths for a bad shape', () => {
@@ -61,7 +115,7 @@ describe('check:real', () => {
     writeFileSync(file, JSON.stringify(report));
     // The extra run and the one with no date also change their weeks' sums.
     expect(checkReal(['cat', file]).stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\nweeks: 4 compared, 2 differ\n2026-10-04\n2026-10-18\nshowing: pass\n',
+      `version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\nweeks: 4 compared, 2 differ\n2026-10-04\n2026-10-18\n${OLD_TOTALS}showing: pass\n`,
     );
   });
 
@@ -74,7 +128,7 @@ describe('check:real', () => {
     const file = join(dir, 'report weeks.json');
     writeFileSync(file, JSON.stringify(report));
     const { stdout, status } = checkReal(['cat', file]);
-    expect(stdout).toBe('version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 1 differ\n2026-11-01\nshowing: pass\n');
+    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 1 differ\n2026-11-01\n${OLD_TOTALS}showing: pass\n`);
     expect(status).toBe(0);
   });
 
@@ -128,13 +182,14 @@ describe('check:real', () => {
   });
 
   test('never prints a value', () => {
+    const names = ['report-full', 'report-shape', 'report-v5'];
     const values = new Set<string>();
-    for (const run of fixture('report-full').runs) {
+    for (const run of names.flatMap((name) => fixture(name).runs ?? [])) {
       if (run.record?.project) values.add(run.record.project);
       if (run.record?.branch) values.add(run.record.branch);
     }
     expect(values.size).toBeGreaterThan(0);
-    for (const name of ['report-full', 'report-shape']) {
+    for (const name of names) {
       const { stdout, stderr } = checkReal(['cat', fixturePath(name)]);
       for (const line of `${stdout}${stderr}`.split('\n')) {
         for (const value of values) expect(line).not.toContain(value);

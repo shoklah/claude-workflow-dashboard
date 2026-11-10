@@ -2,7 +2,14 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { loadReport, type HomeResponse, type RunResponse, type RunsResponse } from '@cwd/shared';
+import {
+  loadReport,
+  projectRoot,
+  type HomeResponse,
+  type Relevance,
+  type RunResponse,
+  type RunsResponse,
+} from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -11,20 +18,24 @@ import { projectKey, runKey } from '../src/keys.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { labelInputs, saveBatch } from '../src/db/labels.ts';
 import { runView, skillOutcomeLabel } from '../src/views/runs.ts';
+import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
 
 // report-full's runs, oldest first (see the fixture map).
 const [RATE_LIMITS, RETRY_BACKOFF, , PLAN, FULL] = fixture('report-full').runs.map(runKey) as string[];
+// report-v5's schema 5 run, labelled by the workflow, on tidepool-api.
+const WEBHOOKS = runKey(fixture('report-v5').runs[5]) as string;
 
 let dir: string;
 let db: Db;
 
-/** A fresh database in the test's folder, holding the fixture's import. */
-function dbWith(name: string): Db {
+/** A fresh database in the test's folder, holding the fixture's import, changed first by `change`. */
+function dbWith(name: string, change: (raw: any) => void = () => {}): Db {
   const fresh = openDb(join(dir, name, 'dashboard.sqlite'));
   const raw = fixture(name);
+  change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
   if (!loaded.ok) throw new Error(`fixture ${name} does not load`);
   importReport(fresh, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
@@ -67,13 +78,15 @@ async function run(key: string): Promise<RunResponse> {
   return res.json();
 }
 
-/** Stores the app's label of a run's finding, for its current text. */
-function label(key: string, findingId: string, reason: string): void {
+/** Stores the app's label of a run's finding, for its current text, under report-v5's list (101): `conventions` and
+ * `invalid` unless given. */
+function label(key: string, findingId: string, reason: string, category = 'conventions', relevance: Relevance = 'invalid'): void {
   const input = labelInputs(listUnits(db, 'run')).find((i) => i.runKey === key && i.findingId === findingId)!;
   saveBatch(
     db,
-    [{ ...input, model: 'claude-haiku-5-5', category: 'conventions', relevance: 'invalid', reason, labelledAt: NOW }],
+    [{ ...input, model: 'claude-haiku-5-5', category, relevance, reason, labelledAt: NOW }],
     { at: NOW, inputTokens: 100, outputTokens: 20 },
+    101,
   );
 }
 
@@ -210,8 +223,12 @@ test("the findings table flattens every step's findings", async () => {
     reason: 'The shared key is intended: both tasks read the same snapshot',
     verdicts: ['open', 'open', 'open'],
     category: null,
+    validity: null,
+    judge: null,
     relevance: null,
     labelReason: null,
+    appCategory: null,
+    appRelevance: null,
   });
   expect(findings[0]).toMatchObject({ step: 'task_review', task: 1, wave: null, outcome: 'fixed', closedRound: 1 });
   expect(findings[5]).toMatchObject({ id: 'F6', task: 4, outcome: null });
@@ -219,8 +236,12 @@ test("the findings table flattens every step's findings", async () => {
 });
 
 test("a labelled finding carries the app's category, relevance and reason, an unlabelled one nulls", async () => {
+  // report-v5 holds the same Full run, with the workflow's category list.
+  db.$client.close();
+  db = dbWith('report-v5');
   label(FULL, 'F4', 'An invented reason for the label.');
-  const { findings, timeline } = await run(FULL);
+  const { findings, timeline, categoryLabels } = await run(FULL);
+  expect(categoryLabels.conventions).toBe('Conventions');
   expect(findings[3]).toMatchObject({
     id: 'F4',
     reason: 'The shared key is intended: both tasks read the same snapshot',
@@ -230,6 +251,89 @@ test("a labelled finding carries the app's category, relevance and reason, an un
   });
   expect(timeline[1].steps[0].findings[0]).toMatchObject({ id: 'F4', category: 'conventions' });
   expect(findings[0]).toMatchObject({ id: 'F1', category: null, relevance: null, labelReason: null });
+});
+
+test("the workflow's labels win: its category and validity, the app's label kept where it differs", async () => {
+  db.$client.close();
+  db = dbWith('report-v5');
+  label(WEBHOOKS, 'F3', 'An invented reason for the label.');
+  label(WEBHOOKS, 'F4', 'Another invented reason.', 'naming', 'valid');
+  label(WEBHOOKS, 'F5', 'A third invented reason.', 'reuse', 'valid');
+  const { findings } = await run(WEBHOOKS);
+  const byId = new Map(findings.map((f) => [f.id, f]));
+  // The workflow's error_handling and valid; the app's conventions and invalid differ, so both are kept.
+  expect(byId.get('F3')).toMatchObject({
+    judge: 'workflow',
+    category: 'error_handling',
+    validity: 'valid',
+    relevance: 'invalid',
+    labelReason: 'An invented reason for the label.',
+    appCategory: 'conventions',
+    appRelevance: 'invalid',
+  });
+  // Cleaned to nulls by the workflow: the app's label shows.
+  expect(byId.get('F4')).toMatchObject({
+    judge: 'app',
+    category: 'naming',
+    validity: null,
+    relevance: 'valid',
+    appCategory: null,
+    appRelevance: null,
+  });
+  // The app agrees with the workflow.
+  expect(byId.get('F5')).toMatchObject({ judge: 'workflow', category: 'reuse', relevance: 'valid', appCategory: null, appRelevance: null });
+  // The workflow's label with no app label, and neither.
+  expect(byId.get('F7')).toMatchObject({ judge: 'workflow', category: 'docs', validity: 'unclear', relevance: null, appCategory: null });
+  expect(byId.get('F2')).toMatchObject({ judge: null, category: null, validity: null, relevance: null });
+});
+
+test("a workflow category with no validity keeps the app's call as the only call", async () => {
+  db.$client.close();
+  // The workflow labels F3 error_handling but leaves its validity unset.
+  db = dbWith('report-v5', (raw) => (raw.runs[5].steps[1].findings[0].validity = null));
+  label(WEBHOOKS, 'F3', 'An invented reason for the label.', 'error_handling', 'invalid');
+  const f3 = (await run(WEBHOOKS)).findings.find((f) => f.id === 'F3');
+  // The app's call doesn't differ from a call the workflow didn't make: it stays the app's relevance alone.
+  expect(f3).toMatchObject({
+    judge: 'workflow',
+    category: 'error_handling',
+    validity: null,
+    relevance: 'invalid',
+    appCategory: null,
+    appRelevance: null,
+  });
+});
+
+test("a run's strengths list each review step's, with its step, task and round", async () => {
+  db.$client.close();
+  db = dbWith('report-v5');
+  expect((await run(WEBHOOKS)).strengths).toEqual([
+    { step: 'task_review', task: 1, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
+    { step: 'final_review', task: null, round: 0, category: 'security_privacy', summary: 'The signing secret never reaches a log' },
+  ]);
+  expect((await run(FULL)).strengths).toEqual([]);
+});
+
+test("with showing on, the run page holds no hidden project's name, path or branch, its strengths' included", async () => {
+  const raw = fixture('report-v5');
+  const branches = new Map<string, string[]>();
+  for (const r of raw.runs) {
+    const root = projectRoot(r.record.project);
+    branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
+  }
+  const TIDEPOOL = '/Users/example/Work/tidepool-api';
+  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], []);
+  expect(strings.forbidden).toContain('lantern-notes');
+  db.$client.close();
+  db = dbWith('report-v5', (raw) => {
+    // A strength that names the hidden lantern-notes, its branch and a path in it.
+    raw.runs[5].steps[1].strengths[0].summary =
+      'As lantern-notes does on feature/offline-sync in /Users/example/Work/lantern-notes/src/retry.ts';
+  });
+  setShowing(db, [projectKey(TIDEPOOL)]);
+  const body = await run(WEBHOOKS);
+  expect(body.strengths[0].summary).toBe('As another project does on another branch in retry.ts');
+  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
 
 test('a schema 1 run has empty groups and beforeSteps', async () => {
@@ -297,13 +401,14 @@ test("a warning's session ID comes as sessionId with {session} in the text", () 
   const view = runView(
     stored,
     [
-      { kind: 'run', key: FULL, text, firstSeenAt: NOW },
-      { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW },
-      { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW },
+      { kind: 'run', key: FULL, text, firstSeenAt: NOW, warningKind: null, stepKind: null },
+      { kind: 'run', key: PLAN, text: 'WARN: another run', firstSeenAt: NOW, warningKind: null, stepKind: null },
+      { kind: 'session', key: FULL, text: 'WARN: a session', firstSeenAt: NOW, warningKind: null, stepKind: null },
     ],
     new Map(),
     null,
     new Map(),
+    null,
   );
   expect(view!.warnings).toEqual([
     { text: 'WARN: feature/offline-sync (2026-11-10): {session} ended early', sessionId: '7c1d9e42-3a5b-4f6c-8d2e-1b0a9f8e7d6c' },
@@ -357,6 +462,9 @@ describe('projects', () => {
   });
 
   test("with showing on, a label's reason is masked as the finding's text is", async () => {
+    // report-v5 holds the same run and projects, with the workflow's category list.
+    db.$client.close();
+    db = dbWith('report-v5');
     label(MAIN, 'F1', 'tidepool-api keeps the same import in /Users/example/Work/tidepool-api/src/x.ts');
     setShowing(db, [LANTERN]);
     expect((await run(MAIN)).findings[0].labelReason).toBe('another project keeps the same import in x.ts');

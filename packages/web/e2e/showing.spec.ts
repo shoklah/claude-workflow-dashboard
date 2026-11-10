@@ -26,7 +26,7 @@ test.afterEach(async ({ request }) => {
 test('showing lantern-notes hides tidepool-api from the pages', async ({ page }) => {
   const tidepoolRows = page.getByRole('row').filter({ hasText: /tidepool-api|fix\/retry-backoff/ });
   await page.goto('/runs');
-  await expect(tidepoolRows).toHaveCount(1);
+  await expect(tidepoolRows).toHaveCount(2);
 
   await page.getByRole('switch', { name: 'Showing mode' }).click();
   const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
@@ -39,7 +39,7 @@ test('showing lantern-notes hides tidepool-api from the pages', async ({ page })
   await expect(page.getByText('Showing: lantern-notes')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
-  // Runs: no tidepool-api row, and the line counting the run it hides.
+  // Runs: no tidepool-api row, and the line counting the runs it hides.
   await expect(page.getByText(/in other projects, counted in totals and charts only/)).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: 'lantern-notes' }).first()).toBeVisible();
   await expect(tidepoolRows).toHaveCount(0);

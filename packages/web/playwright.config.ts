@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-// Not 4317, so a real dashboard running on the Mac doesn't clash.
-const PORT = 4399;
+// Not 4317, so a real dashboard running on the Mac doesn't clash; E2E_PORT lets parallel worktrees run side by side.
+const PORT = Number(process.env.E2E_PORT) || 4399;
 
 // Two projects against the Hono server on invented data (dev:fixtures, which serves the built web): `checks` (axe and
 // behaviour, `*.spec.ts`) runs anywhere; `screens` (screenshot comparisons, `*.screens.ts`) exists only inside the

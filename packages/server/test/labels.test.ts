@@ -8,6 +8,8 @@ import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { hash } from '../src/keys.ts';
 import { listUnits } from '../src/db/read.ts';
+import { activeList } from '../src/categories.ts';
+import { findingsView } from '../src/views/findings.ts';
 import {
   currentLabels,
   findingKey,
@@ -25,6 +27,8 @@ const LATER = new Date('2026-11-12T10:00:00Z');
 const LABELLED = new Date('2026-11-10T23:30:00Z');
 const MODEL = 'claude-haiku-5-5';
 const SUMMARY = 'Unused import left in the search module';
+// report-v5's category list, CR10's version 1.
+const LIST = 101;
 
 const dirs: string[] = [];
 const dbs: Db[] = [];
@@ -61,13 +65,13 @@ function labelFor(input: LabelInput): StoredLabel {
   };
 }
 
-/** A database with report-projects imported and the finding SUMMARY labelled, with the label and its input. */
+/** A database with report-v5 imported and the finding SUMMARY labelled under its list, with the label and its input. */
 function labelled(): { db: Db; input: LabelInput; label: StoredLabel } {
   const db = freshDb();
-  importRaw(db, fixture('report-projects'), FIRST);
+  importRaw(db, fixture('report-v5'), FIRST);
   const input = inputs(db).find((i) => i.text.includes(SUMMARY))!;
   const label = labelFor(input);
-  saveBatch(db, [label], { at: LABELLED, inputTokens: 1200, outputTokens: 300 });
+  saveBatch(db, [label], { at: LABELLED, inputTokens: 1200, outputTokens: 300 }, LIST);
   return { db, input, label };
 }
 
@@ -106,20 +110,44 @@ describe('labelInputs', () => {
   });
 });
 
+describe('activeList', () => {
+  test("after importing report-v5 it is the workflow's list 1 as number 101, with code_facts in its plan list", () => {
+    const db = freshDb();
+    importRaw(db, fixture('report-v5'), FIRST);
+    const list = activeList(db)!;
+    expect(list.number).toBe(101);
+    expect(list.areas.plan.map((c) => c.id)).toContain('code_facts');
+    expect(list.areas.plan.find((c) => c.id === 'task_split')?.label).toBe('Task split and order');
+    expect(list.areas.cleanup).toEqual(list.areas.implementation);
+    expect(list.rule).toMatch(/^Name the problem, not its fix\./);
+    expect(list.validity.invalid).toBe("The problem isn't there, or the reviewer misread the brief or the code.");
+  });
+
+  test('is null on report-full alone, which has no category list', () => {
+    const db = freshDb();
+    importRaw(db, fixture('report-full'), FIRST);
+    expect(activeList(db)).toBeNull();
+  });
+
+  test('is null with no import', () => {
+    expect(activeList(freshDb())).toBeNull();
+  });
+});
+
 describe('stored labels', () => {
   test('a saved label is current, and pending only for another model', () => {
     const { db, input, label } = labelled();
     const all = inputs(db);
-    expect(currentLabels(db, all).get(keyOf(input))).toEqual(label);
-    expect(currentLabels(db, all).size).toBe(1);
-    expect(pendingInputs(db, all, MODEL).map(keyOf)).not.toContain(keyOf(input));
-    expect(pendingInputs(db, all, MODEL)).toHaveLength(all.length - 1);
-    expect(pendingInputs(db, all, 'claude-other-model').map(keyOf)).toContain(keyOf(input));
+    expect(currentLabels(db, all, LIST).get(keyOf(input))).toEqual(label);
+    expect(currentLabels(db, all, LIST).size).toBe(1);
+    expect(pendingInputs(db, all, MODEL, LIST).map(keyOf)).not.toContain(keyOf(input));
+    expect(pendingInputs(db, all, MODEL, LIST)).toHaveLength(all.length - 1);
+    expect(pendingInputs(db, all, 'claude-other-model', LIST).map(keyOf)).toContain(keyOf(input));
   });
 
   test('a changed summary drops the label and makes the finding pending again', () => {
     const { db, input } = labelled();
-    const raw = fixture('report-projects');
+    const raw = fixture('report-v5');
     for (const run of raw.runs) {
       for (const step of run.steps ?? []) {
         for (const f of step.findings ?? []) if (f.summary === SUMMARY) f.summary = `${SUMMARY}, still`;
@@ -127,8 +155,36 @@ describe('stored labels', () => {
     }
     importRaw(db, raw, LATER);
     const all = inputs(db);
-    expect(currentLabels(db, all).has(keyOf(input))).toBe(false);
-    expect(pendingInputs(db, all, MODEL).map(keyOf)).toContain(keyOf(input));
+    expect(currentLabels(db, all, LIST).has(keyOf(input))).toBe(false);
+    expect(pendingInputs(db, all, MODEL, LIST).map(keyOf)).toContain(keyOf(input));
+  });
+
+  test("a label saved under list 1 no longer shows once list 101 is active: its finding is unlabelled and pending", () => {
+    const db = freshDb();
+    importRaw(db, fixture('report-full'), FIRST);
+    const input = inputs(db).find((i) => i.text.includes(SUMMARY))!;
+    saveBatch(db, [labelFor(input)], { at: LABELLED, inputTokens: 0, outputTokens: 0 }, 1);
+    importRaw(db, fixture('report-v5'), LATER);
+    const list = activeList(db)!;
+    const all = inputs(db);
+    // The finding's text is the same, and its list 1 label keeps its row.
+    expect(all.find((i) => keyOf(i) === keyOf(input))?.hash).toBe(input.hash);
+    expect(currentLabels(db, all, 1).has(keyOf(input))).toBe(true);
+    const labels = currentLabels(db, all, list.number);
+    expect(labels.has(keyOf(input))).toBe(false);
+    expect(pendingInputs(db, all, MODEL, list.number).map(keyOf)).toContain(keyOf(input));
+    const view = findingsView({
+      runs: listUnits(db, 'run'),
+      labels,
+      list,
+      query: { weeks: 52 },
+      now: LATER,
+      scope: null,
+      labeller: { on: false, labelled: 0, waiting: 0, tokensThisWeek: { input: 0, output: 0 } },
+    });
+    const item = view.findings.find((f) => f.runKey === input.runKey && f.id === input.findingId);
+    expect(item).toMatchObject({ area: 'implementation', category: null });
+    expect(view.rows.find((r) => r.area === 'implementation' && r.category === null)).toBeDefined();
   });
 
   test('labelledOn counts a label on its UTC day and not the next', () => {
@@ -140,7 +196,7 @@ describe('stored labels', () => {
 
   test("tokensSince sums the batches' tokens from a time", () => {
     const { db } = labelled();
-    saveBatch(db, [], { at: LATER, inputTokens: 50, outputTokens: 7 });
+    saveBatch(db, [], { at: LATER, inputTokens: 50, outputTokens: 7 }, LIST);
     expect(tokensSince(db, FIRST)).toEqual({ input: 1250, output: 307 });
     expect(tokensSince(db, new Date('2026-11-11T00:00:00Z'))).toEqual({ input: 50, output: 7 });
     expect(tokensSince(db, new Date('2026-11-13T00:00:00Z'))).toEqual({ input: 0, output: 0 });

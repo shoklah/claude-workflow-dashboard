@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { NONE } from '../lib/format.ts';
-import { HTML_TEXT, fullRun, runFull } from '../test/runs.ts';
+import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
 const meta = { component: FindingsTable } satisfies Meta<typeof FindingsTable>;
@@ -17,7 +17,7 @@ function column(canvasElement: HTMLElement, name: string): (string | null)[] {
 }
 
 export const Empty: Story = {
-  args: { findings: [] },
+  args: { findings: [], categoryLabels: {} },
   play: async ({ canvas }) => {
     await expect(canvas.getByText('No findings.')).toBeVisible();
   },
@@ -25,10 +25,11 @@ export const Empty: Story = {
 
 /**
  * Full: every finding of the run, one row each, its free text shown as text. The app's labels: each category in a
- * dashed badge, the relevance call with its reason in a tooltip; Valid is "–" until the workflow records it (CR10).
+ * dashed badge, named by the response's `categoryLabels`, the relevance call with its reason in a tooltip; Valid is "–"
+ * on a run the workflow didn't label.
  */
 export const Full: Story = {
-  args: { findings: runFull.findings },
+  args: { findings: runFull.findings, categoryLabels: runFull.categoryLabels },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
     await expect(headers).toEqual([
@@ -50,11 +51,11 @@ export const Full: Story = {
     await expect(canvas.getAllByText(HTML_TEXT)).toHaveLength(1);
     await expect(canvas.getByText(HTML_TEXT)).toBeVisible();
     await expect(column(canvasElement, 'Category')).toEqual([
-      'correctness',
-      'naming and clarity',
-      'security and privacy',
-      'data safety',
-      'simplicity (over-building)',
+      'Correctness',
+      'Naming and clarity',
+      'Security and privacy',
+      'Data safety',
+      'Simplicity',
       'unlabelled',
     ]);
     const badges = canvas.getAllByTitle(APP_LABEL);
@@ -81,7 +82,7 @@ export const Full: Story = {
 
 /** Filtering by outcome `ruled` leaves the one ruled finding, with its reason. */
 export const FilterRuled: Story = {
-  args: { findings: runFull.findings },
+  args: { findings: runFull.findings, categoryLabels: runFull.categoryLabels },
   play: async ({ canvas, userEvent }) => {
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Outcome' }), 'ruled');
     const rows = canvas.getAllByRole('row').slice(1);
@@ -95,7 +96,7 @@ export const FilterRuled: Story = {
 
 /** Step and severity filter too, and together. */
 export const FilterStepAndSeverity: Story = {
-  args: { findings: runFull.findings },
+  args: { findings: runFull.findings, categoryLabels: runFull.categoryLabels },
   play: async ({ canvas, userEvent }) => {
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Step' }), 'task_review');
     await expect(canvas.getAllByRole('row').slice(1)).toHaveLength(4);
@@ -107,13 +108,60 @@ export const FilterStepAndSeverity: Story = {
 
 /** No finding labelled yet: every category is "unlabelled", with no badge, and the App column is "–". */
 export const Unlabelled: Story = {
-  args: { findings: runFull.findings.map((f) => ({ ...f, category: null, relevance: null, labelReason: null })) },
+  args: {
+    findings: runFull.findings.map((f) => ({ ...f, category: null, relevance: null, labelReason: null })),
+    categoryLabels: runFull.categoryLabels,
+  },
   play: async ({ canvas, canvasElement }) => {
     const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
     await expect(headers).toEqual(expect.arrayContaining(['Category', 'Valid', 'App']));
     await expect(column(canvasElement, 'Category')).toEqual(Array(6).fill('unlabelled'));
     await expect(canvas.queryAllByTitle(APP_LABEL)).toEqual([]);
     await expect(column(canvasElement, 'App')).toEqual(Array(6).fill(NONE));
+  },
+};
+
+/**
+ * After CR10: the workflow's categories in plain badges, the app's own in the dashed one; Valid is the workflow's
+ * call; App says "agrees" when the workflow made both calls and the app's match, else the app's category where it
+ * differs and its call where it differs or the workflow made none.
+ */
+export const WorkflowLabels: Story = {
+  args: { findings: workflowFindings, categoryLabels: runFull.categoryLabels },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await expect(column(canvasElement, 'Category')).toEqual([
+      'Reuse and duplication',
+      'Tests',
+      'Conventions',
+      'Simplicity',
+      'Correctness',
+      'Correctness',
+    ]);
+    const badges = canvas.getAllByTitle(APP_LABEL);
+    await expect(badges.map((badge) => badge.textContent)).toEqual(['Conventions']);
+    await expect(badges[0]).toHaveClass('border-dashed');
+    await expect(canvas.getByText('Tests')).not.toHaveClass('border-dashed');
+    await expect(canvas.getAllByRole('row')).toHaveLength(7);
+    await expect(column(canvasElement, 'Valid')).toEqual(['valid', 'invalid', NONE, 'unclear', NONE, NONE]);
+    // With no validity from the workflow, the app's call shows: it never "agrees" with a call nobody made.
+    await expect(column(canvasElement, 'App')).toEqual([
+      'agrees',
+      'Correctness · valid',
+      'valid',
+      NONE,
+      'invalid',
+      'Error handling · valid',
+    ]);
+    await userEvent.hover(canvas.getByText('Correctness · valid'));
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('An empty export is a real case');
+  },
+};
+
+/** A category the labels don't name shows as its id. */
+export const UnnamedCategory: Story = {
+  args: { findings: runFull.findings.slice(0, 1), categoryLabels: {} },
+  play: async ({ canvasElement }) => {
+    await expect(column(canvasElement, 'Category')).toEqual(['correctness']);
   },
 };
 
@@ -126,6 +174,7 @@ export const WithRun: Story = {
       project: fullRun.project,
       branch: fullRun.branch,
     })),
+    categoryLabels: runFull.categoryLabels,
     run: true,
   },
   play: async ({ canvas, canvasElement }) => {

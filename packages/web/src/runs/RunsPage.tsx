@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { PATHS, toPath, type FindingsQuery, type RunsQuery, type RunsResponse } from '@cwd/shared';
+import { PATHS, toPath, type FindingsQuery, type RunsQuery, type RunsResponse, type StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { hiddenLabel } from '../lib/format.ts';
 import { RunsTable } from './RunsTable.tsx';
@@ -12,13 +12,23 @@ const PERIODS = [
 ];
 
 /** A list's API path for the query: its filters as query params, `weeks` always, the others when set. */
-export function listPath(base: string, query: FindingsQuery & { warnings?: boolean }): string {
+export function listPath(
+  base: string,
+  query: FindingsQuery & { warnings?: boolean; resolved?: boolean; step?: StepKind },
+): string {
   const params = new URLSearchParams();
   if (query.path) params.set('path', query.path);
   if (query.project) params.set('project', query.project);
   params.set('weeks', String(query.weeks));
   if (query.warnings) params.set('warnings', '1');
+  if (query.resolved) params.set('resolved', '1');
+  if (query.step) params.set('step', query.step);
   return `${base}?${params}`;
+}
+
+/** The project options of a list page: every stored run's project, from the one query the list pages share. */
+export function useProjects(): RunsResponse['projects'] | undefined {
+  return useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 })).data?.projects;
 }
 
 const SELECT = 'rounded-md border bg-background px-2 py-1';

@@ -1,23 +1,32 @@
 import type { Area, FindingCell, FindingsResponse } from '@cwd/shared';
-import { cn } from 'cn';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
+import { HeatmapTable } from '../components/HeatmapTable.tsx';
 import { CategoryBadge } from '../runs/FindingsTable.tsx';
-import { categoryLabel, cellShade, formatPercent, weekLabel } from '../lib/format.ts';
+import { byAppSplit, categoryLabel, formatCount, formatPercent } from '../lib/format.ts';
 
-export type Measure = 'raised' | 'actedOn' | 'invalid';
+export type Measure = 'raised' | 'actedOn' | 'invalid' | 'appDiffers' | 'strengths';
+
+// The measures that are counts; the others are shares of the findings raised.
+const COUNTS: Measure[] = ['raised', 'appDiffers', 'strengths'];
 
 /** A cell of the grid: a row's category (null for the unlabelled row) and a week. */
 export type Selection = { category: string | null; week: string };
 
-/** A cell's value under the measure: its count raised, or a whole percent of it, null when none was raised. */
+/** A cell's value under the measure: a count, or a whole percent of the count raised, null when none was raised. */
 function value(cell: FindingCell, measure: Measure): number | null {
-  if (measure === 'raised') return cell.raised;
+  if (COUNTS.includes(measure)) return cell[measure];
   return cell.raised === 0 ? null : Math.round((100 * cell[measure]) / cell.raised);
 }
 
+/** Whether any finding in the response's period shows the workflow's label: a labelled row's count not the app's. */
+export function workflowLabelled(response: FindingsResponse): boolean {
+  return response.rows.some((row) => row.category !== null && row.cells.some((c) => c.raised > c.byApp));
+}
+
 /**
- * The area's categories down and the weeks across, each cell a button with its number written in it, so the grid is
- * its own table view. One blue ramp shades the cells: a count against the grid's largest, a share against 100%.
+ * The area's categories down and the weeks across, in the heatmap: a count shaded against the grid's largest, a share
+ * against 100%. Once a finding of the period shows the workflow's label, a raised count with some of it the app's says
+ * so ("2 · 1 by the app") and the categories leave the app's dashed badge; until then the page's line says every label
+ * is the app's.
  */
 export function FindingsGrid({
   response,
@@ -33,55 +42,39 @@ export function FindingsGrid({
   onSelect: (cell: Selection) => void;
 }) {
   const rows = response.rows.filter((row) => row.area === area);
-  const max = measure === 'raised' ? Math.max(0, ...rows.flatMap((row) => row.cells.map((c) => c.raised))) : 100;
+  const label = (category: string | null) => categoryLabel(category, response.categoryLabels);
+  const count = COUNTS.includes(measure);
+  const max = count ? Math.max(0, ...rows.flatMap((row) => row.cells.map((c) => value(c, measure) ?? 0))) : 100;
+  const byWorkflow = workflowLabelled(response);
   return (
-    // It scrolls sideways over many weeks, so its container is a named tab stop for keyboard users.
-    <Table
-      className="w-auto"
-      containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Findings by category and week' }}
-    >
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead>Category</TableHead>
-          {response.weeks.map((week) => (
-            <TableHead key={week} className="text-center">
-              {weekLabel(week)}
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.category} className="border-0 hover:bg-transparent">
-            <TableHead scope="row" className="font-normal">
-              <CategoryBadge category={row.category} />
-            </TableHead>
-            {row.cells.map((cell, i) => {
-              const week = response.weeks[i];
-              const shown = value(cell, measure);
-              const text = measure === 'raised' ? String(shown) : formatPercent(shown);
-              const pressed = selected?.category === row.category && selected.week === week;
-              return (
-                <TableCell key={week} className="p-0.5">
-                  <button
-                    type="button"
-                    aria-pressed={pressed}
-                    aria-label={`${categoryLabel(row.category)}, week of ${weekLabel(week)}: ${text}`}
-                    onClick={() => onSelect({ category: row.category, week })}
-                    className={cn(
-                      'h-7 w-12 rounded-sm text-xs tabular-nums',
-                      cellShade(shown ?? 0, max),
-                      pressed && 'outline-2 outline-offset-1 outline-foreground',
-                    )}
-                  >
-                    {text}
-                  </button>
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <HeatmapTable
+      label="Findings by category and week"
+      corner="Category"
+      weeks={response.weeks}
+      groups={[
+        {
+          heading: null,
+          rows: rows.map((row) => ({
+            id: row.category ?? '',
+            name: label(row.category),
+            header: (
+              <CategoryBadge
+                category={row.category}
+                judge={byWorkflow ? null : 'app'}
+                labels={response.categoryLabels}
+              />
+            ),
+            values: row.cells.map((cell) => value(cell, measure)),
+            texts: byWorkflow && measure === 'raised' ? row.cells.map(byAppSplit) : undefined,
+          })),
+        },
+      ]}
+      max={max}
+      format={count ? formatCount : formatPercent}
+      selected={selected && { id: selected.category ?? '', week: selected.week }}
+      onSelect={(cell) =>
+        onSelect({ category: cell.id || null, week: cell.week })
+      }
+    />
   );
 }

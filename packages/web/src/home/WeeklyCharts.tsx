@@ -36,7 +36,7 @@ function baseOption(weeks: string[]) {
 }
 
 /** One series of bars: 24px at most, a 4px rounded end, square at the baseline; a cost reads in dollars. */
-function singleBars(weeks: string[], name: string, data: (number | null)[], cost = false) {
+export function singleBars(weeks: string[], name: string, data: (number | null)[], cost = false) {
   const base = baseOption(weeks);
   return {
     ...base,
@@ -66,7 +66,7 @@ function findingsOption(charts: Charts) {
   };
 }
 
-function Chart({ title, option, height }: { title: string; option: object; height: number }) {
+export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
   return (
     <div className="min-w-0 flex-1 rounded-lg border bg-card p-3">
       <h2 className="text-sm font-medium">{title}</h2>
@@ -114,12 +114,22 @@ function ChartsTable({ charts }: { charts: Charts }) {
   );
 }
 
+/** A note when the reporter's coverage starts after `firstWeek`: the earlier weeks hold only what was stored. */
+export function CoverageNote({ coverageFrom, firstWeek }: { coverageFrom: string | null; firstWeek: string }) {
+  if (coverageFrom === null || weekOf(parseTime(coverageFrom)) <= firstWeek) return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      Weeks before {parseTime(coverageFrom).toLocaleDateString(undefined, { dateStyle: 'medium' })} show what was
+      stored; the reporter can no longer read them.
+    </p>
+  );
+}
+
 /**
  * The weekly charts: findings by step, cost and warnings over the charted weeks, with a note when the reporter's
  * coverage starts after the first of them (the earlier weeks hold only what was stored).
  */
 export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverageFrom: string | null }) {
-  const coverageWeek = coverageFrom === null ? null : weekOf(parseTime(coverageFrom));
   return (
     <section aria-label="Weekly charts" className="flex flex-col gap-2">
       <div className="flex gap-3">
@@ -127,12 +137,7 @@ export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverag
         <Chart title="Cost by week" option={singleBars(charts.weeks, 'Cost', charts.cost, true)} height={260} />
         <Chart title="Warnings by week" option={singleBars(charts.weeks, 'Warnings', charts.warnings)} height={260} />
       </div>
-      {coverageWeek !== null && coverageWeek > charts.weeks[0] && (
-        <p className="text-sm text-muted-foreground">
-          Weeks before {parseTime(coverageFrom!).toLocaleDateString(undefined, { dateStyle: 'medium' })} show what was
-          stored; the reporter can no longer read them.
-        </p>
-      )}
+      <CoverageNote coverageFrom={coverageFrom} firstWeek={charts.weeks[0]} />
       <ChartsTable charts={charts} />
     </section>
   );

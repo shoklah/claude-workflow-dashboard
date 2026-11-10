@@ -15,6 +15,20 @@
       "when": 1794263611323,
       "tag": "0001_finding_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794278671951,
+      "tag": "0002_mute_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794281359235,
+      "tag": "0003_import_categories",
+      "breakpoints": true
     }
   ]
 }

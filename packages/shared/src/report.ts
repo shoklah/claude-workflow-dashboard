@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RELEVANCE } from './categories.ts';
 
 // The reporter's --json output (workflow-report.py, report_data). Every field is optional and nullable unless the
 // loader can't work without it; unknown keys are stripped.
@@ -26,6 +27,8 @@ const FindingSchema = z.object({
   severity: str,
   kind: str,
   summary: str,
+  category: str,
+  validity: z.enum(RELEVANCE).nullish(),
   outcome: z.enum(OUTCOMES).nullish(),
   reason: str,
   closed_round: num,
@@ -42,6 +45,7 @@ const StepSchema = z.object({
   effort: str,
   counts,
   findings: z.array(FindingSchema).nullish(),
+  strengths: z.array(z.object({ category: str, summary: str })).nullish(),
 });
 
 const WaveSchema = z.object({ wave: str, tasks: z.array(z.number()).nullish(), conflicts: num });
@@ -68,7 +72,11 @@ const RunRecordSchema = z.object({
   tasks: num,
   fix_rounds: num,
   stops: num,
+  failing_test: z.array(z.object({ task: num, result: str })).nullish(),
 });
+
+// A WARN line as an object: its text is the warns line beside it, its kind one the reporter may add to.
+const WarningSchema = z.object({ text: z.string(), kind: str, step: z.object({ step: str }).nullish() });
 
 // Per model: tokens, and the list-price cost, null for a model the reporter has no price for.
 const ModelsSchema = z
@@ -106,11 +114,13 @@ export const RunEntrySchema = z.object({
     .object({ ran: z.enum(['agents', 'inline', 'no']).nullish(), applied: num, skipped: num })
     .nullish(),
   waves: z.array(WaveSchema).nullish(),
+  offers: z.array(z.object({ skill: str, outcome: str })).nullish(),
   fable_points: num,
   all_points: num,
   minutes: num,
   window: z.object({ transcript: str, start: str, end: str }).nullish(),
   warns: strings,
+  warnings: z.array(WarningSchema).nullish(),
   info: strings,
   later_fixes: z.array(z.object({ sha: str, date: str, subject: str })).nullish(),
   // The window's facts, all null when the run has no window.
@@ -123,6 +133,7 @@ export const RunEntrySchema = z.object({
   advisor: z.object({ calls: num, cost: num }).nullish(),
   notes: z.object({ notes: num, changed: num, missing: num }).nullish(),
   main: z.object({ model: str, effort: str }).nullish(),
+  title: str,
 });
 
 export const SessionEntrySchema = z.object({
@@ -133,6 +144,8 @@ export const SessionEntrySchema = z.object({
   efforts: EffortsSchema,
   startup: bool,
   warns: strings,
+  warnings: z.array(WarningSchema).nullish(),
+  title: str,
 });
 
 const WeekSchema = z.object({
@@ -149,13 +162,70 @@ const WeekSchema = z.object({
   later_fixes: num,
 });
 
-const TotalsSchema = z.object({ weeks: z.array(WeekSchema).nullish() });
+const tokens = z.object({ input: num, output: num, cache_read: num, cache_write: num }).nullish();
+
+// A step kind's scoreboard row; simplify's tokens and cost are null.
+const ScoreSchema = z.object({ ran: num, found: num, counts, outcomes: counts, tokens, cost: num }).nullish();
+
+const ScoreboardSchema = z.object({
+  ...Object.fromEntries(STEP_KINDS.map((kind) => [kind, ScoreSchema])) as Record<StepKind, typeof ScoreSchema>,
+  failing_test: counts,
+  dispatch_guard: counts,
+  advisor: z.object({ calls: num, notes: num, changed: num, cost: num, share: num }).nullish(),
+  startup: z.object({ with: num, without: num }).nullish(),
+  fix_round_cap: z.object({ runs: num, ruled: num }).nullish(),
+  stop_rule: z.object({ stops: num }).nullish(),
+});
+
+const RunTimeSchema = z.object({ runs: num, timed: num, median_minutes: num }).nullish();
+
+const AdvisorSchema = z.object({
+  calls: num,
+  tokens,
+  cost: num,
+  by_role: z.record(z.string(), z.object({ calls: num, flagged: bool })).nullish(),
+  failed: counts,
+  notes: num,
+  changed: num,
+  missing: num,
+  weeks: z.array(z.object({ week: str, advisor: num, fable: num, share: num, stop: bool })).nullish(),
+  trial: str,
+});
+
+const TotalsSchema = z.object({
+  weeks: z.array(WeekSchema).nullish(),
+  scoreboard: ScoreboardSchema.nullish(),
+  run_time: z.object({ with_waves: RunTimeSchema, without_waves: RunTimeSchema }).nullish(),
+  skills: z.record(z.string(), z.object({ runs: num, last: str, missing: num })).nullish(),
+  models: z
+    .object({
+      agents: z.record(z.string(), z.object({ requested: counts, actual: counts, mismatches: num })).nullish(),
+      main: z
+        .record(z.string(), z.object({ recommended: z.record(z.string(), str).nullish(), actual: counts, differs: num }))
+        .nullish(),
+    })
+    .nullish(),
+  advisor: AdvisorSchema.nullish(),
+  // Per offered skill: its outcomes' counts, and offered (accepted plus skipped).
+  offers: z.record(z.string(), counts).nullish(),
+});
+
+// The finding category list: its version, tie-break rule, validity definitions and a list per area.
+const CategoryListSchema = z.object({
+  version: num,
+  rule: str,
+  validity: z.record(z.string(), z.string()).nullish(),
+  areas: z
+    .array(z.object({ area: str, list: z.array(z.object({ id: z.string(), label: str, means: str })).nullish() }))
+    .nullish(),
+});
 
 export const ReportSchema = z.object({
   version: z.literal(1),
   generated: str,
   since: str,
   now: str,
+  categories: CategoryListSchema.nullish(),
   runs: z.array(RunEntrySchema),
   sessions: z.array(SessionEntrySchema),
   totals: TotalsSchema,
@@ -168,11 +238,24 @@ export type Step = z.infer<typeof StepSchema>;
 export type Finding = z.infer<typeof FindingSchema>;
 export type SessionEntry = z.infer<typeof SessionEntrySchema>;
 export type Totals = z.infer<typeof TotalsSchema>;
+export type Warning = z.infer<typeof WarningSchema>;
+export type CategoryList = z.infer<typeof CategoryListSchema>;
 export type StepKind = (typeof STEP_KINDS)[number];
 export type Outcome = (typeof OUTCOMES)[number];
 export type Path = (typeof PATHS)[number];
 
+/** The stored totals of an export (lastGoodImport's) as the schema reads them, or null when there are none or the
+ * schema rejects them. */
+export function reporterTotals(totals: unknown): Totals | null {
+  return TotalsSchema.safeParse(totals).data ?? null;
+}
+
 /** A value as a run path, or undefined when it isn't one. */
 export function toPath(value: unknown): Path | undefined {
   return PATHS.find((p) => p === value);
+}
+
+/** A value as a step kind, or undefined when it isn't one. */
+export function toStepKind(value: unknown): StepKind | undefined {
+  return STEP_KINDS.find((k) => k === value);
 }

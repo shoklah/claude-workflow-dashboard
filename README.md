@@ -49,7 +49,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 pnpm --filter @cwd/server check:real
 ```
 
-runs the reporter once and says whether the dashboard reads its output: the JSON version, the fields it can't read (`fields: none` when all is well), the run key counts, and the weeks whose sums differ from the reporter's totals. It then imports the output into a fresh database in a temp folder (never the dashboard's own), turns showing mode on for the first project, and checks every API response for a hidden project's path, name or branch and for session IDs: `showing: pass`, or `showing: <n> leaks`. It prints no value from the data but those weeks' dates.
+runs the reporter once and says whether the dashboard reads its output: the JSON version, the fields it can't read (`fields: none` when all is well), the run key counts, and where the pages' sums over every run and session differ from the reporter's totals: the weeks (every field, cost to the cent), the Full run time groups, the step kinds and the rules (`failing_test`, `fix_round_cap`, `stop_rule`, `offers`) by name, and the skills and models by count only, since a project can name a skill or agent. A total the export lacks (the old reporter's) shows as `not in the export`. It then imports the output into a fresh database in a temp folder (never the dashboard's own), turns showing mode on for the first project, and checks every API response, the Weeks, Steps and rules, Skills, Models and Compliance pages' included, for a hidden project's path, name or branch and for session IDs: `showing: pass`, or `showing: <n> leaks`. It prints no value from the data but those weeks' dates.
 
 ## Development
 

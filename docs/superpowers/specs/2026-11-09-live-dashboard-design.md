@@ -232,19 +232,31 @@ After CR10, the table also lists the reviewers' strengths.
 
 ### 2b. The static page's sections, Compliance, Sessions, Home's skills section
 
+**The cut** (decision 50):
+- **2b:** the four static-page sections, Compliance by kind with the orange step boxes, and reading CR10's labels.
+- **2c:** the Sessions page and Home's skills-and-commands section, built on CR11's fields once it merges.
+
+2b plans against the merged reporter's JSON: PR #8 (CR4, CR8, CR9) and CR10. The owner installs them before the tasks that read them run.
+
 - **Steps and rules, Weeks, Skills, Models and advisor:** the static page's tables, each with a period.
   - A figure that is a sum over runs and sessions is summed from the stored ones. On a full export, `check:real` compares each new sum with the reporter's totals, as it does for `weekSums`.
-  - Some figures aren't sums over runs and sessions yet: dispatch-guard refusals; the advisor's calls by role, failed calls, tokens and weekly Fable share; startup counts; typed-trigger misses in run windows; the stage table. These show the latest export's totals, marked "reporter, all time", until CR12 moves them into runs and sessions.
+  - Some figures aren't sums over runs and sessions yet, and show the latest export's totals, marked "reporter, all time", until CR11 and CR12 move them into runs and sessions:
+    - dispatch-guard refusals
+    - the advisor's whole row and facts: calls by role, failed calls, tokens, notes, the trial, and its weekly Fable share, which the page filters to the period's weeks
+    - startup counts
+    - each skill's "required but missing" (it includes typed-trigger misses in run windows)
+    - the stage table, and the main sessions' "differs"
+    - the agents' "mismatches": the reporter's model-matching rule isn't exported per dispatch
+  - A skill counts in a period when one of its loads falls in it, each load having its own time. Its outcomes are grouped by `skillOutcomeLabel`'s labels, the one place a skill's outcome becomes text.
   - Weeks adds four small multiples, one measure each: runs, final-review findings, cost, minutes per run.
   - The tables ship working but plain; their readability is a later UX/UI slice (decision 42).
-- **Compliance** (decision 48).
-  - **If PR #8 is installed when 2b's plan is written:**
-    - warnings are grouped by kind (CR4's `warnings` objects), with a weekly trend per kind
-    - each group opens onto the runs and sessions behind it
-    - Home's step boxes turn orange when a warning is attached to that step
-    - a kind the dashboard doesn't know shows as "other"
-  - **Otherwise:** Health's warnings, grouped as the static page groups them: each run, each session, other, information.
-  - **In showing mode,** either way, only picked projects' warnings show.
+- **Compliance by kind** (decisions 48 and 50; mockup `docs/design/2026-11-10-slice-2b/compliance.html`):
+  - **The grid:** warning kinds down, weeks across, reusing the Findings page's grid. Kinds come from CR4's `warnings` objects and are grouped into families by a table in the dashboard, since the reporter carries no grouping. A kind the dashboard doesn't know, and a warning stored before CR4, shows under "Other".
+  - **The week:** a run's warning counts in its run's week, and a session's in the week it was first seen.
+  - **Current or including resolved:** "current" counts what the latest export still reports. "Including resolved" adds warnings that have since gone.
+  - **A cell** lists its warnings below the grid, with their runs and "new" marks.
+  - **Home's step boxes** turn orange, with the count written in them, when a current warning in the diagram's period names that step. A box opens Compliance filtered to that step.
+  - **In showing mode,** only picked projects' run warnings show. Session and "other" warnings are left out, as 2a leaves out session warnings.
 - **Sessions:** one row per session, showing:
   - its name (decision 31) and project (as above), and when it was first seen
   - the skills it loaded, and the skill commands typed, marked when the skill never loaded
@@ -257,6 +269,12 @@ After CR10, the table also lists the reviewers' strengths.
   - otherwise, its first-seen time, which puts sessions with no activity from before the first import in that import's week
 
   A session that a run now covers counts with its run, not as a session, as the reporter counts it. The Sessions page lists it with its link, behind a filter.
+- **Reading CR10's labels** (2b): CR10 shipped as record schema 5.
+  - **The exported list replaces the app's.** `--json`'s top-level `categories` holds the version, the tie-break rule, the validity definitions, and per area a list of `{id, label, means}`. Its snake_case ids, including the plan list's `code_facts`, replace the app's list, which goes: an export with no list gets no labels. A label's list identity becomes the exported version, stored as `100 + N`, so every finding is relabelled once. Until its new label lands, a finding sits in its area's unlabelled row (decision 51). The labeller's prompt uses the export's `means` sentences, rule and validity definitions, so both judges pick from the same text.
+  - **Workflow labels win.** A finding's `category` and `validity` (CR10's name for the session's valid, invalid or unclear call) are the facts shown. The app's call shows only where it differs. The Valid column shows `validity`.
+  - **Strengths:** a review step's `strengths` list on the run page, and strengths by category as a measure on the Findings page.
+  - **Turned on:** "App differs" and the per-cell "by the app" split (decision 49). The page line saying every label is the app's shows only while no finding carries a workflow label.
+  - **Labels shown by name:** responses carry the list's labels, so a category shows by its `label`.
 - **Home's skills and commands section,** below the charts. For each skill or command:
   - the share of the period's sessions that loaded it, as a bar
   - how many runs loaded it
@@ -376,6 +394,19 @@ CR6 can land at any point without a visible change. To check in planning: that e
     - Until CR10, one page line says every label is the app's, instead of a per-cell count.
     - Matching sessions to projects moves to 2b, and 2a's showing mode leaves out every session warning.
     - After a model change, the old model's labels show until the new model's replace them.
+
+### 2026-11-10, the owner, slice 2b
+
+50. **2b is cut again, and plans against the merged reporter.**
+    - 2b: the four static-page sections, Compliance by kind with the orange step boxes, and reading CR10's labels.
+    - 2c: the Sessions page and Home's skills-and-commands section, on CR11's fields once it merges.
+
+    2b plans against PR #8's and CR10's merged JSON, whose shapes are final, and the owner installs them before the tasks that read them run. This replaces decision 48's "if PR #8 is installed" condition. The Compliance mockup is approved.
+51. **The slice 2b plan is approved** (`docs/superpowers/plans/2026-11-10-live-dashboard-slice-2b.md`), with four readings of the design:
+    - The workflow's list is numbered `100 + N` in the labels' existing column, so no stored label moves.
+    - During the one-time relabel, findings show as unlabelled, not under 2a's labels.
+    - With no exported list, nothing is labelled.
+    - The four basics pages' views keep their leak checks.
 
 ## Claude's calls, open to correction
 
