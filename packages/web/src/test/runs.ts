@@ -96,6 +96,7 @@ export const categoryLabels: Record<string, string> = {
   docs: 'Docs',
 };
 
+/** A finding; a category given with no judge is the app's label. */
 export function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' | 'summary'>): FindingRow {
   return {
     task: null,
@@ -108,11 +109,24 @@ export function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' 
     reason: null,
     verdicts: [],
     category: null,
+    validity: null,
+    judge: f.category ? 'app' : null,
     relevance: null,
     labelReason: null,
+    appCategory: null,
+    appRelevance: null,
     ...f,
   };
 }
+
+/** Findings of a run after CR10: the workflow's label the app agrees with, one it labels differently, the app's own
+ * label of a finding the workflow left unlabelled, and the workflow's with no app label. */
+export const workflowFindings: FindingRow[] = [
+  finding({ id: 'F1', step: 'task_review', task: 2, severity: 'important', summary: 'Week arithmetic restated instead of using the shared helper', outcome: 'fixed', category: 'reuse', validity: 'valid', judge: 'workflow', relevance: 'valid', labelReason: 'The helper already does this' }),
+  finding({ id: 'F2', step: 'task_review', task: 4, severity: 'minor', summary: 'No test covers the empty export case', outcome: 'declined', reason: 'Out of scope for this task', category: 'tests', validity: 'invalid', judge: 'workflow', relevance: 'valid', labelReason: 'An empty export is a real case', appCategory: 'correctness', appRelevance: 'valid' }),
+  finding({ id: 'F3', step: 'task_review', wave: 'A', severity: 'important', summary: 'Two tasks wrote contradicting convention lines', outcome: 'fixed', category: 'conventions', relevance: 'valid', labelReason: 'The two lines disagree' }),
+  finding({ id: 'F4', step: 'final_review', severity: 'minor', summary: 'Config option nothing reads', outcome: 'deferred', category: 'simplicity', validity: 'unclear', judge: 'workflow' }),
+];
 
 const F1 = finding({ id: 'F1', step: 'task_review', task: 1, severity: 'important', summary: 'Search drops the last page on exact multiples', outcome: 'fixed', closedRound: 1, verdicts: ['fixed'], category: 'correctness', relevance: 'valid', labelReason: 'Results on the last page are lost' });
 const F2 = finding({ id: 'F2', step: 'task_review', task: 1, severity: 'minor', summary: "Test name doesn't say what it checks", outcome: 'deferred', category: 'naming', relevance: 'unclear', labelReason: 'The name is short but not wrong' });
@@ -154,6 +168,10 @@ export const runFull: RunResponse = {
     { kind: 'end', label: 'End', at: fullRun.finishedAt, tasks: [], steps: [] },
   ],
   findings: [F1, F2, F3, F4, F5, F6],
+  strengths: [
+    { step: 'task_review', task: 3, round: 0, category: 'reuse', summary: 'New page reuses the shared table and format helpers' },
+    { step: 'final_review', task: null, round: 0, category: 'tests', summary: 'Each view tested on both fixtures, null facts included' },
+  ],
   skills: [
     { name: 'subagent-driven-development', outcome: 'ran' },
     { name: 'simplify', outcome: 'applied 1, skipped 0' },
@@ -178,6 +196,7 @@ export const runBeforeSteps: RunResponse = {
     { kind: 'end', label: 'End', at: oldRun.finishedAt, tasks: [], steps: [] },
   ],
   findings: [],
+  strengths: [],
   skills: [],
   models: [],
   advisor: null,

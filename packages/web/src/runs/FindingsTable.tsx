@@ -12,7 +12,7 @@ import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
-import { NONE, STEP_LABELS, categoryLabel, runName } from '../lib/format.ts';
+import { NONE, STEP_LABELS, categoryLabel, joined, runName } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -22,16 +22,31 @@ const features = tableFeatures({
 // A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
 type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
 
-/** A finding's category by its label from `labels`, in a dashed badge that marks it as the app's label, never the
- * reporter's; "unlabelled" bare. */
-export function CategoryBadge({ category, labels }: { category: string | null; labels: Record<string, string> }) {
-  return category === null ? (
-    categoryLabel(null, labels)
-  ) : (
-    <Badge variant="outline" className="border-dashed" title="The app's label">
+/** A category by its label from `labels`, in a badge, dashed to mark it as the app's label, never the reporter's, when
+ * `judge` is the app; "unlabelled" bare. */
+export function CategoryBadge({
+  category,
+  judge,
+  labels,
+}: {
+  category: string | null;
+  judge?: FindingRow['judge'];
+  labels: Record<string, string>;
+}) {
+  if (category === null) return categoryLabel(null, labels);
+  const app = judge === 'app';
+  return (
+    <Badge variant="outline" className={app ? 'border-dashed' : undefined} title={app ? "The app's label" : undefined}>
       {categoryLabel(category, labels)}
     </Badge>
   );
+}
+
+/** The App column's text: the app's category and call where they differ from the workflow's, "agrees" where the
+ * workflow's label shows and the app's is the same, else the app's call. */
+function appText(f: FindingRow, labels: Record<string, string>): string {
+  const differs = joined([f.appCategory && categoryLabel(f.appCategory, labels), f.appRelevance]);
+  return differs || (f.judge === 'workflow' ? 'agrees' : (f.relevance ?? NONE));
 }
 
 const helper = createColumnHelper<typeof features, Row>();
@@ -46,7 +61,7 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
   helper.accessor('severity', { header: 'Severity', filterFn: 'equalsString', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('category', {
     header: 'Category',
-    cell: (c) => <CategoryBadge category={c.getValue()} labels={labels} />,
+    cell: (c) => <CategoryBadge category={c.getValue()} judge={c.row.original.judge} labels={labels} />,
   }),
   helper.accessor('summary', { header: 'Summary', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('outcome', {
@@ -59,18 +74,17 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
   }),
   helper.accessor('reason', { header: 'Reason', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor((f) => (f.verdicts.length ? f.verdicts.join(', ') : NONE), { id: 'verdicts', header: 'Verdicts' }),
-  // The session's call, which the workflow doesn't record yet (CR10).
-  helper.accessor(() => NONE, { id: 'valid', header: 'Valid' }),
+  // The session's call, as the workflow records it.
+  helper.accessor('validity', { header: 'Valid', cell: (c) => c.getValue() ?? NONE }),
   helper.accessor('relevance', {
     header: 'App',
     cell: (c) => {
-      const relevance = c.getValue();
-      if (relevance === null) return NONE;
+      if (c.getValue() === null) return NONE;
       return (
         <Tooltip>
           <TooltipTrigger asChild>
             <span tabIndex={0} className="underline decoration-dotted underline-offset-2">
-              {relevance}
+              {appText(c.row.original, labels)}
             </span>
           </TooltipTrigger>
           <TooltipContent>{c.row.original.labelReason}</TooltipContent>
@@ -99,8 +113,9 @@ const FILTERS = [
 ] as const;
 
 /**
- * Every finding of the run in one table, filtered by step, severity and outcome, with the app's label of each, its
- * category named by `categoryLabels` (the response's). With `run`, a first column links each finding to its run.
+ * Every finding of the run in one table, filtered by step, severity and outcome, with its labels: the workflow's, which
+ * win, and the app's; each category named by `categoryLabels` (the response's). With `run`, a first column links each
+ * finding to its run.
  */
 export function FindingsTable({
   findings,

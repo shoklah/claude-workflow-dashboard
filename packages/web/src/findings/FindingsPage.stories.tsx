@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
-import { findingsEmpty, findingsFull, findingsHidden } from '../test/findings.ts';
+import { findingsEmpty, findingsFull, findingsHidden, findingsWorkflow } from '../test/findings.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { FindingsPage } from './FindingsPage.tsx';
@@ -59,7 +59,6 @@ export const Full: Story = {
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await expect(canvas.getByRole('button', { name: 'Raised' })).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.getByRole('button', { name: 'Implementation' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(canvas.getByRole('button', { name: 'App differs' })).toBeDisabled();
     await waitFor(() =>
       expect(
         [...canvas.getByRole('combobox', { name: 'Project' }).querySelectorAll('option')].map((o) => o.textContent),
@@ -81,16 +80,33 @@ export const Full: Story = {
   },
 };
 
-/** "App differs" waits for the workflow's own labels, and its tooltip says so. */
+/**
+ * After CR10, "App differs" counts the findings the app labels differently from the workflow, and the line that every
+ * label is the app's is gone.
+ */
 export const AppDiffers: Story = {
   beforeEach: () => {
-    mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsFull });
+    mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsWorkflow });
   },
-  play: async ({ canvas, canvasElement, userEvent }) => {
-    const option = await canvas.findByRole('button', { name: 'App differs' });
-    await userEvent.hover(option.parentElement!);
-    const body = within(canvasElement.ownerDocument.body);
-    await expect(await body.findByRole('tooltip')).toHaveTextContent("Comes with the workflow's own labels");
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2 · 1 by the app' });
+    await expect(canvas.queryByText(/Every label here is the app's/)).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'App differs' }));
+    await expect(canvas.getByRole('button', { name: 'App differs' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByRole('button', { name: 'Correctness, week of Oct 18: 1' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 0' })).toBeVisible();
+  },
+};
+
+/** "Strengths" counts the reviewers' strengths under each category. */
+export const Strengths: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsWorkflow });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Strengths' }));
+    await expect(canvas.getByRole('button', { name: 'Reuse and duplication, week of Nov 1: 2' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 1' })).toBeVisible();
   },
 };
 

@@ -6,8 +6,9 @@ import { cellShade, formatCount, weekLabel } from '../lib/format.ts';
 /** A cell of a heatmap: its row's key and a week. */
 export type HeatmapSelection = { key: string; week: string };
 
-/** A row of a heatmap: `key` names it in its cells' labels and in the selection, `header` is what its header shows. */
-export type HeatmapRow = { key: string; header: ReactNode; values: (number | null)[] };
+/** A row of a heatmap: `key` names it in its cells' labels and in the selection, `header` is what its header shows;
+ * `texts`, when given, is each cell's text in place of `format`'s. */
+export type HeatmapRow = { key: string; header: ReactNode; values: (number | null)[]; texts?: string[] };
 
 /** A group of rows, under a full-width heading row unless its heading is null. */
 export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
@@ -65,7 +66,7 @@ export function HeatmapTable({
               </TableHead>
               {row.values.map((value, i) => {
                 const week = weeks[i];
-                const text = format(value);
+                const text = row.texts?.[i] ?? format(value);
                 const pressed = selected?.key === row.key && selected.week === week;
                 return (
                   <TableCell key={week} className="p-0.5">
@@ -75,7 +76,7 @@ export function HeatmapTable({
                       aria-label={`${row.key}, week of ${weekLabel(week)}: ${text}`}
                       onClick={() => onSelect({ key: row.key, week })}
                       className={cn(
-                        'h-7 w-12 rounded-sm text-xs tabular-nums',
+                        'h-7 min-w-12 rounded-sm px-1 text-xs whitespace-nowrap tabular-nums',
                         cellShade(value ?? 0, max),
                         pressed && 'outline-2 outline-offset-1 outline-foreground',
                       )}

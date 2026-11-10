@@ -71,3 +71,15 @@ test('the toggle switches between timeline and findings', async ({ page }) => {
   await expect(page.getByText('Started')).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);
 });
+
+test('the schema 5 run page lists its strengths under the findings table', async ({ page }) => {
+  await page.goto('/runs');
+  await page.getByRole('link', { name: 'tidepool-api · feature/webhooks' }).click();
+  await expect(page.getByRole('heading', { name: 'tidepool-api · feature/webhooks' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Findings' }).click();
+  const strengths = page.getByRole('region', { name: 'Strengths' });
+  await expect(strengths.getByRole('listitem')).toHaveCount(2);
+  await expect(strengths.getByText('Each retry delay has its own test')).toBeVisible();
+  await expect(strengths.getByText('The signing secret never reaches a log')).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});

@@ -74,6 +74,33 @@ export const Full: Story = {
   },
 };
 
+/** Under the findings table, the reviewers' strengths: each one's category, summary and step. */
+export const Strengths: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Findings' }));
+    const strengths = canvas.getByRole('region', { name: 'Strengths' });
+    await expect([...strengths.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      'Reuse and duplicationNew page reuses the shared table and format helpersTask review · task 3',
+      'TestsEach view tested on both fixtures, null facts includedFinal review',
+    ]);
+  },
+};
+
+/** A run with no strengths says so under its findings table. */
+export const NoStrengths: Story = {
+  args: { runKey: oldRun.key },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${oldRun.key}`]: runBeforeSteps });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Findings' }));
+    await expect(within(canvas.getByRole('region', { name: 'Strengths' })).getByText('None')).toBeVisible();
+  },
+};
+
 /** The toggle switches between the timeline and every finding in one table. */
 export const Toggle: Story = {
   beforeEach: () => {

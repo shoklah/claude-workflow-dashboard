@@ -8,7 +8,8 @@ const SIGNALS: [keyof FindingsResponse['signals'], string][] = [
   ['declinedOrRuled', 'findings declined or ruled'],
 ];
 
-/** The period's relevance signals, each a sum over the stored runs, and the labeller's line. */
+/** The period's relevance signals, each a sum over the stored runs, the findings the session judged invalid beside
+ * those declined or ruled, and the labeller's line. */
 export function SignalsPanel({
   signals,
   labeller,
@@ -20,6 +21,7 @@ export function SignalsPanel({
         <div key={key} role="group" aria-label={label} className="rounded-lg border bg-card px-3 py-2">
           <div className="text-lg font-semibold">{signals[key]}</div>
           {label}
+          {key === 'declinedOrRuled' && ` · ${signals.judgedInvalid} judged invalid by the session`}
         </div>
       ))}
       <p className="text-muted-foreground">{labellerLabel(labeller)}</p>

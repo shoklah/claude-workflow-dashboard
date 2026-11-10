@@ -20,6 +20,8 @@ const WEEKS = ['2026-10-18', '2026-10-25', '2026-11-01', '2026-11-08'];
 // report-projects' runs, oldest first: Archive lantern-notes, tidepool-api, Work lantern-notes and its worktree.
 const WORK = '/Users/example/Work/lantern-notes';
 const [, TIDEPOOL, TIDY, OFFLINE] = fixture('report-projects').runs.map(runKey) as string[];
+// report-v5's schema 5 run, labelled by the workflow; it finished in the week of 2026-11-08.
+const WEBHOOKS = runKey(fixture('report-v5').runs[5]) as string;
 
 let dir: string;
 let db: Db;
@@ -41,12 +43,12 @@ const IMPLEMENTATION = [
 ];
 
 /**
- * A fresh database in the test's folder, holding report-projects' import with report-v5's category list (CR10's
- * version 1, so labels are saved under 101), changed first by `change`.
+ * A fresh database in the test's folder, holding a fixture's import (report-projects by default) with report-v5's
+ * category list (CR10's version 1, so labels are saved under 101), changed first by `change`.
  */
-function dbWith(name: string, change: (raw: any) => void = () => {}): Db {
+function dbWith(name: string, change: (raw: any) => void = () => {}, report = 'report-projects'): Db {
   const fresh = openDb(join(dir, name, 'dashboard.sqlite'));
-  const raw = fixture('report-projects');
+  const raw = fixture(report);
   raw.categories = fixture('report-v5').categories;
   change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
@@ -128,11 +130,12 @@ test("a labelled finding counts in its week's category cell", async () => {
   label(TIDY, 'F2', 'tests', 'invalid');
   const body = await findings();
   // F1 is fixed, F2 deferred; tidy-imports finished in the week of 2026-11-01.
+  const none = { raised: 0, actedOn: 0, invalid: 0, strengths: 0, byApp: 0, appDiffers: 0 };
   expect(row(body, 'implementation', 'tests')?.cells).toEqual([
-    { raised: 0, actedOn: 0, invalid: 0 },
-    { raised: 0, actedOn: 0, invalid: 0 },
-    { raised: 2, actedOn: 1, invalid: 1 },
-    { raised: 0, actedOn: 0, invalid: 0 },
+    none,
+    none,
+    { raised: 2, actedOn: 1, invalid: 1, strengths: 0, byApp: 2, appDiffers: 0 },
+    none,
   ]);
   const item = body.findings.find((f) => f.runKey === TIDY && f.id === 'F1');
   expect(item).toMatchObject({
@@ -170,7 +173,13 @@ test('an area with every finding labelled has no unlabelled row', async () => {
 test("the signals are the fixture's counts", async () => {
   const body = await findings();
   // tidepool's task reviews raised a finding, and tidy-imports' did, so no final review ran after clean ones.
-  expect(body.signals).toEqual({ laterFixes: 0, finalAfterClean: 0, notProportionate: 0, declinedOrRuled: 3 });
+  expect(body.signals).toEqual({
+    laterFixes: 0,
+    finalAfterClean: 0,
+    notProportionate: 0,
+    declinedOrRuled: 3,
+    judgedInvalid: 0,
+  });
 });
 
 test('the signals count later fixes, final findings after clean task reviews and fixes not proportionate', async () => {
@@ -182,7 +191,44 @@ test('the signals count later fixes, final findings after clean task reviews and
     tidy.later_fixes = [{ sha: 'a1b2c3d', date: '2026-11-05T10:00:00Z', subject: 'fix: sort the imports' }];
   });
   const body = await findings();
-  expect(body.signals).toEqual({ laterFixes: 1, finalAfterClean: 1, notProportionate: 2, declinedOrRuled: 3 });
+  expect(body.signals).toEqual({
+    laterFixes: 1,
+    finalAfterClean: 1,
+    notProportionate: 2,
+    declinedOrRuled: 3,
+    judgedInvalid: 0,
+  });
+});
+
+test("the workflow's labels win in the cells: strengths, byApp and appDiffers in the run's week and category", async () => {
+  db.$client.close();
+  // The final review's docs finding judged invalid by the session.
+  db = dbWith('v5', (raw) => (raw.runs[5].steps[5].findings[0].validity = 'invalid'), 'report-v5');
+  label(WEBHOOKS, 'F3', 'conventions', 'invalid');
+  label(WEBHOOKS, 'F4', 'error_handling', 'invalid');
+  label(WEBHOOKS, 'F7', 'docs', 'valid');
+  const body = await findings();
+  const nov8 = (area: string, category: string | null) => row(body, area, category)?.cells[3];
+  // F3, the workflow's (fixed, valid; the app's conventions differs), and F4, the app's (declined, invalid).
+  expect(nov8('implementation', 'error_handling')).toEqual({
+    raised: 2,
+    actedOn: 1,
+    invalid: 1,
+    strengths: 0,
+    byApp: 1,
+    appDiffers: 1,
+  });
+  // F7: the session's invalid wins over the app's valid, which differs.
+  expect(nov8('implementation', 'docs')).toMatchObject({ raised: 1, invalid: 1, byApp: 0, appDiffers: 1 });
+  // The task review's tests strength and the final review's security_privacy one, with no finding of theirs.
+  expect(nov8('implementation', 'tests')).toEqual({ raised: 0, actedOn: 0, invalid: 0, strengths: 1, byApp: 0, appDiffers: 0 });
+  expect(nov8('implementation', 'security_privacy')).toMatchObject({ raised: 0, strengths: 1 });
+  expect(body.signals.judgedInvalid).toBe(1);
+  expect(body.findings.find((f) => f.runKey === WEBHOOKS && f.id === 'F3')).toMatchObject({
+    judge: 'workflow',
+    category: 'error_handling',
+    appCategory: 'conventions',
+  });
 });
 
 test('the weeks, path and project filters choose the runs counted', async () => {

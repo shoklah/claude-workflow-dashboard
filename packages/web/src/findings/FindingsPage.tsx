@@ -2,17 +2,18 @@ import { useState, type ReactNode } from 'react';
 import { AREAS, type Area, type FindingsQuery, type FindingsResponse, type RunsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
 import { AREA_LABELS, categoryLabel, hiddenLabel, plural, weekLabel } from '../lib/format.ts';
 import { FindingsTable } from '../runs/FindingsTable.tsx';
 import { ListFilters, listPath } from '../runs/RunsPage.tsx';
-import { FindingsGrid, type Measure, type Selection } from './FindingsGrid.tsx';
+import { FindingsGrid, workflowLabelled, type Measure, type Selection } from './FindingsGrid.tsx';
 import { SignalsPanel } from './SignalsPanel.tsx';
 
 const MEASURES: { measure: Measure; label: string }[] = [
   { measure: 'raised', label: 'Raised' },
   { measure: 'actedOn', label: 'Share acted on' },
   { measure: 'invalid', label: 'Share judged invalid' },
+  { measure: 'appDiffers', label: 'App differs' },
+  { measure: 'strengths', label: 'Strengths' },
 ];
 
 /** One option of a switch, pressed while it is the switch's value. */
@@ -26,7 +27,8 @@ export function Option({ pressed, onClick, children }: { pressed: boolean; onCli
 
 /**
  * The Findings page (layout B): the period's findings by category and week for one area under one measure, the
- * selected cell's findings below the grid, and the relevance signals beside it.
+ * selected cell's findings below the grid, and the relevance signals beside it; a line says every label is the app's
+ * while no finding of the period shows the workflow's.
  */
 export function FindingsPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
@@ -59,16 +61,6 @@ export function FindingsPage() {
               {option.label}
             </Option>
           ))}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span tabIndex={0}>
-                <Button size="sm" variant="outline" disabled>
-                  App differs
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Comes with the workflow's own labels</TooltipContent>
-          </Tooltip>
         </div>
         <div role="group" aria-label="Area" className="flex gap-1">
           {AREAS.map((option) => (
@@ -90,9 +82,11 @@ export function FindingsPage() {
       {data && (
         <div className="flex flex-wrap items-start gap-6">
           <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <p className="text-sm text-muted-foreground">
-              Every label here is the app's, until the workflow labels findings itself.
-            </p>
+            {!workflowLabelled(data) && (
+              <p className="text-sm text-muted-foreground">
+                Every label here is the app's, until the workflow labels findings itself.
+              </p>
+            )}
             <FindingsGrid response={data} measure={measure} area={area} selected={selected} onSelect={setSelected} />
             {data.rows.every((row) => row.cells.every((c) => c.raised === 0)) && (
               <p className="text-sm">No findings in this period.</p>

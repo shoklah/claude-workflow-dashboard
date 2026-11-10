@@ -11,6 +11,7 @@ import {
   type FindingsResponse,
   type RunEntry,
   type Step,
+  type StepKind,
 } from '@cwd/shared';
 import { categoryLabels, type ActiveList } from '../categories.ts';
 import type { StoredLabel } from '../db/labels.ts';
@@ -20,16 +21,22 @@ import type { Scope } from './scope.ts';
 
 const sum = <T>(items: T[], of: (item: T) => number) => items.reduce((n, item) => n + of(item), 0);
 
-function cell(findings: FindingRow[]): FindingCell {
+// A cell's findings and its count of strengths.
+type Bucket = { findings: FindingRow[]; strengths: number };
+
+function cell({ findings, strengths }: Bucket): FindingCell {
   return {
     raised: findings.length,
     actedOn: splitFindings([{ findings }]).actedOn,
-    invalid: findings.filter((f) => f.relevance === 'invalid').length,
+    invalid: findings.filter((f) => (f.validity ?? f.relevance) === 'invalid').length,
+    strengths,
+    byApp: findings.filter((f) => f.judge === 'app').length,
+    appDiffers: findings.filter((f) => f.appCategory !== null || f.appRelevance !== null).length,
   };
 }
 
 /** The signals over the runs: their later fixes, final review findings after task reviews that all found nothing,
- * fix checks' findings not proportionate, and findings declined or ruled. */
+ * fix checks' findings not proportionate, findings declined or ruled, and findings the session judged invalid. */
 function signals(runs: RunEntry[]): FindingsResponse['signals'] {
   const steps = runs.flatMap((run) => run.steps ?? []);
   const found = (of: Step[]) => sum(of, (s) => s.findings?.length ?? 0);
@@ -47,15 +54,18 @@ function signals(runs: RunEntry[]): FindingsResponse['signals'] {
     declinedOrRuled: steps
       .flatMap((s) => s.findings ?? [])
       .filter((f) => f.outcome === 'declined' || f.outcome === 'ruled').length,
+    judgedInvalid: steps.flatMap((s) => s.findings ?? []).filter((f) => f.validity === 'invalid').length,
   };
 }
 
 /**
  * The Findings page: over the stored runs in the query's period (period), each area's categories by week in `list`'s
- * (the active list's) order (a finding's week is its run's), then the area's unlabelled row when any of its findings
- * has no label from `labels` (currentLabels), the findings as runView gives them, the signals, and the list's display
- * labels. With no list, every finding is in its area's unlabelled row. With a scope, the cells and signals still count every project, but the findings are only the shown projects', masked as
- * runView masks them, and `hidden` counts those left out.
+ * (the active list's) order, then the area's unlabelled row when any of its findings or strengths has no category; a
+ * finding or strength counts in its run's week, its step's area and its category as runView gives it (the workflow's,
+ * else the app's from `labels`, currentLabels). Then the findings as runView gives them, the signals, and the list's
+ * display labels. With no list, every area has only its unlabelled row. With a scope, the cells and signals still
+ * count every project, but the findings are only the shown projects', masked as runView masks them, and `hidden`
+ * counts those left out.
  */
 export function findingsView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -75,12 +85,12 @@ export function findingsView(input: {
     return matches(facts) ? [{ unit, week: weekOf(parseTime(facts.finishedAt!)) }] : [];
   });
 
-  // Each row's findings, by week, under `${area} ${category}`; a null category is the unlabelled row.
+  // Each row's findings and strengths, by week, under `${area} ${category}`; a null category is the unlabelled row.
   const rowKeys = AREAS.flatMap((area) =>
     [...(list?.areas[area].map((c) => c.id) ?? []), null].map((category) => ({ area, category })),
   );
   const byRow = new Map(
-    rowKeys.map(({ area, category }) => [`${area} ${category}`, weeks.map((): FindingRow[] => [])]),
+    rowKeys.map(({ area, category }) => [`${area} ${category}`, weeks.map((): Bucket => ({ findings: [], strengths: 0 }))]),
   );
   const findings: FindingItem[] = [];
   let hidden = 0;
@@ -89,7 +99,13 @@ export function findingsView(input: {
     // outcome or relevance, so a shown run's masked rows count in the cells as they are.
     const shown = runView(unit, [], names, scope, labels, list);
     const all = shown ?? runView(unit, [], names, null, labels, list)!;
-    for (const f of all.findings) byRow.get(`${areaOf(f.step)} ${f.category}`)?.[weeks.indexOf(week)].push(f);
+    const bucket = (step: StepKind, category: string | null) =>
+      byRow.get(`${areaOf(step)} ${category}`)?.[weeks.indexOf(week)];
+    for (const f of all.findings) bucket(f.step, f.category)?.findings.push(f);
+    for (const s of all.strengths) {
+      const at = bucket(s.step, s.category);
+      if (at) at.strengths++;
+    }
     if (!shown) {
       hidden += all.findings.length;
       continue;
@@ -104,7 +120,7 @@ export function findingsView(input: {
     weeks,
     rows: rowKeys
       .map(({ area, category }) => ({ area, category, cells: byRow.get(`${area} ${category}`)!.map(cell) }))
-      .filter((row) => row.category !== null || row.cells.some((c) => c.raised > 0)),
+      .filter((row) => row.category !== null || row.cells.some((c) => c.raised > 0 || c.strengths > 0)),
     findings,
     hidden,
     signals: signals(runs.map(({ unit }) => unit.merged)),

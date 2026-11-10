@@ -28,8 +28,12 @@ const WEEK = 7 * 24 * 60 * 60 * 1000;
 // A logged step whose kind the reporter gave; it always gives one.
 type KnownStep = Step & { step: StepKind };
 
-// A finding's label fields, by its id.
-type LabelOf = (id: string | null | undefined) => Pick<FindingRow, 'category' | 'relevance' | 'labelReason'>;
+type Finding = NonNullable<Step['findings']>[number];
+
+// A finding's label fields: the workflow's it carries, and the app's.
+type LabelOf = (
+  finding: Finding,
+) => Pick<FindingRow, 'category' | 'validity' | 'judge' | 'relevance' | 'labelReason' | 'appCategory' | 'appRelevance'>;
 
 /** What a skill's outcome says, never the outcome itself: a string other than 'ran' is a file path. */
 export function skillOutcomeLabel(outcome: unknown): string {
@@ -151,7 +155,7 @@ function findingRows(step: KnownStep, labelOf: LabelOf): FindingRow[] {
     outcome: f.outcome ?? null,
     reason: f.reason ?? null,
     verdicts: f.verdicts ?? [],
-    ...labelOf(f.id),
+    ...labelOf(f),
   }));
 }
 
@@ -206,10 +210,11 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
   ].filter((g) => !['plan', 'simplify', 'final'].includes(g.kind) || g.steps.length > 0);
 }
 
-/** One run: its facts, timeline and findings, each with the app's label from `labels` (currentLabels), its skills,
- * models and advisor notes, its current warnings, and the display labels of `list`'s (the active list's) categories;
- * its project's name from `names`, every stored run's (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
- * named by the scope and its findings' texts and label reasons masked (maskText). */
+/** One run: its facts, timeline and findings, each with the workflow's label, which wins, and the app's from `labels`
+ * (currentLabels), its review steps' strengths, its skills, models and advisor notes, its current warnings, and the
+ * display labels of `list`'s (the active list's) categories; its project's name from `names`, every stored run's
+ * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
+ * named by the scope and its findings' texts, label reasons and strengths' summaries masked (maskText). */
 export function runView(
   run: StoredUnit<RunEntry>,
   warnings: StoredWarning[],
@@ -233,13 +238,20 @@ export function runView(
         reason: mask(f.reason),
         verdicts: f.verdicts?.map((v) => mask(v) ?? v),
       })),
+      strengths: s.strengths?.map((strength) => ({ ...strength, summary: mask(strength.summary) })),
     }));
-  const labelOf: LabelOf = (id) => {
-    const label = id ? labels.get(findingKey(run.key, id)) : undefined;
+  const labelOf: LabelOf = (f) => {
+    const label = f.id ? labels.get(findingKey(run.key, f.id)) : undefined;
+    const workflow = f.category ?? null;
+    const validity = f.validity ?? null;
     return {
-      category: label?.category ?? null,
+      category: workflow ?? label?.category ?? null,
+      validity,
+      judge: workflow !== null ? 'workflow' : label ? 'app' : null,
       relevance: label?.relevance ?? null,
       labelReason: mask(label?.reason) ?? null,
+      appCategory: workflow !== null && label && label.category !== workflow ? label.category : null,
+      appRelevance: validity !== null && label && label.relevance !== validity ? label.relevance : null,
     };
   };
   const calls = entry.advisor?.calls;
@@ -248,6 +260,15 @@ export function runView(
     facts,
     timeline: timeline(entry, steps, facts, labelOf),
     findings: steps.flatMap((step) => findingRows(step, labelOf)),
+    strengths: steps.flatMap((s) =>
+      (s.strengths ?? []).map((strength) => ({
+        step: s.step,
+        task: s.task ?? null,
+        round: s.round ?? null,
+        category: strength.category ?? null,
+        summary: strength.summary ?? null,
+      })),
+    ),
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,

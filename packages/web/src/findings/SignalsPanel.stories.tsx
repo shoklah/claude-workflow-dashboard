@@ -23,12 +23,14 @@ export const Empty: Story = {
   },
 };
 
-/** Full: the four signals' sums, and the labeller's counts and this week's tokens. */
+/** Full: the four signals' sums, the session's invalid calls, and the labeller's counts and this week's tokens. */
 export const Full: Story = {
   args: { signals: findingsFull.signals, labeller: findingsFull.labeller },
   play: async ({ canvas }) => {
     const values = SIGNALS.map((signal) => canvas.getByRole('group', { name: signal }).textContent);
-    await expect(values).toEqual(SIGNALS.map((signal, i) => `${[3, 5, 4, 18][i]}${signal}`));
+    await expect(values.slice(0, 3)).toEqual(SIGNALS.slice(0, 3).map((signal, i) => `${[3, 5, 4][i]}${signal}`));
+    // Beside "declined or ruled", the findings the session judged invalid.
+    await expect(values[3]).toBe('18findings declined or ruled · 6 judged invalid by the session');
     await expect(canvas.getByText('8 labelled · 1 waiting · 43,350 tokens this week')).toBeVisible();
   },
 };

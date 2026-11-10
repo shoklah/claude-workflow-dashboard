@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { NONE } from '../lib/format.ts';
-import { HTML_TEXT, fullRun, runFull } from '../test/runs.ts';
+import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
 const meta = { component: FindingsTable } satisfies Meta<typeof FindingsTable>;
@@ -25,7 +25,8 @@ export const Empty: Story = {
 
 /**
  * Full: every finding of the run, one row each, its free text shown as text. The app's labels: each category in a
- * dashed badge, named by the response's `categoryLabels`, the relevance call with its reason in a tooltip; Valid is "–" until the workflow records it (CR10).
+ * dashed badge, named by the response's `categoryLabels`, the relevance call with its reason in a tooltip; Valid is "–"
+ * on a run the workflow didn't label.
  */
 export const Full: Story = {
   args: { findings: runFull.findings, categoryLabels: runFull.categoryLabels },
@@ -117,6 +118,30 @@ export const Unlabelled: Story = {
     await expect(column(canvasElement, 'Category')).toEqual(Array(6).fill('unlabelled'));
     await expect(canvas.queryAllByTitle(APP_LABEL)).toEqual([]);
     await expect(column(canvasElement, 'App')).toEqual(Array(6).fill(NONE));
+  },
+};
+
+/**
+ * After CR10: the workflow's categories in plain badges, the app's own in the dashed one; Valid is the workflow's
+ * call; App says "agrees", or the app's category and call where they differ, or its own call where it is the label.
+ */
+export const WorkflowLabels: Story = {
+  args: { findings: workflowFindings, categoryLabels: runFull.categoryLabels },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await expect(column(canvasElement, 'Category')).toEqual([
+      'Reuse and duplication',
+      'Tests',
+      'Conventions',
+      'Simplicity',
+    ]);
+    const badges = canvas.getAllByTitle(APP_LABEL);
+    await expect(badges.map((badge) => badge.textContent)).toEqual(['Conventions']);
+    await expect(badges[0]).toHaveClass('border-dashed');
+    await expect(canvas.getByText('Tests')).not.toHaveClass('border-dashed');
+    await expect(column(canvasElement, 'Valid')).toEqual(['valid', 'invalid', NONE, 'unclear']);
+    await expect(column(canvasElement, 'App')).toEqual(['agrees', 'Correctness · valid', 'valid', NONE]);
+    await userEvent.hover(canvas.getByText('Correctness · valid'));
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('An empty export is a real case');
   },
 };
 

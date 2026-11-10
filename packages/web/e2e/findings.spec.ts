@@ -30,3 +30,15 @@ test('the selected cell’s findings have no axe violations', async ({ page }) =
   await expect(page.getByRole('region', { name: 'Findings', exact: true })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+test('"App differs" is enabled, and the page no longer says every label is the app\'s', async ({ page }) => {
+  await page.goto('/findings');
+  // report-v5's webhooks run carries the workflow's labels.
+  await expect(page.getByRole('rowheader', { name: 'Correctness' })).toBeVisible();
+  await expect(page.getByText(/Every label here is the app's/)).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  const option = page.getByRole('button', { name: 'App differs' });
+  await expect(option).toBeEnabled();
+  await option.click();
+  await expect(option).toHaveAttribute('aria-pressed', 'true');
+});

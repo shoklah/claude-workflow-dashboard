@@ -2,9 +2,17 @@ import type { Area } from '../categories.ts';
 import type { Path } from '../report.ts';
 import type { FindingRow } from './runs.ts';
 
-/** A week's findings in one row: every one raised, those acted on (fixed or applied) and those the app judged
- * invalid. */
-export type FindingCell = { raised: number; actedOn: number; invalid: number };
+/** A week's findings in one row: every one raised, those acted on (fixed or applied), those judged invalid (the
+ * workflow's validity when set, else the app's relevance), those whose shown label is the app's (`byApp`) and those the
+ * app labels differently from the workflow (`appDiffers`); and the reviewers' strengths under the row's category. */
+export type FindingCell = {
+  raised: number;
+  actedOn: number;
+  invalid: number;
+  strengths: number;
+  byApp: number;
+  appDiffers: number;
+};
 
 /** An area's category (an id of the active list), by week; a null category is the area's unlabelled row. */
 export type FindingsRow = { area: Area; category: string | null; cells: FindingCell[] };
@@ -23,7 +31,8 @@ export type FindingsQuery = { weeks: number; path?: Path; project?: string };
 
 /**
  * `GET /api/findings`: the weeks, oldest first; each area's categories by week, then its unlabelled row when it has
- * one; the findings of the shown projects' runs and how many showing mode left out; the relevance signals; the
+ * one; the findings of the shown projects' runs and how many showing mode left out; the relevance signals (with the
+ * findings the session judged invalid, `judgedInvalid`); the
  * labeller's state; and each category id's display label (`categoryLabels`, empty with no active list).
  */
 export type FindingsResponse = {
@@ -31,7 +40,13 @@ export type FindingsResponse = {
   rows: FindingsRow[];
   findings: FindingItem[];
   hidden: number;
-  signals: { laterFixes: number; finalAfterClean: number; notProportionate: number; declinedOrRuled: number };
+  signals: {
+    laterFixes: number;
+    finalAfterClean: number;
+    notProportionate: number;
+    declinedOrRuled: number;
+    judgedInvalid: number;
+  };
   labeller: { on: boolean; labelled: number; waiting: number; tokensThisWeek: { input: number; output: number } };
   categoryLabels: Record<string, string>;
 };

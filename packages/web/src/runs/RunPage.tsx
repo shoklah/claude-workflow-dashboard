@@ -3,9 +3,9 @@ import type { RunResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { WarningText } from '../components/WarningText.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
-import { FindingsTable } from './FindingsTable.tsx';
+import { CategoryBadge, FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
-import { NONE, findingsLabel, formatCost, formatMinutes, runName } from '../lib/format.ts';
+import { NONE, STEP_LABELS, findingsLabel, formatCost, formatMinutes, joined, runName } from '../lib/format.ts';
 
 /** A titled list of the run's facts, "None" when it has none. */
 function Section({ title, children }: { title: string; children: ReactNode[] }) {
@@ -41,14 +41,14 @@ function Header({ run }: { run: RunResponse['facts'] }) {
 }
 
 /**
- * One run: its header, the untimed timeline with a toggle to every finding in one table, and its skills, models,
- * advisor notes and warnings for the run as a whole (decision 30).
+ * One run: its header, the untimed timeline with a toggle to every finding in one table and the reviewers' strengths
+ * under it, and its skills, models, advisor notes and warnings for the run as a whole (decision 30).
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
   if (run.isPending) return <p className="text-sm text-muted-foreground">Loading the run…</p>;
   if (run.isError) return <p className="text-sm">Couldn't load this run.</p>;
-  const { facts, timeline, findings, skills, models, advisor, warnings, categoryLabels } = run.data;
+  const { facts, timeline, findings, strengths, skills, models, advisor, warnings, categoryLabels } = run.data;
   return (
     <div className="flex flex-col gap-4">
       <Header run={facts} />
@@ -61,8 +61,19 @@ export function RunPage({ runKey }: { runKey: string }) {
           <TabsContent value="timeline">
             <RunTimeline timeline={timeline} beforeSteps={facts.beforeSteps} />
           </TabsContent>
-          <TabsContent value="findings">
+          <TabsContent value="findings" className="flex flex-col gap-4">
             <FindingsTable findings={findings} categoryLabels={categoryLabels} />
+            <Section title="Strengths">
+              {strengths.map((strength, i) => (
+                <li key={i} className="flex flex-wrap items-baseline gap-x-2">
+                  <CategoryBadge category={strength.category} judge="workflow" labels={categoryLabels} />
+                  <span>{strength.summary ?? NONE}</span>
+                  <span className="text-muted-foreground">
+                    {joined([STEP_LABELS[strength.step], strength.task !== null ? `task ${strength.task}` : null])}
+                  </span>
+                </li>
+              ))}
+            </Section>
           </TabsContent>
         </Tabs>
         <div className="flex w-72 flex-col gap-4 text-sm">

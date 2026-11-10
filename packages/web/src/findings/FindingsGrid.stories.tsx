@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
-import { CATEGORY_IDS, findingsEmpty, findingsFull } from '../test/findings.ts';
+import { CATEGORY_IDS, findingsEmpty, findingsFull, findingsWorkflow } from '../test/findings.ts';
 import { FindingsGrid } from './FindingsGrid.tsx';
 
 const meta = {
@@ -83,5 +83,27 @@ export const PlanArea: Story = {
     await expect(canvas.getAllByRole('rowheader')).toHaveLength(CATEGORY_IDS.plan.length);
     await expect(rowCells(canvasElement, 'Scope')).toEqual(['0', '0', '1', '0']);
     await expect(canvas.getByRole('rowheader', { name: 'Code facts' })).toBeVisible();
+  },
+};
+
+/**
+ * After CR10, a cell whose count is partly or wholly the app's says how much: "2 · 1 by the app"; a row's category is
+ * no longer in the app's dashed badge, since its findings carry both judges' labels.
+ */
+export const WorkflowLabels: Story = {
+  args: { response: findingsWorkflow },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(rowCells(canvasElement, 'Tests')).toEqual(['0', '0', '1 · 1 by the app', '2 · 1 by the app']);
+    await expect(rowCells(canvasElement, 'Correctness')).toEqual(['1', '0', '0', '1 · 1 by the app']);
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 2 · 1 by the app' })).toBeVisible();
+    await expect(canvas.queryAllByTitle("The app's label")).toEqual([]);
+  },
+};
+
+/** The app differs and strengths measures are counts. */
+export const CountMeasures: Story = {
+  args: { response: findingsWorkflow, measure: 'appDiffers' },
+  play: async ({ canvasElement }) => {
+    await expect(rowCells(canvasElement, 'Correctness')).toEqual(['1', '0', '0', '0']);
   },
 };
