@@ -466,6 +466,11 @@ CR6 can land at any point without a visible change. To check in planning: that e
     - the stage table from `stage_table`
 
     Importing with `--changed-since` and a page for CR13's spend by phase come later.
+53. **The slice 2c plan is approved** (`docs/superpowers/plans/2026-11-10-live-dashboard-slice-2c.md`), with four readings of the design:
+    - The stage table stays read from `totals.models.main`, which CR11 keeps equal to `stage_table`.
+    - The Sessions page's path filter keeps the sessions that hold a run of that path.
+    - A project with sessions but no runs is never pickable in showing mode, and its folder name is always masked.
+    - The reporter's sparse count maps replace, rather than merge, across a unit's versions.
 
 ## Claude's calls, open to correction
 
