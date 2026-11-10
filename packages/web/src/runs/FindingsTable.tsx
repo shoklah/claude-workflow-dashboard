@@ -12,7 +12,7 @@ import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
-import { NONE, STEP_LABELS, categoryLabel, joined, runName } from '../lib/format.ts';
+import { NONE, STEP_LABELS, appCallLabel, categoryLabel, runName } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -40,13 +40,6 @@ export function CategoryBadge({
       {categoryLabel(category, labels)}
     </Badge>
   );
-}
-
-/** The App column's text: the app's category and call where they differ from the workflow's, "agrees" where the
- * workflow's label shows and the app's is the same, else the app's call. */
-function appText(f: FindingRow, labels: Record<string, string>): string {
-  const differs = joined([f.appCategory && categoryLabel(f.appCategory, labels), f.appRelevance]);
-  return differs || (f.judge === 'workflow' ? 'agrees' : (f.relevance ?? NONE));
 }
 
 const helper = createColumnHelper<typeof features, Row>();
@@ -84,7 +77,7 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
         <Tooltip>
           <TooltipTrigger asChild>
             <span tabIndex={0} className="underline decoration-dotted underline-offset-2">
-              {appText(c.row.original, labels)}
+              {appCallLabel(c.row.original, labels)}
             </span>
           </TooltipTrigger>
           <TooltipContent>{c.row.original.labelReason}</TooltipContent>

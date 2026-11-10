@@ -123,7 +123,8 @@ export const Unlabelled: Story = {
 
 /**
  * After CR10: the workflow's categories in plain badges, the app's own in the dashed one; Valid is the workflow's
- * call; App says "agrees", or the app's category and call where they differ, or its own call where it is the label.
+ * call; App says "agrees" when the workflow made both calls and the app's match, else the app's category where it
+ * differs and its call where it differs or the workflow made none.
  */
 export const WorkflowLabels: Story = {
   args: { findings: workflowFindings, categoryLabels: runFull.categoryLabels },
@@ -133,13 +134,24 @@ export const WorkflowLabels: Story = {
       'Tests',
       'Conventions',
       'Simplicity',
+      'Correctness',
+      'Correctness',
     ]);
     const badges = canvas.getAllByTitle(APP_LABEL);
     await expect(badges.map((badge) => badge.textContent)).toEqual(['Conventions']);
     await expect(badges[0]).toHaveClass('border-dashed');
     await expect(canvas.getByText('Tests')).not.toHaveClass('border-dashed');
-    await expect(column(canvasElement, 'Valid')).toEqual(['valid', 'invalid', NONE, 'unclear']);
-    await expect(column(canvasElement, 'App')).toEqual(['agrees', 'Correctness · valid', 'valid', NONE]);
+    await expect(canvas.getAllByRole('row')).toHaveLength(7);
+    await expect(column(canvasElement, 'Valid')).toEqual(['valid', 'invalid', NONE, 'unclear', NONE, NONE]);
+    // With no validity from the workflow, the app's call shows: it never "agrees" with a call nobody made.
+    await expect(column(canvasElement, 'App')).toEqual([
+      'agrees',
+      'Correctness · valid',
+      'valid',
+      NONE,
+      'invalid',
+      'Error handling · valid',
+    ]);
     await userEvent.hover(canvas.getByText('Correctness · valid'));
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('An empty export is a real case');
   },

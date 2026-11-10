@@ -1,7 +1,7 @@
 import type { Area, FindingCell, FindingsResponse } from '@cwd/shared';
 import { HeatmapTable } from '../components/HeatmapTable.tsx';
 import { CategoryBadge } from '../runs/FindingsTable.tsx';
-import { categoryLabel, formatCount, formatPercent } from '../lib/format.ts';
+import { byAppSplit, categoryLabel, formatCount, formatPercent } from '../lib/format.ts';
 
 export type Measure = 'raised' | 'actedOn' | 'invalid' | 'appDiffers' | 'strengths';
 
@@ -46,8 +46,6 @@ export function FindingsGrid({
   const count = COUNTS.includes(measure);
   const max = count ? Math.max(0, ...rows.flatMap((row) => row.cells.map((c) => value(c, measure) ?? 0))) : 100;
   const byWorkflow = workflowLabelled(response);
-  const split = (cell: FindingCell) =>
-    `${formatCount(cell.raised)}${cell.byApp > 0 ? ` · ${cell.byApp} by the app` : ''}`;
   return (
     <HeatmapTable
       label="Findings by category and week"
@@ -66,7 +64,7 @@ export function FindingsGrid({
               />
             ),
             values: row.cells.map((cell) => value(cell, measure)),
-            texts: byWorkflow && measure === 'raised' ? row.cells.map(split) : undefined,
+            texts: byWorkflow && measure === 'raised' ? row.cells.map(byAppSplit) : undefined,
           })),
         },
       ]}

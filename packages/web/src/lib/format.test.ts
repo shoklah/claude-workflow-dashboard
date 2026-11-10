@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import type { FindingRow } from '@cwd/shared';
 import {
   advisorLabel,
+  appCallLabel,
+  byAppSplit,
+  judgedInvalidLabel,
+  strengthWhere,
   cellShade,
   countLabel,
   FAMILY_LABELS,
@@ -203,5 +208,54 @@ describe('hiddenWarningsLabel', () => {
       '+ 3 warnings left out while showing (other projects, sessions and other kinds), counted in the grid only',
     );
     expect(hiddenWarningsLabel(1)).toMatch(/^\+ 1 warning left out/);
+  });
+});
+
+describe('appCallLabel', () => {
+  const labels = { correctness: 'Correctness', tests: 'Tests' };
+  const f = (row: Partial<FindingRow>) =>
+    ({ category: 'tests', validity: 'valid', judge: 'workflow', relevance: 'valid', appCategory: null, appRelevance: null, ...row }) as FindingRow;
+
+  it('says "agrees" only when the workflow made both calls and the app matches them', () => {
+    expect(appCallLabel(f({}), labels)).toBe('agrees');
+  });
+
+  it("names the app's category and call where they differ", () => {
+    expect(appCallLabel(f({ appCategory: 'correctness', appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe(
+      'Correctness · invalid',
+    );
+    expect(appCallLabel(f({ appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe('invalid');
+  });
+
+  it("shows the app's call where the workflow made none", () => {
+    expect(appCallLabel(f({ validity: null, relevance: 'invalid' }), labels)).toBe('invalid');
+    expect(appCallLabel(f({ validity: null, relevance: 'valid', appCategory: 'correctness' }), labels)).toBe(
+      'Correctness · valid',
+    );
+    expect(appCallLabel(f({ judge: 'app', validity: null, relevance: 'unclear' }), labels)).toBe('unclear');
+  });
+
+  it('is a dash with no app label', () => {
+    expect(appCallLabel(f({ relevance: null }), labels)).toBe('–');
+  });
+});
+
+describe('byAppSplit', () => {
+  it("adds the app's part of a count when it has one", () => {
+    expect(byAppSplit({ raised: 7, byApp: 5 })).toBe('7 · 5 by the app');
+    expect(byAppSplit({ raised: 2, byApp: 0 })).toBe('2');
+  });
+});
+
+describe('judgedInvalidLabel', () => {
+  it('counts the findings the session judged invalid', () => {
+    expect(judgedInvalidLabel(6)).toBe('6 judged invalid by the session');
+  });
+});
+
+describe('strengthWhere', () => {
+  it("names a strength's step, and its task when it has one", () => {
+    expect(strengthWhere({ step: 'task_review', task: 3 })).toBe('Task review · task 3');
+    expect(strengthWhere({ step: 'final_review', task: null })).toBe('Final review');
   });
 });

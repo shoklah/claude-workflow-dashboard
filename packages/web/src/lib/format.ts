@@ -1,4 +1,4 @@
-import type { Area, FindingSplit, FindingsResponse, RunFacts, StepKind } from '@cwd/shared';
+import type { Area, FindingCell, FindingRow, FindingSplit, FindingsResponse, RunFacts, StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -139,6 +139,33 @@ export const RULE_LABELS = {
  * don't name it, or "unlabelled" while it has none. */
 export function categoryLabel(category: string | null, labels: Record<string, string>): string {
   return category === null ? 'unlabelled' : (labels[category] ?? category);
+}
+
+/**
+ * A finding's App column: "agrees" when the workflow made both calls (category and validity) and the app's label
+ * matches them; else the app's category where it differs and its call where it differs or the workflow made none; a
+ * dash with no app label.
+ */
+export function appCallLabel(f: FindingRow, labels: Record<string, string>): string {
+  if (f.relevance === null) return NONE;
+  const call = f.validity === null ? f.relevance : f.appRelevance;
+  const differs = joined([f.appCategory && categoryLabel(f.appCategory, labels), call]);
+  return differs || (f.judge === 'workflow' ? 'agrees' : f.relevance);
+}
+
+/** A Findings cell's count raised, with the app's part of it when it has one: "7 · 5 by the app". */
+export function byAppSplit(cell: Pick<FindingCell, 'raised' | 'byApp'>): string {
+  return joined([formatCount(cell.raised), cell.byApp > 0 ? `${formatCount(cell.byApp)} by the app` : null]);
+}
+
+/** The findings the session judged invalid: "6 judged invalid by the session". */
+export function judgedInvalidLabel(count: number): string {
+  return `${formatCount(count)} judged invalid by the session`;
+}
+
+/** Where a reviewer's strength comes from: its step, and its task when it has one: "Task review · task 3". */
+export function strengthWhere(strength: { step: StepKind; task: number | null }): string {
+  return joined([STEP_LABELS[strength.step], strength.task !== null ? `task ${strength.task}` : null]);
 }
 
 /** A cost in dollars, or a dash when it isn't known. */

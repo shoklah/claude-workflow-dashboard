@@ -287,6 +287,23 @@ test("the workflow's labels win: its category and validity, the app's label kept
   expect(byId.get('F2')).toMatchObject({ judge: null, category: null, validity: null, relevance: null });
 });
 
+test("a workflow category with no validity keeps the app's call as the only call", async () => {
+  db.$client.close();
+  // The workflow labels F3 error_handling but leaves its validity unset.
+  db = dbWith('report-v5', (raw) => (raw.runs[5].steps[1].findings[0].validity = null));
+  label(WEBHOOKS, 'F3', 'An invented reason for the label.', 'error_handling', 'invalid');
+  const f3 = (await run(WEBHOOKS)).findings.find((f) => f.id === 'F3');
+  // The app's call doesn't differ from a call the workflow didn't make: it stays the app's relevance alone.
+  expect(f3).toMatchObject({
+    judge: 'workflow',
+    category: 'error_handling',
+    validity: null,
+    relevance: 'invalid',
+    appCategory: null,
+    appRelevance: null,
+  });
+});
+
 test("a run's strengths list each review step's, with its step, task and round", async () => {
   db.$client.close();
   db = dbWith('report-v5');

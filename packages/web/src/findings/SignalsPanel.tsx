@@ -1,5 +1,5 @@
 import type { FindingsResponse } from '@cwd/shared';
-import { labellerLabel } from '../lib/format.ts';
+import { joined, judgedInvalidLabel, labellerLabel } from '../lib/format.ts';
 
 const SIGNALS: [keyof FindingsResponse['signals'], string][] = [
   ['laterFixes', 'fix commits within 14 days after a run'],
@@ -20,8 +20,7 @@ export function SignalsPanel({
       {SIGNALS.map(([key, label]) => (
         <div key={key} role="group" aria-label={label} className="rounded-lg border bg-card px-3 py-2">
           <div className="text-lg font-semibold">{signals[key]}</div>
-          {label}
-          {key === 'declinedOrRuled' && ` · ${signals.judgedInvalid} judged invalid by the session`}
+          {key === 'declinedOrRuled' ? joined([label, judgedInvalidLabel(signals.judgedInvalid)]) : label}
         </div>
       ))}
       <p className="text-muted-foreground">{labellerLabel(labeller)}</p>

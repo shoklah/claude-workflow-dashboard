@@ -5,7 +5,7 @@ import { WarningText } from '../components/WarningText.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
 import { CategoryBadge, FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
-import { NONE, STEP_LABELS, findingsLabel, formatCost, formatMinutes, joined, runName } from '../lib/format.ts';
+import { NONE, findingsLabel, formatCost, formatMinutes, runName, strengthWhere } from '../lib/format.ts';
 
 /** A titled list of the run's facts, "None" when it has none. */
 function Section({ title, children }: { title: string; children: ReactNode[] }) {
@@ -68,9 +68,7 @@ export function RunPage({ runKey }: { runKey: string }) {
                 <li key={i} className="flex flex-wrap items-baseline gap-x-2">
                   <CategoryBadge category={strength.category} judge="workflow" labels={categoryLabels} />
                   <span>{strength.summary ?? NONE}</span>
-                  <span className="text-muted-foreground">
-                    {joined([STEP_LABELS[strength.step], strength.task !== null ? `task ${strength.task}` : null])}
-                  </span>
+                  <span className="text-muted-foreground">{strengthWhere(strength)}</span>
                 </li>
               ))}
             </Section>

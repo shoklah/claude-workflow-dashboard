@@ -120,12 +120,15 @@ export function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' 
 }
 
 /** Findings of a run after CR10: the workflow's label the app agrees with, one it labels differently, the app's own
- * label of a finding the workflow left unlabelled, and the workflow's with no app label. */
+ * label of a finding the workflow left unlabelled, the workflow's with no app label, and two the workflow categorised
+ * without a validity call, one the app puts in another category. */
 export const workflowFindings: FindingRow[] = [
   finding({ id: 'F1', step: 'task_review', task: 2, severity: 'important', summary: 'Week arithmetic restated instead of using the shared helper', outcome: 'fixed', category: 'reuse', validity: 'valid', judge: 'workflow', relevance: 'valid', labelReason: 'The helper already does this' }),
   finding({ id: 'F2', step: 'task_review', task: 4, severity: 'minor', summary: 'No test covers the empty export case', outcome: 'declined', reason: 'Out of scope for this task', category: 'tests', validity: 'invalid', judge: 'workflow', relevance: 'valid', labelReason: 'An empty export is a real case', appCategory: 'correctness', appRelevance: 'valid' }),
   finding({ id: 'F3', step: 'task_review', wave: 'A', severity: 'important', summary: 'Two tasks wrote contradicting convention lines', outcome: 'fixed', category: 'conventions', relevance: 'valid', labelReason: 'The two lines disagree' }),
   finding({ id: 'F4', step: 'final_review', severity: 'minor', summary: 'Config option nothing reads', outcome: 'deferred', category: 'simplicity', validity: 'unclear', judge: 'workflow' }),
+  finding({ id: 'F5', step: 'final_review', severity: 'minor', summary: 'Retry count read twice', outcome: 'declined', category: 'correctness', judge: 'workflow', relevance: 'invalid', labelReason: 'Both reads give the same value' }),
+  finding({ id: 'F6', step: 'final_review', severity: 'minor', summary: 'Timeout logged at debug level', outcome: 'deferred', category: 'correctness', judge: 'workflow', relevance: 'valid', labelReason: 'Operators need to see timeouts', appCategory: 'error_handling' }),
 ];
 
 const F1 = finding({ id: 'F1', step: 'task_review', task: 1, severity: 'important', summary: 'Search drops the last page on exact multiples', outcome: 'fixed', closedRound: 1, verdicts: ['fixed'], category: 'correctness', relevance: 'valid', labelReason: 'Results on the last page are lost' });
