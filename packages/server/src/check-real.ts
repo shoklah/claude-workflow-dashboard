@@ -1,7 +1,7 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
-// paths, the run key counts, the weeks, run time groups, step kinds and rules whose sums differ from the reporter's
-// totals, the count of skills and of models that differ, and the leaks showing mode lets through. It prints no value
-// from the data but those weeks' dates, and no skill or agent name, since a project can name one. Usage:
+// paths, the run key counts, the weeks, run time groups, step kinds, rules and unit figures whose sums differ from the
+// reporter's totals, the count of skills and of models that differ, and the leaks showing mode lets through. It prints
+// no value from the data but those weeks' dates, and no skill or agent name, since a project can name one. Usage:
 // `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -19,7 +19,7 @@ import { modelSums } from './views/models.ts';
 import { storedBranches, storedSessionRoots } from './views/runs.ts';
 import { forbiddenStrings, leaks } from './views/scope.ts';
 import { skillSums } from './views/skills.ts';
-import { ruleSums, stepSums } from './views/steps.ts';
+import { cr6Of, ruleSums, stepSums, unitSums } from './views/steps.ts';
 import { runTime } from './views/weeks.ts';
 
 type Counts = Record<string, number | null | undefined> | null | undefined;
@@ -32,7 +32,7 @@ const keysOf = (...records: (object | null | undefined)[]) => [
 /** Whether two counts agree on every key, a missing or null count being 0. */
 const sameCounts = (a: Counts, b: Counts) => keysOf(a, b).every((key) => (a?.[key] ?? 0) === (b?.[key] ?? 0));
 
-/** A cost to the cent, null when unknown. */
+/** A cost to the cent (or a share to 0.01 points), null when unknown. */
 const cents = (cost: number | null | undefined) => (cost == null ? null : Math.round(cost * 100));
 
 /**
@@ -162,19 +162,20 @@ else {
       : null,
   );
 
-  // A skill required but never loaded (no runs, no last load) has only the reporter's missing count, which skillSums
-  // doesn't sum, so it isn't compared.
+  // Every skill, a skill required but never loaded included, with its loads, last load and missing count.
   const skills = new Map(skillSums([...entries, ...sessionEntries]).map((row) => [row.name, row]));
   const skillTotals = totals.skills;
-  const everLoaded = Object.entries(skillTotals ?? {}).filter(([, row]) => row.runs || row.last);
-  const skillNames = [...new Set([...skills.keys(), ...everLoaded.map(([name]) => name)])];
+  const skillNames = keysOf(Object.fromEntries(skills), skillTotals);
   differLine(
     'skills',
     `${skillNames.length} compared, `,
     skillTotals
       ? skillNames.filter((name) => {
           const [got, want] = [skills.get(name), skillTotals[name]];
-          return (got?.runs ?? 0) !== (want?.runs ?? 0) || (got?.last ?? null) !== (want?.last ?? null);
+          return (
+            !sameCounts({ runs: got?.runs, missing: got?.missing }, { runs: want?.runs, missing: want?.missing }) ||
+            (got?.last ?? null) !== (want?.last ?? null)
+          );
         })
       : null,
     false,
@@ -195,6 +196,48 @@ else {
         ]
       : null,
     false,
+  );
+
+  // The dispatch guard, startup and advisor over every run and session against the scoreboard's and totals.advisor,
+  // cost to the cent and share to 0.01 points. Only the figures unitSums gives are compared: it gives none the
+  // export's units predate (cr6Of), as the pages show none, and the line is not in the export when it gives none.
+  const { dispatchGuard, startup, advisor } = unitSums(entries, sessionEntries, cr6Of(entries, sessionEntries));
+  const wantAdvisor = totals.advisor;
+  const unitFigures = {
+    ...(dispatchGuard && {
+      dispatch_guard: !!board?.dispatch_guard && sameCounts(dispatchGuard, board.dispatch_guard),
+    }),
+    ...(startup && { startup: !!board?.startup && sameCounts(startup, board.startup) }),
+    ...(advisor && {
+      advisor:
+        !!wantAdvisor &&
+        sameCounts(
+          { calls: advisor.calls, notes: advisor.notes, changed: advisor.changed, missing: advisor.missing },
+          {
+            calls: wantAdvisor.calls,
+            notes: wantAdvisor.notes,
+            changed: wantAdvisor.changed,
+            missing: wantAdvisor.missing,
+          },
+        ) &&
+        sameCounts(advisor.tokens, wantAdvisor.tokens) &&
+        sameCounts(advisor.failed, wantAdvisor.failed) &&
+        keysOf(advisor.byRole, wantAdvisor.by_role).every((role) => {
+          const [got, want] = [advisor.byRole[role], wantAdvisor.by_role?.[role]];
+          return (got?.calls ?? 0) === (want?.calls ?? 0) && (got?.flagged ?? false) === (want?.flagged ?? false);
+        }) &&
+        cents(advisor.cost) === cents(wantAdvisor.cost) &&
+        cents(advisor.share) === cents(board?.advisor?.share),
+    }),
+  };
+  differLine(
+    'units',
+    '',
+    Object.keys(unitFigures).length
+      ? Object.entries(unitFigures)
+          .filter(([, same]) => !same)
+          .map(([name]) => name)
+      : null,
   );
 
   // Showing mode on the first root, in a fresh database in a temp folder (never the real one): every response's
@@ -242,6 +285,7 @@ else {
       '/api/skills?weeks=52',
       '/api/models?weeks=52',
       '/api/compliance?resolved=1&weeks=52',
+      '/api/sessions?weeks=52',
     ];
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
     const bodies = [list, ...(await Promise.all([...paths, ...pages].map(get)))];
