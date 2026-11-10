@@ -11,6 +11,7 @@ import {
   formatMinutes,
   formatPercent,
   formatTokens,
+  hiddenWarningsLabel,
   labellerLabel,
   nonZeroCountsLabel,
   outcomesLabel,
@@ -193,5 +194,14 @@ describe('FAMILY_LABELS', () => {
       sessions: 'Sessions',
       other: 'Other',
     });
+  });
+});
+
+describe('hiddenWarningsLabel', () => {
+  it('says what showing mode left out of Compliance’s list, and that the grid still counts it', () => {
+    expect(hiddenWarningsLabel(3)).toBe(
+      '+ 3 warnings left out while showing (other projects, sessions and other kinds), counted in the grid only',
+    );
+    expect(hiddenWarningsLabel(1)).toMatch(/^\+ 1 warning left out/);
   });
 });

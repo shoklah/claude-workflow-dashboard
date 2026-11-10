@@ -11,7 +11,7 @@ import {
   FAMILY_LABELS,
   STEP_LABELS,
   WARNING_INK,
-  hiddenLabel,
+  hiddenWarningsLabel,
   kindLabel,
   plural,
   runName,
@@ -125,7 +125,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
       {data && data.rows.length > 0 && !selected && (
         <p className="text-sm text-muted-foreground">Select a cell to list its warnings.</p>
       )}
-      {data && data.hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenLabel(data.hidden, 'warning')}</p>}
+      {data && data.hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenWarningsLabel(data.hidden)}</p>}
     </div>
   );
 }

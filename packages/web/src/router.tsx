@@ -50,7 +50,9 @@ const complianceRoute = createRoute({
   path: '/compliance',
   validateSearch: (search: Record<string, unknown>): { step?: StepKind } => ({ step: toStepKind(search.step) }),
   component: function Compliance() {
-    return <CompliancePage step={complianceRoute.useSearch().step} />;
+    const { step } = complianceRoute.useSearch();
+    // Keyed by step, so a step changed by Back or Forward starts the page afresh, with no stale selection.
+    return <CompliancePage key={step ?? ''} step={step} />;
   },
 });
 

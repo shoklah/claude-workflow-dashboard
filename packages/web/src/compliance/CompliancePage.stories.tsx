@@ -131,14 +131,16 @@ export const Step: Story = {
   },
 };
 
-/** Showing mode: the warnings it left out of the list are counted under it. */
+/** Showing mode: what it left out of the list (other projects', sessions' and "other" warnings) is counted under it. */
 export const Hidden: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': { ...complianceFull, hidden: 3 } });
   },
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByText('+ 3 warnings in other projects, counted in totals and charts only'),
+      await canvas.findByText(
+        '+ 3 warnings left out while showing (other projects, sessions and other kinds), counted in the grid only',
+      ),
     ).toBeVisible();
   },
 };

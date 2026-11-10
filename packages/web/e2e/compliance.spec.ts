@@ -33,7 +33,11 @@ test('home’s orange final review box opens compliance filtered to that step', 
   await expect(page.getByRole('rowheader', { name: 'simplify record differs' })).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
+  // A step change starts the page afresh: the selection made under the step doesn't stay.
+  await page.getByRole('button', { name: 'step has no agent id, week of Nov 8: 1' }).click();
+  await expect(page.getByRole('list', { name: 'Warnings' })).toBeVisible();
   await page.getByRole('link', { name: 'Clear the step filter' }).click();
   await expect(page).toHaveURL(/\/compliance$/);
   await expect(page.getByRole('rowheader', { name: 'simplify record differs' })).toBeVisible();
+  await expect(page.getByText('Select a cell to list its warnings.')).toBeVisible();
 });
