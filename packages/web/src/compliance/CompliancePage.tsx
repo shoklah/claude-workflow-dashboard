@@ -10,6 +10,7 @@ import { Option } from '../findings/FindingsPage.tsx';
 import {
   FAMILY_LABELS,
   STEP_LABELS,
+  WARNING_BORDER,
   WARNING_INK,
   hiddenWarningsLabel,
   kindLabel,
@@ -103,7 +104,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           </h2>
           <ul aria-label="Warnings" className="flex flex-col gap-2 text-sm">
             {listed.map((w) => (
-              <li key={`${w.runKey} ${w.sessionId} ${w.text}`} className="border-l-3 border-amber-600 py-0.5 pl-2">
+              <li key={`${w.runKey} ${w.sessionId} ${w.text}`} className={cn('border-l-3 py-0.5 pl-2', WARNING_BORDER)}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-sm border px-1 text-xs text-muted-foreground">{kindLabel(w.kind)}</span>
                   {w.runKey !== null && (

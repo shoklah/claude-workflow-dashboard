@@ -81,6 +81,7 @@ export const Full: Story = {
     const items = list.getAllByRole('listitem');
     await expect(items).toHaveLength(1);
     await expect(items[0]).toHaveTextContent('step has no agent id');
+    await expect(items[0]).toHaveClass('border-[#ec835a]');
     await expect(list.getByRole('link', { name: 'atlas · feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(list.getByText('new')).toBeVisible();
     await expect(list.getByText('WARN: feat/search (2026-11-10): final_review step 0 has no agent id')).toBeVisible();
