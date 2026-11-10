@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import {
   loadReport,
   projectRoot,
+  sessionRootOf,
   type HomeResponse,
   type RunFacts,
   type RunsResponse,
@@ -16,7 +17,6 @@ import { openDb, type Db } from '../src/db/open.ts';
 import { importReport, recordImportFailure } from '../src/db/import.ts';
 import { getShowing, setSeenAt, setShowing } from '../src/db/read.ts';
 import { projectKey, runKey } from '../src/keys.ts';
-import { sessionRootOf } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks, maskText, scopeOf, showFacts } from '../src/views/scope.ts';
 
 const PORT = 4317;

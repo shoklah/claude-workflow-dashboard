@@ -1,7 +1,6 @@
-import { folderName, projectNames, SESSION_ID, splitSessionId, type RunFacts } from '@cwd/shared';
+import { folderName, projectNames, SESSION_ID, sessionRootOf, splitSessionId, type RunFacts } from '@cwd/shared';
 import { projectKey } from '../keys.ts';
 import { trimPaths } from '../text.ts';
-import { sessionRootOf } from './runs.ts';
 
 /**
  * Showing mode's scope: the shown project keys, each one's display name (its alias, else its folder name), the shown

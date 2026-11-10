@@ -1,6 +1,7 @@
 import {
   modelsCost,
   parseTime,
+  sessionRootOf,
   splitSessionId,
   type RunEntry,
   type RunFacts,
@@ -16,7 +17,6 @@ import {
   periodSessions,
   rootOf,
   sessionProjectKey,
-  sessionRootOf,
   skillOutcomeLabel,
   storedFacts,
   storedNames,

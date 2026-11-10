@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { projectNames, projectRoot } from '../src/projects.ts';
+import { projectNames, projectRoot, sessionRootOf } from '../src/projects.ts';
 
 describe('projectRoot', () => {
   test('a worktree folds into its main root', () => {
@@ -10,6 +10,16 @@ describe('projectRoot', () => {
 
   test('a trailing / goes and a space stays', () => {
     expect(projectRoot('/Users/example/My Work/app/')).toBe('/Users/example/My Work/app');
+  });
+});
+
+describe('sessionRootOf', () => {
+  test("a session's root is its project's root, and null with no project", () => {
+    expect(sessionRootOf('/Users/example/Work/lantern-notes/.claude/worktrees/brave-otter')).toBe(
+      '/Users/example/Work/lantern-notes',
+    );
+    expect(sessionRootOf(null)).toBeNull();
+    expect(sessionRootOf('')).toBeNull();
   });
 });
 

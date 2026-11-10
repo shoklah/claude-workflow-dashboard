@@ -3,6 +3,7 @@ import {
   projectNames,
   projectRoot,
   runFacts,
+  sessionRootOf,
   weekOf,
   weekStart,
   type Finding,
@@ -52,11 +53,6 @@ export function skillOutcomeLabel(outcome: unknown): string {
 /** A stored run's project root. */
 export function rootOf(unit: StoredUnit<RunEntry>): string {
   return projectRoot(unit.merged.record?.project ?? '');
-}
-
-/** A session's project root, from its project; null with no project. */
-export function sessionRootOf(project: string | null | undefined): string | null {
-  return project ? projectRoot(project) : null;
 }
 
 /**
