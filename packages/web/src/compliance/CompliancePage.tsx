@@ -16,6 +16,7 @@ import {
   kindLabel,
   plural,
   runName,
+  total,
   warningsSummary,
   weekLabel,
 } from '../lib/format.ts';
@@ -92,7 +93,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           <>
             <p className="text-sm text-muted-foreground">
               {warningsSummary(
-                data.rows.reduce((n, row) => n + row.cells.reduce((a, b) => a + b, 0), 0),
+                total(data.rows.flatMap((row) => row.cells)),
                 data.weeks.length,
                 data.newWarnings,
               )}

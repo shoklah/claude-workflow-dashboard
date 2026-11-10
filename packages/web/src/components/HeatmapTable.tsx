@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table.tsx';
-import { cellShade, formatCount, weekLabel } from '../lib/format.ts';
+import { cellShade, formatCount, total, weekLabel } from '../lib/format.ts';
 
 /** A cell of a heatmap: its row's id and a week. */
 export type HeatmapSelection = { id: string; week: string };
@@ -26,7 +26,7 @@ export function HeatmapTable({
   groups,
   max,
   format = formatCount,
-  total = false,
+  total: withTotal = false,
   selected,
   onSelect,
 }: {
@@ -51,7 +51,7 @@ export function HeatmapTable({
               {weekLabel(week)}
             </TableHead>
           ))}
-          {total && <TableHead className="text-right">Total</TableHead>}
+          {withTotal && <TableHead className="text-right">Total</TableHead>}
         </TableRow>
       </TableHeader>
       {groups.map((group, g) => (
@@ -60,7 +60,7 @@ export function HeatmapTable({
             <TableRow className="border-0 hover:bg-transparent">
               <TableHead
                 scope="rowgroup"
-                colSpan={weeks.length + (total ? 2 : 1)}
+                colSpan={weeks.length + (withTotal ? 2 : 1)}
                 className="pt-3 font-semibold text-foreground"
               >
                 {group.heading}
@@ -94,10 +94,8 @@ export function HeatmapTable({
                   </TableCell>
                 );
               })}
-              {total && (
-                <TableCell className="text-right text-xs tabular-nums">
-                  {row.values.reduce<number>((sum, value) => sum + (value ?? 0), 0)}
-                </TableCell>
+              {withTotal && (
+                <TableCell className="text-right text-xs tabular-nums">{format(total(row.values))}</TableCell>
               )}
             </TableRow>
           ))}

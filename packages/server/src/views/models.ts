@@ -74,10 +74,9 @@ export function modelsView(input: {
   const totals = reporterTotals(input.totals);
   const mismatches: Record<string, number> = {};
   for (const [name, row] of Object.entries(totals?.models?.agents ?? {})) {
-    if (row.mismatches != null) addCount(mismatches, maskText(input.scope, name), row.mismatches);
-  }
-  for (const [name, count] of Object.entries(mismatches)) {
-    if (count > 0) sums.agents[name] ??= { requested: {}, actual: {} };
+    const masked = maskText(input.scope, name);
+    if (row.mismatches != null) addCount(mismatches, masked, row.mismatches);
+    if (row.mismatches) sums.agents[masked] ??= { requested: {}, actual: {} };
   }
   const advisor = totals?.advisor;
   const facts = unitSums(
