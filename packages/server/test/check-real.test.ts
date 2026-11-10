@@ -182,13 +182,14 @@ describe('check:real', () => {
   });
 
   test('never prints a value', () => {
+    const names = ['report-full', 'report-shape', 'report-v5'];
     const values = new Set<string>();
-    for (const run of fixture('report-full').runs) {
+    for (const run of names.flatMap((name) => fixture(name).runs ?? [])) {
       if (run.record?.project) values.add(run.record.project);
       if (run.record?.branch) values.add(run.record.branch);
     }
     expect(values.size).toBeGreaterThan(0);
-    for (const name of ['report-full', 'report-shape']) {
+    for (const name of names) {
       const { stdout, stderr } = checkReal(['cat', fixturePath(name)]);
       for (const line of `${stdout}${stderr}`.split('\n')) {
         for (const value of values) expect(line).not.toContain(value);
