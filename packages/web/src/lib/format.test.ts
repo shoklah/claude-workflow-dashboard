@@ -21,6 +21,8 @@ import {
   warningsSummary,
   labellerLabel,
   nonZeroCountsLabel,
+  ofLabel,
+  usageName,
   outcomesLabel,
   reporterMark,
   runName,
@@ -282,5 +284,19 @@ describe('total', () => {
     expect(total({ small: 4, full: 2 })).toBe(6);
     expect(total({ with: 3, without: null })).toBe(3);
     expect(total({})).toBe(0);
+  });
+});
+
+describe('usageName', () => {
+  it('writes a command with its slash and a skill bare', () => {
+    expect(usageName({ name: 'model', kind: 'command' })).toBe('/model');
+    expect(usageName({ name: 'grill-me', kind: 'skill' })).toBe('grill-me');
+  });
+});
+
+describe('ofLabel', () => {
+  it('writes a count out of its whole, a count that isn’t known as a dash', () => {
+    expect(ofLabel(8, 23)).toBe('8 of 23');
+    expect(ofLabel(null, 6)).toBe('–');
   });
 });

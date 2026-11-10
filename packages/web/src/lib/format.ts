@@ -203,6 +203,16 @@ export function findingsLabel(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): 
   return `${run.findings.total} · ${closed} closed`;
 }
 
+/** A count out of its whole: "8 of 23"; a dash when it isn't known. */
+export function ofLabel(count: number | null, of: number): string {
+  return count === null ? NONE : `${count} of ${of}`;
+}
+
+/** A skill or command on Home's skills and commands: a command with its slash, "/model", a skill bare. */
+export function usageName(row: { name: string; kind: 'skill' | 'command' }): string {
+  return row.kind === 'command' ? `/${row.name}` : row.name;
+}
+
 /** A count with its noun, plural unless it is 1: "1 run", "2 runs". */
 export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -260,6 +270,10 @@ const ZERO_SHADE = 'bg-[#f0efec] text-[#52514e]';
 // darker orange for the warning text beside it, readable on white (5.9:1).
 export const WARNING_BORDER = 'border-[#ec835a]';
 export const WARNING_INK = 'text-[#a8461c]';
+
+// A share bar (a meter): the dataviz blue's fill, on a lighter step of the same ramp for its track.
+export const SHARE_FILL = 'bg-[#2a78d6]';
+export const SHARE_TRACK = 'bg-[#cde2fb]';
 
 /** A heatmap cell's classes: its value's step of the ramp by its share of `max`, the grey for 0. */
 export function cellShade(value: number, max: number): string {

@@ -13,14 +13,18 @@ import {
   type RunEntry,
   type RunFacts,
   type SessionEntry,
+  type SkillRow,
   type Step,
   type StepKind,
+  type Usage,
+  type UsageRow,
   type WeekNumbers,
   type WeekRow,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
-import { showFacts, showSession, showWarning, type Scope } from './scope.ts';
+import { currentWarnings, period, periodUnits, storedFacts, storedNames } from './runs.ts';
+import { maskText, showFacts, showSession, showWarning, type Scope } from './scope.ts';
+import { skillSums } from './skills.ts';
 
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
 
@@ -99,6 +103,63 @@ export function weekSums(runs: RunEntry[]): Map<string, WeekRow> {
 export function coverageFrom(runs: StoredUnit<RunEntry>[]): string | null {
   const times = runs.filter((r) => r.readable).map((r) => r.merged.record?.date ?? '');
   return times.sort((a, b) => parseTime(a).getTime() - parseTime(b).getTime())[0] ?? null;
+}
+
+/**
+ * Home's skills and commands over a period's runs and sessions. A skill is a name loaded or typed in them; a command
+ * `x:y` names skill `y`. A skill's row: `sessions`, the sessions that loaded it or typed a command naming it; `runs`, the
+ * runs that loaded it, both by skillSums; `typed`, its typed triggers on runs and sessions; `typedNeverLoaded`, those
+ * never met (skillSums' missing over the triggers). A command naming no skill gets a command row: the sessions that
+ * typed it and its commands. Rows are ordered by sessions, most first, then by name. With a scope, every name is masked
+ * (maskText) first, so names that mask alike merge and the sums still count every project.
+ */
+export function usageSums(runs: RunEntry[], sessions: SessionEntry[], scope: Scope | null): Usage {
+  const mask = (name: string | null | undefined) => maskText(scope, name ?? '');
+  const masked = (unit: RunEntry | SessionEntry) => ({
+    skills: unit.skills?.map((s) => ({ ...s, name: mask(s.name) })),
+    typed: unit.typed?.map((t) => ({ ...t, skill: mask(t.skill) })),
+  });
+  const runUnits = runs.map(masked);
+  const sessionUnits = sessions.map(masked);
+  const typed = [...runUnits, ...sessionUnits].flatMap((unit) => unit.typed ?? []);
+  const byName = (rows: SkillRow[]) => new Map(rows.map((row) => [row.name, row]));
+  const all = byName(skillSums([...runUnits, ...sessionUnits]));
+  const skills = new Set([...all.keys(), ...typed.map((t) => t.skill ?? '')]);
+  const skillOf = (command: { name?: string | null }) => mask((command.name ?? '').split(':').at(-1));
+  // A session's loads, plus a load for each command naming a skill, so skillSums counts the session once.
+  const inSessions = byName(
+    skillSums(
+      sessions.map((session, i) => ({
+        skills: [
+          ...(sessionUnits[i].skills ?? []),
+          ...(session.commands ?? []).map((c) => ({ name: skillOf(c) })).filter((c) => skills.has(c.name)),
+        ],
+      })),
+    ),
+  );
+  const inRuns = byName(skillSums(runUnits));
+  const rows: UsageRow[] = [...skills].map((name) => ({
+    name,
+    kind: 'skill',
+    sessions: inSessions.get(name)?.runs ?? 0,
+    runs: inRuns.get(name)?.runs ?? 0,
+    typed: typed.filter((t) => t.skill === name).length,
+    typedNeverLoaded: all.get(name)?.missing ?? 0,
+  }));
+  const commands = new Map<string, UsageRow>();
+  for (const session of sessions) {
+    const names = (session.commands ?? []).filter((c) => !skills.has(skillOf(c))).map((c) => mask(c.name));
+    for (const name of names) {
+      if (!commands.has(name)) {
+        commands.set(name, { name, kind: 'command', sessions: 0, runs: null, typed: 0, typedNeverLoaded: null });
+      }
+      commands.get(name)!.typed += 1;
+    }
+    for (const name of new Set(names)) commands.get(name)!.sessions += 1;
+  }
+  rows.push(...commands.values());
+  rows.sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name));
+  return { sessions: sessions.length, runs: runs.length, rows };
 }
 
 /** A diagram tab's step boxes: per step kind, the steps that ran, their findings and those acted on, and the warnings
@@ -235,6 +296,11 @@ export function homeView(input: {
       };
     });
 
+  const usageOf = (weeks: number) => {
+    const units = periodUnits(input.runs, input.sessions, { weeks }, now);
+    return usageSums(units.runs, units.sessions, scope);
+  };
+
   return {
     thisWeek: numbers[CHART_WEEKS - 1],
     lastWeek: numbers[CHART_WEEKS - 2],
@@ -259,5 +325,7 @@ export function homeView(input: {
     // The feed: the runs and warnings first seen after seenAt, newest first; a run at its finish time.
     feed: [...runItems, ...warningItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, FEED_SIZE),
     coverageFrom: coverageFrom(input.runs),
+    // Skills and commands over this week's and the last four weeks' runs and sessions (periodUnits).
+    usage: { thisWeek: usageOf(1), lastFourWeeks: usageOf(4) },
   };
 }

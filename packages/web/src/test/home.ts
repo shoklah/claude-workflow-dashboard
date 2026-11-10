@@ -1,4 +1,4 @@
-import type { DiagramStep, HomeResponse, StepKind, WeekNumbers } from '@cwd/shared';
+import type { DiagramStep, HomeResponse, StepKind, Usage, UsageRow, WeekNumbers } from '@cwd/shared';
 
 // Invented home screens for the home stories: a full one, as in the approved mockup, and an empty one.
 
@@ -33,6 +33,55 @@ export const emptyWeek: WeekNumbers = {
   costPerRun: null,
   warnings: 0,
   newWarnings: 0,
+};
+
+const skill = (name: string, sessions: number, runs: number, typed: number, typedNeverLoaded: number): UsageRow => ({
+  name,
+  kind: 'skill',
+  sessions,
+  runs,
+  typed,
+  typedNeverLoaded,
+});
+const command = (name: string, sessions: number, typed: number): UsageRow => ({
+  name,
+  kind: 'command',
+  sessions,
+  runs: null,
+  typed,
+  typedNeverLoaded: null,
+});
+
+/** No sessions or runs in the period. */
+export const emptyUsage: Usage = { sessions: 0, runs: 0, rows: [] };
+
+/** Skills and commands as in the approved 2c mockup, this week and over the last four weeks. */
+export const fullUsage: HomeResponse['usage'] = {
+  thisWeek: {
+    sessions: 23,
+    runs: 6,
+    rows: [
+      skill('brainstorming', 8, 2, 1, 0),
+      command('model', 7, 9),
+      skill('systematic-debugging', 6, 0, 0, 0),
+      command('compact', 4, 5),
+      skill('simplify', 3, 5, 4, 0),
+      skill('grill-me', 1, 0, 3, 2),
+    ],
+  },
+  lastFourWeeks: {
+    sessions: 81,
+    runs: 22,
+    rows: [
+      command('model', 30, 41),
+      skill('brainstorming', 27, 7, 4, 0),
+      skill('systematic-debugging', 19, 1, 2, 1),
+      command('compact', 15, 18),
+      skill('simplify', 9, 19, 12, 0),
+      skill('grill-me', 4, 2, 9, 5),
+      command('superpowers:write-plan', 2, 2),
+    ],
+  },
 };
 
 export const fullHome: HomeResponse = {
@@ -133,6 +182,7 @@ export const fullHome: HomeResponse = {
     },
   ],
   coverageFrom: '2026-10-05T09:30:00Z',
+  usage: fullUsage,
 };
 
 export const emptyHome: HomeResponse = {
@@ -154,6 +204,7 @@ export const emptyHome: HomeResponse = {
   },
   feed: [],
   coverageFrom: null,
+  usage: { thisWeek: emptyUsage, lastFourWeeks: emptyUsage },
 };
 
 /** The Full path's diagram as in the approved Compliance mockup: current warnings name the task and final reviews. */
