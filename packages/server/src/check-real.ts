@@ -8,7 +8,6 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  folderName,
   loadReport,
   PATHS,
   splitSessionId,
@@ -33,9 +32,11 @@ import { runTime } from './views/weeks.ts';
 
 /** A JSON value's object keys, at any depth. */
 const objectKeys = (json: unknown): string[] =>
-  json && typeof json === 'object'
-    ? Object.entries(json).flatMap(([key, value]) => [...(Array.isArray(json) ? [] : [key]), ...objectKeys(value)])
-    : [];
+  Array.isArray(json)
+    ? json.flatMap(objectKeys)
+    : json && typeof json === 'object'
+      ? Object.entries(json).flatMap(([key, value]) => [key, ...objectKeys(value)])
+      : [];
 
 /** A JSON value's leaf values, at any depth. */
 const values = (json: unknown): unknown[] =>
@@ -324,17 +325,7 @@ else {
     const routes = ['/api/runs?weeks=52', ...paths, ...pages.map(() => '/api/runs/:key')];
     const bodies = [list, ...(await Promise.all([...paths, ...pages].map(get)))];
     // A leak's kinds of hidden string, never the string itself.
-    const allRoots = [...roots, ...sessionRoots];
-    const kindsOf = (s: string) =>
-      [
-        s === homedir() && 'home folder',
-        sessionIds.includes(s) && 'session ID',
-        allRoots.includes(s) && 'project path',
-        allRoots.some((root) => folderName(root) === s) && 'project folder name',
-        [...branches.values()].some((names) => names.includes(s)) && 'branch',
-      ]
-        .filter(Boolean)
-        .join(', ');
+    const kindsOf = (s: string) => (s === homedir() ? ['home folder'] : (strings.kinds.get(s) ?? [])).join(', ');
     // A leak found as a whole word in no response (leaks' words) is counted apart, since it may be part of a key or a
     // word, as a folder named app is in appDiffers; it still fails. Each leak's line names its route, kinds and place.
     let [count, inside] = [0, 0];
@@ -344,10 +335,10 @@ else {
       const words = leaks(body, forbidden, strings.shown, true);
       count += found.length;
       inside += found.filter((s) => !words.includes(s)).length;
+      const inKeys = found.length ? leaks(objectKeys(body), found, strings.shown) : [];
+      const inValues = found.length ? leaks(values(body), found, strings.shown) : [];
       for (const s of found) {
-        const inKey = leaks(objectKeys(body), [s], strings.shown).length > 0;
-        const inValue = leaks(values(body), [s], strings.shown).length > 0;
-        const place = [inKey && 'a key', inValue && 'a value'].filter(Boolean).join(' and ');
+        const place = [inKeys.includes(s) && 'a key', inValues.includes(s) && 'a value'].filter(Boolean).join(' and ');
         const word = words.includes(s) ? '' : ', inside a word';
         lines.add(`showing leak: ${routes[i]}: ${kindsOf(s)}, in ${place}${word}`);
       }
