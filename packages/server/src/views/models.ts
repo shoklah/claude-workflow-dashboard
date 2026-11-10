@@ -2,15 +2,16 @@ import {
   PATHS,
   reporterTotals,
   toPath,
-  type AdvisorFacts,
   type FindingsQuery,
   type ModelsResponse,
   type Path,
   type RunEntry,
+  type SessionEntry,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { addCount, periodRuns } from './runs.ts';
+import { addCount, periodUnits } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
+import { cr6Of, unitSums } from './steps.ts';
 
 type ModelSums = {
   agents: Record<string, { requested: Record<string, number>; actual: Record<string, number> }>;
@@ -39,22 +40,40 @@ export function modelSums(runs: RunEntry[]): ModelSums {
   return sums;
 }
 
+type UnitAdvisor = RunEntry['advisor'];
+
+/** A unit's advisor with its roles' labels and failed calls' codes masked (maskText), those that mask alike merged. */
+function maskAdvisor(scope: Scope | null, advisor: UnitAdvisor): UnitAdvisor {
+  if (!scope || !advisor) return advisor;
+  const byRole: NonNullable<NonNullable<UnitAdvisor>['by_role']> = {};
+  for (const [label, role] of Object.entries(advisor.by_role ?? {})) {
+    const row = (byRole[maskText(scope, label)] ??= { calls: 0, flagged: false });
+    row.calls = (row.calls ?? 0) + (role.calls ?? 0);
+    row.flagged ||= role.flagged ?? false;
+  }
+  const failed: Record<string, number> = {};
+  for (const [code, n] of Object.entries(advisor.failed ?? {})) addCount(failed, maskText(scope, code), n);
+  return { ...advisor, by_role: advisor.by_role && byRole, failed: advisor.failed && failed };
+}
+
 /**
- * The Models and advisor page: modelSums over the stored runs in the query's period (period), with the reporter's
- * all-time figures from `totals`, the last good import's: each agent's mismatches, each path's stage table and differs,
- * and the advisor's facts, its weeks only those of the period. An agent with mismatches that no dispatch in the period
- * names gets a row with no dispatches, as Skills keeps a skill required but not loaded. With a scope, each name from
- * the units (agents, models, efforts, the advisor's roles and failed codes) is masked (maskText) first, so names that
- * mask alike merge and the sums still count every project.
+ * The Models and advisor page: modelSums over the stored runs in the query's period (period), the advisor's facts
+ * over its runs and sessions (periodUnits, unitSums), with the reporter's all-time figures from `totals`, the last good
+ * import's: each agent's mismatches, each path's stage table and differs, and the advisor's trial and its weeks, only
+ * those of the period. An agent with mismatches that no dispatch in the period names gets a row with no dispatches,
+ * as Skills keeps a skill required but missing. With a scope, each name from the units (agents, models, efforts, the
+ * advisor's roles and failed codes) is masked (maskText), so names that mask alike merge and the sums still count
+ * every project.
  */
 export function modelsView(input: {
   runs: StoredUnit<RunEntry>[];
+  sessions: StoredUnit<SessionEntry>[];
   totals: unknown;
   query: FindingsQuery;
   now: Date;
   scope: Scope | null;
 }): ModelsResponse {
-  const { weeks, runs: inPeriod } = periodRuns(input.runs, input.query, input.now);
+  const { weeks, runs: inPeriod, sessions } = periodUnits(input.runs, input.sessions, input.query, input.now);
   const runs = inPeriod.map((run) => ({
       ...run,
       dispatches: run.dispatches?.map((d) => ({
@@ -66,6 +85,7 @@ export function modelsView(input: {
         effort: maskText(input.scope, d.effort),
       })),
       main: run.main && { model: maskText(input.scope, run.main.model), effort: maskText(input.scope, run.main.effort) },
+      advisor: maskAdvisor(input.scope, run.advisor),
     }));
   const sums = modelSums(runs);
   const totals = reporterTotals(input.totals);
@@ -77,28 +97,14 @@ export function modelsView(input: {
     if (count > 0) sums.agents[name] ??= { requested: {}, actual: {} };
   }
   const advisor = totals?.advisor;
-  let facts: AdvisorFacts | null = null;
-  if (advisor) {
-    const byRole: AdvisorFacts['byRole'] = {};
-    for (const [label, role] of Object.entries(advisor.by_role ?? {})) {
-      const row = (byRole[maskText(input.scope, label)] ??= { calls: 0, flagged: false });
-      row.calls += role.calls ?? 0;
-      row.flagged ||= role.flagged ?? false;
-    }
-    const failed: Record<string, number> = {};
-    for (const [code, n] of Object.entries(advisor.failed ?? {})) addCount(failed, maskText(input.scope, code), n);
-    facts = {
-      calls: advisor.calls ?? null,
-      tokens: advisor.tokens ?? null,
-      cost: advisor.cost ?? null,
-      byRole,
-      failed,
-      notes: advisor.notes ?? null,
-      changed: advisor.changed ?? null,
-      missing: advisor.missing ?? null,
-      trial: advisor.trial ?? null,
-    };
-  }
+  const facts = unitSums(
+    runs,
+    sessions.map((session) => ({ ...session, advisor: maskAdvisor(input.scope, session.advisor) })),
+    cr6Of(
+      input.runs.map((unit) => unit.merged),
+      input.sessions.map((unit) => unit.merged),
+    ),
+  ).advisor;
   return {
     agents: Object.entries(sums.agents)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -110,13 +116,16 @@ export function modelsView(input: {
     }),
     stageSource: 'reporter',
     advisor: {
-      source: 'reporter',
       facts,
-      weeks: (advisor?.weeks ?? []).flatMap(({ week, ...w }) =>
-        week && weeks.includes(week)
-          ? [{ week, advisor: w.advisor ?? null, fable: w.fable ?? null, share: w.share ?? null, stop: w.stop ?? null }]
-          : [],
-      ),
+      reporter: {
+        source: 'reporter',
+        trial: advisor?.trial ?? null,
+        weeks: (advisor?.weeks ?? []).flatMap(({ week, ...w }) =>
+          week && weeks.includes(week)
+            ? [{ week, advisor: w.advisor ?? null, fable: w.fable ?? null, share: w.share ?? null, stop: w.stop ?? null }]
+            : [],
+        ),
+      },
     },
   };
 }

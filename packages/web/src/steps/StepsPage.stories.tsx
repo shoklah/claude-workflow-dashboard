@@ -40,7 +40,7 @@ export const Failed: Story = {
   },
 };
 
-/** Empty: every step kind with nothing run, no offers, and the reporter's all-time figures still shown. */
+/** Empty: every step kind with nothing run, no offers, refusals, sessions or advisor calls. */
 export const Empty: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/steps?weeks=4': stepsEmpty });
@@ -50,13 +50,15 @@ export const Empty: Story = {
     await expect(cells(review)).toEqual(['0', '0', '–', '0', '0', '0', '0', '0', '$0.00']);
     await expect(canvas.queryByRole('rowheader', { name: /^offer/ })).toBeNull();
     const startup = canvas.getByRole('rowheader', { name: /^startup guidelines/ }).closest('tr')!;
-    await expect(cells(startup).slice(0, 3)).toEqual(['41', '–', 'with 38 · without 3']);
+    await expect(cells(startup).slice(0, 3)).toEqual(['0', '–', 'with 0 · without 0']);
+    const guard = canvas.getByRole('rowheader', { name: 'dispatch guard' }).closest('tr')!;
+    await expect(cells(guard).slice(0, 3)).toEqual(['–', '0', '–']);
   },
 };
 
 /**
- * Full: the static page's rows, steps then rules, with its columns; simplify's spend is unknown, and the reporter's
- * all-time figures carry the "reporter, all time" mark.
+ * Full: the static page's rows, steps then rules, with its columns; simplify's spend is unknown, and every figure is
+ * the period's sum, with no "reporter, all time" mark.
  */
 export const Full: Story = {
   beforeEach: () => {
@@ -108,15 +110,14 @@ export const Full: Story = {
       'accepted 2 · skipped 1 · not offered 0 · updated 0',
     ]);
 
-    // The reporter's figures are marked; the period's sums aren't.
-    for (const name of [/^dispatch guard/, /^advisor/, /^startup guidelines/]) {
-      await expect(within(row(name)).getByText('reporter, all time')).toBeVisible();
-    }
-    await expect(within(row(/^failing-test check$/)).queryByText('reporter, all time')).toBeNull();
+    // Every figure is the period's sum.
+    await expect(row(/^dispatch guard$/)).toBeVisible();
+    await expect(row(/^startup guidelines$/)).toBeVisible();
+    await expect(canvas.queryByText('reporter, all time')).toBeNull();
   },
 };
 
-/** An export from the old reporter: its all-time figures show as dashes, still marked. */
+/** An export from before CR6: its refusals, startup and advisor show as dashes. */
 export const OldReporter: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/steps?weeks=4': stepsOldReporter });
@@ -127,7 +128,6 @@ export const OldReporter: Story = {
     await expect(cells(await row(/^advisor/)).slice(0, 3)).toEqual(['–', '–', '–']);
     await expect(cells(await row(/^advisor/)).at(-1)).toBe('–');
     await expect(cells(await row(/^startup guidelines/)).slice(0, 3)).toEqual(['–', '–', '–']);
-    await expect(within(await row(/^startup guidelines/)).getByText('reporter, all time')).toBeVisible();
   },
 };
 

@@ -1,6 +1,5 @@
 import {
   parseTime,
-  reporterTotals,
   weekOf,
   type FindingsQuery,
   type RunEntry,
@@ -9,19 +8,21 @@ import {
   type SkillsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { addCount, period, skillOutcomeLabel, storedFacts, storedNames } from './runs.ts';
+import { addCount, period, periodUnits, skillOutcomeLabel, storedFacts, storedNames } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
-type Loads = { skills?: RunEntry['skills'] };
+type SkillUnit = { skills?: RunEntry['skills']; missing_skills?: RunEntry['missing_skills']; typed?: RunEntry['typed'] };
 
 /**
- * Each skill the units loaded, by name, as the reporter's skill_totals: the units (runs and sessions alike) that
- * loaded it, its latest load, and its loads by skillOutcomeLabel.
+ * Each skill by name, as the reporter's skill_totals: the units (runs and sessions alike) that loaded it, its latest
+ * load and its loads by skillOutcomeLabel, from `units`; and the times it was required and missing, a run's missing
+ * skill or a typed trigger never met, from `missingFrom` (`units` unless given), a skill only missing getting a row
+ * with no loads.
  */
-export function skillSums(units: Loads[]): SkillRow[] {
+export function skillSums(units: SkillUnit[], missingFrom: SkillUnit[] = units): SkillRow[] {
   const rows = new Map<string, SkillRow>();
   const row = (name: string) => {
-    if (!rows.has(name)) rows.set(name, { name, runs: 0, last: null, outcomes: {} });
+    if (!rows.has(name)) rows.set(name, { name, runs: 0, last: null, outcomes: {}, missing: 0 });
     return rows.get(name)!;
   };
   for (const unit of units) {
@@ -34,51 +35,43 @@ export function skillSums(units: Loads[]): SkillRow[] {
       addCount(entry.outcomes, label);
     }
   }
+  for (const unit of missingFrom) {
+    for (const name of unit.missing_skills ?? []) row(name).missing += 1;
+    for (const t of unit.typed ?? []) if (t.met === false) row(t.skill ?? '').missing += 1;
+  }
   return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
  * The Skills page: skillSums over the loads in the query's period (period's weeks, by each load's time), of the runs
- * matching its path and project filters and of every session, then a row with no loads for each skill the latest
- * export's `totals` count as required but missing that no unit loaded in the period, as skill_totals makes one; each
- * row with the reporter's all-time missing count. With a scope, each skill name is masked (maskText) first, so names
- * that mask alike merge and the sums still count every project.
+ * matching its path and project filters and of every session, with each skill's missing count over the period's runs
+ * and sessions (periodUnits). With a scope, each skill name is masked (maskText) first, so names that mask alike merge
+ * and the sums still count every project.
  */
 export function skillsView(input: {
   runs: StoredUnit<RunEntry>[];
   sessions: StoredUnit<SessionEntry>[];
-  totals: unknown;
   query: FindingsQuery;
   now: Date;
   scope: Scope | null;
 }): SkillsResponse {
   const { weeks, filters } = period(input.query, input.now);
   const names = storedNames(input.runs);
-  const inPeriod = (unit: Loads): Loads => ({
+  const mask = (name: string | null | undefined) => maskText(input.scope, name ?? '');
+  const inPeriod = (unit: SkillUnit): SkillUnit => ({
     skills: (unit.skills ?? [])
       .filter((s) => s.time && weeks.includes(weekOf(parseTime(s.time))))
-      .map((s) => ({ ...s, name: maskText(input.scope, s.name ?? '') })),
+      .map((s) => ({ ...s, name: mask(s.name) })),
   });
-  const units = [
+  const loads = [
     ...input.runs.filter((run) => filters(storedFacts(run, names))),
     ...input.sessions,
   ].map((unit) => inPeriod(unit.merged));
-  const totals = reporterTotals(input.totals)?.skills;
-  const missing = new Map<string, number>();
-  for (const [name, row] of Object.entries(totals ?? {})) {
-    if (row.missing == null) continue;
-    const key = maskText(input.scope, name);
-    missing.set(key, (missing.get(key) ?? 0) + row.missing);
-  }
-  const rows = skillSums(units);
-  const loaded = new Set(rows.map((row) => row.name));
-  for (const [name, count] of missing) {
-    if (count > 0 && !loaded.has(name)) rows.push({ name, runs: 0, last: null, outcomes: {} });
-  }
-  return {
-    skills: rows
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((row) => ({ ...row, missing: missing.get(row.name) ?? null })),
-    missingSource: 'reporter',
-  };
+  const units = periodUnits(input.runs, input.sessions, input.query, input.now);
+  const inUnits: SkillUnit[] = [...units.runs, ...units.sessions];
+  const missing = inUnits.map((unit) => ({
+    missing_skills: unit.missing_skills?.map(mask),
+    typed: unit.typed?.map((t) => ({ ...t, skill: mask(t.skill) })),
+  }));
+  return { skills: skillSums(loads, missing) };
 }

@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { FindingsQuery, StepsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import {
   NONE,
@@ -45,8 +44,8 @@ function RuleRow(props: { name: ReactNode; ran: number | null; found?: number | 
 
 /** The static page's "Rules and steps" table: each step kind, then each rule, over the period. */
 function StepsTable({ response }: { response: StepsResponse }) {
-  const { steps, rules, reporter } = response;
-  const { advisor, startup } = reporter;
+  const { steps, rules } = response;
+  const { advisor, startup } = rules;
   return (
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Steps and rules' }}>
       <TableHeader>
@@ -83,20 +82,20 @@ function StepsTable({ response }: { response: StepsResponse }) {
         </TableRow>
         <RuleRow name={RULE_LABELS.failingTest} ran={total(rules.failingTest)} counts={countsLabel(rules.failingTest)} />
         <RuleRow
-          name={<>{RULE_LABELS.dispatchGuard}<ReporterMark /></>}
+          name={RULE_LABELS.dispatchGuard}
           ran={null}
-          found={reporter.dispatchGuard && total(reporter.dispatchGuard)}
-          counts={countsLabel(reporter.dispatchGuard)}
+          found={rules.dispatchGuard && total(rules.dispatchGuard)}
+          counts={countsLabel(rules.dispatchGuard)}
         />
         <RuleRow
-          name={<>{RULE_LABELS.advisor}<ReporterMark /></>}
+          name={RULE_LABELS.advisor}
           ran={advisor?.calls ?? null}
           counts={advisor ? advisorLabel(advisor) : NONE}
           cost={formatCost(advisor?.cost ?? null)}
         />
         <RuleRow
-          name={<>{RULE_LABELS.startup}<ReporterMark /></>}
-          ran={startup && startup.with !== null && startup.without !== null ? startup.with + startup.without : null}
+          name={RULE_LABELS.startup}
+          ran={startup && startup.with + startup.without}
           counts={countsLabel(startup)}
         />
         <RuleRow name={RULE_LABELS.fixRoundCap} ran={null} counts={countsLabel(rules.fixRoundCap)} />
@@ -109,7 +108,7 @@ function StepsTable({ response }: { response: StepsResponse }) {
   );
 }
 
-/** The Steps and rules page: each step kind and rule over the period, the reporter's all-time figures marked. */
+/** The Steps and rules page: each step kind and rule over the period. */
 export function StepsPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
   const steps = useLiveQuery<StepsResponse>(listPath('/api/steps', query));
