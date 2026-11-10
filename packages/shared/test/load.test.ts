@@ -38,6 +38,26 @@ describe('loadReport', () => {
     expect(report.totals.advisor?.weeks?.[0].stop).toBe(false);
   });
 
+  test('reads the session facts, the units’ advisor and the runs’ typed triggers of the v6 fixture', () => {
+    const result = loadReport(fixture('report-v6'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { report } = result;
+    const session = report.sessions.find((s) => s.title === "Port lantern-notes' sync to tidepool-api")!;
+    expect(session.start).toBe('2026-11-09T13:40:12.551Z');
+    expect(session.end).toBe('2026-11-09T15:12:48.006Z');
+    expect(session.project).toBe('/Users/example/Work/tidepool-api');
+    expect(session.commands?.[0].name).toBe('superpowers:brainstorming');
+    expect(session.advisor?.by_role).toEqual({ main: { calls: 1, flagged: false } });
+    expect(session.advisor?.weeks).toEqual([{ week: '2026-11-08', advisor: 0.06, fable: 0 }]);
+    expect(session.notes).toEqual({ notes: 1, changed: 1, missing: 0 });
+    expect(session.refusals).toEqual({ no_model: 1 });
+    expect(report.sessions.find((s) => s.title === null)).toMatchObject({ start: null, end: null, project: null });
+    const webhooks = report.runs.find((r) => r.record?.branch === 'feature/webhooks')!;
+    expect(webhooks.typed).toEqual([{ skill: 'grill-me', time: '2026-11-12T02:45:10.000Z', met: false }]);
+    expect(webhooks.advisor?.failed).toEqual({ overloaded_error: 1 });
+  });
+
   test('accepts a failing-test entry whose task isn’t a number, as the raw record a session wrote', () => {
     const json = fixture('report-v5');
     const run = json.runs.find((r: { schema: number }) => r.schema === 5);

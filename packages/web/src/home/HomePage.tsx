@@ -1,11 +1,12 @@
 import type { HomeResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Feed } from './Feed.tsx';
+import { SkillsAndCommands } from './SkillsAndCommands.tsx';
 import { WeekTiles } from './WeekTiles.tsx';
 import { WeeklyCharts } from './WeeklyCharts.tsx';
 import { WorkflowDiagram } from './WorkflowDiagram.tsx';
 
-/** The home screen (decision 22): the week's tiles, the workflow, the weekly charts, and the feed on the right. */
+/** The home screen (decision 22): the week's tiles, the workflow, the weekly charts, the skills and commands, and the feed on the right. */
 export function HomePage() {
   const home = useLiveQuery<HomeResponse>('/api/home');
   return (
@@ -19,6 +20,7 @@ export function HomePage() {
             <WeekTiles thisWeek={home.data.thisWeek} lastWeek={home.data.lastWeek} />
             <WorkflowDiagram diagram={home.data.diagram} />
             <WeeklyCharts charts={home.data.charts} coverageFrom={home.data.coverageFrom} />
+            <SkillsAndCommands usage={home.data.usage} />
           </div>
           <div className="w-64 flex-none border-l pl-3">
             <Feed items={home.data.feed} />

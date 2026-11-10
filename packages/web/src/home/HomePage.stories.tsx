@@ -56,5 +56,7 @@ export const Full: Story = {
     await expect(canvas.getByText(/Weeks before Oct 5, 2026/)).toBeVisible();
     await expect(canvas.getAllByRole('listitem')).toHaveLength(4);
     await expect(canvas.getByRole('button', { name: 'Mark all seen' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Skills and commands' })).toBeVisible();
+    await expect(canvas.getByText('23 sessions · 6 runs')).toBeVisible();
   },
 };

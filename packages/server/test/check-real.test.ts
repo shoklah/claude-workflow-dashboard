@@ -10,8 +10,10 @@ const SCRIPT = fileURLToPath(new URL('../src/check-real.ts', import.meta.url));
 
 const dirs: string[] = [];
 
+const LANTERN = '/Users/example/Work/lantern-notes';
+
 // An export from the old reporter, as report-full, has no totals but its weeks.
-const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models']
+const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models', 'units']
   .map((name) => `${name}: not in the export\n`)
   .join('');
 
@@ -66,7 +68,7 @@ describe('check:real', () => {
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
-        'models: 0 differ\nshowing: pass\n',
+        'models: 0 differ\nunits: 0 differ\nshowing: pass\n',
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
     expect(status).toBe(0);
@@ -84,19 +86,86 @@ describe('check:real', () => {
       totals.skills['test-driven-development'].runs += 1;
       totals.models.agents['plan-reviewer'].actual['claude-fable-5-1/high'] += 1;
       totals.models.main.small.actual = {};
-      // A skill required but never loaded, as skill_totals counts it: neither compared nor a difference.
+      // A skill required but never loaded, as skill_totals counts it, which no unit of report-v5 misses: compared too.
       totals.skills['grill-me'] = { runs: 0, last: null, outcomes: {}, missing: 1 };
     });
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
         'run time: compared, 1 differ\nwith_waves\nsteps: 7 compared, 2 differ\ntask_review\nfinal_review\n' +
-        'rules: 2 differ\nstop_rule\noffers\nskills: 6 compared, 1 differ\nmodels: 2 differ\nshowing: pass\n',
+        'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\nshowing: pass\n',
     );
     // A skill or agent name can come from a project, so neither is printed.
     for (const name of ['test-driven-development', 'plan-reviewer', 'graphify', 'grill-me']) {
       expect(`${stdout}${stderr}`).not.toContain(name);
     }
+  });
+
+  test("compares the units' sums and skills' missing with the reporter's totals and checks the sessions route", () => {
+    const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v6')]);
+    expect(stdout).toBe(
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
+        'models: 0 differ\nunits: 0 differ\nshowing: pass\n',
+    );
+    for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
+    expect(status).toBe(0);
+  });
+
+  test("names the differing unit sums, counts a skill's differing missing, and allows a share 0.01 points off", () => {
+    const file = changed('report-v6', (raw) => {
+      const { totals } = raw;
+      totals.scoreboard.dispatch_guard.no_model += 1;
+      totals.scoreboard.startup.without += 1;
+      totals.advisor.by_role['task-reviewer'].flagged = false;
+      totals.skills['grill-me'].missing += 1;
+      // Under 0.01 points off: the reporter's share is a float sum.
+      totals.scoreboard.advisor.share += 0.004;
+    });
+    const { stdout, stderr } = checkReal(['cat', file]);
+    expect(stdout).toBe(
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nweeks: 4 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
+        'models: 0 differ\nunits: 3 differ\ndispatch_guard\nstartup\nadvisor\nshowing: pass\n',
+    );
+    for (const name of ['grill-me', 'task-reviewer', 'no_model']) expect(`${stdout}${stderr}`).not.toContain(name);
+  });
+
+  test("the advisor's share differs from 0.01 points off", () => {
+    const file = changed('report-v6', (raw) => {
+      raw.totals.scoreboard.advisor.share += 0.01;
+    });
+    expect(checkReal(['cat', file]).stdout).toContain('units: 1 differ\nadvisor\n');
+  });
+
+  test('counts the leaks in the sessions route', () => {
+    // The shown project (the first root, Work lantern-notes) aliased as the hidden tidepool-api leaks in every response
+    // naming it, the sessions route's too while it lists the project's sessions, and in no response with them left out
+    // of every period (no start), since only the sessions route names a session's project.
+    const aliases = { [LANTERN]: 'tidepool-api' };
+    const leakCount = (file: string) => {
+      const { stdout, stderr } = checkReal(['cat', file], { aliases });
+      expect(`${stdout}${stderr}`).not.toContain('tidepool-api');
+      return Number(/^showing: (\d+) leaks \(0 inside words\)$/m.exec(stdout)![1]);
+    };
+    const unlisted = changed('report-v6', (raw) => {
+      for (const s of raw.sessions) if (s.project?.startsWith(LANTERN)) s.start = null;
+    });
+    expect(leakCount(fixturePath('report-v6'))).toBe(leakCount(unlisted) + 1);
+  });
+
+  test('counts the leaks found only inside words apart, still failing, never printing a value', () => {
+    // A hidden session folder named app is inside response keys and words (appDiffers, "applied") as a whole word nowhere.
+    const file = changed('report-v6', (raw) => {
+      raw.sessions.find((s: { project?: string }) => s.project === '/Users/example/Scratch/lantern').project =
+        '/Users/example/Work/app';
+    });
+    const { stdout, stderr, status } = checkReal(['cat', file]);
+    const [, leakCount, inside] = /^showing: (\d+) leaks \((\d+) inside words\)$/m.exec(stdout) ?? [];
+    expect(Number(inside)).toBeGreaterThan(0);
+    expect(Number(inside)).toBe(Number(leakCount));
+    for (const value of ['/Users/', 'app']) expect(`${stdout}${stderr}`).not.toContain(value);
+    expect(status).toBe(1);
   });
 
   test('prints field paths for a bad shape', () => {
@@ -154,7 +223,7 @@ describe('check:real', () => {
     // The shown project (the first root, Archive lantern-notes) aliased as the hidden tidepool-api.
     const aliases = { '/Users/example/Archive/lantern-notes': 'tidepool-api' };
     const { stdout, stderr, status, tmp } = checkReal(['cat', fixturePath('report-projects')], { aliases });
-    expect(stdout).toMatch(/^showing: [1-9]\d* leaks$/m);
+    expect(stdout).toMatch(/^showing: [1-9]\d* leaks \(0 inside words\)$/m);
     expect(`${stdout}${stderr}`).not.toContain('tidepool-api');
     expect(status).toBe(1);
     expect(tmp).toEqual([]);
@@ -167,7 +236,7 @@ describe('check:real', () => {
     // The shown project's alias, a path under home, is in every shown run's name.
     const aliases = { '/Users/example/Archive/lantern-notes': '/Users/example/notes' };
     const { stdout, status } = checkReal(['cat', fixturePath('report-projects')], { aliases }, home);
-    expect(stdout).toMatch(/^showing: [1-9]\d* leaks$/m);
+    expect(stdout).toMatch(/^showing: [1-9]\d* leaks \(0 inside words\)$/m);
     expect(status).toBe(1);
   });
 

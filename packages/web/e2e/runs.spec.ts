@@ -2,7 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML, then report-v5.
+// dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML, then report-v6.
 const HTML_TEXT = '<img src=x onerror=alert(1)>';
 
 /** Opens the Runs list, then the Full run of feature/offline-sync from it. */

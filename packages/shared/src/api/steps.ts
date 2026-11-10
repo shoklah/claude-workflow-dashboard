@@ -1,4 +1,5 @@
 import type { StepKind } from '../report.ts';
+import type { AdvisorFacts } from './models.ts';
 
 /**
  * A step kind's row over a period, as the reporter's scoreboard: the steps that ran, those whose counts found
@@ -30,22 +31,15 @@ export type RuleSums = {
 };
 
 /**
- * `GET /api/steps`: each step kind and rule over the period, and the reporter's all-time figures from the latest
- * export's totals (dispatch-guard refusals, the advisor, startup guidelines), each null when the export has none.
+ * `GET /api/steps`: each step kind and rule over the period, the rules with the dispatch guard's refusals, the startup
+ * guidelines and the advisor summed over the period's runs and sessions (unitSums), each null on an export from before
+ * CR6.
  */
 export type StepsResponse = {
   steps: StepRow[];
-  rules: RuleSums;
-  reporter: {
-    source: 'reporter';
+  rules: RuleSums & {
     dispatchGuard: Record<string, number> | null;
-    advisor: {
-      calls: number | null;
-      notes: number | null;
-      changed: number | null;
-      cost: number | null;
-      share: number | null;
-    } | null;
-    startup: { with: number | null; without: number | null } | null;
+    startup: { with: number; without: number } | null;
+    advisor: Pick<AdvisorFacts, 'calls' | 'notes' | 'changed' | 'cost' | 'share'> | null;
   };
 };

@@ -14,3 +14,4 @@ export * from './api/steps.ts';
 export * from './api/skills.ts';
 export * from './api/models.ts';
 export * from './api/compliance.ts';
+export * from './api/sessions.ts';

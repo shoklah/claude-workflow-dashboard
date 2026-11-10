@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadReport, projectRoot, STEP_KINDS, type StepsResponse } from '@cwd/shared';
+import { loadReport, projectRoot, STEP_KINDS, type SessionEntry, type StepsResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -10,7 +10,8 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
-import { ruleSums, stepSums } from '../src/views/steps.ts';
+import { storedSessionRoots } from '../src/views/runs.ts';
+import { cr6Of, ruleSums, stepSums, unitSums } from '../src/views/steps.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -103,22 +104,141 @@ test("ruleSums over every stored run equals the scoreboard's rules and the offer
 test("over a 52-week period, the steps and rules are the reporter's", async () => {
   const body = await steps('?weeks=52');
   expectScoreboard(body.steps);
-  expect(body.rules).toEqual(rules);
+  expect(body.rules).toMatchObject(rules);
 });
 
-test("the reporter's all-time figures come from the last good import's totals, marked as the reporter's", async () => {
-  expect((await steps()).reporter).toEqual({
-    source: 'reporter',
-    dispatchGuard: { no_model: 1, no_simplify: 1 },
-    advisor: board.advisor,
-    startup: { with: 1, without: 0 },
+const V6 = fixture('report-v6').totals;
+const LANTERN = '/Users/example/Work/lantern-notes';
+const TIDEPOOL = '/Users/example/Work/tidepool-api';
+
+test("unitSums over every unit of report-v6 equals the reporter's dispatch guard, startup and advisor", () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  const runs = listUnits(db, 'run').map((unit) => unit.merged);
+  const sessions = listUnits(db, 'session').map((unit) => unit.merged);
+  const sums = unitSums(runs, sessions, cr6Of(runs, sessions));
+  expect(sums.dispatchGuard).toEqual(V6.scoreboard.dispatch_guard);
+  expect(sums.startup).toEqual(V6.scoreboard.startup);
+  const { cost, share, ...rest } = sums.advisor!;
+  const totals = V6.advisor;
+  expect(rest).toEqual({
+    calls: totals.calls,
+    tokens: totals.tokens,
+    byRole: totals.by_role,
+    failed: totals.failed,
+    notes: totals.notes,
+    changed: totals.changed,
+    missing: totals.missing,
+  });
+  expect({ calls: rest.calls, notes: rest.notes, changed: rest.changed }).toEqual({
+    calls: V6.scoreboard.advisor.calls,
+    notes: V6.scoreboard.advisor.notes,
+    changed: V6.scoreboard.advisor.changed,
+  });
+  // Cost to the cent and share to 0.01 points: the reporter's are float sums.
+  expect(cost).toBeCloseTo(totals.cost, 2);
+  expect(cost).toBeCloseTo(V6.scoreboard.advisor.cost, 2);
+  expect(share).toBeCloseTo(V6.scoreboard.advisor.share, 2);
+});
+
+test('the share is 0 when the advisor and Fable dollars are both 0', () => {
+  const advisor = { calls: 0, cost: 0, tokens: {}, by_role: {}, failed: {}, weeks: [] };
+  const sessions = [{ file: 'a', refusals: {}, startup: true, advisor }];
+  expect(unitSums([], sessions, cr6Of([], sessions)).advisor?.share).toBe(0);
+});
+
+test("a stored advisor from before CR6, with no by_role, is not summed beside CR6's", () => {
+  const advisor = { calls: 2, cost: 1, tokens: { input: 10 }, by_role: { 'task-reviewer': { calls: 2 } }, weeks: [] };
+  // A pre-CR6 advisor still stored on another unit: its calls, cost, tokens, failed codes and Fable are left out.
+  const old = { calls: 5, cost: 3, tokens: { input: 40 }, failed: { overloaded: 1 }, weeks: [{ fable: 9 }] };
+  const sessions = [
+    { file: 'a', refusals: {}, startup: true, advisor },
+    { file: 'b', refusals: {}, startup: true, advisor: old },
+  ];
+  const sums = unitSums([], sessions as SessionEntry[], cr6Of([], sessions as SessionEntry[])).advisor!;
+  expect(sums).toMatchObject({ calls: 2, cost: 1, failed: {}, share: 100 });
+  expect(sums.tokens.input).toBe(10);
+  // Its calls then equal its roles' sum, as the Models page shows them.
+  expect(Object.values(sums.byRole).reduce((n, role) => n + role.calls, 0)).toBe(sums.calls);
+});
+
+test('on an export from before CR6, the dispatch guard, startup and advisor are null, never partial sums', () => {
+  db.$client.close();
+  db = dbWith('report-full');
+  const runs = listUnits(db, 'run').map((unit) => unit.merged);
+  const sessions = listUnits(db, 'session').map((unit) => unit.merged);
+  const sums = unitSums(runs, sessions, cr6Of(runs, sessions));
+  expect(sums).toEqual({ dispatchGuard: null, startup: null, advisor: null });
+});
+
+test("the Steps page's rules sum the period's runs, by finish, and sessions, by start", async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  const { rules } = await steps('?weeks=52');
+  expect(rules.dispatchGuard).toEqual({ no_model: 2, no_simplify: 1 });
+  // The session with no start is in no period.
+  expect(rules.startup).toEqual({ with: 1, without: 3 });
+  expect(rules.advisor).toMatchObject({ calls: 10, notes: 10, changed: 4 });
+  expect(rules.advisor?.cost).toBeCloseTo(0.78, 2);
+  expect(rules.advisor?.share).toBeCloseTo(V6.scoreboard.advisor.share, 2);
+  expect(Object.keys(rules.advisor!).sort()).toEqual(['calls', 'changed', 'cost', 'notes', 'share']);
+  // This week leaves out the Scratch session of Nov 5.
+  expect((await steps('?weeks=1')).rules.startup).toEqual({ with: 1, without: 2 });
+});
+
+test('a project filter keeps the sessions whose root has its key', async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  // tidepool-api: the webhooks run's no_simplify and its advisor's 3 calls, the Nov 9 session's no_model and 1 call.
+  const tidepool = (await steps(`?project=${projectKey(TIDEPOOL)}`)).rules;
+  expect(tidepool.dispatchGuard).toEqual({ no_model: 1, no_simplify: 1 });
+  expect(tidepool.startup).toEqual({ with: 0, without: 1 });
+  expect(tidepool.advisor?.calls).toBe(4);
+  // lantern-notes: its worktree's session folds into it.
+  expect((await steps(`?project=${projectKey(LANTERN)}`)).rules.startup).toEqual({ with: 1, without: 1 });
+});
+
+test("a session-only root has no key, so its root's key as a project filter keeps no session", async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  const scratch = (await steps(`?weeks=52&project=${projectKey('/Users/example/Scratch/lantern')}`)).rules;
+  expect(scratch.startup).toEqual({ with: 0, without: 0 });
+});
+
+test('a path filter leaves the sessions out', async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  // The full runs' advisors and refusals only: 5 and 3 calls and the webhooks runs' refusals, not the Nov 9 session's.
+  const full = (await steps('?path=full')).rules;
+  expect(full.advisor?.calls).toBe(8);
+  expect(full.dispatchGuard).toEqual({ no_model: 1, no_simplify: 1 });
+  // A session has no path.
+  expect(full.startup).toBeNull();
+});
+
+test('whether the export is CR6 is decided over every stored unit: a CR6 period with no units sums to zeros', async () => {
+  db.$client.close();
+  db = dbWith('report-v6');
+  // A project key no unit has: no run and no session, so every figure is 0, as the Steps page's Empty story shows.
+  const { rules } = await steps('?project=0000000000000000');
+  expect({ dispatchGuard: rules.dispatchGuard, startup: rules.startup, advisor: rules.advisor }).toEqual({
+    dispatchGuard: {},
+    startup: { with: 0, without: 0 },
+    advisor: { calls: 0, notes: 0, changed: 0, cost: 0, share: 0 },
   });
 });
 
-test("an export from the old reporter has no scoreboard, so the reporter's figures are null", async () => {
+test('on an export from before CR6 the period sums are null too, whatever the filters', async () => {
   db.$client.close();
   db = dbWith('report-full');
-  expect((await steps()).reporter).toEqual({ source: 'reporter', dispatchGuard: null, advisor: null, startup: null });
+  for (const query of ['?weeks=52', '?weeks=52&path=full']) {
+    const { rules } = await steps(query);
+    expect({ dispatchGuard: rules.dispatchGuard, startup: rules.startup, advisor: rules.advisor }).toEqual({
+      dispatchGuard: null,
+      startup: null,
+      advisor: null,
+    });
+  }
 });
 
 test('the period and path filters choose the runs summed', async () => {
@@ -146,22 +266,41 @@ test('with showing on, the response holds no hidden project text and no session 
 });
 
 test("with showing on, an offered skill named after a hidden project is masked, and the offers still count it", async () => {
-  const raw = fixture('report-v5');
+  db.$client.close();
+  db = dbWith('report-v6', (raw) => {
+    // A project-local skill named after the hidden tidepool-api, offered in its webhooks run.
+    raw.runs[5].offers[1].skill = 'tidepool-api-release';
+  });
+  const strings = v6Strings(LANTERN);
+  expect(strings.forbidden).toContain('tidepool-api');
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await steps('?weeks=52');
+  expect(body.rules.offers['another project-release']).toMatchObject({ offered: 1, skipped: 1 });
+  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  // The session-only root is hidden too.
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['/Users/example/Scratch/lantern', 'lantern']));
+});
+
+test('with showing on, a refusal key named after a hidden project is masked, and the refusals still count it', async () => {
+  db.$client.close();
+  db = dbWith('report-v6', (raw) => {
+    raw.sessions[3].refusals = { 'tidepool-api-guard': 1 };
+  });
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await steps('?weeks=52');
+  expect(body.rules.dispatchGuard?.['another project-guard']).toBe(1);
+  expect(leaks(body, [...v6Strings(LANTERN).forbidden, '/Users/example'], v6Strings(LANTERN).shown)).toEqual([]);
+});
+
+/** What a showing-mode response over report-v6, stored in `db`, may not hold with `shown` picked: its runs' and
+ * sessions' hidden roots, folder names and branches, and every session ID. */
+function v6Strings(shown: string): { forbidden: string[]; shown: string[] } {
+  const raw = fixture('report-v6');
   const branches = new Map<string, string[]>();
   for (const run of raw.runs) {
     const root = projectRoot(run.record.project);
     branches.set(root, [...(branches.get(root) ?? []), run.record.branch]);
   }
-  const lantern = '/Users/example/Work/lantern-notes';
-  const strings = forbiddenStrings([...branches.keys()], branches, [lantern], []);
-  expect(strings.forbidden).toContain('tidepool-api');
-  db.$client.close();
-  db = dbWith('report-v5', (raw) => {
-    // A project-local skill named after the hidden tidepool-api, offered in its webhooks run.
-    raw.runs[5].offers[1].skill = 'tidepool-api-release';
-  });
-  setShowing(db, [projectKey(lantern)]);
-  const body = await steps('?weeks=52');
-  expect(body.rules.offers['another project-release']).toMatchObject({ offered: 1, skipped: 1 });
-  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
-});
+  const ids = [...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g))];
+  return forbiddenStrings([...branches.keys()], branches, [shown], ids, storedSessionRoots(listUnits(db, 'session')));
+}

@@ -21,11 +21,19 @@ import {
   warningsSummary,
   labellerLabel,
   nonZeroCountsLabel,
+  ofLabel,
+  usageName,
   outcomesLabel,
   reporterMark,
   runName,
   stepWarningsLabel,
   weekLabel,
+  modelsLabel,
+  sessionsSummary,
+  yesNoLabel,
+  timelineTimes,
+  projectLabel,
+  sessionName,
 } from './format.ts';
 
 describe('formatMinutes', () => {
@@ -282,5 +290,78 @@ describe('total', () => {
     expect(total({ small: 4, full: 2 })).toBe(6);
     expect(total({ with: 3, without: null })).toBe(3);
     expect(total({})).toBe(0);
+  });
+});
+
+describe('usageName', () => {
+  it('writes a command with its slash and a skill bare', () => {
+    expect(usageName({ name: 'model', kind: 'command' })).toBe('/model');
+    expect(usageName({ name: 'grill-me', kind: 'skill' })).toBe('grill-me');
+  });
+});
+
+describe('ofLabel', () => {
+  it('writes a count out of its whole, a count that isn’t known as a dash', () => {
+    expect(ofLabel(8, 23)).toBe('8 of 23');
+    expect(ofLabel(null, 6)).toBe('–');
+  });
+});
+
+describe('modelsLabel', () => {
+  it('writes each model with its effort, a dash with none', () => {
+    expect(
+      modelsLabel([
+        { model: 'claude-opus-5-5', effort: 'medium' },
+        { model: 'claude-sonnet-5-5', effort: null },
+      ]),
+    ).toBe('claude-opus-5-5 · medium, claude-sonnet-5-5');
+    expect(modelsLabel([])).toBe('–');
+  });
+});
+
+describe('yesNoLabel', () => {
+  it('writes yes or no, a dash when it isn’t known', () => {
+    expect(yesNoLabel(true)).toBe('yes');
+    expect(yesNoLabel(false)).toBe('no');
+    expect(yesNoLabel(null)).toBe('–');
+  });
+});
+
+describe('sessionsSummary', () => {
+  it('counts the sessions and those holding a run', () => {
+    expect(sessionsSummary([{ holds: [{}] }, { holds: [] }, { holds: [{}, {}] }])).toBe('3 sessions · 2 hold a run');
+    expect(sessionsSummary([{ holds: [{}] }])).toBe('1 session · 1 holds a run');
+  });
+});
+
+describe('sessionName', () => {
+  it('names a session by its title, "no title" without one', () => {
+    expect(sessionName('Plan the search index')).toBe('Plan the search index');
+    expect(sessionName(null)).toBe('no title');
+  });
+});
+
+describe('projectLabel', () => {
+  it('names a project, "other project" for a session in no stored run\'s project', () => {
+    expect(projectLabel('atlas')).toBe('atlas');
+    expect(projectLabel(null)).toBe('other project');
+  });
+});
+
+describe('timelineTimes', () => {
+  it('writes the time of day, with the date on the first entry and on the first of each new day', () => {
+    // The two-run session's timeline: three entries on Nov 8, then three on Nov 12.
+    const times = timelineTimes([
+      '2026-11-08T08:02:40.120Z',
+      '2026-11-08T08:05:02.300Z',
+      '2026-11-08T08:10:00Z',
+      '2026-11-12T02:36:05.410Z',
+      '2026-11-12T02:40:00Z',
+      '2026-11-12T02:45:10.000Z',
+    ]);
+    expect(times.map((t) => /^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}/.test(t))).toEqual([true, false, false, true, false, false]);
+    expect(times[0]).toMatch(/^Nov [78], /);
+    expect(times[3]).toMatch(/^Nov 1[12], /);
+    expect(times[1]).toMatch(/^\d{1,2}:\d{2}(\s|\u202f)?(AM|PM)?$/);
   });
 });

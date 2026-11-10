@@ -10,7 +10,7 @@ import {
   type SessionEntry,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
+import { currentWarnings, period, sessionWarningShown, storedFacts, storedNames } from './runs.ts';
 import { showFacts, showWarning, type Scope } from './scope.ts';
 
 const OTHER = 'other';
@@ -69,13 +69,13 @@ export function familyOf(kind: string | null): string {
 
 /**
  * The Compliance page: the warnings in the query's period, by kind and week: the current ones (currentWarnings), and
- * with `resolved` every other stored warning. A run's warning is in the period when its run is (period), in its run's week; a
- * session's, of any path or project, in the week it was first seen. `step` keeps the warnings naming that step. The
- * rows are the kinds with a warning, in FAMILIES' order, then "other" kinds, the one with no kind last. With a scope,
- * the "other" rows are left out (an unknown kind can name anything) and the family rows' cells still count every
- * warning, but the list holds only the shown projects' run warnings outside "other", masked (showFacts, showWarning),
- * and `hidden` counts every warning in the period left out of the list. `newWarnings` counts the grid's warnings first
- * seen after seenAt, every project's.
+ * with `resolved` every other stored warning. A run's warning is in the period when its run is (period), in its run's
+ * week; a session's, of any path or project, in the week it was first seen. `step` keeps the warnings naming that step.
+ * The rows are the kinds with a warning, in FAMILIES' order, then "other" kinds, the one with no kind last. With a
+ * scope, the "other" rows are left out (an unknown kind can name anything) and the family rows' cells still count every
+ * warning, but the list holds only the shown projects' run and session warnings outside "other", masked (showFacts,
+ * showSession, showWarning), and `hidden` counts every warning in the period left out of the list. `newWarnings`
+ * counts the grid's warnings first seen after seenAt, every project's.
  */
 export function complianceView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -90,6 +90,7 @@ export function complianceView(input: {
   const { weeks, matches } = period(query, input.now);
   const names = storedNames(input.runs);
   const runs = new Map(input.runs.map((unit) => [unit.key, { unit, facts: storedFacts(unit, names) }]));
+  const sessionShown = sessionWarningShown(scope, input.sessions);
   const current = new Set(currentWarnings(input.runs, input.sessions, input.warnings));
 
   const inPeriod = input.warnings.flatMap((w) => {
@@ -124,7 +125,8 @@ export function complianceView(input: {
 
   const warnings = inPeriod.flatMap(({ w, run, week, family }): ComplianceWarning[] => {
     const facts = run && showFacts(scope, run.facts);
-    if (scope && (!facts || family === OTHER)) return [];
+    const shown = w.kind === 'run' ? !!facts : sessionShown(w.key);
+    if (scope && (!shown || family === OTHER)) return [];
     return [
       {
         kind: w.warningKind,

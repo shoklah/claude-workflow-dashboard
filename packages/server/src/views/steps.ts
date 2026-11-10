@@ -1,16 +1,17 @@
 import {
-  reporterTotals,
   STEP_KINDS,
   toStepKind,
+  type AdvisorFacts,
   type FindingsQuery,
   type RuleSums,
   type RunEntry,
+  type SessionEntry,
   type StepKind,
   type StepRow,
   type StepsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { addCount, periodRuns } from './runs.ts';
+import { addCount, periodUnits } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
 // The reporter's token labels, its failing-test results (TEST_RESULTS) and its offer outcomes (OFFER_OUTCOMES).
@@ -19,6 +20,9 @@ const TEST_RESULTS = ['passed', 'failed', 'no_tests', 'couldnt_run', 'exempt'];
 const OFFER_OUTCOMES = ['accepted', 'skipped', 'not_offered', 'updated'];
 
 const zeros = (keys: readonly string[]) => Object.fromEntries(keys.map((key) => [key, 0]));
+// A record with its keys in order, as the reporter's dict(sorted(...)).
+const byKey = <T>(record: Record<string, T>) =>
+  Object.fromEntries(Object.entries(record).sort(([a], [b]) => (a < b ? -1 : 1)));
 
 /**
  * One row per step kind, as the reporter's scoreboard: each logged step adds to its kind, and a schema 1 run adds its
@@ -112,46 +116,121 @@ export function ruleSums(runs: RunEntry[]): RuleSums {
       ruled: steps.flat().flatMap((s) => s.findings ?? []).filter((f) => f.outcome === 'ruled').length,
     },
     stopRule,
-    offers: Object.fromEntries(Object.entries(offers).sort(([a], [b]) => (a < b ? -1 : 1))),
+    offers: byKey(offers),
+  };
+}
+
+/** unitSums' figures: the Steps page's rules shows the refusals and startup, and the Models page the advisor. */
+export type UnitSums = Pick<StepsResponse['rules'], 'dispatchGuard' | 'startup'> & { advisor: AdvisorFacts | null };
+
+/** Whether the stored units are CR6's: some session carries `refusals` (`sessions`), some advisor `by_role` (`advisor`). */
+export type Cr6 = { sessions: boolean; advisor: boolean };
+
+/** Cr6 over every stored unit, never a period's, so a period with no session still sums its runs' refusals. */
+export function cr6Of(runs: RunEntry[], sessions: SessionEntry[]): Cr6 {
+  return {
+    sessions: sessions.some((s) => s.refusals != null),
+    advisor: [...runs, ...sessions].some((unit) => unit.advisor?.by_role != null),
   };
 }
 
 /**
- * The Steps and rules page: each step kind and rule summed over the stored runs in the query's period (period), and
- * the reporter's all-time figures from `totals`, the last good import's (dispatch-guard refusals, the advisor and the
- * startup guidelines), each null when the export has none. The sums count every project; with a scope, each offer's
- * skill is masked (maskText) first, so names that mask alike merge.
+ * The units' dispatch-guard refusals, startup guidelines and advisor, as the reporter's scoreboard and advisor_facts
+ * sum them over runs and sessions alike (CR6): the refusals by reason, the sessions with and without the startup
+ * guidelines, and the advisor's facts and notes, its share of the advisor and Fable dollars as share_pct gives it.
+ * Each is null on an export from before CR6, as `cr6` (cr6Of over every stored unit) tells: the refusals and startup
+ * unless `sessions`, the advisor unless `advisor`; on CR6 data, units with nothing sum to zeros, and a unit's advisor
+ * with no `by_role` (stored before CR6) is not summed. `name` maps each refusal key, role label and failed code as it is
+ * summed (a view's maskText under a scope), so keys that map alike merge.
+ */
+export function unitSums(
+  runs: RunEntry[],
+  sessions: SessionEntry[],
+  cr6: Cr6,
+  name: (label: string) => string = (label) => label,
+): UnitSums {
+  const units = [...runs, ...sessions];
+  const guard: Record<string, number> = {};
+  for (const unit of units) for (const [key, n] of Object.entries(unit.refusals ?? {})) addCount(guard, name(key), n);
+  const startup = { with: 0, without: 0 };
+  for (const s of sessions) startup[s.startup ? 'with' : 'without'] += 1;
+  let advisor: AdvisorFacts | null = null;
+  if (cr6.advisor) {
+    const sums: Omit<AdvisorFacts, 'share'> = {
+      calls: 0,
+      cost: 0,
+      tokens: zeros(TOKENS),
+      byRole: {},
+      failed: {},
+      notes: 0,
+      changed: 0,
+      missing: 0,
+    };
+    let fable = 0;
+    for (const { advisor: a, notes } of units) {
+      sums.notes += notes?.notes ?? 0;
+      sums.changed += notes?.changed ?? 0;
+      sums.missing += notes?.missing ?? 0;
+      // A stored advisor from before CR6 has no by_role, and is not summed beside CR6's.
+      if (!a?.by_role) continue;
+      sums.calls += a.calls ?? 0;
+      sums.cost += a.cost ?? 0;
+      for (const [label, n] of Object.entries(a.tokens ?? {})) addCount(sums.tokens, label, n);
+      for (const [label, role] of Object.entries(a.by_role ?? {})) {
+        const row = (sums.byRole[name(label)] ??= { calls: 0, flagged: false });
+        row.calls += role.calls ?? 0;
+        row.flagged ||= role.flagged ?? false;
+      }
+      for (const [code, n] of Object.entries(a.failed ?? {})) addCount(sums.failed, name(code), n);
+      for (const week of a.weeks ?? []) fable += week.fable ?? 0;
+    }
+    const total = sums.cost + fable;
+    const share = total > 0 ? (100 * sums.cost) / total : 0;
+    advisor = { ...sums, byRole: byKey(sums.byRole), failed: byKey(sums.failed), share };
+  }
+  return { dispatchGuard: cr6.sessions ? byKey(guard) : null, startup: cr6.sessions ? startup : null, advisor };
+}
+
+/**
+ * The Steps and rules page: each step kind and rule summed over the stored runs in the query's period, and the
+ * dispatch-guard refusals, startup guidelines (null under a path filter) and advisor over its runs and sessions
+ * (periodUnits, unitSums, with cr6Of over every stored unit). The sums
+ * count every project; with a scope, each offer's skill and refusal key is masked (maskText) first, so names that mask
+ * alike merge.
  */
 export function stepsView(input: {
   runs: StoredUnit<RunEntry>[];
-  totals: unknown;
+  sessions: StoredUnit<SessionEntry>[];
   query: FindingsQuery;
   now: Date;
   scope: Scope | null;
 }): StepsResponse {
-  const runs = periodRuns(input.runs, input.query, input.now).runs.map((run) => ({
+  const units = periodUnits(input.runs, input.sessions, input.query, input.now);
+  const runs = units.runs.map((run) => ({
     ...run,
     offers: run.offers?.map((o) => ({ ...o, skill: maskText(input.scope, o.skill) })),
   }));
-  const board = reporterTotals(input.totals)?.scoreboard;
-  const advisor = board?.advisor;
-  const startup = board?.startup;
+  const cr6 = cr6Of(
+    input.runs.map((unit) => unit.merged),
+    input.sessions.map((unit) => unit.merged),
+  );
+  const { advisor, dispatchGuard, startup } = unitSums(units.runs, units.sessions, cr6, (label) =>
+    maskText(input.scope, label),
+  );
   return {
     steps: stepSums(runs),
-    rules: ruleSums(runs),
-    reporter: {
-      source: 'reporter',
-      dispatchGuard: board?.dispatch_guard ?? null,
-      advisor: advisor
-        ? {
-            calls: advisor.calls ?? null,
-            notes: advisor.notes ?? null,
-            changed: advisor.changed ?? null,
-            cost: advisor.cost ?? null,
-            share: advisor.share ?? null,
-          }
-        : null,
-      startup: startup ? { with: startup.with ?? null, without: startup.without ?? null } : null,
+    rules: {
+      ...ruleSums(runs),
+      dispatchGuard,
+      // A session has no path, so a path filter leaves none to count.
+      startup: input.query.path ? null : startup,
+      advisor: advisor && {
+        calls: advisor.calls,
+        notes: advisor.notes,
+        changed: advisor.changed,
+        cost: advisor.cost,
+        share: advisor.share,
+      },
     },
   };
 }

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slice 2c mockup: Sessions and Home's skills and commands</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --page: #f3f3f1; --border: #dcdbd6;
+    --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
+    --s1: #2a78d6; --seq-1: #cde2fb; --warn: #a8461c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.45 system-ui, -apple-system, sans-serif; background: var(--page); color: var(--text); }
+  .note { max-width: 1180px; margin: 16px auto 8px; padding: 0 16px; color: var(--text-2); }
+  h1 { font-size: 17px; margin: 0 0 4px; color: var(--text); }
+  h2 { font-size: 14px; margin: 26px auto 6px; max-width: 1180px; padding: 0 16px; }
+  .shell { display: flex; max-width: 1180px; margin: 0 auto 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .menu { width: 150px; flex: none; padding: 12px 10px; border-right: 1px solid var(--border); line-height: 2; color: var(--text-2); }
+  .menu .on { color: var(--text); font-weight: 600; }
+  .main { flex: 1; padding: 14px 16px; min-width: 0; }
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); border-radius: 14px; padding: 2px 10px; background: #fff; }
+  .chip.on { background: var(--seq-1); border-color: #6da7ec; }
+  .muted { color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 6px; border-bottom: 1px solid #ecebe7; vertical-align: top; }
+  th { font-weight: 500; color: var(--text-2); font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .id { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted); }
+  .copy { font-size: 10px; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 3px; margin-left: 3px; }
+  .tag { display: inline-block; font-size: 11px; border-radius: 3px; padding: 0 5px; margin: 0 3px 3px 0; border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
+  .tag.cmd { font-family: ui-monospace, Menlo, monospace; }
+  .tag.miss { border-color: #eb6834; color: var(--warn); }
+  .tag.miss::after { content: " · never loaded"; }
+  .warn { color: var(--warn); }
+  a { color: var(--s1); text-decoration: none; }
+  .bar { height: 8px; background: var(--s1); border-radius: 0 4px 4px 0; }
+  .track { width: 160px; background: #f1f1ee; border-radius: 0 4px 4px 0; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; }
+  .open { background: #f7f7f5; }
+  .open td { border-bottom: 1px solid var(--border); }
+  .timeline { font-size: 12px; line-height: 1.8; }
+  .timeline span { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <h1>Slice 2c mockup: Sessions, and Home's skills and commands</h1>
+  Invented data. A session is a main transcript's rows outside every run window (CR6), so a transcript that holds a run has a session too. The facts are CR11's: start, end, project and every slash command by name, never its arguments. A session counts in the week of its start.
+</div>
+
+<h2>Sessions page</h2>
+<div class="shell">
+  <div class="menu">
+    <div>Home</div><div>Runs</div><div>Findings</div><div class="on">Sessions</div><div>Compliance</div>
+    <div>Steps and rules</div><div>Skills</div><div>Models and advisor</div><div>Weeks</div>
+  </div>
+  <div class="main">
+    <div class="filters">
+      <span class="chip on">Last 4 weeks</span><span class="chip">Project: all</span><span class="chip">Has warnings</span>
+      <span class="muted">31 sessions · 6 hold a run</span>
+    </div>
+    <table>
+      <thead><tr><th>Session</th><th>Project</th><th>Started</th><th class="n">Length</th><th>Skills loaded</th><th>Commands typed</th><th>Model</th><th class="n">Est. cost</th><th>Startup</th><th>Warnings</th><th>Holds</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Plan the offline sync<br><span class="id">7d1e4b90<span class="copy">copy</span></span></td><td>lantern-notes</td><td>Nov 10, 09:07</td><td class="n">2 h 40</td>
+          <td><span class="tag">brainstorming</span><span class="tag">writing-plans</span></td>
+          <td><span class="tag cmd">/graphify</span><span class="tag cmd miss">/grill-me</span><span class="tag cmd">/model</span></td>
+          <td>opus-5-5 · medium</td><td class="n">$1.05</td><td>yes</td><td class="warn">1</td><td><a href="#">plan run</a></td>
+        </tr>
+        <tr class="open">
+          <td colspan="11">
+            <div class="timeline">
+              <span>09:07</span>skill <b>brainstorming</b> · wrote a file<br>
+              <span>09:31</span>command <b>/graphify</b><br>
+              <span>10:02</span>command <b>/grill-me</b> <span class="warn">· its skill never loaded</span><br>
+              <span>11:12</span>command <b>/model</b><br>
+              <span>11:20</span>skill <b>writing-plans</b> · wrote a file<br>
+              <span>11:47</span>the plan run's window starts · <a href="#">lantern-notes · feature/offline-sync (plan)</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>Fix retry backoff<br><span class="id">a3f09c21<span class="copy">copy</span></span></td><td>tidepool-api</td><td>Nov 9, 14:40</td><td class="n">55 min</td>
+          <td><span class="muted">none outside its run</span></td>
+          <td><span class="tag cmd">/compact</span></td>
+          <td>opus-5-5 · medium</td><td class="n">$0.30</td><td>yes</td><td>–</td><td><a href="#">small run</a></td>
+        </tr>
+        <tr>
+          <td><span class="muted">no title</span><br><span class="id">e81b2d77<span class="copy">copy</span></span></td><td class="muted">other project</td><td>Nov 8, 18:02</td><td class="n">12 min</td>
+          <td><span class="muted">none</span></td>
+          <td><span class="tag cmd">/model</span></td>
+          <td>sonnet-5-5 · high</td><td class="n">$0.12</td><td class="warn">no</td><td class="warn">1</td><td>–</td>
+        </tr>
+        <tr>
+          <td>Debug the export timeout<br><span class="id">0c55f1ae<span class="copy">copy</span></span></td><td>lantern-notes</td><td>Nov 6, 11:30</td><td class="n">1 h 05</td>
+          <td><span class="tag">systematic-debugging</span><span class="tag">test-driven-development</span></td>
+          <td><span class="tag cmd">/code-review</span><span class="tag cmd">/advisor</span></td>
+          <td>opus-5-5 · high</td><td class="n">$2.40</td><td>yes</td><td>–</td><td>–</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted">The name is the session's title, with the ID's first 8 characters and a copy button below it; in showing mode the ID and copy button go. "Other project" is a session whose working directory matches no stored project; showing mode leaves it out of the list. "Holds" links the runs whose window sits in this session's transcript. A row opens its skill loads and commands in time order, with the runs' windows in place.</p>
+  </div>
+</div>
+
+<h2>Home: skills and commands across sessions and runs (below the weekly charts)</h2>
+<div class="shell">
+  <div class="main">
+    <div class="filters"><span class="label" style="margin:0">Skills and commands</span><span class="chip on">Last 7 days</span><span class="chip">Last 4 weeks</span><span class="muted">23 sessions · 6 runs</span></div>
+    <table>
+      <thead><tr><th>Skill or command</th><th>Share of sessions</th><th class="n">Sessions</th><th class="n">Runs</th><th class="n">Typed</th><th class="n">Typed, never loaded</th></tr></thead>
+      <tbody>
+        <tr><td>brainstorming</td><td><div class="track"><div class="bar" style="width:35%"></div></div></td><td class="n">8 of 23</td><td class="n">2 of 6</td><td class="n">1</td><td class="n">0</td></tr>
+        <tr><td class="id" style="color:inherit;font-size:12px">/model</td><td><div class="track"><div class="bar" style="width:30%"></div></div></td><td class="n">7 of 23</td><td class="n">–</td><td class="n">9</td><td class="n">–</td></tr>
+        <tr><td>systematic-debugging</td><td><div class="track"><div class="bar" style="width:26%"></div></div></td><td class="n">6 of 23</td><td class="n">0 of 6</td><td class="n">0</td><td class="n">0</td></tr>
+        <tr><td class="id" style="color:inherit;font-size:12px">/compact</td><td><div class="track"><div class="bar" style="width:17%"></div></div></td><td class="n">4 of 23</td><td class="n">–</td><td class="n">5</td><td class="n">–</td></tr>
+        <tr><td>simplify</td><td><div class="track"><div class="bar" style="width:13%"></div></div></td><td class="n">3 of 23</td><td class="n">5 of 6</td><td class="n">4</td><td class="n">0</td></tr>
+        <tr><td>grill-me</td><td><div class="track"><div class="bar" style="width:4%"></div></div></td><td class="n">1 of 23</td><td class="n">0 of 6</td><td class="n">3</td><td class="n warn">2</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">One hue: the bar is the share of the period's sessions (by start) that loaded the skill or typed the command. Runs count apart, since a run is a planned window that loads skills by design; built-in commands live only on sessions, so their Runs column is "–". "Typed, never loaded" is decision 10's "skills not triggering", for skill commands only.</p>
+  </div>
+</div>
+
+</body>
+</html>

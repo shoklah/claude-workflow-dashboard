@@ -3,6 +3,7 @@ import {
   projectNames,
   projectRoot,
   runFacts,
+  sessionRootOf,
   weekOf,
   weekStart,
   type Finding,
@@ -22,7 +23,7 @@ import { categoryLabels, type ActiveList } from '../categories.ts';
 import { findingKey, type StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { projectKey } from '../keys.ts';
-import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
+import { maskText, showFacts, showSession, showWarning, type Scope } from './scope.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -54,6 +55,15 @@ export function rootOf(unit: StoredUnit<RunEntry>): string {
   return projectRoot(unit.merged.record?.project ?? '');
 }
 
+/**
+ * A session's project key from its project (sessionRootOf), only when that root is one of `runRoots`, the stored runs'
+ * roots (rootOf); else null, "other project".
+ */
+export function sessionProjectKey(project: string | null | undefined, runRoots: Set<string>): string | null {
+  const root = sessionRootOf(project);
+  return root && runRoots.has(root) ? projectKey(root) : null;
+}
+
 /** The display name of every stored run's project, by root. */
 export function storedNames(runs: StoredUnit<RunEntry>[]): Map<string, string> {
   return projectNames(runs.map(rootOf));
@@ -69,6 +79,11 @@ export function storedBranches(runs: StoredUnit<RunEntry>[]): Map<string, string
     branches.set(root, list);
   }
   return branches;
+}
+
+/** Every stored session's project root, for a session with a project. */
+export function storedSessionRoots(sessions: StoredUnit<SessionEntry>[]): string[] {
+  return [...new Set(sessions.flatMap(({ merged: { project } }) => sessionRootOf(project) ?? []))];
 }
 
 /** A stored run's facts: runFacts plus its stored key, its project's key and its project's name from `names`. */
@@ -94,6 +109,12 @@ export function currentWarnings(
   return warnings.filter((w) => warns[w.kind].get(w.key)?.includes(w.text) ?? false);
 }
 
+/** Whether a stored session's warning is listed under `scope`: showSession of the session's project, by its key. */
+export function sessionWarningShown(scope: Scope | null, sessions: StoredUnit<SessionEntry>[]): (key: string) => boolean {
+  const projects = new Map(sessions.map((unit) => [unit.key, unit.merged.project]));
+  return (key) => showSession(scope, projects.get(key));
+}
+
 /**
  * A query's period: its last `weeks` weeks (this week and the ones before it, weeks starting Sunday 07:00 UTC), oldest
  * first, each named by weekOf, whether a run's facts match the query's path and project key (`filters`), and whether
@@ -102,10 +123,14 @@ export function currentWarnings(
 export function period(
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
-): { weeks: string[]; filters: (row: RunFacts) => boolean; matches: (row: RunFacts) => boolean } {
+): {
+  weeks: string[];
+  filters: (row: Pick<RunFacts, 'path' | 'projectKey'>) => boolean;
+  matches: (row: RunFacts) => boolean;
+} {
   const start = weekStart(now).getTime();
   const weeks = Array.from({ length: query.weeks }, (_, i) => weekOf(new Date(start - (query.weeks - 1 - i) * WEEK)));
-  const filters = (row: RunFacts) =>
+  const filters = (row: Pick<RunFacts, 'path' | 'projectKey'>) =>
     (!query.path || row.path === query.path) && (!query.project || row.projectKey === query.project);
   // A stored run always has its finish time (finishedAt), the date its key is made from.
   const matches = (row: RunFacts) => weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) && filters(row);
@@ -126,6 +151,31 @@ export function periodRuns(
   const { weeks, matches } = period(query, now);
   const names = storedNames(runs);
   return { weeks, runs: runs.filter((unit) => matches(storedFacts(unit, names))).map((unit) => unit.merged) };
+}
+
+/** The stored sessions that started in one of `weeks` (a period's weeks); a session with no start is in none. */
+export function periodSessions(sessions: StoredUnit<SessionEntry>[], weeks: string[]): StoredUnit<SessionEntry>[] {
+  return sessions.filter(({ merged: { start } }) => !!start && weeks.includes(weekOf(parseTime(start))));
+}
+
+/**
+ * The query's period's units, as their merged entries: its runs (periodRuns) and its sessions (periodSessions) that
+ * match period's filters, a session having no path, so a path filter leaves every session out, and its project's key
+ * from its root (sessionRootOf) when that is a stored run's root, else '', which no project filter matches; and its
+ * weeks.
+ */
+export function periodUnits(
+  runs: StoredUnit<RunEntry>[],
+  sessions: StoredUnit<SessionEntry>[],
+  query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
+  now: Date,
+): { weeks: string[]; runs: RunEntry[]; sessions: SessionEntry[] } {
+  const { filters } = period(query, now);
+  const { weeks, runs: inPeriod } = periodRuns(runs, query, now);
+  const runRoots = new Set(runs.map(rootOf));
+  const kept = ({ project }: SessionEntry) =>
+    filters({ path: null, projectKey: sessionProjectKey(project, runRoots) ?? '' });
+  return { weeks, runs: inPeriod, sessions: periodSessions(sessions, weeks).map((unit) => unit.merged).filter(kept) };
 }
 
 /**

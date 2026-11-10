@@ -1,4 +1,4 @@
-import type { Area, FindingCell, FindingRow, FindingSplit, FindingsResponse, RunFacts, StepKind } from '@cwd/shared';
+import { parseTime, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -195,12 +195,67 @@ export function runName(run: { project: string | null; branch: string | null }):
   return joined([run.project, run.branch]);
 }
 
+/** Where a run is: "atlas · feat/search · full", its name and its path. */
+export function runWhere(run: { project: string | null; branch: string | null; path: string | null }): string {
+  return joined([runName(run), run.path]);
+}
+
 /** "14 · 12 closed"; "–" for a record from before steps, which has no findings to count. */
 export function findingsLabel(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): string {
   if (run.beforeSteps) return NONE;
   // closed: acted on + not acted on, the findings with an outcome other than open.
   const closed = run.findings.actedOn + run.findings.notActedOn;
   return `${run.findings.total} · ${closed} closed`;
+}
+
+/** A count out of its whole: "8 of 23"; a dash when it isn't known. */
+export function ofLabel(count: number | null, of: number): string {
+  return count === null ? NONE : `${count} of ${of}`;
+}
+
+/** A skill or command on Home's skills and commands: a command with its slash, "/model", a skill bare. */
+export function usageName(row: { name: string; kind: 'skill' | 'command' }): string {
+  return row.kind === 'command' ? `/${row.name}` : row.name;
+}
+
+/** A session's models, each with its most-used effort: "claude-opus-5-5 · medium, claude-sonnet-5-5"; a dash with none. */
+export function modelsLabel(models: { model: string; effort: string | null }[]): string {
+  return models.map(({ model, effort }) => joined([model, effort])).join(', ') || NONE;
+}
+
+/** A session's name: its title, "no title" without one. */
+export function sessionName(title: string | null): string {
+  return title ?? 'no title';
+}
+
+/** A session's project: its name, "other project" for one in no stored run's project. */
+export function projectLabel(project: string | null): string {
+  return project ?? 'other project';
+}
+
+/** An empty list of names, as a cell writes it. */
+export const NO_NAMES = 'none';
+
+/** A session's timeline times, in its order: the time of day, "9:07 AM", with the date before it on the first entry
+ * and on the first entry of each new day, "Nov 8, 8:02 AM". */
+export function timelineTimes(isos: string[]): string[] {
+  const dates = isos.map((iso) => parseTime(iso));
+  return dates.map((date, i) => {
+    const time = date.toLocaleTimeString(undefined, { timeStyle: 'short' });
+    const newDay = i === 0 || date.toDateString() !== dates[i - 1].toDateString();
+    return newDay ? `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}` : time;
+  });
+}
+
+/** A yes-or-no fact: "yes", "no", or a dash when it isn't known. */
+export function yesNoLabel(value: boolean | null): string {
+  return value === null ? NONE : value ? 'yes' : 'no';
+}
+
+/** The Sessions page's line: "31 sessions · 6 hold a run". */
+export function sessionsSummary(sessions: { holds: unknown[] }[]): string {
+  const holding = sessions.filter((s) => s.holds.length > 0).length;
+  return `${plural(sessions.length, 'session')} · ${holding} ${holding === 1 ? 'holds' : 'hold'} a run`;
 }
 
 /** A count with its noun, plural unless it is 1: "1 run", "2 runs". */
@@ -260,6 +315,11 @@ const ZERO_SHADE = 'bg-[#f0efec] text-[#52514e]';
 // darker orange for the warning text beside it, readable on white (5.9:1).
 export const WARNING_BORDER = 'border-[#ec835a]';
 export const WARNING_INK = 'text-[#a8461c]';
+
+// A share bar (a meter): the ramp's dataviz blue for its fill (an empty bar, so the step's text colour does nothing),
+// on the ramp's lightest step for its track.
+export const SHARE_FILL = SHADES[3];
+export const SHARE_TRACK = SHADES[0];
 
 /** A heatmap cell's classes: its value's step of the ramp by its share of `max`, the grey for 0. */
 export function cellShade(value: number, max: number): string {

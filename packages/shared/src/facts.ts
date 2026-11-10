@@ -50,6 +50,12 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
 }
 
+/** A unit's `models` map's cost: null with no map, otherwise the sum of its entries' non-null cost (0 when none is
+ * priced), as the reporter's spent does. */
+export function modelsCost(models: RunEntry['models']): number | null {
+  return models ? Object.values(models).reduce((sum, m) => sum + (m.cost ?? 0), 0) : null;
+}
+
 /** A run's facts but its keys, each taken from its run entry as the reporter gives it; a view adds the stored key and
  * the project's key and name. */
 export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
@@ -66,9 +72,8 @@ export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
     finishedAt: record?.date ?? null,
     // minutes: the reporter's run time, from started to date.
     minutes: run.minutes ?? null,
-    // cost: null when models is null (no window), otherwise the sum of its entries' non-null cost (0 when none is
-    // priced), as the reporter's spent does.
-    cost: run.models ? Object.values(run.models).reduce((sum, m) => sum + (m.cost ?? 0), 0) : null,
+    // cost: modelsCost, null when models is null (no window).
+    cost: modelsCost(run.models),
     findings: splitFindings(run.steps ?? []),
     // warnings: the number of the run's warns.
     warnings: run.warns?.length ?? 0,

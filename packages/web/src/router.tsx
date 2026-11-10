@@ -7,6 +7,7 @@ import { Shell } from './layout/Shell.tsx';
 import { ModelsPage } from './models/ModelsPage.tsx';
 import { RunPage } from './runs/RunPage.tsx';
 import { RunsPage } from './runs/RunsPage.tsx';
+import { SessionsPage } from './sessions/SessionsPage.tsx';
 import { SkillsPage } from './skills/SkillsPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
@@ -43,6 +44,12 @@ const findingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/findings',
   component: FindingsPage,
+});
+
+const sessionsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sessions',
+  component: SessionsPage,
 });
 
 const complianceRoute = createRoute({
@@ -86,6 +93,7 @@ export const router = createRouter({
     runsRoute,
     runRoute,
     findingsRoute,
+    sessionsRoute,
     complianceRoute,
     stepsRoute,
     skillsRoute,

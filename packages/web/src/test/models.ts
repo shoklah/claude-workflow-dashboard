@@ -21,7 +21,6 @@ export const modelsFull: ModelsResponse = {
   ],
   stageSource: 'reporter',
   advisor: {
-    source: 'reporter',
     facts: {
       calls: 14,
       tokens: { input: 31_000, output: 12_500, cache_read: 0, cache_write: 0 },
@@ -35,27 +34,44 @@ export const modelsFull: ModelsResponse = {
       notes: 12,
       changed: 9,
       missing: 2,
-      trial: 'runs 8/5, weeks 0/3 CHECKPOINT',
+      share: 7.8,
     },
-    weeks: [
-      { week: '2026-11-01', advisor: 9.8, fable: 25.1, share: 39.04, stop: true },
-      { week: '2026-11-08', advisor: 3.2, fable: 41, share: 7.8, stop: false },
-    ],
+    reporter: {
+      source: 'reporter',
+      trial: 'runs 8/5, weeks 0/3 CHECKPOINT',
+      weeks: [
+        { week: '2026-11-01', advisor: 9.8, fable: 25.1, share: 39.04, stop: true },
+        { week: '2026-11-08', advisor: 3.2, fable: 41, share: 7.8, stop: false },
+      ],
+    },
   },
 };
 
-/** Nothing ran in the period; the reporter's stage table and advisor facts still show. */
+/** Nothing ran in the period, so the advisor's facts are zeros; the reporter's stage table and trial still show. */
 export const modelsEmpty: ModelsResponse = {
   ...modelsFull,
   agents: [],
   main: modelsFull.main.map((row) => ({ ...row, actual: {} })),
-  advisor: { ...modelsFull.advisor, weeks: [] },
+  advisor: {
+    facts: {
+      calls: 0,
+      tokens: { input: 0, output: 0, cache_read: 0, cache_write: 0 },
+      cost: 0,
+      byRole: {},
+      failed: {},
+      notes: 0,
+      changed: 0,
+      missing: 0,
+      share: 0,
+    },
+    reporter: { ...modelsFull.advisor.reporter, weeks: [] },
+  },
 };
 
-/** An export from the old reporter, with no models or advisor totals: its figures are null. */
+/** An export from the old reporter, before CR6 and with no models or advisor totals: its figures are null. */
 export const modelsOldReporter: ModelsResponse = {
   ...modelsFull,
   agents: modelsFull.agents.map((row) => ({ ...row, mismatches: null })),
   main: modelsFull.main.map((row) => ({ ...row, recommended: null, differs: null })),
-  advisor: { source: 'reporter', facts: null, weeks: [] },
+  advisor: { facts: null, reporter: { source: 'reporter', trial: null, weeks: [] } },
 };

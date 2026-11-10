@@ -6,7 +6,9 @@ import {
   type ComplianceQuery,
   type FindingsQuery,
   type RunEntry,
+  type SessionEntry,
   type RunsQuery,
+  type SessionsQuery,
 } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { activeList, labellable } from './categories.ts';
@@ -28,8 +30,9 @@ import { complianceView } from './views/compliance.ts';
 import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
 import { modelsView } from './views/models.ts';
-import { rootOf, runView, runsList, storedBranches, storedNames } from './views/runs.ts';
+import { rootOf, runView, runsList, storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
+import { sessionsView } from './views/sessions.ts';
 import { showingView } from './views/showing.ts';
 import { skillsView } from './views/skills.ts';
 import { statusView } from './views/status.ts';
@@ -57,10 +60,13 @@ function periodQuery(c: Context): FindingsQuery {
 
 /** The API routes, one block per task. The request rules (Host, the POST header and Origin) are app.ts's middleware. */
 export function registerRoutes(app: Hono, deps: AppDeps): void {
-  // Showing mode's scope over the stored runs (listed here when the caller has none), null while it is off.
-  const scopeFor = (runs?: StoredUnit<RunEntry>[]): Scope | null => {
+  // Showing mode's scope over the stored runs and sessions (each listed here when the caller has none), null while it
+  // is off.
+  const scopeFor = (runs?: StoredUnit<RunEntry>[], sessions?: StoredUnit<SessionEntry>[]): Scope | null => {
     const showing = getShowing(deps.db);
-    return showing && scopeOf(showing, storedBranches(runs ?? listUnits(deps.db, 'run')), deps.aliases);
+    if (!showing) return null;
+    const branches = storedBranches(runs ?? listUnits(deps.db, 'run'));
+    return scopeOf(showing, branches, deps.aliases, storedSessionRoots(sessions ?? listUnits(deps.db, 'session')));
   };
 
   // Task 4: the import's status, the refresh and "mark all seen".
@@ -83,14 +89,15 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   // Task 6: the home screen.
   app.get('/api/home', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       homeView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         warnings: listWarnings(deps.db),
         seenAt: getSeenAt(deps.db),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
@@ -151,45 +158,49 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     c.json(weeksView({ runs: listUnits(deps.db, 'run'), query: periodQuery(c), now: deps.now() })),
   );
 
-  // Slice 2b, task 3: the Steps and rules page, with the reporter's all-time figures from the last good import.
+  // Slice 2b, task 3: the Steps and rules page, its refusals, startup and advisor over runs and sessions (2c, task 4).
   app.get('/api/steps', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       stepsView({
         runs,
-        totals: lastGoodImport(deps.db)?.totals,
+        sessions,
         query: periodQuery(c),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
 
-  // Slice 2b, task 4: the Skills page, with the reporter's all-time missing counts from the last good import's totals.
+  // Slice 2b, task 4: the Skills page, its missing counts over runs and sessions (2c, task 4).
   app.get('/api/skills', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       skillsView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
-        totals: lastGoodImport(deps.db)?.totals,
+        sessions,
         query: periodQuery(c),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
 
-  // Slice 2b, task 5: the Models and advisor page, with the reporter's all-time figures from the last good import.
+  // Slice 2b, task 5: the Models and advisor page, with the reporter's all-time figures from the last good import, and
+  // the advisor's facts over runs and sessions (2c, task 4).
   app.get('/api/models', (c) => {
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       modelsView({
         runs,
+        sessions,
         totals: lastGoodImport(deps.db)?.totals,
         query: periodQuery(c),
         now: deps.now(),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });
@@ -202,15 +213,33 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
       step: toStepKind(c.req.query('step')),
     };
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     return c.json(
       complianceView({
         runs,
-        sessions: listUnits(deps.db, 'session'),
+        sessions,
         warnings: listWarnings(deps.db),
         query,
         now: deps.now(),
         seenAt: getSeenAt(deps.db),
-        scope: scopeFor(runs),
+        scope: scopeFor(runs, sessions),
+      }),
+    );
+  });
+
+  // Slice 2c, task 6: the Sessions page, each session's facts, held runs and timeline.
+  app.get('/api/sessions', (c) => {
+    const query: SessionsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    return c.json(
+      sessionsView({
+        runs,
+        sessions,
+        warnings: listWarnings(deps.db),
+        query,
+        now: deps.now(),
+        scope: scopeFor(runs, sessions),
       }),
     );
   });

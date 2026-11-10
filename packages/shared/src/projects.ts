@@ -6,6 +6,11 @@ export function projectRoot(path: string): string {
   return path.replace(/\/+$/, '').replace(WORKTREE, '');
 }
 
+/** A session's project root, from its project; null with no project. */
+export function sessionRootOf(project: string | null | undefined): string | null {
+  return project ? projectRoot(project) : null;
+}
+
 /** A root's folder name. */
 export function folderName(root: string): string {
   return root.split('/').filter(Boolean).at(-1) ?? '';

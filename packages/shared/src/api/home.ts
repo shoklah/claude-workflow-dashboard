@@ -32,6 +32,24 @@ export type FeedItem = {
   cost: number | null;
 };
 
+/**
+ * A skill or slash command on Home's skills and commands section, over a period's sessions and runs: `sessions`, the
+ * sessions that loaded the skill, typed it (a typed trigger) or typed a command naming it; `runs`, the runs that loaded
+ * it; `typed`, a skill's typed triggers or a command's commands; `typedNeverLoaded`, a skill's typed triggers never met.
+ * A command no skill has has no `runs` and no `typedNeverLoaded`.
+ */
+export type UsageRow = {
+  name: string;
+  kind: 'skill' | 'command';
+  sessions: number;
+  runs: number | null;
+  typed: number;
+  typedNeverLoaded: number | null;
+};
+
+/** A period's skills and commands: its sessions, its runs and a row per skill or command, most sessions first. */
+export type Usage = { sessions: number; runs: number; rows: UsageRow[] };
+
 /** `GET /api/home`: the home screen. Weeks are their start dates (`YYYY-MM-DD`), times ISO. */
 export type HomeResponse = {
   thisWeek: WeekNumbers;
@@ -50,4 +68,5 @@ export type HomeResponse = {
   };
   feed: FeedItem[];
   coverageFrom: string | null;
+  usage: { thisWeek: Usage; lastFourWeeks: Usage };
 };

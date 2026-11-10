@@ -13,14 +13,18 @@ import {
   type RunEntry,
   type RunFacts,
   type SessionEntry,
+  type SkillRow,
   type Step,
   type StepKind,
+  type Usage,
+  type UsageRow,
   type WeekNumbers,
   type WeekRow,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, period, storedFacts, storedNames } from './runs.ts';
-import { showFacts, showWarning, type Scope } from './scope.ts';
+import { currentWarnings, period, periodUnits, sessionWarningShown, storedFacts, storedNames } from './runs.ts';
+import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
+import { commandSkill, skillSums } from './skills.ts';
 
 type Run = { unit: StoredUnit<RunEntry>; facts: RunFacts; finished: Date };
 
@@ -101,6 +105,73 @@ export function coverageFrom(runs: StoredUnit<RunEntry>[]): string | null {
   return times.sort((a, b) => parseTime(a).getTime() - parseTime(b).getTime())[0] ?? null;
 }
 
+/**
+ * Home's skills and commands over a period's runs and sessions. A skill is a name in `skillNames` (every stored unit's
+ * loaded or typed skills, so a name's kind is the same in every period) or loaded or typed in the period; a command
+ * `x:y` names skill `y`. A skill's row, for a skill loaded, typed or named by a command in the period: `sessions`, the
+ * sessions that loaded it, typed it or typed a command naming it; `runs`, the runs that loaded it, both by skillSums;
+ * `typed`, its typed triggers on runs and sessions; `typedNeverLoaded`, those never met (skillSums' missing over the
+ * triggers). A command naming no skill gets a command row: the sessions that typed it and its commands. Rows are
+ * ordered by sessions, most first, then by name. With a scope, every name is masked (maskText) first, so names that
+ * mask alike merge and the sums still count every project.
+ */
+export function usageSums(
+  runs: RunEntry[],
+  sessions: SessionEntry[],
+  scope: Scope | null,
+  skillNames: string[],
+): Usage {
+  const mask = (name: string | null | undefined) => maskText(scope, name ?? '');
+  const masked = (unit: RunEntry | SessionEntry) => ({
+    skills: unit.skills?.map((s) => ({ ...s, name: mask(s.name) })),
+    typed: unit.typed?.map((t) => ({ ...t, skill: mask(t.skill) })),
+  });
+  const runUnits = runs.map(masked);
+  const sessionUnits = sessions.map(masked);
+  const typed = [...runUnits, ...sessionUnits].flatMap((unit) => unit.typed ?? []);
+  const byName = (rows: SkillRow[]) => new Map(rows.map((row) => [row.name, row]));
+  const all = byName(skillSums([...runUnits, ...sessionUnits]));
+  const skills = new Set([...skillNames.map(mask), ...all.keys()]);
+  const skillOf = (command: { name?: string | null }) => mask(commandSkill(command.name));
+  // A session's loads, plus a load for each skill it typed and each command naming a skill, so skillSums counts the
+  // session once.
+  const inSessions = byName(
+    skillSums(
+      sessions.map((session, i) => ({
+        skills: [
+          ...(sessionUnits[i].skills ?? []),
+          ...(sessionUnits[i].typed ?? []).map((t) => ({ name: t.skill })),
+          ...(session.commands ?? []).map((c) => ({ name: skillOf(c) })).filter((c) => skills.has(c.name)),
+        ],
+      })),
+    ),
+  );
+  const inRuns = byName(skillSums(runUnits));
+  const used = new Set([...all.keys(), ...typed.map((t) => t.skill ?? ''), ...inSessions.keys()]);
+  const rows: UsageRow[] = [...used].map((name) => ({
+    name,
+    kind: 'skill',
+    sessions: inSessions.get(name)?.runs ?? 0,
+    runs: inRuns.get(name)?.runs ?? 0,
+    typed: typed.filter((t) => t.skill === name).length,
+    typedNeverLoaded: all.get(name)?.missing ?? 0,
+  }));
+  const commands = new Map<string, UsageRow>();
+  for (const session of sessions) {
+    const names = (session.commands ?? []).filter((c) => !skills.has(skillOf(c))).map((c) => mask(c.name));
+    for (const name of names) {
+      if (!commands.has(name)) {
+        commands.set(name, { name, kind: 'command', sessions: 0, runs: null, typed: 0, typedNeverLoaded: null });
+      }
+      commands.get(name)!.typed += 1;
+    }
+    for (const name of new Set(names)) commands.get(name)!.sessions += 1;
+  }
+  rows.push(...commands.values());
+  rows.sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name));
+  return { sessions: sessions.length, runs: runs.length, rows };
+}
+
 /** A diagram tab's step boxes: per step kind, the steps that ran, their findings and those acted on, and the warnings
  * naming it. */
 function diagramSteps(steps: Step[], kinds: StepKind[], warnings: StoredWarning[]): DiagramStep[] {
@@ -124,7 +195,7 @@ function fixLine(steps: Step[]): FixLine {
 
 /** The home screen, from the stored runs and warnings: every number is a plain sum over the runs' own facts. With a
  * scope, the numbers (the diagram's warnings, session ones included) still count every run and session, but the feed
- * holds only the shown projects' runs and run warnings. */
+ * holds only the shown projects' runs, run warnings and session warnings (showSession). */
 export function homeView(input: {
   runs: StoredUnit<RunEntry>[];
   sessions: StoredUnit<SessionEntry>[];
@@ -211,9 +282,14 @@ export function homeView(input: {
       minutes: facts.minutes,
       cost: facts.cost,
     }));
-  // With a scope, every session warning and a hidden run's warnings are left out.
+  // With a scope, a hidden run's warnings and the warnings of a session in no shown root are left out.
+  const sessionShown = sessionWarningShown(scope, input.sessions);
   const warningItems = warnings
-    .filter((w) => isNew(w.firstSeenAt) && (w.kind === 'run' ? byKey.has(w.key) : !scope))
+    .filter(
+      (w) =>
+        isNew(w.firstSeenAt) &&
+        (w.kind === 'run' ? byKey.has(w.key) : sessionShown(w.key)),
+    )
     .map((w): FeedItem => {
       const run = w.kind === 'run' ? byKey.get(w.key) : undefined;
       return {
@@ -229,6 +305,20 @@ export function homeView(input: {
         cost: null,
       };
     });
+
+  // Every stored unit's loaded or typed skills, so a command's kind is the same in every period.
+  const skillNames = [
+    ...new Set(
+      [...input.runs, ...input.sessions].flatMap(({ merged }) => [
+        ...(merged.skills ?? []).map((s) => s.name ?? ''),
+        ...(merged.typed ?? []).map((t) => t.skill ?? ''),
+      ]),
+    ),
+  ];
+  const usageOf = (weeks: number) => {
+    const units = periodUnits(input.runs, input.sessions, { weeks }, now);
+    return usageSums(units.runs, units.sessions, scope, skillNames);
+  };
 
   return {
     thisWeek: numbers[CHART_WEEKS - 1],
@@ -254,5 +344,7 @@ export function homeView(input: {
     // The feed: the runs and warnings first seen after seenAt, newest first; a run at its finish time.
     feed: [...runItems, ...warningItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, FEED_SIZE),
     coverageFrom: coverageFrom(input.runs),
+    // Skills and commands over this week's and the last four weeks' runs and sessions (periodUnits).
+    usage: { thisWeek: usageOf(1), lastFourWeeks: usageOf(4) },
   };
 }

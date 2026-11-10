@@ -5,14 +5,16 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { loadReport, STEP_KINDS, type HomeResponse } from '@cwd/shared';
+import { loadReport, projectRoot, STEP_KINDS, type HomeResponse, type UsageRow } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { setSeenAt, setShowing } from '../src/db/read.ts';
+import { listUnits, setSeenAt, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { weekSums } from '../src/views/home.ts';
+import { storedSessionRoots } from '../src/views/runs.ts';
+import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -230,6 +232,161 @@ describe('the feed', () => {
       minutes: 30,
       cost: 0.71,
     });
+  });
+
+  test("with showing on, the feed holds the shown project's session warnings only, masked", async () => {
+    const db = dbWith(fixture('report-v6'));
+    setSeenAt(db, new Date(0));
+    setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
+    const { feed } = await home(db);
+    expect(feed.filter((item) => item.type === 'warning' && item.runKey === null)).toEqual([
+      expect.objectContaining({ text: 'WARN: session a session: startup guidelines missing', sessionId: null }),
+    ]);
+  });
+});
+
+describe('skills and commands', () => {
+  const row = (rows: UsageRow[], name: string) => rows.find((r) => r.name === name);
+
+  test("this week's sessions and runs are period(1)'s, the last four weeks' period(4)'s", async () => {
+    const { usage } = await home(dbWith(fixture('report-v6')));
+    // Sessions by start: the lantern-notes two-run session, the offline-sync one and the tidepool one of Nov 9; the
+    // Scratch one of Nov 5 adds in the last four weeks, and the session with no start counts in neither.
+    expect(usage.thisWeek).toMatchObject({ sessions: 3, runs: 4 });
+    expect(usage.lastFourWeeks).toMatchObject({ sessions: 4, runs: 6 });
+    expect(row(usage.lastFourWeeks.rows, 'compact')).toEqual({
+      name: 'compact',
+      kind: 'command',
+      sessions: 1,
+      runs: null,
+      typed: 1,
+      typedNeverLoaded: null,
+    });
+    expect(row(usage.thisWeek.rows, 'compact')).toBeUndefined();
+  });
+
+  test("grill-me's typed triggers never met count once on the session and once on the tidepool run", async () => {
+    const { usage } = await home(dbWith(fixture('report-v6')));
+    // The two-run session typed /grill-me twice, once inside the webhooks run's window: it counts once.
+    expect(row(usage.thisWeek.rows, 'grill-me')).toEqual({
+      name: 'grill-me',
+      kind: 'skill',
+      sessions: 1,
+      runs: 0,
+      typed: 2,
+      typedNeverLoaded: 2,
+    });
+  });
+
+  test('a command no skill has is a command row, with no runs and no never-loaded count', async () => {
+    const { usage } = await home(dbWith(fixture('report-v6')));
+    expect(row(usage.thisWeek.rows, 'model')).toEqual({
+      name: 'model',
+      kind: 'command',
+      sessions: 1,
+      runs: null,
+      typed: 1,
+      typedNeverLoaded: null,
+    });
+  });
+
+  test('a plugin command x:y counts on skill y, its session counted once', async () => {
+    const raw = fixture('report-v6');
+    // The tidepool session of Nov 9 typed /superpowers:brainstorming and now never loads it.
+    raw.sessions[3].skills = [];
+    const { usage } = await home(dbWith(raw));
+    expect(row(usage.thisWeek.rows, 'superpowers:brainstorming')).toBeUndefined();
+    // The plan run of Nov 8 loaded brainstorming.
+    expect(row(usage.thisWeek.rows, 'brainstorming')).toEqual({
+      name: 'brainstorming',
+      kind: 'skill',
+      sessions: 1,
+      runs: 1,
+      typed: 0,
+      typedNeverLoaded: 0,
+    });
+  });
+
+  test('a command whose skill loaded only outside the period still lands on the skill row', async () => {
+    const raw = fixture('report-v6');
+    // The Scratch session of Nov 5, last week, loads release-notes; the tidepool session of Nov 9 types its command.
+    raw.sessions[0].skills = [{ name: 'release-notes', time: '2026-11-05T21:20:00.000Z', outcome: 'ran' }];
+    raw.sessions[3].commands.push({ name: 'notes-kit:release-notes', time: '2026-11-09T13:50:00.000Z' });
+    const { usage } = await home(dbWith(raw));
+    expect(row(usage.thisWeek.rows, 'notes-kit:release-notes')).toBeUndefined();
+    expect(row(usage.thisWeek.rows, 'release-notes')).toEqual({
+      name: 'release-notes',
+      kind: 'skill',
+      sessions: 1,
+      runs: 0,
+      typed: 0,
+      typedNeverLoaded: 0,
+    });
+  });
+
+  test("a session's own typed trigger counts it among the skill's sessions", async () => {
+    const raw = fixture('report-v6');
+    // The tidepool session of Nov 9 typed a phrase asking for systematic-debugging, which never loaded.
+    raw.sessions[3].typed = [{ skill: 'systematic-debugging', time: '2026-11-09T14:00:00.000Z', met: false }];
+    const { usage } = await home(dbWith(raw));
+    expect(row(usage.thisWeek.rows, 'systematic-debugging')).toEqual({
+      name: 'systematic-debugging',
+      kind: 'skill',
+      sessions: 1,
+      runs: 0,
+      typed: 1,
+      typedNeverLoaded: 1,
+    });
+  });
+
+  test('rows are ordered by sessions, most first', async () => {
+    const { usage } = await home(dbWith(fixture('report-v6')));
+    const sessions = usage.lastFourWeeks.rows.map((r) => r.sessions);
+    expect(sessions).toEqual([...sessions].sort((a, b) => b - a));
+    expect(sessions[0]).toBeGreaterThan(0);
+  });
+
+  test("with showing on, usage counts every project and holds no hidden project's name, path or session ID", async () => {
+    const change = (raw: any) => {
+      // A skill and a command named after the hidden tidepool-api, and a command named after the session-only
+      // Scratch lantern folder.
+      raw.sessions[3].commands.push({ name: 'tidepool-api-deploy', time: '2026-11-09T13:50:00.000Z' });
+      raw.runs[5].skills[1].name = 'tidepool-api-release';
+      raw.sessions[0].commands.push({ name: 'lantern', time: '2026-11-09T08:20:00.000Z' });
+    };
+    const raw = fixture('report-v6');
+    change(raw);
+    const db = dbWith(raw);
+    const off = await home(db);
+    setSeenAt(db, new Date(0));
+    setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
+    const body = await home(db);
+    const usage = body.usage.lastFourWeeks;
+    expect(row(usage.rows, 'another project-deploy')).toMatchObject({ kind: 'command', sessions: 1 });
+    expect(row(usage.rows, 'another project-release')).toMatchObject({ kind: 'skill', runs: 1 });
+    expect(row(usage.rows, 'another project')).toMatchObject({ kind: 'command', sessions: 1 });
+    const sum = (rows: UsageRow[], key: 'sessions' | 'typed') => rows.reduce((n, r) => n + r[key], 0);
+    for (const key of ['sessions', 'typed'] as const) {
+      expect(sum(usage.rows, key)).toBe(sum(off.usage.lastFourWeeks.rows, key));
+    }
+    const branches = new Map<string, string[]>();
+    for (const run of raw.runs) {
+      const root = projectRoot(run.record.project);
+      branches.set(root, [...(branches.get(root) ?? []), run.record.branch]);
+    }
+    const sessionIds = [
+      ...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
+    ];
+    const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+    const strings = forbiddenStrings(
+      [...branches.keys()],
+      branches,
+      ['/Users/example/Work/lantern-notes'],
+      sessionIds,
+      sessionRoots,
+    );
+    expect(strings.forbidden).toEqual(expect.arrayContaining(['tidepool-api', 'lantern']));
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
   });
 });
 

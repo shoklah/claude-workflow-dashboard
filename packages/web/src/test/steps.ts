@@ -35,16 +35,13 @@ export const stepsFull: StepsResponse = {
       'grill-me': { offered: 3, accepted: 2, skipped: 1, not_offered: 0, updated: 0 },
       graphify: { offered: 3, accepted: 3, skipped: 0, not_offered: 1, updated: 0 },
     },
-  },
-  reporter: {
-    source: 'reporter',
     dispatchGuard: { no_model: 2, no_simplify: 1 },
     advisor: { calls: 14, notes: 12, changed: 9, cost: 3.2, share: 7.8 },
     startup: { with: 38, without: 3 },
   },
 };
 
-/** Nothing ran in the period; the reporter's all-time figures still show. */
+/** Nothing ran in the period: no refusals, no session and no advisor call. */
 export const stepsEmpty: StepsResponse = {
   steps: STEP_KINDS.map(idle),
   rules: {
@@ -52,12 +49,14 @@ export const stepsEmpty: StepsResponse = {
     fixRoundCap: { runs: 0, ruled: 0 },
     stopRule: 0,
     offers: {},
+    dispatchGuard: {},
+    advisor: { calls: 0, notes: 0, changed: 0, cost: 0, share: 0 },
+    startup: { with: 0, without: 0 },
   },
-  reporter: stepsFull.reporter,
 };
 
-/** An export from the old reporter, with no scoreboard: its figures are null. */
+/** An export from before CR6: its refusals, startup and advisor are null. */
 export const stepsOldReporter: StepsResponse = {
   ...stepsFull,
-  reporter: { source: 'reporter', dispatchGuard: null, advisor: null, startup: null },
+  rules: { ...stepsFull.rules, dispatchGuard: null, advisor: null, startup: null },
 };

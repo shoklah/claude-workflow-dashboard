@@ -17,7 +17,7 @@ import { importReport } from '../src/db/import.ts';
 import { projectKey, runKey } from '../src/keys.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { labelInputs, saveBatch } from '../src/db/labels.ts';
-import { runView, skillOutcomeLabel } from '../src/views/runs.ts';
+import { runView, skillOutcomeLabel, storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
@@ -322,7 +322,8 @@ test("with showing on, the run page holds no hidden project's name, path or bran
     branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
   }
   const TIDEPOOL = '/Users/example/Work/tidepool-api';
-  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], []);
+  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], sessionRoots);
   expect(strings.forbidden).toContain('lantern-notes');
   db.$client.close();
   db = dbWith('report-v5', (raw) => {
