@@ -89,13 +89,18 @@ export function singleBars(
 
 /**
  * Bars of several series by week, each series a palette slot in order, a 1px surface border between bars, with a
- * legend; stacked per week when `stack` names the stack, else side by side.
+ * legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the room under the plot
+ * for the legend: 64px by default, for a legend that wraps (Home's step kinds), 28px for one that fits on one line.
  */
-export function barsOption(weeks: string[], series: { name: string; data: (number | null)[] }[], stack?: string) {
+export function barsOption(
+  weeks: string[],
+  series: { name: string; data: (number | null)[] }[],
+  { stack, legendRoom = 64 }: { stack?: string; legendRoom?: number } = {},
+) {
   const base = baseOption(weeks);
   return {
     ...base,
-    grid: { ...base.grid, bottom: 64 },
+    grid: { ...base.grid, bottom: legendRoom },
     legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: INK } },
     series: series.map(({ name, data }, i) => ({
       name,
@@ -113,7 +118,7 @@ function findingsOption(charts: Charts) {
   return barsOption(
     charts.weeks,
     stepKinds(charts).map((kind) => ({ name: STEP_LABELS[kind], data: charts.findingsByStep[kind] })),
-    'findings',
+    { stack: 'findings' },
   );
 }
 

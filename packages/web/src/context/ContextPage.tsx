@@ -14,10 +14,6 @@ const COUNT = 'text-right tabular-nums';
 function ContextCharts({ weeks, cap }: { weeks: ContextWeek[]; cap: number }) {
   const names = weeks.map((w) => w.week);
   const tokens = { cap, format: formatCompact };
-  const sweeps = barsOption(names, [
-    { name: 'inline', data: weeks.map((w) => w.sweeps.inline) },
-    { name: 'delegated', data: weeks.map((w) => w.sweeps.delegated) },
-  ]);
   const charts = [
     { title: 'Mean context per call', option: singleBars(names, 'Mean per call', weeks.map((w) => w.meanTokens), tokens) },
     { title: 'Largest context', option: singleBars(names, 'Largest', weeks.map((w) => w.maxTokens), tokens) },
@@ -26,8 +22,18 @@ function ContextCharts({ weeks, cap }: { weeks: ContextWeek[]; cap: number }) {
       title: 'Read share of tool results',
       option: singleBars(names, 'Read share', weeks.map((w) => w.readShare), { format: formatShare }),
     },
-    // Two series fit the legend on one line, so the plot keeps the room Home's wrapping legend needs.
-    { title: 'Sweeps', option: { ...sweeps, grid: { ...sweeps.grid, bottom: 28 } } },
+    {
+      title: 'Sweeps',
+      // Its two series' legend fits on one line.
+      option: barsOption(
+        names,
+        [
+          { name: 'inline', data: weeks.map((w) => w.sweeps.inline) },
+          { name: 'delegated', data: weeks.map((w) => w.sweeps.delegated) },
+        ],
+        { legendRoom: 28 },
+      ),
+    },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
