@@ -77,8 +77,8 @@ export function familyOf(kind: string | null): string {
  * warning, but the list holds only the shown projects' run and session warnings outside "other", masked (showFacts,
  * showSession, showWarning), and `hidden` counts every warning in the period left out of the list. `newWarnings`
  * counts the grid's warnings first seen after seenAt, every project's. `information` is the reporter's
- * `health.info` lines from `totals` (reporterTotals), null when it has none; with a scope none is listed, as any line
- * can name a project, and `hidden` counts them.
+ * `health.info` lines from `totals` (reporterTotals), null when it has none or writes `[]`; with a scope none is
+ * listed, as any line can name a project, and `hidden` counts them.
  */
 export function complianceView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -153,6 +153,6 @@ export function complianceView(input: {
     newWarnings: inGrid.filter((x) => isNew(x.w)).length,
     warnings,
     hidden: inPeriod.length - warnings.length,
-    information: info ? { lines: scope ? [] : info, hidden: scope ? info.length : 0, source: 'reporter' } : null,
+    information: info?.length ? { lines: scope ? [] : info, hidden: scope ? info.length : 0, source: 'reporter' } : null,
   };
 }

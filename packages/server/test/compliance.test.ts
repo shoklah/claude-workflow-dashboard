@@ -220,11 +220,12 @@ test("with showing on, the grid counts all but \"other\" warnings, the list only
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
 
-/** Replaces the test's database with a fresh one holding only `name`'s import. */
-function importOnly(name: string): void {
+/** Replaces the test's database with a fresh one holding only `name`'s import, changed first by `change`. */
+function importOnly(name: string, change: (raw: any) => void = () => {}): void {
   db.$client.close();
   db = openDb(join(dir, name, 'dashboard.sqlite'));
   const raw = fixture(name);
+  change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
   if (!loaded.ok) throw new Error(`${name} does not load`);
   importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, SECOND);
@@ -259,6 +260,15 @@ test("information is the latest export's health.info lines, from the reporter", 
 
 test('information is null when the export has no health.info', async () => {
   importOnly('report-v6');
+  expect((await compliance()).information).toBeNull();
+});
+
+test('information is null when the reporter writes no line, with and without a scope', async () => {
+  importOnly('report-v7', (raw) => {
+    raw.totals.health.info = [];
+  });
+  expect((await compliance()).information).toBeNull();
+  setShowing(db, [projectKey(LANTERN)]);
   expect((await compliance()).information).toBeNull();
 });
 
