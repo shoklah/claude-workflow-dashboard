@@ -88,16 +88,16 @@ A menu entry "Spend", between Models and advisor and Weeks, at `/spend`. Its res
 - **Filters:** `ListFilters`' path, project and period, plus a Units switch (All, Runs, Sessions) as a `role="group"` of `Option`s, sent as a `units` query param.
 - **With a path filter,** sessions are left out, as on every other page, so the switch is locked on Runs: "All" and "Sessions" are disabled options with a tooltip saying sessions have no path, and the server ignores `units` when a path is set.
 - **The chart:** one stacked bar per week, stacked in the five groups in the order above, each week's total written above its bar. ECharts under the chart conventions, with the palette's first four light slots in fixed order for the first four groups and a neutral grey for Unattributed, a legend, and the chart's numbers as a table.
-- **A note** under the chart: these are list-price estimates; how a week is counted; that Weeks and Home count runs only while this page also counts sessions, and leaves out units with no spend by phase; what unattributed is; how many units weren't counted, by kind, and the first week from which every week is fully counted; that advisor cost is counted apart; and, when the period holds one, that spend on a model with no price isn't counted.
+- **A note** under the chart: these are list-price estimates; the five groups are the app's grouping of the reporter's phases; how a week is counted; that Weeks and Home count runs only while this page also counts sessions, and leaves out units with no spend by phase; what unattributed is; how many units weren't counted, by kind, and the first week from which every week is fully counted; that advisor cost is counted apart; and, when the period holds one, that spend on a model with no price isn't counted.
 - **The chart's table view** has a "units not counted" column, one count per week, so a short bar can be told from a cheap week.
-- **The table,** over the whole period: one row per group that opens to its phases (the expanding-row convention), with cost, a `ShareBar` of the period's total, one column per model ID seen in the period, largest cost first, then advisor calls and advisor cost under a heading that says they are counted apart. A model with no price shows "–" in its column. A total row closes it. A group with one phase doesn't open. With many models the table scrolls sideways, under the scrolling table convention.
+- **The table,** over the whole period: one row per group that opens to its phases, shown as rows of the same columns under it (the expanding-row convention's toggle, without its full-width detail), with cost, a `ShareBar` of the period's total, one column per model ID seen in the period, largest cost first, then advisor calls and advisor cost under a heading that says they are counted apart. A model with no price shows "–" in its column. A total row closes it. A group with one phase doesn't open. With many models the table scrolls sideways, under the scrolling table convention.
 - **States:** empty (no unit with phases in the period), loading and error, as the other fetching pages.
 
 ### 4. Showing mode
 
 - Every sum counts every project and session. The page lists no unit, so nothing is filtered out.
 - Model names come from units, so they go through `maskText` before summing, as `modelSums` does.
-- Phase and group names are fixed strings of the app.
+- Group names and the twelve known phase names are fixed strings of the app; a phase name the app doesn't know is a string from a unit, so it is masked with `maskText` like a model name.
 - The view's tests run the leak check `leaks`, and `check:real`'s showing check includes the page's route.
 
 ### 5. `check:real`
