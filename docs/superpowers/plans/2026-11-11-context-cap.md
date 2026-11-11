@@ -49,7 +49,7 @@
 
 ## Review Focus
 
-1. **A session whose calls move to its run between two imports (CR6).** Its new version has `context: null` with known `tool_results`, so its stored `context` becomes null and the Context page counts those calls once. Pinned in Tasks 2 and 5.
+1. **A session whose calls move to its run between two imports (CR6).** Its new version has `context: null` with known `tool_results`, so its stored `context` becomes null and the Context page counts those calls once. Pinned in Task 2.
 2. **A unit the reporter couldn't read:** a run with no window, or a unit stored before the change. It never counts as zero and is never listed, but it counts in `uncounted`. A later version with all three facts null keeps the stored ones. Pinned in Tasks 2 and 5.
 3. **A week, or a whole period, with no context.** Every count is 0, and the mean, largest and read share are null: a gap in the charts, "–" in the table, never "NaN" or "0%". The list shows its empty line. Pinned in Tasks 3 and 7.
 4. **Showing mode on a project with a session that hands off to a session in a hidden root, and an information line naming a hidden branch.**
@@ -76,7 +76,7 @@
 - Modify: `packages/shared/test/load.test.ts`
 - Modify: `packages/server/src/dev-fixtures.ts`: the default list becomes `['report-full', 'report-later', 'report-v6', 'report-v7']`
 - Modify: the e2e files' fixture comments, and any assertion the fourth import changes
-- Modify: `CLAUDE.md`, the fixture totals line: its rules gain `context_rows`, and the information lines are `totals.health.info` as written
+- Modify: `CLAUDE.md`, the fixture totals line: its rules gain `context_rows`
 
 **Interfaces:**
 - **New schemas** in `report.ts`, beside the helpers:
@@ -226,7 +226,7 @@ The stored derived values are a risk area.
 **Files:**
 - Modify: `packages/server/src/views/context.ts`: `contextView` and `CONTEXT_CAP`
 - Modify: `packages/shared/src/api/context.ts`: `ContextUnit`, `ContextResponse` and `ContextQuery`
-- Modify: `packages/server/src/views/runs.ts`, the period functions only (`periodUnits` and its new sibling)
+- Modify: `packages/server/src/views/runs.ts`, the period functions only (`periodRuns`, `periodUnits` and their new sibling)
 - Modify: `packages/server/src/views/sessions.ts`: extract `sessionFacts`
 - Modify: `packages/server/src/routes.ts`: a new `/api/context` block after `/api/sessions`
 - Modify: `packages/server/test/context.test.ts`
@@ -235,7 +235,7 @@ The stored derived values are a risk area.
   - a new line on the cap
 
 **Interfaces:**
-- **`periodStoredUnits(runs, sessions, query, now): { weeks: string[]; runs: StoredUnit<RunEntry>[]; sessions: StoredUnit<SessionEntry>[] }`** in `views/runs.ts` holds `periodUnits`' filtering as it is today. `periodUnits` becomes `periodStoredUnits` mapped to `.merged`, so both share one filter.
+- **`periodStoredUnits(runs, sessions, query, now): { weeks: string[]; runs: StoredUnit<RunEntry>[]; sessions: StoredUnit<SessionEntry>[] }`** in `views/runs.ts` owns the one stored-unit period filter: today's `periodRuns` run filter (`matches(storedFacts(unit, names))`) and `periodUnits`' session filter. `periodRuns` becomes `periodStoredUnits(runs, [], query, now)` and `periodUnits` becomes `periodStoredUnits(runs, sessions, query, now)`, each with its units mapped to `.merged`, so all three share one filter and their callers don't change.
 - **`sessionFacts(session: SessionEntry, runRoots: Set<string>, names: Map<string, string>, scope: Scope | null): { title: string | null; sessionId: string | null; projectKey: string | null; project: string | null }`** in `views/sessions.ts`:
   - It holds the row expressions `sessionsView` uses today: the masked title, the ID (null with a scope), `sessionProjectKey`, and the scope's name or the stored name.
   - `sessionsView` uses it, and its tests stay as they are.
@@ -286,7 +286,6 @@ The stored derived values are a risk area.
     - `hidden` counts the rest.
     - `leaks` finds nothing.
   - **Report-v6 alone:** every week is empty, `units` is `[]`, and `uncounted` counts every run and dated session of the period.
-  - **A session's calls moving to its run:** import report-v7, then a version of "Offline sync plan" with `context: null` and zero `tool_results`. Its calls leave the Nov 8 week.
 - [ ] **Step 2: Run** `pnpm vitest run packages/server/test/context.test.ts`. Expected: FAIL. (`sessions.test.ts` stays as it is and keeps passing through the `sessionFacts` refactor.)
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** `pnpm vitest run` and `pnpm typecheck`. Expected: PASS.
@@ -313,7 +312,7 @@ The stored derived values are a risk area.
 - **The Context section,** between Advisor and Warnings, with `Section`'s "None" when `context` is null. Its four items:
   - `${calls} calls · median ${formatCompact(medianTokens)} · largest ${formatCompact(maxTokens)}`
   - `${plural(callsOverCap, 'call')} past the cap · ` then `no handoff`, or `handed off ` with `<Time iso={handoff} />` (`layout/StatusBanner.tsx`)
-  - `Tool results: ${formatCompact(toolCharacters)} characters · read ${formatPercent(readShare)}`
+  - `Tool results: ${formatCompact(toolCharacters)} characters · read ${formatShare(readShare)}`, since `formatShare` rounds to a whole percent
   - `Sweeps: ${inline} inline · ${delegated} delegated`
 
 - [ ] **Step 1: Write the failing tests.**
@@ -337,7 +336,7 @@ The stored derived values are a risk area.
 - Create: `packages/web/src/test/context.ts`
 - Create: `packages/web/src/components/ShareBar.tsx`
 - Modify: `packages/web/src/home/SkillsAndCommands.tsx`: its share bar becomes `ShareBar`
-- Modify: `packages/web/src/home/WeeklyCharts.tsx`: `singleBars`' options and `groupedBars`
+- Modify: `packages/web/src/home/WeeklyCharts.tsx`: `singleBars`' options, and `findingsOption`'s body as the exported `barsOption`
 - Modify: `packages/web/src/runs/RunsPage.tsx`: `listPath` takes `over`
 - Modify: `packages/web/src/router.tsx` and `packages/web/src/layout/Menu.tsx`
 - Modify: `packages/web/src/lib/format.ts`: `TOOL_CLASS_LABELS` and `uncountedLabel`
@@ -349,8 +348,8 @@ The stored derived values are a risk area.
   - `format` sets the tooltip's `valueFormatter` and the y axis labels.
   - `cap` adds a dashed `markLine` at that value. It is silent and has no symbol, its line and label use `INK`, its label is `cap ${formatCompact(cap)}`, and the y axis reaches at least the cap.
   - Existing calls don't change.
-- **`groupedBars(weeks: string[], series: { name: string; data: number[] }[])`:** side-by-side bars in `SERIES` order, a 2px surface gap between them, and `findingsOption`'s legend.
-- **`ShareBar({ share }: { share: number | null })`:** today's markup in `SkillsAndCommands.tsx`, `SHARE_FILL` on `SHARE_TRACK` with `formatPercent` beside it.
+- **`barsOption(weeks: string[], series: { name: string; data: (number | null)[] }[], stack?: string)`:** `findingsOption`'s body today, exported. Its series take `SERIES` in order, with its legend and surface border, stacked only when `stack` is given. Home's findings chart calls it with `'findings'`, and its output and baseline don't change. The Sweeps chart calls it with no stack, for side-by-side bars.
+- **`ShareBar({ share }: { share: number | null })`:** today's markup in `SkillsAndCommands.tsx`, `SHARE_FILL` on `SHARE_TRACK` with `formatShare` beside it, which rounds an unrounded share and changes nothing for Skills' already rounded one.
 - **`listPath`'s query** gains `over?: boolean`, which adds `over=1`.
 - **`TOOL_CLASS_LABELS`:** `{ read: 'Read', edit: 'Edit', run: 'Tests and builds', bash_other: 'Other shell', agent: 'Agents', mcp: 'MCP', other: 'Other' }`, in that order.
 - **`uncountedLabel({ runs, sessions }): string`:** "Not counted: 3 runs and 0 sessions with no context facts.", through `plural`.
@@ -361,8 +360,8 @@ The stored derived values are a risk area.
 - **Five `Chart`s,** height 180, in Weeks' grid:
   - "Mean context per call" (`meanTokens`) and "Largest context" (`maxTokens`), each with `{ cap, format: formatCompact }`
   - "Runs and sessions over the cap" (`unitsOverCap`)
-  - "Read share of tool results" (`readShare`, `format: formatPercent`)
-  - "Sweeps" (`groupedBars`, inline then delegated)
+  - "Read share of tool results" (`readShare`, `format: formatShare`)
+  - "Sweeps" (`barsOption`, inline then delegated, no stack)
 - **A muted line under the charts:** "Context is a main call's input plus cache tokens, as the reporter counts it. A week sums its runs, by finish, and its sessions, by start. ", then `uncountedLabel(uncounted)`, then " The dashed line is the context cap, ", `formatCompact(cap)`, ": the app's default until the reporter exports its own."
 - **A `<details>`,** "The charts as a table", with a table that scrolls sideways (`containerProps`, labelled "Weekly context"). Newest week first, its columns are:
   - Week, Units, Calls, Mean per call, Largest and Over the cap
@@ -411,6 +410,7 @@ The stored derived values are a risk area.
 **Files:**
 - Modify: `packages/server/src/check-real.ts`
 - Modify: `packages/server/test/check-real.test.ts`
+- Modify: `packages/shared/fixtures/report-projects.json`, the leak-check fixture
 - Modify: `README.md`: the check:real paragraph
 
 **Interfaces:**
@@ -422,10 +422,16 @@ The stored derived values are a risk area.
   - Differing weeks are named, since a week names no project.
   - It prints `context: not in the export` when the totals have no `context`.
 - **The showing check** adds `'/api/context?weeks=52'`.
+- **`report-projects`** (its showing check shows Archive lantern-notes) gains the spec's leak cases, all invented:
+  - the three facts on its two Work lantern-notes runs, which have windows and are hidden, one of them over the cap
+  - all three null on its window-less runs
+  - `totals.context` agreeing with them
+  - `totals.health.info` with a line naming the hidden branch `chore/tidy-imports`
 - **The README** adds the weekly context to the compared sums, and the Context page to the showing check's pages.
 
 - [ ] **Step 1: Write the failing tests:**
   - On report-v7, check:real prints `context: 2 compared, 0 differ` and `showing: pass`.
+  - On report-projects, it prints `context: 2 compared, 0 differ` and `showing: pass`. The existing exact-output assertions gain the `context` line.
   - With one `totals.context` row's `calls` changed, it prints `context: 2 compared, 1 differ` and that week's date.
   - On report-v6, it prints `context: not in the export`.
   - No line contains `/Users/`.
