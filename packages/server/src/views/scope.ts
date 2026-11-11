@@ -104,16 +104,31 @@ export function showWarning(scope: Scope | null, text: string): { text: string; 
 }
 
 /**
- * The forbidden strings found anywhere in the serialized JSON, keys and inside words included, but not those found only
- * inside a shown string (forbiddenStrings): the leak check of the views' tests and check:real. With `words`, only those
- * found as whole words, by maskText's word rule, which check:real counts apart.
+ * The forbidden strings found in any key or string value of the JSON as it is sent, in any case as maskText masks, and
+ * inside words included, but not those found only inside a shown string (forbiddenStrings): the leak check of the
+ * views' tests and check:real. With `words`, only those found as whole words, by maskText's word rule, which check:real
+ * counts apart. Each is named as given.
  */
 export function leaks(json: unknown, forbidden: string[], shown: string[], words = false): string[] {
   if (forbidden.length === 0) return [];
-  const hidden = new Set(forbidden);
-  const strings = [...forbidden, ...shown];
-  const found = JSON.stringify(json).match(new RegExp(words ? asWords(strings) : anyOf(strings), 'g')) ?? [];
-  return [...new Set(found.filter((s) => hidden.has(s)))];
+  // By lower case, a forbidden string winning over a shown one, as in maskText.
+  const original = new Map([...shown, ...forbidden].map((s) => [s.toLowerCase(), s]));
+  const hidden = new Set(forbidden.map((s) => s.toLowerCase()));
+  const strings = [...original.keys()];
+  const pattern = new RegExp(words ? asWords(strings) : anyOf(strings), 'gi');
+  const found = textsOf(JSON.parse(JSON.stringify(json))).flatMap((text) => text.match(pattern) ?? []);
+  const named = found.map((s) => s.toLowerCase()).filter((s) => hidden.has(s));
+  return [...new Set(named)].map((s) => original.get(s)!);
+}
+
+// Every key and string value of a parsed JSON value.
+function textsOf(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap(textsOf);
+  if (value !== null && typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, item]) => [key, ...textsOf(item)]);
+  }
+  return [];
 }
 
 /**
