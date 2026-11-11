@@ -56,6 +56,13 @@ export function modelsCost(models: RunEntry['models']): number | null {
   return models ? Object.values(models).reduce((sum, m) => sum + (m.cost ?? 0), 0) : null;
 }
 
+/** The `read` class's share, as a percent (0 to 100), of a unit's or a week's tool results summed over every class;
+ * null when the map is null or sums to 0. */
+export function readShare(toolResults: Record<string, number> | null | undefined): number | null {
+  const total = Object.values(toolResults ?? {}).reduce((sum, tokens) => sum + tokens, 0);
+  return total ? ((toolResults?.read ?? 0) / total) * 100 : null;
+}
+
 /** A run's facts but its keys, each taken from its run entry as the reporter gives it; a view adds the stored key and
  * the project's key and name. */
 export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
