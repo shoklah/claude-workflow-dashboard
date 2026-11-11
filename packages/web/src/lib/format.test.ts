@@ -16,6 +16,7 @@ import {
   formatMinutes,
   formatPercent,
   formatTokens,
+  formatCompact,
   total,
   hiddenWarningsLabel,
   warningsSummary,
@@ -117,6 +118,18 @@ describe('formatTokens', () => {
     expect(formatTokens({ input: 0, output: 0 })).toBe('0');
     expect(formatTokens({})).toBe('0');
     expect(formatTokens(null)).toBe('–');
+  });
+});
+
+describe('formatCompact', () => {
+  it('writes a number compact, with its default rounding', () => {
+    expect(formatCompact(281_449)).toBe('281K');
+    expect(formatCompact(1_300_000)).toBe('1.3M');
+    expect(formatCompact(87)).toBe('87');
+  });
+
+  it('writes a dash when the number isn’t known', () => {
+    expect(formatCompact(null)).toBe('–');
   });
 });
 

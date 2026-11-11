@@ -66,8 +66,23 @@ export type StrengthRow = {
   summary: string | null;
 };
 
+/** A run's main calls' context, as the reporter reads it: its calls, their median and largest context in tokens, the
+ * calls past the cap and the handoff's time, its tool results' characters (every class) and the read class's share in
+ * percent, and its sweeps. */
+export type RunContext = {
+  calls: number;
+  medianTokens: number | null;
+  maxTokens: number | null;
+  callsOverCap: number;
+  handoff: string | null;
+  toolCharacters: number;
+  readShare: number | null;
+  sweeps: { inline: number; delegated: number };
+};
+
 /** `GET /api/runs/:key`: one run, its timeline, every finding, its review steps' strengths, and its skills, models,
- * advisor notes and warnings; `categoryLabels` names each category id of the active list for display, empty with none. */
+ * advisor notes, context (null when the reporter read none) and warnings; `categoryLabels` names each category id of
+ * the active list for display, empty with none. */
 export type RunResponse = {
   facts: RunFacts;
   timeline: TimelineGroup[];
@@ -76,6 +91,7 @@ export type RunResponse = {
   skills: { name: string; outcome: string }[];
   models: { model: string; cost: number | null }[];
   advisor: { calls: number; notes: number } | null;
+  context: RunContext | null;
   warnings: { text: string; sessionId: string | null }[];
   categoryLabels: Record<string, string>;
 };
