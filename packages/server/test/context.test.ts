@@ -243,6 +243,15 @@ describe('GET /api/context', () => {
       expect(body.units.find((u) => u.session?.title === 'Offline sync plan')!.handedOffTo).toBeNull();
     });
 
+    test('a shown successor is named by its title, still with no session ID', async () => {
+      setShowing(db, [projectKey(LANTERN), projectKey('/Users/example/Work/tidepool-api')]);
+      const body = await context('?weeks=12&over=1');
+      expect(byName(body, 'Offline sync plan').handedOffTo).toEqual({
+        title: "Port lantern-notes' sync to tidepool-api",
+        sessionId: null,
+      });
+    });
+
     test('over=1 hides the webhooks run and the tidepool-api session, and the response leaks nothing', async () => {
       setShowing(db, [projectKey(LANTERN)]);
       const body = await context('?weeks=12&over=1');

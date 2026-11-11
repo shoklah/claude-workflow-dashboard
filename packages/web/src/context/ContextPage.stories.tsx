@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { contextAll, contextEmpty, contextFull, contextHidden } from '../test/context.ts';
 import { mockApi } from '../test/mock-api.ts';
@@ -38,6 +38,21 @@ export const Failed: Story = {
   },
 };
 
+/** The "All" fetch fails: the error line, and the Units switch still there to go back over the cap. */
+export const AllFailed: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, ...projects, [OVER]: contextFull, [ALL]: 500 });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await expect(await canvas.findByText('Refactor the sync queue')).toBeVisible();
+    const switcher = within(canvas.getByRole('group', { name: 'Units' }));
+    await userEvent.click(switcher.getByRole('button', { name: 'All' }));
+    await expect(await canvas.findByText("Couldn't load the context.")).toBeVisible();
+    await userEvent.click(switcher.getByRole('button', { name: 'Over the cap' }));
+    await expect(await canvas.findByText('Refactor the sync queue')).toBeVisible();
+  },
+};
+
 /** Empty: twelve weeks of nothing; the list's empty line, the uncounted line, and every unknown figure a dash. */
 export const Empty: Story = {
   beforeEach: () => {
@@ -65,7 +80,7 @@ export const Full: Story = {
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await expect(await canvas.findAllByRole('img')).toHaveLength(5);
-    await expect(await canvas.findAllByText('cap 300K')).toHaveLength(2);
+    await waitFor(() => expect(canvas.getAllByText('cap 300K')).toHaveLength(2));
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('12');
     await expect(
       canvas.getByText(
@@ -84,7 +99,9 @@ export const Full: Story = {
     const units = within(canvas.getByRole('region', { name: 'Runs and sessions' })).getAllByRole('row');
     await expect(units[1]).toHaveTextContent('Refactor the sync queue');
 
-    await userEvent.click(within(canvas.getByRole('group', { name: 'Units' })).getByRole('button', { name: 'All' }));
+    const switcher = within(canvas.getByRole('group', { name: 'Units' }));
+    await expect(switcher.getByRole('button', { name: 'Over the cap' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(switcher.getByRole('button', { name: 'All' }));
     await expect(fetch).toHaveBeenCalledWith(ALL);
     await expect(
       await within(canvas.getByRole('region', { name: 'Runs and sessions' })).findAllByRole('row'),

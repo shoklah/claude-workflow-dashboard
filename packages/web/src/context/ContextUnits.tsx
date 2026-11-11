@@ -5,7 +5,6 @@ import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { Option } from '../findings/FindingsPage.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { NONE, formatCompact, hiddenLabel, projectLabel, runWhere, sessionName } from '../lib/format.ts';
 
@@ -59,34 +58,20 @@ function UnitName({ unit }: { unit: ContextUnit }) {
 
 /**
  * The Context page's runs and sessions, in the API's order (most calls past the cap first): over the cap only, or all
- * with a context, through the "Units" switch; a line under them counts those of other projects while showing.
+ * with a context, by the page's "Units" switch; a line under them counts those of other projects while showing.
  */
 export function ContextUnits({
   units,
   hidden,
   over,
-  onOverChange,
 }: {
   units: ContextUnit[];
   hidden: number;
   over: boolean;
-  onOverChange: (over: boolean) => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <h2 className="font-medium">
-          Runs and sessions
-        </h2>
-        <div role="group" aria-label="Units" className="flex gap-1">
-          <Option pressed={over} onClick={() => onOverChange(true)}>
-            Over the cap
-          </Option>
-          <Option pressed={!over} onClick={() => onOverChange(false)}>
-            All
-          </Option>
-        </div>
-      </div>
+      <h2 className="text-sm font-medium">Runs and sessions</h2>
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs and sessions' }}>
         <TableHeader>
           <TableRow>

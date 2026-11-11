@@ -37,8 +37,8 @@ function baseOption(weeks: string[]) {
 
 /**
  * One series of bars: 24px at most, a 4px rounded end, square at the baseline; a `cost` reads in dollars, and `format`
- * writes the tooltip's values and the y axis labels, an empty bar's (which ECharts passes as undefined) as null. A `cap` draws a dashed line at that value, labelled "cap 300K",
- * the y axis reaching at least to it.
+ * writes the tooltip's values and the y axis labels, an empty bar's (which ECharts passes as undefined) as null. A
+ * `cap` draws a dashed line at that value, labelled "cap 300K", the y axis reaching at least to it.
  */
 export function singleBars(
   weeks: string[],
