@@ -65,7 +65,7 @@ export const Full: Story = {
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await expect(await canvas.findAllByRole('img')).toHaveLength(5);
-    await expect(canvas.getAllByText('cap 300K')).toHaveLength(2);
+    await expect(await canvas.findAllByText('cap 300K')).toHaveLength(2);
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('12');
     await expect(
       canvas.getByText(
