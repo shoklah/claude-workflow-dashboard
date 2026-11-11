@@ -320,6 +320,11 @@ describe('total', () => {
     expect(total({ with: 3, without: null })).toBe(3);
     expect(total({})).toBe(0);
   });
+
+  it('sums a list’s counts the same way', () => {
+    expect(total([3, null, 2])).toBe(5);
+    expect(total([])).toBe(0);
+  });
 });
 
 describe('usageName', () => {

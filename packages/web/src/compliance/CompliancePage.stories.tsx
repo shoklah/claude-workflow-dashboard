@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { useQueryClient } from '@tanstack/react-query';
+import { expect, waitFor, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { complianceEmpty, complianceFull, complianceShowing } from '../test/compliance.ts';
 import { mockApi } from '../test/mock-api.ts';
@@ -168,5 +169,51 @@ export const Hidden: Story = {
     await expect(information.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       '3 information lines are hidden while showing',
     ]);
+  },
+};
+
+/** Showing mode with only warnings it leaves out of the grid: the page doesn't say there are none, and counts them. */
+export const AllLeftOut: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': { ...complianceEmpty, hidden: 2 } });
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText('No warnings to show in this period.')).toBeVisible();
+    await expect(canvas.queryByText('No warnings in this period.')).toBeNull();
+  },
+};
+
+// The answers SelectionLeftOut changes as it runs, as showing mode's start does.
+const live: Record<string, object | number> = {};
+
+/** A selected cell whose row showing mode then leaves out: once the grid comes back without it, nothing names it. */
+export const SelectionLeftOut: Story = {
+  beforeEach: () => {
+    Object.assign(live, { '/api/status': status, ...projects, '/api/compliance?weeks=4': complianceFull });
+    mockApi(live);
+  },
+  // Showing mode's start resets every query, as this button does.
+  render: function Render(args) {
+    const client = useQueryClient();
+    return (
+      <>
+        <button type="button" onClick={() => void client.resetQueries()}>
+          Start showing
+        </button>
+        <CompliancePage {...args} />
+      </>
+    );
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'brand new check, week of Nov 8: 1' }));
+    await expect(canvas.getByRole('heading', { name: /^brand new check/ })).toBeVisible();
+    live['/api/compliance?weeks=4'] = complianceShowing;
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Start showing' }));
+
+    await waitFor(() => expect(canvas.queryByRole('rowheader', { name: 'Other' })).toBeNull());
+    await expect(await canvas.findByRole('region', { name: 'Warnings by kind and week' })).toBeVisible();
+    await expect(canvas.queryByText(/brand new check/)).toBeNull();
+    await expect(canvas.getByText('Select a cell to list its warnings.')).toBeVisible();
   },
 };
