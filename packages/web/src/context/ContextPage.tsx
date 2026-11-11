@@ -15,12 +15,12 @@ function ContextCharts({ weeks, cap }: { weeks: ContextWeek[]; cap: number }) {
   const names = weeks.map((w) => w.week);
   const tokens = { cap, format: formatCompact };
   const charts = [
-    { title: 'Mean context per call', option: singleBars(names, 'Mean per call', weeks.map((w) => w.meanTokens), false, tokens) },
-    { title: 'Largest context', option: singleBars(names, 'Largest', weeks.map((w) => w.maxTokens), false, tokens) },
+    { title: 'Mean context per call', option: singleBars(names, 'Mean per call', weeks.map((w) => w.meanTokens), tokens) },
+    { title: 'Largest context', option: singleBars(names, 'Largest', weeks.map((w) => w.maxTokens), tokens) },
     { title: 'Runs and sessions over the cap', option: singleBars(names, 'Over the cap', weeks.map((w) => w.unitsOverCap)) },
     {
       title: 'Read share of tool results',
-      option: singleBars(names, 'Read share', weeks.map((w) => w.readShare), false, { format: formatShare }),
+      option: singleBars(names, 'Read share', weeks.map((w) => w.readShare), { format: formatShare }),
     },
     {
       title: 'Sweeps',

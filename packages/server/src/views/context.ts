@@ -12,7 +12,7 @@ import {
   type SessionEntry,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { periodStoredUnits, rootOf, storedFacts, storedNames } from './runs.ts';
+import { addCount, periodStoredUnits, rootOf, storedFacts, storedNames } from './runs.ts';
 import { showFacts, showSession, type Scope } from './scope.ts';
 import { sessionFacts } from './sessions.ts';
 
@@ -46,11 +46,8 @@ export function contextSums(runs: RunEntry[], sessions: SessionEntry[]): Map<str
     sum.tokens += context.tokens ?? 0;
     if (context.max_tokens != null) sum.maxTokens = Math.max(sum.maxTokens ?? 0, context.max_tokens);
     if (context.over_cap) sum.unitsOverCap += 1;
-    for (const [kind, tokens] of Object.entries(unit.tool_results ?? {})) {
-      sum.toolResults[kind] = (sum.toolResults[kind] ?? 0) + tokens;
-    }
-    sum.sweeps.inline += unit.sweeps?.inline ?? 0;
-    sum.sweeps.delegated += unit.sweeps?.delegated ?? 0;
+    for (const [kind, tokens] of Object.entries(unit.tool_results ?? {})) addCount(sum.toolResults, kind, tokens);
+    for (const [kind, n] of Object.entries(unit.sweeps ?? {})) addCount(sum.sweeps, kind, n ?? 0);
     sums.set(week, sum);
   }
   return sums;

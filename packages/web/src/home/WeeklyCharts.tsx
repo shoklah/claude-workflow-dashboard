@@ -36,24 +36,24 @@ function baseOption(weeks: string[]) {
 }
 
 /**
- * One series of bars: 24px at most, a 4px rounded end, square at the baseline; a cost reads in dollars, and `format`
- * writes the tooltip's values and the y axis labels. A `cap` draws a dashed line at that value, labelled "cap 300K",
+ * One series of bars: 24px at most, a 4px rounded end, square at the baseline; a `cost` reads in dollars, and `format`
+ * writes the tooltip's values and the y axis labels, an empty bar's (which ECharts passes as undefined) as null. A `cap` draws a dashed line at that value, labelled "cap 300K",
  * the y axis reaching at least to it.
  */
 export function singleBars(
   weeks: string[],
   name: string,
   data: (number | null)[],
-  cost = false,
-  options: { cap?: number; format?: (value: number) => string } = {},
+  options: { cost?: boolean; cap?: number; format?: (value: number | null) => string } = {},
 ) {
   const base = baseOption(weeks);
-  const { cap, format } = options;
+  const { cost = false, cap } = options;
+  const format = cost ? formatCost : options.format;
   return {
     ...base,
     // Room above the plot for the cap's label when the axis ends at the cap.
     grid: cap === undefined ? base.grid : { ...base.grid, top: 20 },
-    tooltip: { ...base.tooltip, valueFormatter: cost ? formatCost : format },
+    tooltip: { ...base.tooltip, valueFormatter: format && ((value?: number | null) => format(value ?? null)) },
     yAxis: {
       ...base.yAxis,
       max: cap === undefined ? undefined : ({ max }: { max: number }) => Math.max(max, cap),
@@ -185,7 +185,7 @@ export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverag
     <section aria-label="Weekly charts" className="flex flex-col gap-2">
       <div className="flex gap-3">
         <Chart title="Findings by week, by step" option={findingsOption(charts)} height={260} />
-        <Chart title="Cost by week" option={singleBars(charts.weeks, 'Cost', charts.cost, true)} height={260} />
+        <Chart title="Cost by week" option={singleBars(charts.weeks, 'Cost', charts.cost, { cost: true })} height={260} />
         <Chart title="Warnings by week" option={singleBars(charts.weeks, 'Warnings', charts.warnings)} height={260} />
       </div>
       <CoverageNote coverageFrom={coverageFrom} firstWeek={charts.weeks[0]} />

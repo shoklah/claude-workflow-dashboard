@@ -129,8 +129,10 @@ export function total(counts: Record<string, number | null>): number {
 
 /** A number written compact with its default rounding: "281K", "1.3M"; a dash when it isn't known (null, or undefined
  * as a chart tooltip passes it). */
+const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact' });
+
 export function formatCompact(value: number | null | undefined): string {
-  return value == null ? NONE : new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value);
+  return value == null ? NONE : COMPACT.format(value);
 }
 
 /** A tool-result class's name on screen, in the Context page's column order. */

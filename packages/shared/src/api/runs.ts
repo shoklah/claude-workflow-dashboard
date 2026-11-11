@@ -1,5 +1,5 @@
 import type { Relevance } from '../categories.ts';
-import type { RunFacts } from '../facts.ts';
+import type { ContextFacts, RunFacts } from '../facts.ts';
 import type { Outcome, Path, StepKind } from '../report.ts';
 
 /** `GET /api/runs`'s query: `path`, `project` (a project's key), `weeks` (default 4) and `warnings=1`. */
@@ -69,16 +69,7 @@ export type StrengthRow = {
 /** A run's main calls' context, as the reporter reads it: its calls, their median and largest context in tokens, the
  * calls past the cap and the handoff's time, its tool results' characters (every class) and the read class's share in
  * percent, and its sweeps. */
-export type RunContext = {
-  calls: number;
-  medianTokens: number | null;
-  maxTokens: number | null;
-  callsOverCap: number;
-  handoff: string | null;
-  toolCharacters: number;
-  readShare: number | null;
-  sweeps: { inline: number; delegated: number };
-};
+export type RunContext = ContextFacts & { toolCharacters: number };
 
 /** `GET /api/runs/:key`: one run, its timeline, every finding, its review steps' strengths, and its skills, models,
  * advisor notes, context (null when the reporter read none) and warnings; `categoryLabels` names each category id of

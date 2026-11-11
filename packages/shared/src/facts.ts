@@ -71,7 +71,19 @@ export function readShare(toolResults: Record<string, number> | null | undefined
 /** A run's or session's context facts, as the run page and the Context page show them: its calls, median and largest
  * tokens, calls past the cap and handoff time, its read share and its sweeps, an unknown count 0; null when the unit
  * has no `context`. */
-export function contextFacts(unit: RunEntry | SessionEntry) {
+/** A unit's context facts as both its run page and the Context page show them: its main calls, their median and largest
+ * tokens, the calls past the cap, the handoff's time, its read share and its sweeps by kind. */
+export type ContextFacts = {
+  calls: number;
+  medianTokens: number | null;
+  maxTokens: number | null;
+  callsOverCap: number;
+  handoff: string | null;
+  readShare: number | null;
+  sweeps: { inline: number; delegated: number };
+};
+
+export function contextFacts(unit: RunEntry | SessionEntry): ContextFacts | null {
   const context = unit.context;
   if (!context) return null;
   return {

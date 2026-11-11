@@ -1,4 +1,4 @@
-import type { RunFacts } from '../facts.ts';
+import type { ContextFacts, RunFacts } from '../facts.ts';
 import type { FindingsQuery } from './findings.ts';
 
 /** One week's sums over the units with a `context`, as the reporter's context_rows: how many units, their main calls
@@ -11,7 +11,7 @@ export type ContextSums = {
   maxTokens: number | null;
   unitsOverCap: number;
   toolResults: Record<string, number>;
-  sweeps: { inline: number; delegated: number };
+  sweeps: ContextFacts['sweeps'];
 };
 
 /** A week's context sums with its start date, its mean tokens per call (null with no call) and its read share. */
@@ -26,21 +26,14 @@ export type ContextQuery = FindingsQuery & { over: boolean };
  * calls, median and largest tokens, calls past the cap, whether it went over, its handoff's time and the session it
  * handed off to; its read share and its sweeps by kind.
  */
-export type ContextUnit = {
+export type ContextUnit = ContextFacts & {
   kind: 'run' | 'session';
   key: string;
   run: RunFacts | null;
   session: { title: string | null; sessionId: string | null; project: string | null } | null;
   at: string | null;
-  calls: number;
-  medianTokens: number | null;
-  maxTokens: number | null;
-  callsOverCap: number;
   overCap: boolean;
-  handoff: string | null;
   handedOffTo: { title: string | null; sessionId: string | null } | null;
-  readShare: number | null;
-  sweeps: { inline: number; delegated: number };
 };
 
 /**

@@ -49,7 +49,7 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
         <Chart
           key={chart.title}
           title={chart.title}
-          option={singleBars(names, chart.title, chart.data, chart.cost)}
+          option={singleBars(names, chart.title, chart.data, { cost: chart.cost })}
           height={180}
         />
       ))}
