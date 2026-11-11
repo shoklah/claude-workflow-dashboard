@@ -1,9 +1,9 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
 // paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
-// groups, step kinds, rules and unit figures whose sums differ from the reporter's totals, the count of skills and of
-// models that differ, and the leaks showing mode lets through, each by route and kind. It prints no value from the data
-// but those weeks' dates, and no skill or agent name, since a project can name one. Usage: `pnpm --filter @cwd/server
-// check:real [dataDir]`; the data dir defaults to the real one.
+// groups, step kinds, rules, unit figures and context weeks whose sums differ from the reporter's totals, the count of
+// skills and of models that differ, and the leaks showing mode lets through, each by route and kind. It prints no
+// value from the data but those weeks' dates, and no skill or agent name, since a project can name one. Usage:
+// `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,6 +15,7 @@ import { openDb } from './db/open.ts';
 import { listUnits, setSeenAt, setShowing } from './db/read.ts';
 import { projectKey, runKey, sessionKey } from './keys.ts';
 import { runReporter } from './reporter.ts';
+import { contextSums } from './views/context.ts';
 import { weekSums } from './views/home.ts';
 import { modelSums } from './views/models.ts';
 import { storedBranches, storedSessionRoots } from './views/runs.ts';
@@ -267,6 +268,32 @@ else {
       : null,
   );
 
+  // The weekly context over every run and session against totals.context, week by week; a week in only one differs.
+  const context = contextSums(entries, sessionEntries);
+  const contextTotals = totals.context;
+  const contextWeeks = new Map((contextTotals ?? []).map((row) => [row.week ?? '', row]));
+  const contextNames = keysOf(Object.fromEntries(context), Object.fromEntries(contextWeeks)).sort();
+  differLine(
+    'context',
+    `${contextNames.length} compared, `,
+    contextTotals
+      ? contextNames.filter((week) => {
+          const [got, want] = [context.get(week), contextWeeks.get(week)];
+          return (
+            !got ||
+            !want ||
+            !sameCounts(
+              { calls: got.calls, tokens: got.tokens, units_over_cap: got.unitsOverCap },
+              { calls: want.calls, tokens: want.tokens, units_over_cap: want.units_over_cap },
+            ) ||
+            got.maxTokens !== (want.max_tokens ?? null) ||
+            !sameCounts(got.toolResults, want.tool_results) ||
+            !sameCounts(got.sweeps, want.sweeps)
+          );
+        })
+      : null,
+  );
+
   // Showing mode on the first root, in a fresh database in a temp folder (never the real one): every response's
   // forbidden strings (forbiddenStrings, and the home folder) are counted, never printed.
   const dir = mkdtempSync(join(tmpdir(), 'cwd check real '));
@@ -313,6 +340,7 @@ else {
       '/api/models?weeks=52',
       '/api/compliance?resolved=1&weeks=52',
       '/api/sessions?weeks=52',
+      '/api/context?weeks=52',
     ];
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
     const routes = ['/api/runs?weeks=52', ...paths, ...pages.map(() => '/api/runs/:key')];

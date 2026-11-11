@@ -59,7 +59,10 @@
       "efforts": null,
       "advisor": null,
       "notes": null,
-      "main": null
+      "main": null,
+      "context": null,
+      "tool_results": null,
+      "sweeps": null
     },
     {
       "record": {
@@ -321,7 +324,10 @@
       "efforts": null,
       "advisor": null,
       "notes": null,
-      "main": null
+      "main": null,
+      "context": null,
+      "tool_results": null,
+      "sweeps": null
     },
     {
       "record": {
@@ -682,6 +688,29 @@
       "main": {
         "model": "claude-opus-5-5",
         "effort": "medium"
+      },
+      "context": {
+        "calls": 36,
+        "tokens": 3420000,
+        "median_tokens": 91800,
+        "max_tokens": 164300,
+        "over_cap": false,
+        "calls_over_cap": 0,
+        "handoff": null,
+        "handoff_to": null
+      },
+      "tool_results": {
+        "read": 96400,
+        "edit": 21300,
+        "run": 18700,
+        "bash_other": 3900,
+        "agent": 0,
+        "mcp": 0,
+        "other": 1100
+      },
+      "sweeps": {
+        "inline": 1,
+        "delegated": 0
       }
     },
     {
@@ -983,6 +1012,29 @@
       "main": {
         "model": "claude-fable-6-preview",
         "effort": "high"
+      },
+      "context": {
+        "calls": 212,
+        "tokens": 51680000,
+        "median_tokens": 236400,
+        "max_tokens": 358100,
+        "over_cap": true,
+        "calls_over_cap": 41,
+        "handoff": null,
+        "handoff_to": null
+      },
+      "tool_results": {
+        "read": 412900,
+        "edit": 88600,
+        "run": 204300,
+        "bash_other": 17200,
+        "agent": 126500,
+        "mcp": 0,
+        "other": 5400
+      },
+      "sweeps": {
+        "inline": 2,
+        "delegated": 1
       }
     }
   ],
@@ -1138,6 +1190,54 @@
         "minutes_per_run": 80,
         "later_fixes": 0
       }
-    ]
+    ],
+    "context": [
+      {
+        "week": "2026-11-01",
+        "calls": 36,
+        "tokens": 3420000,
+        "max_tokens": 164300,
+        "units_over_cap": 0,
+        "tool_results": {
+          "read": 96400,
+          "edit": 21300,
+          "run": 18700,
+          "bash_other": 3900,
+          "agent": 0,
+          "mcp": 0,
+          "other": 1100
+        },
+        "sweeps": {
+          "inline": 1,
+          "delegated": 0
+        }
+      },
+      {
+        "week": "2026-11-08",
+        "calls": 212,
+        "tokens": 51680000,
+        "max_tokens": 358100,
+        "units_over_cap": 1,
+        "tool_results": {
+          "read": 412900,
+          "edit": 88600,
+          "run": 204300,
+          "bash_other": 17200,
+          "agent": 126500,
+          "mcp": 0,
+          "other": 5400
+        },
+        "sweeps": {
+          "inline": 2,
+          "delegated": 1
+        }
+      }
+    ],
+    "health": {
+      "info": [
+        "lantern-notes chore/tidy-imports: 3 sweeps ran inline",
+        "over the cap without a handoff: 1 transcripts"
+      ]
+    }
   }
 }
