@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCost, weekLabel } from '../lib/format.ts';
+import { STEP_LABELS, formatCompact, formatCost, weekLabel } from '../lib/format.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
 type Charts = HomeResponse['charts'];
@@ -35,35 +35,86 @@ function baseOption(weeks: string[]) {
   };
 }
 
-/** One series of bars: 24px at most, a 4px rounded end, square at the baseline; a cost reads in dollars. */
-export function singleBars(weeks: string[], name: string, data: (number | null)[], cost = false) {
+/**
+ * One series of bars: 24px at most, a 4px rounded end, square at the baseline; a cost reads in dollars, and `format`
+ * writes the tooltip's values and the y axis labels. A `cap` draws a dashed line at that value, labelled "cap 300K",
+ * the y axis reaching at least to it.
+ */
+export function singleBars(
+  weeks: string[],
+  name: string,
+  data: (number | null)[],
+  cost = false,
+  options: { cap?: number; format?: (value: number) => string } = {},
+) {
   const base = baseOption(weeks);
+  const { cap, format } = options;
   return {
     ...base,
-    tooltip: { ...base.tooltip, valueFormatter: cost ? formatCost : undefined },
-    yAxis: { ...base.yAxis, axisLabel: { ...base.yAxis.axisLabel, formatter: cost ? '${value}' : undefined } },
+    // Room above the plot for the cap's label when the axis ends at the cap.
+    grid: cap === undefined ? base.grid : { ...base.grid, top: 20 },
+    tooltip: { ...base.tooltip, valueFormatter: cost ? formatCost : format },
+    yAxis: {
+      ...base.yAxis,
+      max: cap === undefined ? undefined : ({ max }: { max: number }) => Math.max(max, cap),
+      axisLabel: { ...base.yAxis.axisLabel, formatter: cost ? '${value}' : format },
+    },
     series: [
-      { name, type: 'bar', data, barMaxWidth: 24, itemStyle: { color: SERIES[0], borderRadius: [4, 4, 0, 0] } },
+      {
+        name,
+        type: 'bar',
+        data,
+        barMaxWidth: 24,
+        itemStyle: { color: SERIES[0], borderRadius: [4, 4, 0, 0] },
+        markLine:
+          cap === undefined
+            ? undefined
+            : {
+                silent: true,
+                symbol: 'none',
+                lineStyle: { color: INK, type: 'dashed', width: 1.5 },
+                label: {
+                  color: INK,
+                  position: 'insideEndTop',
+                  formatter: `cap ${formatCompact(cap)}`,
+                  textBorderColor: SURFACE,
+                  textBorderWidth: 3,
+                },
+                data: [{ yAxis: cap }],
+              },
+      },
     ],
   };
 }
 
-/** The findings of each step kind, stacked per week, a 2px surface gap between segments, with a legend. */
-function findingsOption(charts: Charts) {
-  const base = baseOption(charts.weeks);
+/**
+ * Bars of several series by week, each series a palette slot in order, a 1px surface border between bars, with a
+ * legend; stacked per week when `stack` names the stack, else side by side.
+ */
+export function barsOption(weeks: string[], series: { name: string; data: (number | null)[] }[], stack?: string) {
+  const base = baseOption(weeks);
   return {
     ...base,
     grid: { ...base.grid, bottom: 64 },
     legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: INK } },
-    series: stepKinds(charts).map((kind, i) => ({
-      name: STEP_LABELS[kind],
+    series: series.map(({ name, data }, i) => ({
+      name,
       type: 'bar',
-      stack: 'findings',
-      data: charts.findingsByStep[kind],
+      stack,
+      data,
       barMaxWidth: 24,
       itemStyle: { color: SERIES[i], borderColor: SURFACE, borderWidth: 1 },
     })),
   };
+}
+
+/** The findings of each step kind, stacked per week. */
+function findingsOption(charts: Charts) {
+  return barsOption(
+    charts.weeks,
+    stepKinds(charts).map((kind) => ({ name: STEP_LABELS[kind], data: charts.findingsByStep[kind] })),
+    'findings',
+  );
 }
 
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
