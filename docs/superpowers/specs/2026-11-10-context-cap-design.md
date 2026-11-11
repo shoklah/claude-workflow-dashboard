@@ -1,6 +1,6 @@
 # Context cap, handoff chain and sweeper: design
 
-Date: 2026-11-10. Status: draft, awaiting the owner's approval. Path: Full (the import's schema and `COUNT_MAPS`, so stored derived values; a new page, view and route; showing mode; `check:real`). Builds on the live dashboard design (`2026-11-09-live-dashboard-design.md`, decisions 18, 20, 44 and "Totals are sums over units") and on the reporter's context cap change, `claude-workflow` [#26](https://github.com/shoklah/claude-workflow/pull/26) (its design: `docs/superpowers/specs/2026-11-10-context-cap-design.md` there), merged and installed. Issue: [shoklah/claude-workflow-dashboard#16](https://github.com/shoklah/claude-workflow-dashboard/issues/16). Mockup: `docs/design/2026-11-10-context-cap/context.html`.
+Date: 2026-11-10, grilled 2026-11-11. Status: draft, awaiting the owner's approval. Path: Full (the import's schema and `COUNT_MAPS`, so stored derived values; a new page, view and route; showing mode; `check:real`). Builds on the live dashboard design (`2026-11-09-live-dashboard-design.md`, decisions 18, 20, 44 and "Totals are sums over units") and on the reporter's context cap change, `claude-workflow` [#26](https://github.com/shoklah/claude-workflow/pull/26) (its design: `docs/superpowers/specs/2026-11-10-context-cap-design.md` there), merged and installed. Issue: [shoklah/claude-workflow-dashboard#16](https://github.com/shoklah/claude-workflow-dashboard/issues/16). Mockup: `docs/design/2026-11-10-context-cap/context.html`.
 
 ## Intent
 
@@ -48,19 +48,19 @@ They are counted over this week's whole main transcripts, run rows and session r
 - Any change to Home, the Sessions page or the Weeks page.
 - A session detail page, or links to sessions.
 - Parsing the information lines' text for their numbers.
-- A marker for the date of the workflow's change, which the reporter doesn't export.
-- Per-model context, and a median per call over a week. The reporter exports neither.
+- Marks for workflow changes on the charts. The owner wants every major change marked, from the reporter: CR16, filed as [shoklah/claude-workflow#30](https://github.com/shoklah/claude-workflow/issues/30). Until it lands, no mark shows, and the app hard-codes no date.
+- Per-model context, and a median per call over a week. The reporter exports neither, and the owner wants no change request for per-model context now.
 
 ## Anti-goals
 
 - The app and the reporter disagreeing on a context figure. The information lines' counts differ from the page's own sums by scope (whole transcripts this week, against units in a week), so they live on another page under the reporter's mark, never beside the sums as if they were the same fact.
 - A session keeping a stale `context` or `handoff` after its rows move to a run, so its calls count twice.
-- Showing mode leaking a hidden project's name, branch or session ID through the unit list or the information lines.
+- Showing mode leaking a hidden project's name, branch or session ID through the unit list, a handoff's successor or the information lines.
 - The cap line passing for the reporter's fact while it is the app's default.
 
 ## Constraints
 
-- **The reporter is the only parser** of transcripts. A missing fact goes to the workflow repo as a change request (CR14 below).
+- **The reporter is the only parser** of transcripts. A missing fact goes to the workflow repo as a change request (CR14 to CR16 below).
 - **Every new reporter field is `.nullish()`**, under `report.ts`'s convention.
 - **Fixtures are invented.** The issue's real numbers go nowhere in this repo.
 - **The screens follow the existing pages' look:** shadcn/ui, ECharts with the dataviz palette's light slots, share bars and `Option` switches. The UX/UI slice (#8) hasn't set a new direction.
@@ -88,7 +88,7 @@ They are counted over this week's whole main transcripts, run rows and session r
 
 - **`packages/shared/src/report.ts`:**
   - `RunEntrySchema` and `SessionEntrySchema` gain three fields:
-    - `context`: an object of `calls`, `tokens`, `median_tokens`, `max_tokens`, `over_cap`, `calls_over_cap` and `handoff`
+    - `context`: an object of `calls`, `tokens`, `median_tokens`, `max_tokens`, `over_cap`, `calls_over_cap`, `handoff` and `handoff_to`, CR15's proposed field for the successor session's key (section 10), absent until it lands
     - `tool_results`: `counts`, so a class the reporter adds later still sums
     - `sweeps`: an object of `inline` and `delegated`
   - `TotalsSchema` gains:
@@ -148,6 +148,7 @@ A week of the period with no unit is empty: every count 0, `meanTokens`, `maxTok
     - its project name, null for "other project", named as the Sessions page names it
   - `at`: a run's finish (`record.date`), a session's `start`
   - the unit's `calls`, `median_tokens` as `medianTokens`, `max_tokens` as `maxTokens`, `calls_over_cap` as `callsOverCap`, `over_cap` as `overCap` and `handoff`
+  - `handedOffTo`: the session the handoff started, named as a session row is (its title, masked, else null; its session ID, null while showing). It is null when the unit has no `handoff_to`, when the key matches no stored session, and while showing when `showSession` doesn't hold for that session.
   - its `readShare`, by the same rule as a week's
   - its `sweeps`
 - **`hidden`:** how many units matching the query showing mode left out of `units`.
@@ -179,6 +180,7 @@ A week of the period with no unit is empty: every count 0, `meanTokens`, `maxTok
     - calls, median per call and largest
     - past the cap
     - the handoff's time or "–"
+    - "Handed off to": the successor's title or "no title", with its `SessionChip` while not showing, or "–" when `handedOffTo` is null. It fills in once CR15 lands (the owner's call: build the column now).
     - read share as a share bar (`SHARE_FILL` on `SHARE_TRACK`, its percent beside it)
     - sweeps as "inline · delegated"
   - **Showing mode:** a "+ N … in other projects" line from `hidden`.
@@ -216,12 +218,14 @@ The page shows the lines below the grid and its list, under "Information from th
 - **The unit list** shows only:
   - runs that `showFacts` keeps, named by the scope
   - sessions that `showSession` holds, their titles masked with `maskText` and no session ID
+  - a row's successor (`handedOffTo`) only when `showSession` holds for it, masked the same way
 - **`hidden`** counts the rest that match the query.
 - **The response's field names** avoid any common branch name, so no field is named `main`.
 - **Leak tests:** the Context view's and Compliance's tests run `leaks` on their showing-mode responses, with a fixture holding:
   - context units in a hidden project
   - a session in a hidden root
   - an information line naming a hidden branch
+  - a shown session handing off to a session in a hidden root
 - **`check:real`'s showing check** adds `/api/context?weeks=52` to its routes. It also fetches Compliance with `resolved=1`, as today, and that response now carries `information`.
 
 ### 7. `check:real`
@@ -241,11 +245,12 @@ The invented fixture the dev server ends on, or a new one after it, carries:
   - units under the cap
   - over the cap with a handoff
   - over the cap without one
+  - a handoff whose `handoff_to` names a stored session, and one whose key matches none
 - **Weeks:** units in two weeks or more, and a week with no context.
 - **`totals.context`** agreeing with its units by the reporter's rules. The fixture convention's list of rules gains `context_rows`.
 - **`totals.health.info`** with the two context lines and a line naming a branch.
 
-The older fixtures stay as they are, with no context, as exports from before the change. The leak-check fixture gains context units in a hidden project and an information line naming a hidden branch.
+The older fixtures stay as they are, with no context, as exports from before the change. The leak-check fixture gains context units in a hidden project, an information line naming a hidden branch and a handoff to a session in a hidden root.
 
 ### 9. `CLAUDE.md`
 
@@ -256,9 +261,13 @@ One line each under `## Code conventions`:
 - **The reporter figures list** gains Compliance's information lines (section 5).
 - **The fixture totals rule** gains `context_rows`.
 
-### 10. Change request CR14: export the context cap
+### 10. Change requests
 
-The reporter exports its `CONTEXT_CAP` in `--json`. The shape is the workflow's call, for example `totals.context_cap`. The dashboard then reads it into `cap` and drops the "app's default" wording, in a small task of its own once CR14 lands. Until then the line is the app's default, 300K, by the owner's call.
+CR14 and CR15 stay in this spec until the workflow picks them up (the owner's call). CR16 is filed as an issue.
+
+- **CR14: export the context cap.** The reporter exports its `CONTEXT_CAP` in `--json`. The shape is the workflow's call, for example `totals.context_cap`. Once CR14 lands, a small task of its own reads it into `cap` and drops the "app's default" wording. Until then the line is the app's default, 300K, by the owner's call.
+- **CR15: export which session a handoff started.** On each unit whose `context.handoff` isn't null, the reporter exports the successor transcript's session `key` (the one `sessionKey` matches), for example as `context.handoff_to`. It already matches them in `handoff_map`. The shape is the workflow's call. The dashboard builds the "Handed off to" column now against `context.handoff_to` (the owner's call), so the column shows "–" until CR15 lands; if the shape differs, a small task moves the schema field only.
+- **CR16: export dated workflow changes,** filed as [shoklah/claude-workflow#30](https://github.com/shoklah/claude-workflow/issues/30). The reporter exports a dated list of the major workflow changes, so the trend charts mark each one. Nothing is built for it in this plan: once it lands, a small task marks the changes in a period on the trend charts, labelled as the reporter's.
 
 ## Left to the builder
 
@@ -273,10 +282,11 @@ The reporter exports its `CONTEXT_CAP` in `--json`. The shape is the workflow's 
 ## Claude's calls, open to correction
 
 - **The default period is 12 weeks,** as Weeks, since the page is a trend.
-- **The unit list covers the whole period,** with an "Over the cap / All" switch on "Over the cap", rather than opening a week clicked in a chart. A chart's bars are harder to make accessible than a list with a When column.
+- **The unit list covers the whole period,** with an "Over the cap / All" switch on "Over the cap", rather than opening a week clicked in a chart. A chart's bars are harder to make accessible than a list with a When column. The owner kept the two options: a "No handoff" option would match "Over the cap" until handoffs appear, and the reporter's 50-call threshold isn't the app's to copy. The sort puts the longest runs past the cap first.
 - **A unit row shows its median per call,** the reporter's per-unit figure, which matches the baseline's measure; a week shows its mean, the only one that sums. The two are labelled apart.
 - **No change to Home or the Sessions table.** The Sessions table has 11 columns already, and the Context page lists sessions.
-- **No marker for the workflow change's date.** The reporter doesn't export it.
+- **The run page shows no successor.** A handed-off run's facts already read its whole chain, so the session it handed off to is part of the run.
+- **An unknown successor shows "–",** whether CR15 hasn't landed or its key matches no stored session. The Handoff column already says whether a handoff happened.
 - **Units whose facts are unknown** are counted in `uncounted`, never as zeros, and the reporter leaves them out of `totals.context` too. Units with no calls of their own are left out of both silently.
 - **`tool_results` is read as `counts`,** so a class the reporter adds later still sums and its share stays right.
 - **`check:real` compares only the one export's units with its totals,** as it does today. A stale merged `context` can only appear across versions, so `merge.ts`'s tests guard it, not `check:real`.
