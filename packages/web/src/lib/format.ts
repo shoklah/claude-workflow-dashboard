@@ -116,8 +116,8 @@ export function stopLabel(stop: boolean | null): string {
   return stop ? 'STOP' : '';
 }
 
-/** The sum of a record's counts, a count that isn't known as 0. */
-export function total(counts: Record<string, number | null>): number {
+/** The sum of a record's or a list's counts, a count that isn't known as 0. */
+export function total(counts: Record<string, number | null> | readonly (number | null)[]): number {
   return Object.values(counts).reduce<number>((sum, n) => sum + (n ?? 0), 0);
 }
 
