@@ -27,6 +27,12 @@ export const reporterMark = {
   tooltip: "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
 };
 
+/** The badge on Compliance's information lines, which are the latest export's, not an all-time figure. */
+export const informationMark = {
+  text: 'reporter',
+  tooltip: "The latest export's lines, as the reporter writes them; not filtered by period.",
+};
+
 /** A key of a step's count line as words: `not_proportionate` as "not proportionate". */
 export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
@@ -283,6 +289,12 @@ export function warningsSummary(warnings: number, weeks: number, fresh: number):
  * last left out of the grid too. */
 export function hiddenWarningsLabel(count: number): string {
   return `+ ${plural(count, 'warning')} left out while showing (other projects, sessions and other kinds); the grid counts all but other kinds`;
+}
+
+/** Compliance's line for the reporter's information lines showing mode hides: "3 information lines are hidden while
+ * showing". */
+export function hiddenInformationLabel(count: number): string {
+  return `${plural(count, 'information line')} ${count === 1 ? 'is' : 'are'} hidden while showing`;
 }
 
 /** The findings' split as the tiles and the feed read it: "13 acted on · 1 open". */

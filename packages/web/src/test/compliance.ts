@@ -14,12 +14,19 @@ function warning(
   return { sessionId: null, runKey: run.key, project: run.project, branch: run.branch, step: null, isNew: false, ...w };
 }
 
-export const complianceEmpty: ComplianceResponse = { weeks: WEEKS, rows: [], newWarnings: 0, warnings: [], hidden: 0 };
+export const complianceEmpty: ComplianceResponse = {
+  weeks: WEEKS,
+  rows: [],
+  newWarnings: 0,
+  warnings: [],
+  hidden: 0,
+  information: null,
+};
 
 /**
  * Every family but skills and offers, then "other": a kind the dashboard doesn't know and the row of warnings stored
  * with no kind. "step has no agent id" holds the grid's largest count, and its Nov 8 warning is new; the Nov 8
- * startup warning is a session's.
+ * startup warning is a session's. The reporter writes three information lines.
  */
 export const complianceFull: ComplianceResponse = {
   weeks: WEEKS,
@@ -103,15 +110,25 @@ export const complianceFull: ComplianceResponse = {
     warning({ kind: null, family: 'other', week: '2026-10-18', text: 'WARN: feat/search (2026-10-19): an older warning' }),
   ],
   hidden: 0,
+  information: {
+    lines: [
+      'atlas feat/search: the handoff came 12 calls after the cap',
+      'inline sweeps: 2',
+      'over the cap without a handoff: 1 transcripts',
+    ],
+    hidden: 0,
+    source: 'reporter',
+  },
 };
 
 /**
  * Showing mode's answer to the same period: no "other" rows, the list without the session's and "other" warnings, and
- * those three counted in `hidden`.
+ * those three counted in `hidden`; the three information lines hidden and counted.
  */
 export const complianceShowing: ComplianceResponse = {
   ...complianceFull,
   rows: complianceFull.rows.filter((row) => row.family !== 'other'),
   warnings: complianceFull.warnings.filter((w) => w.family !== 'other' && w.sessionId === null),
   hidden: 3,
+  information: { lines: [], hidden: 3, source: 'reporter' },
 };

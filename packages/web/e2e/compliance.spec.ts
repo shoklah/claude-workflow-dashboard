@@ -20,6 +20,11 @@ test('the compliance page lists a cell’s warnings with their run and has no ax
   const list = page.getByRole('list', { name: 'Warnings' });
   await expect(list.getByText('final_review step 1 has no agent id')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  // report-v7's information lines, below the warnings.
+  const information = page.getByRole('list', { name: 'Information from the reporter' });
+  await expect(information.getByRole('listitem').filter({ hasText: /^inline sweeps:/ })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await list.getByRole('link', { name: 'tidepool-api · feature/webhooks' }).click();
   await expect(page.getByRole('heading', { name: 'tidepool-api · feature/webhooks' })).toBeVisible();
 });

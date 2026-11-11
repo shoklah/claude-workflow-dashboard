@@ -40,6 +40,7 @@ export const Empty: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByText('No warnings in this period.')).toBeVisible();
     await expect(canvas.queryByRole('button', { name: /week of/ })).toBeNull();
+    await expect(canvas.queryByRole('heading', { name: /Information from the reporter/ })).toBeNull();
   },
 };
 
@@ -105,6 +106,15 @@ export const Full: Story = {
     const session = within(canvas.getByRole('list', { name: 'Warnings' }));
     await expect(session.queryByRole('link')).toBeNull();
     await expect(session.getByText('5f0c9a1e')).toBeVisible();
+
+    // The reporter's information lines below the warnings, under its mark.
+    await expect(canvas.getByRole('heading', { name: /Information from the reporter/ })).toHaveTextContent(/reporter$/);
+    const information = within(canvas.getByRole('list', { name: 'Information from the reporter' }));
+    await expect(information.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'atlas feat/search: the handoff came 12 calls after the cap',
+      'inline sweeps: 2',
+      'over the cap without a handoff: 1 transcripts',
+    ]);
   },
 };
 
@@ -142,7 +152,7 @@ export const Step: Story = {
 };
 
 /** Showing mode: no "other" rows, and what it left out of the list (other projects', sessions' and "other" warnings) is
- * counted under it. */
+ * counted under it; the reporter's information lines are hidden and counted. */
 export const Hidden: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': complianceShowing });
@@ -154,5 +164,9 @@ export const Hidden: Story = {
       ),
     ).toBeVisible();
     await expect(canvas.queryByRole('rowheader', { name: 'Other' })).toBeNull();
+    const information = within(canvas.getByRole('list', { name: 'Information from the reporter' }));
+    await expect(information.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '3 information lines are hidden while showing',
+    ]);
   },
 };
