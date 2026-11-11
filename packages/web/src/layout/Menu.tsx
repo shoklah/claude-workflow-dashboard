@@ -7,6 +7,7 @@ const ENTRIES = [
   { to: '/runs', label: 'Runs', exact: false },
   { to: '/findings', label: 'Findings', exact: false },
   { to: '/sessions', label: 'Sessions', exact: false },
+  { to: '/context', label: 'Context', exact: false },
   { to: '/compliance', label: 'Compliance', exact: false },
   { to: '/steps', label: 'Steps and rules', exact: false },
   { to: '/skills', label: 'Skills', exact: false },

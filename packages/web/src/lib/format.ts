@@ -132,6 +132,23 @@ export function formatCompact(value: number | null): string {
   return value === null ? NONE : new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value);
 }
 
+/** A tool-result class's name on screen, in the Context page's column order. */
+export const TOOL_CLASS_LABELS: Record<string, string> = {
+  read: 'Read',
+  bash_other: 'Bash',
+  run: 'Run',
+  agent: 'Agent',
+  edit: 'Edit',
+  mcp: 'MCP',
+  other: 'Other',
+};
+
+/** The Context page's line for the units its sums leave out: "Not counted: 3 runs and 0 sessions with no context
+ * facts." */
+export function uncountedLabel({ runs, sessions }: { runs: number; sessions: number }): string {
+  return `Not counted: ${plural(runs, 'run')} and ${plural(sessions, 'session')} with no context facts.`;
+}
+
 /** The tokens of every kind together, compact with one fraction digit: "9.8M", "333K", a kind that isn't known as 0; a
  * dash when they aren't known. */
 export function formatTokens(tokens: Record<string, number | null> | null): string {

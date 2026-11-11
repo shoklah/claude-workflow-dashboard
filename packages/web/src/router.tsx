@@ -1,6 +1,7 @@
 import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { toStepKind, type StepKind } from '@cwd/shared';
 import { CompliancePage } from './compliance/CompliancePage.tsx';
+import { ContextPage } from './context/ContextPage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
 import { HomePage } from './home/HomePage.tsx';
 import { Shell } from './layout/Shell.tsx';
@@ -52,6 +53,12 @@ const sessionsRoute = createRoute({
   component: SessionsPage,
 });
 
+const contextRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/context',
+  component: ContextPage,
+});
+
 const complianceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/compliance',
@@ -94,6 +101,7 @@ export const router = createRouter({
     runRoute,
     findingsRoute,
     sessionsRoute,
+    contextRoute,
     complianceRoute,
     stepsRoute,
     skillsRoute,
