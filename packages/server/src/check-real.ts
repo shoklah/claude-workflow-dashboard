@@ -1,13 +1,14 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
 // paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
 // groups, step kinds, rules, unit figures and context weeks whose sums differ from the reporter's totals, the count of
-// skills and of models that differ, and the leaks showing mode lets through, each by route and kind. It prints no
-// value from the data but those weeks' dates, and no skill or agent name, since a project can name one. Usage:
+// skills, of models and of units whose phases differ from their models and advisor, and the leaks showing mode lets
+// through, each by route and kind. It prints no value from the data but those weeks' dates, and no skill or agent
+// name, since a project can name one. Usage:
 // `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadReport, PATHS, splitSessionId, type RunEntry, type RunsResponse, type SessionEntry } from '@cwd/shared';
+import { loadReport, modelsCost, PATHS, splitSessionId, type RunEntry, type RunsResponse, type SessionEntry } from '@cwd/shared';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { importReport } from './db/import.ts';
@@ -294,6 +295,28 @@ else {
       : null,
   );
 
+  // Each run's and session's phases against its own models cost and advisor, cost to the cent, a missing figure 0; a
+  // count only, since a unit can name a project.
+  const phased = [...entries, ...sessionEntries].filter((unit) => unit.phases != null);
+  const sum = (values: (number | null | undefined)[]) => values.reduce<number>((n, value) => n + (value ?? 0), 0);
+  differLine(
+    'phases',
+    `${phased.length} compared, `,
+    phased.length
+      ? phased
+          .filter(({ phases, models, advisor }) => {
+            const list = phases ?? [];
+            return (
+              cents(sum(list.map((phase) => modelsCost(phase.models)))) !== cents(modelsCost(models) ?? 0) ||
+              sum(list.map((phase) => phase.advisor?.calls)) !== (advisor?.calls ?? 0) ||
+              cents(sum(list.map((phase) => phase.advisor?.cost))) !== cents(advisor?.cost ?? 0)
+            );
+          })
+          .map(String)
+      : null,
+    false,
+  );
+
   // Showing mode on the first root, in a fresh database in a temp folder (never the real one): every response's
   // forbidden strings (forbiddenStrings, and the home folder) are counted, never printed.
   const dir = mkdtempSync(join(tmpdir(), 'cwd check real '));
@@ -341,6 +364,7 @@ else {
       '/api/compliance?resolved=1&weeks=52',
       '/api/sessions?weeks=52',
       '/api/context?weeks=52',
+      '/api/spend?weeks=52',
     ];
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
     const routes = ['/api/runs?weeks=52', ...paths, ...pages.map(() => '/api/runs/:key')];
