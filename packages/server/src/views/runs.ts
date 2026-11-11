@@ -1,10 +1,11 @@
 import {
+  contextFacts,
   parseTime,
   projectNames,
   projectRoot,
-  readShare,
   runFacts,
   sessionRootOf,
+  toolCharacters,
   weekOf,
   weekStart,
   type Finding,
@@ -340,7 +341,7 @@ export function runView(
   };
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;
-  const context = entry.context;
+  const context = contextFacts(entry);
   return {
     facts,
     timeline: timeline(entry, steps, facts, labelOf),
@@ -357,18 +358,7 @@ export function runView(
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
-    context: context
-      ? {
-          calls: context.calls ?? 0,
-          medianTokens: context.median_tokens ?? null,
-          maxTokens: context.max_tokens ?? null,
-          callsOverCap: context.calls_over_cap ?? 0,
-          handoff: context.handoff ?? null,
-          toolCharacters: Object.values(entry.tool_results ?? {}).reduce((sum, n) => sum + n, 0),
-          readShare: readShare(entry.tool_results),
-          sweeps: { inline: entry.sweeps?.inline ?? 0, delegated: entry.sweeps?.delegated ?? 0 },
-        }
-      : null,
+    context: context && { ...context, toolCharacters: toolCharacters(entry.tool_results) },
     warnings: currentWarnings([run], [], warnings).map((w) => showWarning(scope, w.text)),
     categoryLabels: categoryLabels(list),
   };

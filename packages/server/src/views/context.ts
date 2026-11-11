@@ -1,4 +1,5 @@
 import {
+  contextFacts,
   parseTime,
   readShare,
   weekOf,
@@ -95,15 +96,9 @@ export function contextView(input: {
     const shownNext = next && showSession(scope, next.project) ? sessionFacts(next, runRoots, names, scope) : null;
     return {
       ...fields,
-      calls: context.calls ?? 0,
-      medianTokens: context.median_tokens ?? null,
-      maxTokens: context.max_tokens ?? null,
-      callsOverCap: context.calls_over_cap ?? 0,
+      ...contextFacts(entry)!,
       overCap: !!context.over_cap,
-      handoff: context.handoff ?? null,
       handedOffTo: shownNext && { title: shownNext.title, sessionId: shownNext.sessionId },
-      readShare: readShare(entry.tool_results),
-      sweeps: { inline: entry.sweeps?.inline ?? 0, delegated: entry.sweeps?.delegated ?? 0 },
     };
   };
 
