@@ -58,6 +58,19 @@ describe('loadReport', () => {
     expect(webhooks.advisor?.failed).toEqual({ overloaded_error: 1 });
   });
 
+  test('reads each unit’s context, tool results and sweeps of the v7 fixture', () => {
+    const result = loadReport(fixture('report-v7'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { report } = result;
+    const full = report.runs.find((r) => r.record?.date === '2026-11-10T16:45:00Z')!;
+    expect(full.context?.calls_over_cap).toBe(87);
+    expect(full.tool_results?.read).toBe(624800);
+    expect(full.sweeps?.delegated).toBe(3);
+    const windowless = report.runs.find((r) => r.record?.branch === 'feature/rate-limits')!;
+    expect(windowless).toMatchObject({ context: null, tool_results: null, sweeps: null });
+  });
+
   test('accepts a failing-test entry whose task isn’t a number, as the raw record a session wrote', () => {
     const json = fixture('report-v5');
     const run = json.runs.find((r: { schema: number }) => r.schema === 5);
@@ -128,6 +141,12 @@ describe('reporterTotals', () => {
     const totals = reporterTotals(fixture('report-v5').totals);
     expect(totals?.scoreboard?.dispatch_guard).toEqual({ no_model: 1, no_simplify: 1 });
     expect(reporterTotals(fixture('report-full').totals)?.scoreboard).toBeUndefined();
+  });
+
+  test('parses the weekly context totals and the information lines', () => {
+    const totals = reporterTotals(fixture('report-v7').totals);
+    expect(totals?.context?.[1].units_over_cap).toBe(4);
+    expect(totals?.health?.info).toHaveLength(3);
   });
 
   test('is null with no import, or for totals the schema rejects', () => {

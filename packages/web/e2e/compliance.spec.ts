@@ -2,8 +2,8 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, report-later and report-v6, whose warnings carry their kinds and steps; the
-// webhooks run's final review has no agent id.
+// dev:fixtures' data: report-full, report-later, report-v6 and report-v7, whose warnings carry their kinds and steps;
+// the webhooks run's final review has no agent id.
 
 test.beforeEach(async ({ page }) => {
   await pinClock(page);

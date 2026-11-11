@@ -2,7 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, report-later and report-v6, whose sessions and advisors are CR6's.
+// dev:fixtures' data: report-full, report-later, report-v6 and report-v7, whose sessions and advisors are CR6's.
 
 test.beforeEach(async ({ page }) => {
   await pinClock(page);

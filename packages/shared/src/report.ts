@@ -108,6 +108,21 @@ const UnitAdvisorSchema = z.object({
 // A unit's advisor notes: how many, how many changed something, and the consultations with none.
 const NotesSchema = z.object({ notes: num, changed: num, missing: num });
 
+// A unit's main calls' context (CR15): null when the reporter read no call of its own. handoff_to is the successor
+// session's reporter key.
+const ContextSchema = z.object({
+  calls: num,
+  tokens: num,
+  median_tokens: num,
+  max_tokens: num,
+  over_cap: bool,
+  calls_over_cap: num,
+  handoff: str,
+  handoff_to: str,
+});
+
+const SweepsSchema = z.object({ inline: num, delegated: num });
+
 const DispatchSchema = z.object({
   kind: str,
   agent: str,
@@ -152,6 +167,9 @@ export const RunEntrySchema = z.object({
   advisor: UnitAdvisorSchema.nullish(),
   notes: NotesSchema.nullish(),
   main: z.object({ model: str, effort: str }).nullish(),
+  context: ContextSchema.nullish(),
+  tool_results: counts,
+  sweeps: SweepsSchema.nullish(),
   title: str,
 });
 
@@ -171,6 +189,9 @@ export const SessionEntrySchema = z.object({
   notes: NotesSchema.nullish(),
   refusals: counts,
   startup: bool,
+  context: ContextSchema.nullish(),
+  tool_results: counts,
+  sweeps: SweepsSchema.nullish(),
   warns: strings,
   warnings: z.array(WarningSchema).nullish(),
   title: str,
@@ -236,6 +257,21 @@ const TotalsSchema = z.object({
   advisor: AdvisorSchema.nullish(),
   // Per offered skill: its outcomes' counts, and offered (accepted plus skipped).
   offers: z.record(z.string(), counts).nullish(),
+  // Per week, over the units whose context isn't null (context_rows).
+  context: z
+    .array(
+      z.object({
+        week: str,
+        calls: num,
+        tokens: num,
+        max_tokens: num,
+        units_over_cap: num,
+        tool_results: counts,
+        sweeps: SweepsSchema.nullish(),
+      }),
+    )
+    .nullish(),
+  health: z.object({ info: strings }).nullish(),
 });
 
 // The finding category list: its version, tie-break rule, validity definitions and a list per area.
