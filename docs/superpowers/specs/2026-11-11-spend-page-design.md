@@ -61,7 +61,7 @@ Checked on the owner's real export on 2026-11-11, counts and field names only.
 
 ### 1. Import and storage
 
-- `phases` joins the run's and the session's schema in `packages/shared/src/report.ts`, `.nullish()`, reading `name`, each model's `cost`, and the advisor's `calls` and `cost`. The token counts and `cost_by_kind` are left out, since the page doesn't read them.
+- `phases` joins the run's and the session's schema in `packages/shared/src/report.ts`, `.nullish()`, reading `name`, `models` through the units' own `ModelsSchema` (so `modelsCost` works on a phase), and the advisor's `calls` and `cost`. `cost_by_kind` is left out.
 - A phase name the app doesn't know is kept as a string, not rejected, so a new phase in the reporter doesn't fail an import.
 - No migration: units' raw JSON is already stored whole, and nothing derived is added.
 - Across a unit's versions, a non-null `phases` replaces the stored one whole, and a null never replaces a known value, as for the reporter's other per-version values.
@@ -128,7 +128,7 @@ New lines under `## Code conventions`: `phaseSums` as the one sum of spend by ph
 - An unknown phase name falls under Unattributed.
 - From the builder check: units with no `phases` are counted together under one wording; the gap with Weeks and Home is explained in the note, with no extra runs-only figure, since the path filter already gives one; advisor figures come from the phases.
 - A model with no price keeps its column, showing "–", and the note says the period holds such spend.
-- The schema reads no token count, since the page is cost only.
+- A phase's `models` reuses the units' `ModelsSchema`, token counts included, though the page is cost only: one schema and one cost function, not a second, narrower one.
 
 ## Decided with the owner
 
