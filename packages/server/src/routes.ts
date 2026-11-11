@@ -223,6 +223,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
         now: deps.now(),
         seenAt: getSeenAt(deps.db),
         scope: scopeFor(runs, sessions),
+        totals: lastGoodImport(deps.db)?.totals,
       }),
     );
   });

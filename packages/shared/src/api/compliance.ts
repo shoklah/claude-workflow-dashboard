@@ -23,12 +23,14 @@ export type ComplianceWarning = {
 };
 
 /** `GET /api/compliance`: the weeks, oldest first; a row per kind with a warning in the period, by family, "other"
- * last (none while showing); how many of the rows' warnings are new since the "seen" time; the warnings listed; and
- * how many showing mode left out of the list. */
+ * last (none while showing); how many of the rows' warnings are new since the "seen" time; the warnings listed; how
+ * many showing mode left out of the list; and the latest export's information lines (`totals.health.info`), not
+ * filtered by period, none listed while showing and `hidden` counting them, null when the export has none. */
 export type ComplianceResponse = {
   weeks: string[];
   rows: ComplianceRow[];
   newWarnings: number;
   warnings: ComplianceWarning[];
   hidden: number;
+  information: { lines: string[]; hidden: number; source: 'reporter' } | null;
 };

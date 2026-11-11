@@ -1,5 +1,6 @@
 import {
   parseTime,
+  reporterTotals,
   toStepKind,
   weekOf,
   type ComplianceQuery,
@@ -75,7 +76,9 @@ export function familyOf(kind: string | null): string {
  * scope, the "other" rows are left out (an unknown kind can name anything) and the family rows' cells still count every
  * warning, but the list holds only the shown projects' run and session warnings outside "other", masked (showFacts,
  * showSession, showWarning), and `hidden` counts every warning in the period left out of the list. `newWarnings`
- * counts the grid's warnings first seen after seenAt, every project's.
+ * counts the grid's warnings first seen after seenAt, every project's. `information` is the reporter's
+ * `health.info` lines from `totals` (reporterTotals), null when it has none; with a scope none is listed, as any line
+ * can name a project, and `hidden` counts them.
  */
 export function complianceView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -85,6 +88,7 @@ export function complianceView(input: {
   now: Date;
   seenAt: Date | null;
   scope: Scope | null;
+  totals: unknown;
 }): ComplianceResponse {
   const { query, seenAt, scope } = input;
   const { weeks, matches } = period(query, input.now);
@@ -142,11 +146,13 @@ export function complianceView(input: {
     ];
   });
 
+  const info = reporterTotals(input.totals)?.health?.info;
   return {
     weeks,
     rows,
     newWarnings: inGrid.filter((x) => isNew(x.w)).length,
     warnings,
     hidden: inPeriod.length - warnings.length,
+    information: info ? { lines: scope ? [] : info, hidden: scope ? info.length : 0, source: 'reporter' } : null,
   };
 }
