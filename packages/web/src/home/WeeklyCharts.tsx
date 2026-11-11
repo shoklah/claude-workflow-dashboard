@@ -1,5 +1,5 @@
 import ReactECharts from 'echarts-for-react';
-import { parseTime, weekOf, type HomeResponse, type StepKind } from '@cwd/shared';
+import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
 import { STEP_LABELS, formatCompact, formatCost, weekLabel } from '../lib/format.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
@@ -12,6 +12,15 @@ const stepKinds = (charts: Charts) => Object.keys(charts.findingsByStep) as Step
 // fixed order (validated: adjacent pairs pass CVD and normal-vision; aqua, yellow and magenta sit under 3:1, so the
 // table view below carries every number), and the chart chrome's ink, gridline and baseline.
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6'];
+// A spend group's colour, in the chart and the table's swatches: the palette's first four slots in the groups' order,
+// and a neutral grey outside the palette for Unattributed, so it reads as "the rest" (the table view carries its numbers).
+export const SPEND_GROUP_COLORS: Record<SpendGroup, string> = {
+  plan: SERIES[0],
+  implement: SERIES[1],
+  review: SERIES[2],
+  coordination: SERIES[3],
+  unattributed: '#b5b4ad',
+};
 const SURFACE = '#ffffff';
 const INK = '#52514e';
 const GRID = '#e1e0d9';
@@ -88,27 +97,48 @@ export function singleBars(
 }
 
 /**
- * Bars of several series by week, each series a palette slot in order, a 1px surface border between bars, with a
- * legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the room under the plot
- * for the legend: 64px by default, for a legend that wraps (Home's step kinds), 28px for one that fits on one line.
+ * Bars of several series by week, each series a palette slot in order unless it names its `color`, a 1px surface border
+ * between bars, with a legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the
+ * room under the plot for the legend: 64px by default, for a legend that wraps (Home's step kinds), 28px for one that
+ * fits on one line. A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar.
  */
 export function barsOption(
   weeks: string[],
-  series: { name: string; data: (number | null)[] }[],
-  { stack, legendRoom = 64 }: { stack?: string; legendRoom?: number } = {},
+  series: { name: string; data: (number | null)[]; color?: string }[],
+  {
+    stack,
+    legendRoom = 64,
+    cost = false,
+    totals = false,
+  }: { stack?: string; legendRoom?: number; cost?: boolean; totals?: boolean } = {},
 ) {
   const base = baseOption(weeks);
+  const format = (value: number | null) => (cost ? formatCost(value) : String(value ?? 0));
+  const total = (i: number) => series.reduce((sum, { data }) => sum + (data[i] ?? 0), 0);
   return {
     ...base,
-    grid: { ...base.grid, bottom: legendRoom },
+    // Room above the plot for the totals' labels.
+    grid: { ...base.grid, top: totals ? 20 : base.grid.top, bottom: legendRoom },
+    tooltip: cost ? { ...base.tooltip, valueFormatter: (value?: number | null) => formatCost(value ?? null) } : base.tooltip,
+    yAxis: cost ? { ...base.yAxis, axisLabel: { ...base.yAxis.axisLabel, formatter: '${value}' } } : base.yAxis,
     legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: INK } },
-    series: series.map(({ name, data }, i) => ({
+    series: series.map(({ name, data, color }, i) => ({
       name,
       type: 'bar',
       stack,
       data,
       barMaxWidth: 24,
-      itemStyle: { color: SERIES[i], borderColor: SURFACE, borderWidth: 1 },
+      itemStyle: { color: color ?? SERIES[i], borderColor: SURFACE, borderWidth: 1 },
+      // The top series carries each stack's total.
+      label:
+        totals && i === series.length - 1
+          ? {
+              show: true,
+              position: 'top',
+              color: INK,
+              formatter: ({ dataIndex }: { dataIndex: number }) => format(total(dataIndex)),
+            }
+          : undefined,
     })),
   };
 }

@@ -1,4 +1,4 @@
-import { parseTime, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -77,6 +77,22 @@ export const KIND_LABELS: Record<string, string> = {
 export function kindLabel(kind: string | null): string {
   return kind === null ? 'other' : (KIND_LABELS[kind] ?? countLabel(kind));
 }
+
+/** A reporter's phase on screen, in lower case as the Spend page writes phases: a step kind by its step's label
+ * ("fix-check"), another name with spaces ("plan writing"). */
+export function phaseLabel(name: string): string {
+  const kind = toStepKind(name);
+  return (kind ? STEP_LABELS[kind] : countLabel(name)).toLowerCase();
+}
+
+/** A spend group's name on screen. */
+export const SPEND_GROUP_LABELS: Record<SpendGroup, string> = {
+  plan: 'Plan',
+  implement: 'Implement',
+  review: 'Review and cleanup',
+  coordination: 'Coordination',
+  unattributed: 'Unattributed',
+};
 
 /** A warning family's name on screen, as the Compliance page heads its rows. */
 export const FAMILY_LABELS: Record<string, string> = {
