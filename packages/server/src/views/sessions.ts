@@ -65,6 +65,26 @@ function timelineOf(
 }
 
 /**
+ * A session's title (masked, maskText), session ID (null with a scope), project key (sessionProjectKey over the stored
+ * runs' roots) and project name (the scope's, else the stored one; null for "other project"), for the Sessions and
+ * Context views.
+ */
+export function sessionFacts(
+  session: SessionEntry,
+  runRoots: Set<string>,
+  names: Map<string, string>,
+  scope: Scope | null,
+): { title: string | null; sessionId: string | null; projectKey: string | null; project: string | null } {
+  const key = sessionProjectKey(session.project, runRoots);
+  return {
+    title: maskText(scope, session.title ?? null),
+    sessionId: scope ? null : splitSessionId(session.file).sessionId,
+    projectKey: key,
+    project: key === null ? null : (scope?.names.get(key) ?? names.get(sessionRootOf(session.project)!) ?? null),
+  };
+}
+
+/**
  * The Sessions page: the sessions that started in the query's period (periodSessions), newest start first. The
  * project filter keeps a session whose root is that project's (a session in no stored run's root is "other project",
  * with no key, which no project filter matches), the path filter one holding a run of that path, and "has warnings"
@@ -127,10 +147,7 @@ export function sessionsView(input: {
     const end = session.end ?? null;
     sessions.push({
       key: unit.key,
-      title: maskText(scope, session.title ?? null),
-      sessionId: scope ? null : splitSessionId(session.file).sessionId,
-      projectKey: key,
-      project: key === null ? null : (scope?.names.get(key) ?? names.get(sessionRootOf(session.project)!) ?? null),
+      ...sessionFacts(session, runRoots, names, scope),
       start,
       end,
       minutes: end === null ? null : (time(end) - time(start)) / 60000,
