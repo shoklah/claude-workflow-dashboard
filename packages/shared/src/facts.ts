@@ -58,7 +58,7 @@ export function modelsCost(models: RunEntry['models']): number | null {
 
 /** A unit's or a week's tool results summed over every class, 0 when the map is null. */
 export function toolCharacters(toolResults: Record<string, number> | null | undefined): number {
-  return Object.values(toolResults ?? {}).reduce((sum, tokens) => sum + tokens, 0);
+  return Object.values(toolResults ?? {}).reduce((sum, characters) => sum + characters, 0);
 }
 
 /** The `read` class's share, as a percent (0 to 100), of a unit's or a week's tool results summed over every class;
@@ -68,9 +68,6 @@ export function readShare(toolResults: Record<string, number> | null | undefined
   return total ? ((toolResults?.read ?? 0) / total) * 100 : null;
 }
 
-/** A run's or session's context facts, as the run page and the Context page show them: its calls, median and largest
- * tokens, calls past the cap and handoff time, its read share and its sweeps, an unknown count 0; null when the unit
- * has no `context`. */
 /** A unit's context facts as both its run page and the Context page show them: its main calls, their median and largest
  * tokens, the calls past the cap, the handoff's time, its read share and its sweeps by kind. */
 export type ContextFacts = {
@@ -83,6 +80,7 @@ export type ContextFacts = {
   sweeps: { inline: number; delegated: number };
 };
 
+/** A run's or session's context facts, an unknown count 0; null when the unit has no `context`. */
 export function contextFacts(unit: RunEntry | SessionEntry): ContextFacts | null {
   const context = unit.context;
   if (!context) return null;

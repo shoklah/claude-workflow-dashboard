@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { contextFull, contextHidden } from '../test/context.ts';
 import { ContextUnits } from './ContextUnits.tsx';
 
 const meta = {
   component: ContextUnits,
-  args: { units: contextFull.units, hidden: 0, over: true, onOverChange: fn() },
+  args: { units: contextFull.units, hidden: 0, over: true },
 } satisfies Meta<typeof ContextUnits>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -31,7 +31,7 @@ export const EmptyAll: Story = {
  * "Handed off to" cell naming its session or reading a dash.
  */
 export const Full: Story = {
-  play: async ({ canvas, args, userEvent }) => {
+  play: async ({ canvas }) => {
     const table = within(canvas.getByRole('region', { name: 'Runs and sessions' }));
     const body = table.getAllByRole('row').slice(1);
     await expect(body).toHaveLength(3);
@@ -53,10 +53,6 @@ export const Full: Story = {
     await expect(handedOff).toHaveTextContent('Plan the offline sync, part 2');
     await expect(within(handedOff).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
 
-    const units = within(canvas.getByRole('group', { name: 'Units' }));
-    await expect(units.getByRole('button', { name: 'Over the cap' })).toHaveAttribute('aria-pressed', 'true');
-    await userEvent.click(units.getByRole('button', { name: 'All' }));
-    await expect(args.onOverChange).toHaveBeenCalledWith(false);
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
   },
 };

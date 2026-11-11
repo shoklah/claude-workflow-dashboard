@@ -112,8 +112,8 @@ export function advisorLabel(advisor: { notes: number | null; changed: number | 
   return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${formatShare(advisor.share)}`;
 }
 
-/** A share as a whole percent: "8%"; a dash when it isn't known (null, or undefined as a chart tooltip passes it). */
-export function formatShare(share: number | null | undefined): string {
+/** A share as a whole percent: "8%"; a dash when it isn't known. */
+export function formatShare(share: number | null): string {
   return formatPercent(share == null ? null : Math.round(share));
 }
 
@@ -127,11 +127,10 @@ export function total(counts: Record<string, number | null> | readonly (number |
   return Object.values(counts).reduce<number>((sum, n) => sum + (n ?? 0), 0);
 }
 
-/** A number written compact with its default rounding: "281K", "1.3M"; a dash when it isn't known (null, or undefined
- * as a chart tooltip passes it). */
 const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact' });
 
-export function formatCompact(value: number | null | undefined): string {
+/** A number written compact with its default rounding: "281K", "1.3M"; a dash when it isn't known. */
+export function formatCompact(value: number | null): string {
   return value == null ? NONE : COMPACT.format(value);
 }
 

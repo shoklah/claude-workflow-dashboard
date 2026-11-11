@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ContextResponse, ContextWeek, FindingsQuery } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { Option } from '../findings/FindingsPage.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, barsOption, singleBars } from '../home/WeeklyCharts.tsx';
 import { TOOL_CLASS_LABELS, formatCompact, formatShare, uncountedLabel, weekLabel } from '../lib/format.ts';
@@ -105,7 +106,7 @@ function ContextTable({ weeks }: { weeks: ContextWeek[] }) {
 /**
  * The Context page: the period's weekly context (mean and largest per call against the cap, units over the cap, the
  * read share of tool results and the sweeps), their table view, and the runs and sessions behind them, over the cap by
- * default.
+ * default through the "Units" switch beside the filters.
  */
 export function ContextPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 12 });
@@ -116,7 +117,16 @@ export function ContextPage() {
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Context</h1>
-      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })} />
+      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })}>
+        <div role="group" aria-label="Units" className="flex gap-1">
+          <Option pressed={over} onClick={() => setOver(true)}>
+            Over the cap
+          </Option>
+          <Option pressed={!over} onClick={() => setOver(false)}>
+            All
+          </Option>
+        </div>
+      </ListFilters>
       {context.isPending && <p className="text-sm text-muted-foreground">Loading the context…</p>}
       {context.isError && <p className="text-sm">Couldn't load the context.</p>}
       {data && (
@@ -128,7 +138,7 @@ export function ContextPage() {
             {formatCompact(data.cap)}: the app's default until the reporter exports its own.
           </p>
           <ContextTable weeks={data.weeks} />
-          <ContextUnits units={data.units} hidden={data.hidden} over={over} onOverChange={setOver} />
+          <ContextUnits units={data.units} hidden={data.hidden} over={over} />
         </>
       )}
     </div>

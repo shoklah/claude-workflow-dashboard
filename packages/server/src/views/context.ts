@@ -46,7 +46,7 @@ export function contextSums(runs: RunEntry[], sessions: SessionEntry[]): Map<str
     sum.tokens += context.tokens ?? 0;
     if (context.max_tokens != null) sum.maxTokens = Math.max(sum.maxTokens ?? 0, context.max_tokens);
     if (context.over_cap) sum.unitsOverCap += 1;
-    for (const [kind, tokens] of Object.entries(unit.tool_results ?? {})) addCount(sum.toolResults, kind, tokens);
+    for (const [kind, characters] of Object.entries(unit.tool_results ?? {})) addCount(sum.toolResults, kind, characters);
     for (const [kind, n] of Object.entries(unit.sweeps ?? {})) addCount(sum.sweeps, kind, n ?? 0);
     sums.set(week, sum);
   }

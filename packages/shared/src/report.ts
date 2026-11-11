@@ -108,8 +108,8 @@ const UnitAdvisorSchema = z.object({
 // A unit's advisor notes: how many, how many changed something, and the consultations with none.
 const NotesSchema = z.object({ notes: num, changed: num, missing: num });
 
-// A unit's main calls' context (CR15): null when the reporter read no call of its own. handoff_to is the successor
-// session's reporter key.
+// A unit's main calls' context: null when the reporter read no call of its own. handoff_to is the successor session's
+// reporter key, CR15's proposed field, absent until it lands.
 const ContextSchema = z.object({
   calls: num,
   tokens: num,
