@@ -4,7 +4,7 @@ import { useLiveQuery } from '../api.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Option } from '../findings/FindingsPage.tsx';
 import { Chart, SPEND_GROUP_COLORS, barsOption } from '../home/WeeklyCharts.tsx';
-import { SPEND_GROUP_LABELS, formatCost, plural, weekLabel } from '../lib/format.ts';
+import { SPEND_GROUP_LABELS, formatCost, plural, total, weekLabel } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 import { SpendTable } from './SpendTable.tsx';
 
@@ -43,7 +43,7 @@ function SpendWeeks({ response, groups }: { response: SpendResponse; groups: Spe
                 </TableCell>
               ))}
               <TableCell className={COST}>{formatCost(w.total)}</TableCell>
-              <TableCell className={COST}>{w.uncounted.runs + w.uncounted.sessions}</TableCell>
+              <TableCell className={COST}>{total(w.uncounted)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -85,6 +85,7 @@ export function SpendPage() {
   const projects = useProjects();
   const data = spend.data;
   const groups = data?.groups.map((row) => row.group) ?? [];
+  const empty = data?.groups.every((row) => row.phases.length === 0);
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Spend</h1>
@@ -104,10 +105,8 @@ export function SpendPage() {
       </ListFilters>
       {spend.isPending && <p className="text-sm text-muted-foreground">Loading the spend…</p>}
       {spend.isError && <p className="text-sm">Couldn't load the spend.</p>}
-      {data && data.groups.every((row) => row.phases.length === 0) && (
-        <p className="text-sm">No spend by phase in this period.</p>
-      )}
-      {data && data.groups.some((row) => row.phases.length > 0) && (
+      {data && empty && <p className="text-sm">No spend by phase in this period.</p>}
+      {data && !empty && (
         <>
           <Chart
             title={TITLE}

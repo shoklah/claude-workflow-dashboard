@@ -312,7 +312,7 @@ else {
               cents(sum(list.map((phase) => phase.advisor?.cost))) !== cents(advisor?.cost ?? 0)
             );
           })
-          .map(String)
+          .map(() => '') // a count only: differLine prints no name
       : null,
     false,
   );

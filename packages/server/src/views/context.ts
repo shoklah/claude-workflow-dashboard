@@ -1,8 +1,6 @@
 import {
   contextFacts,
-  parseTime,
   readShare,
-  weekOf,
   type ContextQuery,
   type ContextResponse,
   type ContextSums,
@@ -12,7 +10,7 @@ import {
   type SessionEntry,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { addCount, periodStoredUnits, rootOf, storedFacts, storedNames } from './runs.ts';
+import { addCount, periodStoredUnits, unitWeeks, rootOf, storedFacts, storedNames } from './runs.ts';
 import { showFacts, showSession, type Scope } from './scope.ts';
 import { sessionFacts } from './sessions.ts';
 
@@ -32,14 +30,9 @@ export function emptyContext(): ContextSums {
  */
 export function contextSums(runs: RunEntry[], sessions: SessionEntry[]): Map<string, ContextSums> {
   const sums = new Map<string, ContextSums>();
-  const units = [
-    ...runs.map((run) => ({ unit: run, time: run.record?.date })),
-    ...sessions.map((session) => ({ unit: session, time: session.start })),
-  ];
-  for (const { unit, time } of units) {
+  for (const { unit, week } of unitWeeks(runs, sessions)) {
     const context = unit.context;
-    if (!context || !time) continue;
-    const week = weekOf(parseTime(time));
+    if (!context) continue;
     const sum = sums.get(week) ?? emptyContext();
     sum.units += 1;
     sum.calls += context.calls ?? 0;

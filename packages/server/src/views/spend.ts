@@ -1,6 +1,4 @@
 import {
-  parseTime,
-  weekOf,
   type RunEntry,
   type SessionEntry,
   type SpendGroup,
@@ -10,7 +8,7 @@ import {
   type SpendRow,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { periodUnits } from './runs.ts';
+import { periodUnits, unitWeeks } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
 /** The app's grouping of the reporter's phases; a name it doesn't hold counts under 'unattributed'. */
@@ -63,13 +61,7 @@ export function phaseSums(
   name: (model: string) => string = (model) => model,
 ): Map<string, PhaseSums> {
   const sums = new Map<string, PhaseSums>();
-  const units = [
-    ...runs.map((run) => ({ unit: run, time: run.record?.date, kind: 'runs' as const })),
-    ...sessions.map((session) => ({ unit: session, time: session.start, kind: 'sessions' as const })),
-  ];
-  for (const { unit, time, kind } of units) {
-    if (!time) continue;
-    const week = weekOf(parseTime(time));
+  for (const { unit, week, kind } of unitWeeks(runs, sessions)) {
     const sum = sums.get(week) ?? { phases: {}, uncounted: { runs: 0, sessions: 0 } };
     sums.set(week, sum);
     if (unit.phases == null) {
@@ -109,37 +101,37 @@ export function spendView(input: {
   const sums = phaseSums(runs, sessions, (model) => maskText(scope, model));
 
   // The period's cells by raw phase name, in first-seen order, and the period's total.
-  const phases = new Map<string, PhaseCell>();
+  const phases: Record<string, PhaseCell> = {};
   const all = emptyCell();
   for (const week of units.weeks) {
     for (const [name, cell] of Object.entries(sums.get(week)?.phases ?? {})) {
-      if (!phases.has(name)) phases.set(name, emptyCell());
-      addCell(phases.get(name)!, cell);
+      addCell((phases[name] ??= emptyCell()), cell);
       addCell(all, cell);
     }
   }
 
   const models = Object.keys(all.byModel).sort((a, b) => (all.byModel[b] ?? -1) - (all.byModel[a] ?? -1));
   const total = costOf(all);
-  const rowOf = (cell: PhaseCell, share: boolean): SpendRow => {
+  const rowOf = (cell: PhaseCell): SpendRow => {
     const cost = costOf(cell);
     return {
       cost,
-      share: share && total ? (100 * cost) / total : null,
+      share: total ? (100 * cost) / total : null,
       byModel: Object.fromEntries(models.map((m) => [m, all.byModel[m] === null ? null : (cell.byModel[m] ?? 0)])),
       advisor: cell.advisor,
     };
   };
 
   const groups = GROUPS.map((group): SpendGroupRow => {
-    const known = SPEND_GROUPS[group].filter((name) => phases.has(name));
-    const unknown = [...phases.keys()].filter((name) => groupOf(name) === group && !known.includes(name));
+    const known = SPEND_GROUPS[group].filter((name) => name in phases);
+    const unknown = Object.keys(phases).filter((name) => groupOf(name) === group && !known.includes(name));
     const cell = emptyCell();
-    const rows = [...known, ...unknown].map((name) => {
-      addCell(cell, phases.get(name)!);
-      return { ...rowOf(phases.get(name)!, true), name: unknown.includes(name) ? maskText(scope, name) : name };
-    });
-    return { ...rowOf(cell, true), group, phases: rows };
+    for (const name of [...known, ...unknown]) addCell(cell, phases[name]);
+    const rows = [
+      ...known.map((name) => ({ ...rowOf(phases[name]), name })),
+      ...unknown.map((name) => ({ ...rowOf(phases[name]), name: maskText(scope, name) })),
+    ];
+    return { ...rowOf(cell), group, phases: rows };
   });
 
   const weeks = units.weeks.map((week) => {
@@ -155,7 +147,7 @@ export function spendView(input: {
   return {
     weeks,
     groups,
-    total: rowOf(all, false),
+    total: { ...rowOf(all), share: null },
     models,
     unpriced: Object.values(all.byModel).includes(null),
     fullFrom: weeks[last + 1]?.week ?? null,
