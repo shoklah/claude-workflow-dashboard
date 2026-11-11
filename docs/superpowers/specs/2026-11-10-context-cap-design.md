@@ -1,6 +1,6 @@
 # Context cap, handoff chain and sweeper: design
 
-Date: 2026-11-10, grilled 2026-11-11. Status: draft, awaiting the owner's approval. Path: Full (the import's schema and `COUNT_MAPS`, so stored derived values; a new page, view and route; showing mode; `check:real`). Builds on the live dashboard design (`2026-11-09-live-dashboard-design.md`, decisions 18, 20, 44 and "Totals are sums over units") and on the reporter's context cap change, `claude-workflow` [#26](https://github.com/shoklah/claude-workflow/pull/26) (its design: `docs/superpowers/specs/2026-11-10-context-cap-design.md` there), merged and installed. Issue: [shoklah/claude-workflow-dashboard#16](https://github.com/shoklah/claude-workflow-dashboard/issues/16). Mockup: `docs/design/2026-11-10-context-cap/context.html`.
+Date: 2026-11-10, grilled 2026-11-11. Status: approved by the owner on 2026-11-11. Path: Full (the import's schema and `COUNT_MAPS`, so stored derived values; a new page, view and route; showing mode; `check:real`). Builds on the live dashboard design (`2026-11-09-live-dashboard-design.md`, decisions 18, 20, 44 and "Totals are sums over units") and on the reporter's context cap change, `claude-workflow` [#26](https://github.com/shoklah/claude-workflow/pull/26) (its design: `docs/superpowers/specs/2026-11-10-context-cap-design.md` there), merged and installed. Issue: [shoklah/claude-workflow-dashboard#16](https://github.com/shoklah/claude-workflow-dashboard/issues/16). Mockup: `docs/design/2026-11-10-context-cap/context.html`.
 
 ## Intent
 
