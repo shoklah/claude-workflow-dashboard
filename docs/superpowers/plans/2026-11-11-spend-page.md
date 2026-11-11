@@ -28,8 +28,7 @@
 1. A phase name the app doesn't know (the reporter adds one): the import still passes, the phase counts under Unattributed and shows its slug with spaces. Test in Task 2.
 2. A period with no counted unit, or only unpriced models: total 0, every share null (never `NaN`), the page shows its empty state. Tests in Tasks 2 and 4.
 3. A typed URL with `units=sessions` and a `path`: the response is the path's runs only. Test in Task 2.
-4. A unit with a null or missing time (a session with no `start`) that has `phases`: it is in no week and breaks nothing. Test in Task 2.
-5. A stored unit with `phases` whose later version has `phases: null`: the known value stays. Test in Task 1.
+4. A stored unit with `phases` whose later version has `phases: null`: the known value stays. Already pinned for any array by `merge.test.ts`'s 'an array replaces' and 'a null array keeps the known one'; `phases` gets no `COUNT_MAPS` entry.
 
 ---
 
@@ -38,7 +37,7 @@
 **Files:**
 - Modify: `packages/shared/src/report.ts` (a `PhasesSchema` beside `ModelsSchema`; `phases` on `RunEntrySchema` and `SessionEntrySchema`)
 - Modify: `packages/shared/fixtures/report-v7.json` (invented `phases` on its units)
-- Test: `packages/shared/test/load.test.ts`, `packages/server/test/merge.test.ts`
+- Test: `packages/shared/test/load.test.ts`
 
 **Interfaces:**
 - Produces: `RunEntry['phases']` and `SessionEntry['phases']`, both `{ name: string; models?: Models | null; advisor?: { calls?: number | null; cost?: number | null } | null }[] | null | undefined`, where `models` is the existing `ModelsSchema`'s type, so `modelsCost` works on a phase's `models`.
@@ -71,12 +70,10 @@ it('keeps a phase name the app does not know', () => {
 
 Use the file's own way of loading a fixture through the schema where it differs from `loadReport`.
 
-In `merge.test.ts`, in the file's style: a version with `phases: [{ name: 'implement', ... }]` followed by one with `phases: null` keeps the list; followed by one with another list, holds only the new list.
-
 - [ ] **Step 2: Run them to see them fail**
 
-Run: `pnpm vitest run packages/shared/test/load.test.ts packages/server/test/merge.test.ts`
-Expected: the two `load.test.ts` tests FAIL (no `phases` in the fixture, the field stripped). The merge tests may already pass, since `merge` replaces a non-object value whole and a null never replaces: keep them as the pin, and add nothing to `COUNT_MAPS`.
+Run: `pnpm vitest run packages/shared/test/load.test.ts`
+Expected: both FAIL (no `phases` in the fixture, the field stripped).
 
 - [ ] **Step 3: Add the schema**
 
@@ -84,7 +81,7 @@ Expected: the two `load.test.ts` tests FAIL (no `phases` in the fixture, the fie
 
 - [ ] **Step 4: Add the invented phases to `report-v7.json`**
 
-Runs and sessions are in file order (r0 to r6, s0 to s4). Each phase is `{ "name", "models": { "<model>": { "input", "output", "cache_read", "cache_write", "cost" } }, "advisor": { "calls", "cost" } }`, phases in the reporter's order (the spec's list of twelve). Costs below; split each unit's four token counts across its phases so they add up too; `advisor` is `{ "calls": 0, "cost": 0 }` where not given.
+Runs and sessions are in file order (r0 to r6, s0 to s4). Each phase is `{ "name", "models": { "<model>": { "cost" } }, "advisor": { "calls", "cost" } }`, phases in the reporter's order (the spec's list of twelve), with no token counts, which nothing reads. Costs below; `advisor` is `{ "calls": 0, "cost": 0 }` where not given.
 
 | Unit | Phases (model: cost) |
 |---|---|
@@ -109,7 +106,7 @@ Expected: PASS, the other fixture tests included.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/shared packages/server/test/merge.test.ts
+git add packages/shared
 git commit -m "feat: the units' phases in the schema and the fixture"
 ```
 
@@ -168,14 +165,13 @@ export function spendView(input: { runs: StoredUnit<RunEntry>[]; sessions: Store
 `phaseSums` over report-v7's runs and sessions, all weeks together:
 - the summed cost of every phase and model equals the summed `modelsCost` of the units with `phases` (25.06: runs 23.24, sessions 1.82), `toBeCloseTo`;
 - advisor: 10 calls, cost 0.78;
-- `uncounted` summed over the weeks is `{ runs: 3, sessions: 0 }` (r0 to r2; s4 has no `start`, so it is in no week);
+- `uncounted` summed over the weeks is `{ runs: 3, sessions: 0 }` (r0 to r2);
 - `claude-fable-6-preview` under `design` is `null`, never 0;
 - with `name: () => 'x'`, every `byModel` key is `'x'` and the totals are unchanged.
 
 `phaseSums` over inline units (the Review Focus cases):
 - a run with `phases: [{ name: 'a_new_phase', models: { m: { cost: 2 } } }]` sums under `a_new_phase`, and `groupOf('a_new_phase')` is `'unattributed'`;
 - a run with `phases: []` adds nothing and isn't `uncounted`; one with `phases: null` is `uncounted`;
-- a session with `phases` and no `start` gives an empty map;
 - a model priced in one unit and null in another sums to the priced cost.
 
 `spendView` (weeks 52):
@@ -198,7 +194,7 @@ Expected: FAIL, `views/spend.ts` not found.
 - [ ] **Step 3: Implement**
 
 - `phaseSums`: as `contextSums` finds each unit's week (`record?.date`, `start`, `weekOf(parseTime(...))`, a unit with no time skipped). A unit with `phases == null` adds 1 to its week's `uncounted`. A model's cell starts absent, becomes the sum of its non-null costs, and is `null` only while every cost seen for it is null.
-- `spendView`: `periodUnits` for the period's units and weeks; `units: 'runs'` or any `path` drops the sessions, `units: 'sessions'` with no `path` drops the runs; `phaseSums(runs, sessions, (m) => maskText(scope, m))`; every period week appears in `weeks`, zeros where it has no sums. A `share` is `100 * cost / total.cost`, null when the total is 0. `unpriced` is true when any `byModel` cell is null.
+- `spendView`: `periodUnits` for the period's units and weeks; `units: 'runs'` drops the sessions and `units: 'sessions'` with no `path` drops the runs (`periodUnits` already leaves sessions out under a path); `phaseSums(runs, sessions, (m) => maskText(scope, m))`; every period week appears in `weeks`, zeros where it has no sums. A `share` is `100 * cost / total.cost`, null when the total is 0. `unpriced` is true when any `byModel` cell is null.
 - The route block, after Context's: `const units = c.req.query('units'); const query: SpendQuery = { ...periodQuery(c), units: units === 'runs' || units === 'sessions' ? units : 'all' };` then `listUnits` for runs and sessions and `c.json(spendView({ ..., scope: scopeFor(runs, sessions) }))`.
 
 - [ ] **Step 4: Run the tests**
@@ -210,7 +206,7 @@ Expected: PASS.
 
 - Spend by phase is summed only by `phaseSums` in `packages/server/src/views/spend.ts`, over the units with a non-null `phases`, a run in its record's week and a session in its start's; a unit without counts in its week's `uncounted`, never filled from its `models`; a model the reporter has no price for stays null, and advisor cost stays outside every cost and share.
 - The Spend page's five groups are the app's, only in `SPEND_GROUPS` and `groupOf` beside `phaseSums`; a phase name the table doesn't hold counts under `unattributed`.
-- A fixture's `phases` add up to its unit's `models` in cost and tokens and to its `advisor` in calls and cost.
+- A fixture's `phases` add up to its unit's `models` in cost and to its `advisor` in calls and cost.
 
 - [ ] **Step 6: Commit**
 
@@ -233,7 +229,7 @@ git commit -m "feat: spend by phase, its view and its route"
 - Consumes: `RunEntry['phases']` (Task 1), `modelsCost`, the file's `differLine(label, compared, differ, names)`.
 
 - [ ] **Step 1: Write the failing tests**, in the file's style (beside the contexts test, l.141):
-- over report-v7 the output holds `phases: 8 compared, 0 differ` (r3 to r6 and s0 to s3; s4's empty list has nothing to compare and isn't counted);
+- the whole-output test of report-v7 (l.150-156) gains `phases: 8 compared, 0 differ` in its expected text (r3 to r6 and s0 to s3; s4's empty list has nothing to compare and isn't counted);
 - with one phase cost changed in a copy of the fixture, `phases: 8 compared, 1 differ`, and the line names no unit;
 - with one phase's advisor calls changed, `1 differ` too;
 - over a fixture with no `phases` (report-v6), `phases: not in the export`;
@@ -271,7 +267,7 @@ git commit -m "feat: check:real compares the phases with each unit's models"
 **Files:**
 - Create: `packages/web/src/spend/SpendPage.tsx`, `packages/web/src/spend/SpendTable.tsx`, `packages/web/src/spend/SpendPage.stories.tsx`, `packages/web/src/test/spend.ts`
 - Modify: `packages/web/src/findings/FindingsPage.tsx` (`Option` gains `disabledReason`), `packages/web/src/runs/RunsPage.tsx` (`listPath` takes `units`), `packages/web/src/home/WeeklyCharts.tsx` (`barsOption`: a series' optional `color`, and `totals`), `packages/web/src/lib/format.ts` (labels and the Unattributed grey), `packages/web/src/router.tsx`, `packages/web/src/layout/Menu.tsx`, `CLAUDE.md` (`## Code conventions`: the web lines)
-- Test: the stories' interaction tests; `packages/web/src/lib/format.test.tsx` if the file exists, else in the stories
+- Test: the stories' interaction tests; `packages/web/src/lib/format.test.ts` (`phaseLabel`: a step kind, `plan_writing`, an unknown name)
 
 **Interfaces:**
 - Consumes: `SpendResponse`, `SpendUnits`, `SpendGroup`, `SpendGroupRow` from `@cwd/shared` (Task 2); `ListFilters`, `listPath`, `useProjects`, `useLiveQuery`, `Chart`, `barsOption`, `ShareBar`, `formatCost`, `STEP_LABELS`, `NONE`.
@@ -279,16 +275,15 @@ git commit -m "feat: check:real compares the phases with each unit's models"
   - `Option({ pressed, onClick, children, disabledReason? }: { ...; disabledReason?: string })`: with a reason, a disabled button inside a focusable span whose tooltip shows the reason (the Tooltip pattern of `runs/FindingsTable.tsx` l.77-84).
   - `listPath(base, query & { ..., units?: SpendUnits })`: appends `units` unless it is `'all'` or undefined.
   - `barsOption(weeks, series: { name; data; color? }[], { stack?, legendRoom?, totals? })`: `color` overrides the palette slot; `totals: (value: number) => string` writes each stack's total above its bar.
-  - In `format.ts`: `phaseLabel(name: string): string` (`STEP_LABELS`' label where the name is a step kind; `design`, `plan writing`, `implement`, `coordination`, `unattributed`; any other name with its `_` as spaces), `SPEND_GROUP_LABELS: Record<SpendGroup, string>` (`Plan`, `Implement`, `Review and cleanup`, `Coordination`, `Unattributed`), `SPEND_REST = '#b5b4ad'`.
+  - In `format.ts`: `phaseLabel(name: string): string` (`STEP_LABELS`' label where the name is a step kind, else `countLabel(name)`, as `kindLabel` does), `SPEND_GROUP_LABELS: Record<SpendGroup, string>` (`Plan`, `Implement`, `Review and cleanup`, `Coordination`, `Unattributed`), `SPEND_REST = '#b5b4ad'`.
   - `SpendPage()`, no props, at `/spend`; `SpendTable({ response }: { response: SpendResponse })`.
 
 Load the `dataviz` skill before the chart work.
 
-- [ ] **Step 1: Write the story fixtures** in `src/test/spend.ts`: invented `SpendResponse`s `spendFull` (the mockup's figures: 8 weeks, five groups, three models, `uncounted` 3 runs in the first week and 1 session in the second, `fullFrom` the third week), `spendUnpriced` (a fourth model, null in every row, `unpriced: true`), `spendRuns` (a smaller response for the path filter) and `spendEmpty` (weeks with zeros, `total.cost` 0, shares null, `models: []`).
+- [ ] **Step 1: Write the story fixtures** in `src/test/spend.ts`: invented `SpendResponse`s `spendFull` (the mockup's figures: 8 weeks, five groups, its three models plus a fourth with no price, null in every row, `unpriced: true`, `uncounted` 3 runs in the first week and 1 session in the second, `fullFrom` the third week) and `spendEmpty` (weeks with zeros, `total.cost` 0, shares null, `models: []`).
 
-- [ ] **Step 2: Write the failing stories** in `SpendPage.stories.tsx`, as `ContextPage.stories.tsx` stubs the API with `mockApi`: `Loading`, `Failed`, `Empty`, `Full`, `Unpriced`, `PathFilter`, `Showing`. Interaction tests:
-- `Full`: the chart's `role="img"` element has its aria-label; the table shows `Review and cleanup`, no `task review` row until its group's toggle (`aria-expanded="false"`) is clicked, then five phase rows; `Implement` and `Coordination` have no toggle; the columns read `claude-opus-5-5`, `claude-fable-5-2`, `claude-haiku-5-5` in that order, then advisor `Calls` and `Cost`; the note holds "4 units with no spend by phase (3 runs, 1 session)" and the first fully counted week; the chart's table view has a "Units not counted" column; clicking `Sessions` requests `/api/spend?...units=sessions`.
-- `Unpriced`: the unpriced model's cells show `–` and the note says spend on a model with no price isn't counted.
+- [ ] **Step 2: Write the failing stories** in `SpendPage.stories.tsx`, as `ContextPage.stories.tsx` stubs the API with `mockApi`: `Loading`, `Failed`, `Empty`, `Full`, `PathFilter` (on `spendFull`). Interaction tests:
+- `Full`: the chart's `role="img"` element has its aria-label; the table shows `Review and cleanup`, no `task review` row until its group's toggle (`aria-expanded="false"`) is clicked, then five phase rows; `Implement` and `Coordination` have no toggle; the columns read `claude-opus-5-5`, `claude-fable-5-2`, `claude-haiku-5-5` in that order, then the unpriced model, whose cells show `–`, then advisor `Calls` and `Cost`; the note holds "4 units with no spend by phase (3 runs, 1 session)" and the first fully counted week, and says spend on a model with no price isn't counted; the chart's table view has a "Units not counted" column; clicking `Sessions` requests `/api/spend?...units=sessions`.
 - `PathFilter` (path `full`): `Runs` is pressed, `All` and `Sessions` are disabled, and the request carries no `units=sessions`.
 - `Empty`: the empty state's text, no table, no `NaN`.
 
@@ -312,7 +307,7 @@ Expected: PASS; the other pages' stories still pass with the changed `Option`, `
 
 - [ ] **Step 6: `CLAUDE.md`**, under `## Code conventions`, beside the lines they extend:
 - A phase's name shows through `phaseLabel` and a spend group's through `SPEND_GROUP_LABELS`, both in `format.ts`; Unattributed is drawn in `SPEND_REST`, a neutral grey outside the palette, so it reads as "the rest".
-- An `Option` that can't be chosen takes `disabledReason`, which its tooltip shows.
+- In the existing "A page's switch" line, after "so its tooltip still opens": "through `Option`'s `disabledReason` prop".
 
 - [ ] **Step 7: Commit**
 
