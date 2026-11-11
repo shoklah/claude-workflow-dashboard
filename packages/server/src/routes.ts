@@ -10,6 +10,7 @@ import {
   type SessionEntry,
   type RunsQuery,
   type SessionsQuery,
+  type SpendQuery,
 } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { activeList, labellable } from './categories.ts';
@@ -37,6 +38,7 @@ import { scopeOf, type Scope } from './views/scope.ts';
 import { sessionsView } from './views/sessions.ts';
 import { showingView } from './views/showing.ts';
 import { skillsView } from './views/skills.ts';
+import { spendView } from './views/spend.ts';
 import { statusView } from './views/status.ts';
 import { stepsView } from './views/steps.ts';
 import { weeksView } from './views/weeks.ts';
@@ -253,5 +255,14 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const runs = listUnits(deps.db, 'run');
     const sessions = listUnits(deps.db, 'session');
     return c.json(contextView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions) }));
+  });
+
+  // Spend page, task 2: the period's spend by phase, by group and by week.
+  app.get('/api/spend', (c) => {
+    const units = c.req.query('units');
+    const query: SpendQuery = { ...periodQuery(c), units: units === 'runs' || units === 'sessions' ? units : 'all' };
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    return c.json(spendView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions) }));
   });
 }
