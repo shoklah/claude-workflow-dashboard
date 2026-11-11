@@ -471,3 +471,20 @@ describe('projects', () => {
     expect((await run(MAIN)).findings[0].labelReason).toBe('another project keeps the same import in x.ts');
   });
 });
+
+test("a run's context holds its calls, tool results and sweeps, null without a window", async () => {
+  db.$client.close();
+  db = dbWith('report-v7');
+  const [rateLimits, , , , offlineSync] = fixture('report-v7').runs.map(runKey) as string[];
+  expect((await run(offlineSync!)).context).toEqual({
+    calls: 318,
+    medianTokens: 231800,
+    maxTokens: 412600,
+    callsOverCap: 87,
+    handoff: null,
+    toolCharacters: 1334800,
+    readShare: (624800 / 1334800) * 100,
+    sweeps: { inline: 2, delegated: 3 },
+  });
+  expect((await run(rateLimits!)).context).toBeNull();
+});

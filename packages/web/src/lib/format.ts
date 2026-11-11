@@ -127,8 +127,13 @@ export function total(counts: Record<string, number | null>): number {
   return Object.values(counts).reduce<number>((sum, n) => sum + (n ?? 0), 0);
 }
 
-/** The tokens of every kind together, compact: "9.8M", "333K", a kind that isn't known as 0; a dash when they aren't
- * known. */
+/** A number written compact with its default rounding: "281K", "1.3M"; a dash when it isn't known. */
+export function formatCompact(value: number | null): string {
+  return value === null ? NONE : new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value);
+}
+
+/** The tokens of every kind together, compact with one fraction digit: "9.8M", "333K", a kind that isn't known as 0; a
+ * dash when they aren't known. */
 export function formatTokens(tokens: Record<string, number | null> | null): string {
   if (tokens === null) return NONE;
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(total(tokens));

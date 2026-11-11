@@ -184,6 +184,16 @@ export const runFull: RunResponse = {
     { model: 'claude-fable-5-1', cost: 1.9 },
   ],
   advisor: { calls: 3, notes: 3 },
+  context: {
+    calls: 214,
+    medianTokens: 281_449,
+    maxTokens: 1_300_000,
+    callsOverCap: 62,
+    handoff: '2026-11-10T16:40:00.000Z',
+    toolCharacters: 912_300,
+    readShare: 43.6,
+    sweeps: { inline: 1, delegated: 4 },
+  },
   categoryLabels,
   warnings: [
     { text: 'session {session}: final-reviewer ran on another model than its pin', sessionId: '0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e' },
@@ -203,6 +213,7 @@ export const runBeforeSteps: RunResponse = {
   skills: [],
   models: [],
   advisor: null,
+  context: null,
   categoryLabels,
   warnings: [],
 };
