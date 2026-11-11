@@ -333,6 +333,27 @@ describe('importReport', () => {
     expect(listUnits(db, 'session')).toEqual(sessions);
   });
 
+  test("a read transcript's null context replaces the stored one, and rebuild keeps it null", () => {
+    const { db } = freshDb();
+    const report = importFixture(db, 'report-v7', FIRST);
+    const index = report.sessions.findIndex((s) => s.title === 'Offline sync plan');
+    expect(report.sessions[index]!.context?.handoff).not.toBeNull();
+    importFixture(db, 'report-v7', LATER, null, (raw) => {
+      const session = raw.sessions[index];
+      session.context = null;
+      for (const kind of Object.keys(session.tool_results)) session.tool_results[kind] = 0;
+    });
+
+    const key = sessionKey(report.sessions[index]!);
+    const merged = () => listUnits(db, 'session').find((u) => u.key === key)!.merged;
+    expect(merged().context).toBeNull();
+
+    db.update(units).set({ merged: {} }).run();
+    rebuildDerived(db);
+
+    expect(merged().context).toBeNull();
+  });
+
   test("rebuild gives the same warnings' kinds and steps", () => {
     const { db } = freshDb();
     importFixture(db, 'report-full', FIRST);
