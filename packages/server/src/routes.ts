@@ -4,6 +4,7 @@ import {
   toStepKind,
   weekStart,
   type ComplianceQuery,
+  type ContextQuery,
   type FindingsQuery,
   type RunEntry,
   type SessionEntry,
@@ -27,6 +28,7 @@ import {
 } from './db/read.ts';
 import { projectKey } from './keys.ts';
 import { complianceView } from './views/compliance.ts';
+import { contextView } from './views/context.ts';
 import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
 import { modelsView } from './views/models.ts';
@@ -243,5 +245,13 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
         scope: scopeFor(runs, sessions),
       }),
     );
+  });
+
+  // Context cap, task 5: the period's weekly context, its uncounted units and the units behind it.
+  app.get('/api/context', (c) => {
+    const query: ContextQuery = { ...periodQuery(c), over: c.req.query('over') === '1' };
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    return c.json(contextView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions) }));
   });
 }
