@@ -104,13 +104,13 @@ test("the Models page sums the period's dispatches, with the reporter's mismatch
     actual: { 'claude-opus-5-5/high': 1 },
     mismatches: 1,
   });
-  expect(body.main.find((row) => row.path === 'full')).toEqual({
+  expect(body.byPath.find((row) => row.path === 'full')).toEqual({
     path: 'full',
     recommended: totals.models.main.full.recommended,
     actual: { 'claude-opus-5-5/medium': 1, 'claude-opus-5-5/high': 1 },
     differs: 1,
   });
-  expect(body.main.map((row) => row.path)).toEqual(['small', 'full', 'plan']);
+  expect(body.byPath.map((row) => row.path)).toEqual(['small', 'full', 'plan']);
   expect(body.mismatchesSource).toBe('reporter');
   expect(body.stageSource).toBe('reporter');
 });
@@ -174,7 +174,7 @@ test('the path and project filters choose the runs whose dispatches and main ses
   const small = await models('?path=small');
   // No small run dispatched: only the agent the reporter counts a mismatch for, with no dispatches.
   expect(small.agents).toEqual([{ name: 'fix-checker', requested: {}, actual: {}, mismatches: 1 }]);
-  expect(small.main.map((row) => [row.path, row.actual])).toEqual([
+  expect(small.byPath.map((row) => [row.path, row.actual])).toEqual([
     ['small', { 'claude-opus-5-5/medium': 1 }],
     ['full', {}],
     ['plan', {}],
@@ -211,7 +211,7 @@ test("the reporter's figures are null when the last export's totals have none", 
   const body = await models();
   expect(body.agents.length).toBeGreaterThan(0);
   expect(body.agents.every((row) => row.mismatches === null)).toBe(true);
-  expect(body.main.every((row) => row.recommended === null && row.differs === null)).toBe(true);
+  expect(body.byPath.every((row) => row.recommended === null && row.differs === null)).toBe(true);
   expect(body.advisor.reporter).toEqual({ source: 'reporter', trial: null, weeks: [] });
 });
 
@@ -279,4 +279,17 @@ test("with showing on, the sums count every project and hold no hidden project's
     expect(Object.keys(record)).toEqual(Object.keys(record).sort());
   }
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+});
+
+test("with showing on, no response key names a hidden project's branch", async () => {
+  // A hidden tidepool-api run on a branch named main, a name the shown lantern-notes has no run on.
+  db.$client.close();
+  db = dbWith('main branch', (raw) => {
+    raw.runs.find((run: any) => run.record.project === TIDEPOOL).record.branch = 'main';
+  }, 'report-v6');
+  setShowing(db, [projectKey(LANTERN)]);
+  const branches = new Map([[TIDEPOOL, ['main']]]);
+  const strings = forbiddenStrings([LANTERN, TIDEPOOL], branches, [LANTERN], [], []);
+  expect(strings.forbidden).toContain('main');
+  expect(leaks(await models('?weeks=52'), strings.forbidden, strings.shown)).toEqual([]);
 });

@@ -50,7 +50,7 @@ export type AdvisorWeek = {
 export type ModelsResponse = {
   agents: AgentModels[];
   mismatchesSource: 'reporter';
-  main: MainModels[];
+  byPath: MainModels[];
   stageSource: 'reporter';
   advisor: {
     facts: AdvisorFacts | null;
