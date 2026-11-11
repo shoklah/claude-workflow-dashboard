@@ -17,6 +17,7 @@ import {
   formatPercent,
   formatTokens,
   formatCompact,
+  formatShare,
   total,
   hiddenWarningsLabel,
   warningsSummary,
@@ -130,6 +131,21 @@ describe('formatCompact', () => {
 
   it('writes a dash when the number isn’t known', () => {
     expect(formatCompact(null)).toBe('–');
+  });
+
+  // ECharts calls a tooltip's valueFormatter with undefined for a null bar.
+  it('writes a dash for an undefined number, as a chart tooltip passes it', () => {
+    expect(formatCompact(undefined)).toBe('–');
+  });
+});
+
+describe('formatShare', () => {
+  it('writes a share as a whole percent', () => {
+    expect(formatShare(52.4)).toBe('52%');
+  });
+
+  it('writes a dash for an undefined share, as a chart tooltip passes it', () => {
+    expect(formatShare(undefined)).toBe('–');
   });
 });
 
