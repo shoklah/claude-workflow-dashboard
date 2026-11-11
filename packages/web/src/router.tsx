@@ -10,6 +10,7 @@ import { RunPage } from './runs/RunPage.tsx';
 import { RunsPage } from './runs/RunsPage.tsx';
 import { SessionsPage } from './sessions/SessionsPage.tsx';
 import { SkillsPage } from './skills/SkillsPage.tsx';
+import { SpendPage } from './spend/SpendPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
 
@@ -88,6 +89,12 @@ const modelsRoute = createRoute({
   component: ModelsPage,
 });
 
+const spendRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/spend',
+  component: SpendPage,
+});
+
 const weeksRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/weeks',
@@ -106,6 +113,7 @@ export const router = createRouter({
     stepsRoute,
     skillsRoute,
     modelsRoute,
+    spendRoute,
     weeksRoute,
   ]),
 });

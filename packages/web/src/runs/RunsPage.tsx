@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { PATHS, toPath, type FindingsQuery, type RunsQuery, type RunsResponse, type StepKind } from '@cwd/shared';
+import { PATHS, toPath, type FindingsQuery, type RunsQuery, type RunsResponse, type SpendUnits, type StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { hiddenLabel } from '../lib/format.ts';
 import { RunsTable } from './RunsTable.tsx';
@@ -11,10 +11,11 @@ const PERIODS = [
   { weeks: 52, label: 'Last 52 weeks' },
 ];
 
-/** A list's API path for the query: its filters as query params, `weeks` always, the others when set. */
+/** A list's API path for the query: its filters as query params, `weeks` always, the others when set (`units` when
+ * not 'all'). */
 export function listPath(
   base: string,
-  query: FindingsQuery & { warnings?: boolean; resolved?: boolean; step?: StepKind; over?: boolean },
+  query: FindingsQuery & { warnings?: boolean; resolved?: boolean; step?: StepKind; over?: boolean; units?: SpendUnits },
 ): string {
   const params = new URLSearchParams();
   if (query.path) params.set('path', query.path);
@@ -24,6 +25,7 @@ export function listPath(
   if (query.resolved) params.set('resolved', '1');
   if (query.step) params.set('step', query.step);
   if (query.over) params.set('over', '1');
+  if (query.units && query.units !== 'all') params.set('units', query.units);
   return `${base}?${params}`;
 }
 

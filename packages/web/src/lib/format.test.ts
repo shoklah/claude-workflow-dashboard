@@ -11,6 +11,8 @@ import {
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
+  phaseLabel,
+  SPEND_GROUP_LABELS,
   countsLabel,
   formatCount,
   formatMinutes,
@@ -392,5 +394,25 @@ describe('timelineTimes', () => {
     expect(times[0]).toMatch(/^Nov [78], /);
     expect(times[3]).toMatch(/^Nov 1[12], /);
     expect(times[1]).toMatch(/^\d{1,2}:\d{2}(\s|\u202f)?(AM|PM)?$/);
+  });
+});
+
+describe('phaseLabel', () => {
+  it('names a step kind by its step label, in lower case', () => {
+    expect(phaseLabel('fix_check')).toBe('fix-check');
+    expect(phaseLabel('plan_simplify')).toBe('plan simplify');
+  });
+  it('writes another phase with spaces', () => {
+    expect(phaseLabel('plan_writing')).toBe('plan writing');
+    expect(phaseLabel('design')).toBe('design');
+  });
+  it('lower-cases an unknown name', () => {
+    expect(phaseLabel('Deploy_Check')).toBe('deploy check');
+  });
+});
+
+describe('SPEND_GROUP_LABELS', () => {
+  it('names the five groups', () => {
+    expect(Object.values(SPEND_GROUP_LABELS)).toEqual(['Plan', 'Implement', 'Review and cleanup', 'Coordination', 'Unattributed']);
   });
 });
