@@ -5,6 +5,7 @@ import { cn } from 'cn';
 import type { ComplianceResponse, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
+import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Option } from '../findings/FindingsPage.tsx';
 import {
@@ -12,7 +13,9 @@ import {
   STEP_LABELS,
   WARNING_BORDER,
   WARNING_INK,
+  hiddenInformationLabel,
   hiddenWarningsLabel,
+  informationMark,
   kindLabel,
   plural,
   runName,
@@ -37,7 +40,7 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
 /**
  * The Compliance page: the period's warnings by kind and week, the kinds grouped by family, each kind's total, current
  * ones or including resolved, under a line summing them; the selected cell's warnings below the grid. `step`, from the
- * URL, keeps the warnings naming that step.
+ * URL, keeps the warnings naming that step. The reporter's information lines last, when the export has them.
  */
 export function CompliancePage({ step }: { step?: StepKind }) {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 4 });
@@ -140,6 +143,24 @@ export function CompliancePage({ step }: { step?: StepKind }) {
         <p className="text-sm text-muted-foreground">Select a cell to list its warnings.</p>
       )}
       {data && data.hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenWarningsLabel(data.hidden)}</p>}
+      {data?.information && (
+        <>
+          <h2 className="font-semibold">
+            Information from the reporter
+            <ReporterMark mark={informationMark} />
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            The latest export's information lines, as the reporter writes them: not warnings, and not filtered by period.
+          </p>
+          <ul aria-label="Information from the reporter" className="flex flex-col gap-1 text-sm">
+            {data.information.hidden > 0 ? (
+              <li>{hiddenInformationLabel(data.information.hidden)}</li>
+            ) : (
+              data.information.lines.map((line, i) => <li key={i}>{line}</li>)
+            )}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import type { HomeResponse } from '@cwd/shared';
+import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Option } from '../findings/FindingsPage.tsx';
 import { cn } from 'cn';
 import {
-  SHARE_FILL,
-  SHARE_TRACK,
   WARNING_INK,
   formatCount,
-  formatPercent,
   ofLabel,
   plural,
   usageName,
@@ -75,12 +73,7 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
               <TableRow key={`${row.kind} ${row.name}`}>
                 <TableCell className={cn(row.kind === 'command' && 'font-mono text-xs')}>{usageName(row)}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div aria-hidden className={cn('h-2 w-32', SHARE_TRACK)}>
-                      <div className={cn('h-2 rounded-r', SHARE_FILL)} style={{ width: `${share}%` }} />
-                    </div>
-                    <span>{formatPercent(share)}</span>
-                  </div>
+                  <ShareBar share={share} />
                 </TableCell>
                 <TableCell className={COUNT}>{ofLabel(row.sessions, shown.sessions)}</TableCell>
                 <TableCell className={COUNT}>{ofLabel(row.runs, shown.runs)}</TableCell>

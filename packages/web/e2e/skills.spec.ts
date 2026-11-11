@@ -2,7 +2,8 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, report-later and report-v6, whose typed grill-me was never met in a run and a session.
+// dev:fixtures' data: report-full, report-later, report-v6 and report-v7, whose typed grill-me was never met in a run
+// and a session.
 
 test.beforeEach(async ({ page }) => {
   await pinClock(page);

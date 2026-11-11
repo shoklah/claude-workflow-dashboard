@@ -27,6 +27,12 @@ export const reporterMark = {
   tooltip: "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
 };
 
+/** The badge on Compliance's information lines, which are the latest export's, not an all-time figure. */
+export const informationMark = {
+  text: 'reporter',
+  tooltip: "The latest export's lines, as the reporter writes them; not filtered by period.",
+};
+
 /** A key of a step's count line as words: `not_proportionate` as "not proportionate". */
 export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
@@ -106,9 +112,9 @@ export function advisorLabel(advisor: { notes: number | null; changed: number | 
   return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${formatShare(advisor.share)}`;
 }
 
-/** The advisor's share of Fable spend as a whole percent: "8%"; a dash when it isn't known. */
-export function formatShare(share: number | null): string {
-  return formatPercent(share === null ? null : Math.round(share));
+/** A share as a whole percent: "8%"; a dash when it isn't known (null, or undefined as a chart tooltip passes it). */
+export function formatShare(share: number | null | undefined): string {
+  return formatPercent(share == null ? null : Math.round(share));
 }
 
 /** An advisor week's stop mark: "STOP" when its share passed the stop share, else nothing. */
@@ -121,8 +127,33 @@ export function total(counts: Record<string, number | null> | readonly (number |
   return Object.values(counts).reduce<number>((sum, n) => sum + (n ?? 0), 0);
 }
 
-/** The tokens of every kind together, compact: "9.8M", "333K", a kind that isn't known as 0; a dash when they aren't
- * known. */
+/** A number written compact with its default rounding: "281K", "1.3M"; a dash when it isn't known (null, or undefined
+ * as a chart tooltip passes it). */
+const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact' });
+
+export function formatCompact(value: number | null | undefined): string {
+  return value == null ? NONE : COMPACT.format(value);
+}
+
+/** A tool-result class's name on screen, in the Context page's column order. */
+export const TOOL_CLASS_LABELS: Record<string, string> = {
+  read: 'Read',
+  bash_other: 'Bash',
+  run: 'Run',
+  agent: 'Agent',
+  edit: 'Edit',
+  mcp: 'MCP',
+  other: 'Other',
+};
+
+/** The Context page's line for the units its sums leave out: "Not counted: 3 runs and 0 sessions with no context
+ * facts." */
+export function uncountedLabel({ runs, sessions }: { runs: number; sessions: number }): string {
+  return `Not counted: ${plural(runs, 'run')} and ${plural(sessions, 'session')} with no context facts.`;
+}
+
+/** The tokens of every kind together, compact with one fraction digit: "9.8M", "333K", a kind that isn't known as 0; a
+ * dash when they aren't known. */
 export function formatTokens(tokens: Record<string, number | null> | null): string {
   if (tokens === null) return NONE;
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(total(tokens));
@@ -283,6 +314,12 @@ export function warningsSummary(warnings: number, weeks: number, fresh: number):
  * last left out of the grid too. */
 export function hiddenWarningsLabel(count: number): string {
   return `+ ${plural(count, 'warning')} left out while showing (other projects, sessions and other kinds); the grid counts all but other kinds`;
+}
+
+/** Compliance's line for the reporter's information lines showing mode hides: "3 information lines are hidden while
+ * showing". */
+export function hiddenInformationLabel(count: number): string {
+  return `${plural(count, 'information line')} ${count === 1 ? 'is' : 'are'} hidden while showing`;
 }
 
 /** The findings' split as the tiles and the feed read it: "13 acted on · 1 open". */

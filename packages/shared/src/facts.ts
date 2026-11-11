@@ -1,4 +1,4 @@
-import { toPath, type Outcome, type Path, type RunEntry, type Step } from './report.ts';
+import { toPath, type Outcome, type Path, type RunEntry, type SessionEntry, type Step } from './report.ts';
 
 export type FindingSplit = { total: number; actedOn: number; notActedOn: number; open: number };
 
@@ -54,6 +54,47 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
  * priced), as the reporter's spent does. */
 export function modelsCost(models: RunEntry['models']): number | null {
   return models ? Object.values(models).reduce((sum, m) => sum + (m.cost ?? 0), 0) : null;
+}
+
+/** A unit's or a week's tool results summed over every class, 0 when the map is null. */
+export function toolCharacters(toolResults: Record<string, number> | null | undefined): number {
+  return Object.values(toolResults ?? {}).reduce((sum, tokens) => sum + tokens, 0);
+}
+
+/** The `read` class's share, as a percent (0 to 100), of a unit's or a week's tool results summed over every class;
+ * null when the map is null or sums to 0. */
+export function readShare(toolResults: Record<string, number> | null | undefined): number | null {
+  const total = toolCharacters(toolResults);
+  return total ? ((toolResults?.read ?? 0) / total) * 100 : null;
+}
+
+/** A run's or session's context facts, as the run page and the Context page show them: its calls, median and largest
+ * tokens, calls past the cap and handoff time, its read share and its sweeps, an unknown count 0; null when the unit
+ * has no `context`. */
+/** A unit's context facts as both its run page and the Context page show them: its main calls, their median and largest
+ * tokens, the calls past the cap, the handoff's time, its read share and its sweeps by kind. */
+export type ContextFacts = {
+  calls: number;
+  medianTokens: number | null;
+  maxTokens: number | null;
+  callsOverCap: number;
+  handoff: string | null;
+  readShare: number | null;
+  sweeps: { inline: number; delegated: number };
+};
+
+export function contextFacts(unit: RunEntry | SessionEntry): ContextFacts | null {
+  const context = unit.context;
+  if (!context) return null;
+  return {
+    calls: context.calls ?? 0,
+    medianTokens: context.median_tokens ?? null,
+    maxTokens: context.max_tokens ?? null,
+    callsOverCap: context.calls_over_cap ?? 0,
+    handoff: context.handoff ?? null,
+    readShare: readShare(unit.tool_results),
+    sweeps: { inline: unit.sweeps?.inline ?? 0, delegated: unit.sweeps?.delegated ?? 0 },
+  };
 }
 
 /** A run's facts but its keys, each taken from its run entry as the reporter gives it; a view adds the stored key and

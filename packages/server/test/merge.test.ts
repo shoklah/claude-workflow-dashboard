@@ -65,4 +65,40 @@ describe('mergeKnown', () => {
   test('a null array keeps the known one', () => {
     expect(mergeKnown({ warns: ['a'] }, { warns: null })).toEqual({ warns: ['a'] });
   });
+  const context = {
+    calls: 96,
+    tokens: 24960000,
+    median_tokens: 262100,
+    max_tokens: 341800,
+    over_cap: true,
+    calls_over_cap: 9,
+    handoff: '2026-11-09T13:31:05.000Z',
+    handoff_to: 'e66de89cb5c23e32',
+  };
+  const toolResults = { read: 214500, edit: 3800, run: 11200, bash_other: 8900, agent: 61400, mcp: 0, other: 2600 };
+  const zero = { read: 0, edit: 0, run: 0, bash_other: 0, agent: 0, mcp: 0, other: 0 };
+
+  test("a read transcript's null context replaces the stored one", () => {
+    expect(mergeKnown({ context, tool_results: toolResults }, { context: null, tool_results: zero })).toEqual({
+      context: null,
+      tool_results: zero,
+    });
+  });
+
+  test('the three context facts null keep the stored ones', () => {
+    const prev = { context, tool_results: toolResults, sweeps: { inline: 0, delegated: 1 } };
+    expect(mergeKnown(prev, { context: null, tool_results: null, sweeps: null })).toEqual(prev);
+  });
+
+  test("a new context replaces whole, so a handoff it lacks isn't kept", () => {
+    const next = { ...context, calls: 40, handoff: null, handoff_to: null };
+    const merged = mergeKnown({ context }, { context: next }) as { context: typeof next };
+    expect(merged.context.handoff).toBeNull();
+    expect(merged.context.handoff_to).toBeNull();
+  });
+
+  test('a tool results class the new map lacks stops counting', () => {
+    const merged = mergeKnown({ tool_results: toolResults }, { tool_results: { read: 5 } }) as Record<string, unknown>;
+    expect(merged.tool_results).toEqual({ read: 5 });
+  });
 });

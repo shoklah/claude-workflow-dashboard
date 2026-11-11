@@ -2,10 +2,21 @@ import type { ReactNode } from 'react';
 import type { RunResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { WarningText } from '../components/WarningText.tsx';
+import { Time } from '../layout/StatusBanner.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
 import { CategoryBadge, FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
-import { NONE, findingsLabel, formatCost, formatMinutes, runName, strengthWhere } from '../lib/format.ts';
+import {
+  NONE,
+  findingsLabel,
+  formatCompact,
+  formatCost,
+  formatMinutes,
+  formatShare,
+  plural,
+  runName,
+  strengthWhere,
+} from '../lib/format.ts';
 
 /** A titled list of the run's facts, "None" when it has none. */
 function Section({ title, children }: { title: string; children: ReactNode[] }) {
@@ -42,13 +53,13 @@ function Header({ run }: { run: RunResponse['facts'] }) {
 
 /**
  * One run: its header, the untimed timeline with a toggle to every finding in one table and the reviewers' strengths
- * under it, and its skills, models, advisor notes and warnings for the run as a whole (decision 30).
+ * under it, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
   if (run.isPending) return <p className="text-sm text-muted-foreground">Loading the run…</p>;
   if (run.isError) return <p className="text-sm">Couldn't load this run.</p>;
-  const { facts, timeline, findings, strengths, skills, models, advisor, warnings, categoryLabels } = run.data;
+  const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
   return (
     <div className="flex flex-col gap-4">
       <Header run={facts} />
@@ -91,6 +102,25 @@ export function RunPage({ runKey }: { runKey: string }) {
           </Section>
           <Section title="Advisor">
             {advisor ? [<li key="advisor">{`${advisor.calls} calls · ${advisor.notes} notes`}</li>] : []}
+          </Section>
+          <Section title="Context">
+            {context
+              ? [
+                  <li key="calls">{`${context.calls} calls · median ${formatCompact(context.medianTokens)} · largest ${formatCompact(context.maxTokens)}`}</li>,
+                  <li key="cap">
+                    {`${plural(context.callsOverCap, 'call')} past the cap · `}
+                    {context.handoff ? (
+                      <>
+                        handed off <Time iso={context.handoff} />
+                      </>
+                    ) : (
+                      'no handoff'
+                    )}
+                  </li>,
+                  <li key="tools">{`Tool results: ${formatCompact(context.toolCharacters)} characters · read ${formatShare(context.readShare)}`}</li>,
+                  <li key="sweeps">{`Sweeps: ${context.sweeps.inline} inline · ${context.sweeps.delegated} delegated`}</li>,
+                ]
+              : []}
           </Section>
           <Section title="Warnings">
             {warnings.map((warning, i) => (

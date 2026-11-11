@@ -14,7 +14,7 @@ const PERIODS = [
 /** A list's API path for the query: its filters as query params, `weeks` always, the others when set. */
 export function listPath(
   base: string,
-  query: FindingsQuery & { warnings?: boolean; resolved?: boolean; step?: StepKind },
+  query: FindingsQuery & { warnings?: boolean; resolved?: boolean; step?: StepKind; over?: boolean },
 ): string {
   const params = new URLSearchParams();
   if (query.path) params.set('path', query.path);
@@ -23,6 +23,7 @@ export function listPath(
   if (query.warnings) params.set('warnings', '1');
   if (query.resolved) params.set('resolved', '1');
   if (query.step) params.set('step', query.step);
+  if (query.over) params.set('over', '1');
   return `${base}?${params}`;
 }
 

@@ -2,8 +2,8 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, report-later and report-v6; this week holds report-v6's plan, two Full and one Small
-// run.
+// dev:fixtures' data: report-full, report-later, report-v6 and report-v7; this week holds report-v6's plan, two Full
+// and one Small run.
 
 test.beforeEach(async ({ page }) => {
   await pinClock(page);

@@ -220,13 +220,19 @@ test("with showing on, the grid counts all but \"other\" warnings, the list only
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
 
-test("with showing on, the list holds the shown project's session warnings, masked; hidden counts the others", async () => {
+/** Replaces the test's database with a fresh one holding only `name`'s import, changed first by `change`. */
+function importOnly(name: string, change: (raw: any) => void = () => {}): void {
   db.$client.close();
-  db = openDb(join(dir, 'v6', 'dashboard.sqlite'));
-  const raw = fixture('report-v6');
+  db = openDb(join(dir, name, 'dashboard.sqlite'));
+  const raw = fixture(name);
+  change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
-  if (!loaded.ok) throw new Error('report-v6 does not load');
+  if (!loaded.ok) throw new Error(`${name} does not load`);
   importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, SECOND);
+}
+
+test("with showing on, the list holds the shown project's session warnings, masked; hidden counts the others", async () => {
+  importOnly('report-v6');
   const off = await compliance('?resolved=1&weeks=52');
   setShowing(db, [projectKey(LANTERN)]);
   const body = await compliance('?resolved=1&weeks=52');
@@ -241,4 +247,47 @@ test("with showing on, the list holds the shown project's session warnings, mask
   ]);
   expect(off.warnings.filter((w) => w.runKey === null)).toHaveLength(4);
   expect(body.hidden).toBe(off.warnings.length - body.warnings.length);
+});
+
+test("information is the latest export's health.info lines, from the reporter", async () => {
+  importOnly('report-v7');
+  expect((await compliance()).information).toEqual({
+    lines: fixture('report-v7').totals.health.info,
+    hidden: 0,
+    source: 'reporter',
+  });
+});
+
+test('information is null when the export has no health.info', async () => {
+  importOnly('report-v6');
+  expect((await compliance()).information).toBeNull();
+});
+
+test('information is null when the reporter writes no line, with and without a scope', async () => {
+  importOnly('report-v7', (raw) => {
+    raw.totals.health.info = [];
+  });
+  expect((await compliance()).information).toBeNull();
+  setShowing(db, [projectKey(LANTERN)]);
+  expect((await compliance()).information).toBeNull();
+});
+
+test('with showing on, the information lines are hidden and counted, and nothing leaks', async () => {
+  importOnly('report-v7');
+  const raw = fixture('report-v7');
+  const branches = new Map<string, string[]>();
+  for (const run of raw.runs) {
+    const root = projectRoot(run.record.project);
+    branches.set(root, [...(branches.get(root) ?? []), run.record.branch]);
+  }
+  const sessionIds = [
+    ...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
+  ];
+  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+  const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], sessionIds, sessionRoots);
+  expect(strings.forbidden).toContain('feature/webhooks');
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await compliance('?resolved=1&weeks=52');
+  expect(body.information).toEqual({ lines: [], hidden: 3, source: 'reporter' });
+  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });

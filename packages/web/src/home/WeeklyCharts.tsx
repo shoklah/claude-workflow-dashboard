@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCost, weekLabel } from '../lib/format.ts';
+import { STEP_LABELS, formatCompact, formatCost, weekLabel } from '../lib/format.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
 type Charts = HomeResponse['charts'];
@@ -35,35 +35,91 @@ function baseOption(weeks: string[]) {
   };
 }
 
-/** One series of bars: 24px at most, a 4px rounded end, square at the baseline; a cost reads in dollars. */
-export function singleBars(weeks: string[], name: string, data: (number | null)[], cost = false) {
+/**
+ * One series of bars: 24px at most, a 4px rounded end, square at the baseline; a `cost` reads in dollars, and `format`
+ * writes the tooltip's values and the y axis labels, an empty bar's (which ECharts passes as undefined) as null. A `cap` draws a dashed line at that value, labelled "cap 300K",
+ * the y axis reaching at least to it.
+ */
+export function singleBars(
+  weeks: string[],
+  name: string,
+  data: (number | null)[],
+  options: { cost?: boolean; cap?: number; format?: (value: number | null) => string } = {},
+) {
   const base = baseOption(weeks);
+  const { cost = false, cap } = options;
+  const format = cost ? formatCost : options.format;
   return {
     ...base,
-    tooltip: { ...base.tooltip, valueFormatter: cost ? formatCost : undefined },
-    yAxis: { ...base.yAxis, axisLabel: { ...base.yAxis.axisLabel, formatter: cost ? '${value}' : undefined } },
+    // Room above the plot for the cap's label when the axis ends at the cap.
+    grid: cap === undefined ? base.grid : { ...base.grid, top: 20 },
+    tooltip: { ...base.tooltip, valueFormatter: format && ((value?: number | null) => format(value ?? null)) },
+    yAxis: {
+      ...base.yAxis,
+      max: cap === undefined ? undefined : ({ max }: { max: number }) => Math.max(max, cap),
+      axisLabel: { ...base.yAxis.axisLabel, formatter: cost ? '${value}' : format },
+    },
     series: [
-      { name, type: 'bar', data, barMaxWidth: 24, itemStyle: { color: SERIES[0], borderRadius: [4, 4, 0, 0] } },
+      {
+        name,
+        type: 'bar',
+        data,
+        barMaxWidth: 24,
+        itemStyle: { color: SERIES[0], borderRadius: [4, 4, 0, 0] },
+        markLine:
+          cap === undefined
+            ? undefined
+            : {
+                silent: true,
+                symbol: 'none',
+                lineStyle: { color: INK, type: 'dashed', width: 1.5 },
+                label: {
+                  color: INK,
+                  position: 'insideEndTop',
+                  formatter: `cap ${formatCompact(cap)}`,
+                  textBorderColor: SURFACE,
+                  textBorderWidth: 3,
+                },
+                data: [{ yAxis: cap }],
+              },
+      },
     ],
   };
 }
 
-/** The findings of each step kind, stacked per week, a 2px surface gap between segments, with a legend. */
-function findingsOption(charts: Charts) {
-  const base = baseOption(charts.weeks);
+/**
+ * Bars of several series by week, each series a palette slot in order, a 1px surface border between bars, with a
+ * legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the room under the plot
+ * for the legend: 64px by default, for a legend that wraps (Home's step kinds), 28px for one that fits on one line.
+ */
+export function barsOption(
+  weeks: string[],
+  series: { name: string; data: (number | null)[] }[],
+  { stack, legendRoom = 64 }: { stack?: string; legendRoom?: number } = {},
+) {
+  const base = baseOption(weeks);
   return {
     ...base,
-    grid: { ...base.grid, bottom: 64 },
+    grid: { ...base.grid, bottom: legendRoom },
     legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: INK } },
-    series: stepKinds(charts).map((kind, i) => ({
-      name: STEP_LABELS[kind],
+    series: series.map(({ name, data }, i) => ({
+      name,
       type: 'bar',
-      stack: 'findings',
-      data: charts.findingsByStep[kind],
+      stack,
+      data,
       barMaxWidth: 24,
       itemStyle: { color: SERIES[i], borderColor: SURFACE, borderWidth: 1 },
     })),
   };
+}
+
+/** The findings of each step kind, stacked per week. */
+function findingsOption(charts: Charts) {
+  return barsOption(
+    charts.weeks,
+    stepKinds(charts).map((kind) => ({ name: STEP_LABELS[kind], data: charts.findingsByStep[kind] })),
+    { stack: 'findings' },
+  );
 }
 
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
@@ -134,7 +190,7 @@ export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverag
     <section aria-label="Weekly charts" className="flex flex-col gap-2">
       <div className="flex gap-3">
         <Chart title="Findings by week, by step" option={findingsOption(charts)} height={260} />
-        <Chart title="Cost by week" option={singleBars(charts.weeks, 'Cost', charts.cost, true)} height={260} />
+        <Chart title="Cost by week" option={singleBars(charts.weeks, 'Cost', charts.cost, { cost: true })} height={260} />
         <Chart title="Warnings by week" option={singleBars(charts.weeks, 'Warnings', charts.warnings)} height={260} />
       </div>
       <CoverageNote coverageFrom={coverageFrom} firstWeek={charts.weeks[0]} />

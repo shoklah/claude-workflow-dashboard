@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import type { StatusResponse } from '@cwd/shared';
+import { parseTime, type StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
 import { fullRun, oldRun, runBeforeSteps, runFull } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
@@ -33,7 +33,7 @@ export const Failed: Story = {
   },
 };
 
-/** Empty: a record from before steps, with no skills, models, advisor notes or warnings. */
+/** Empty: a record from before steps, with no skills, models, advisor notes, context or warnings. */
 export const Empty: Story = {
   args: { runKey: oldRun.key },
   beforeEach: () => {
@@ -42,13 +42,13 @@ export const Empty: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('heading', { name: 'quarry · feat/import' })).toBeVisible();
     await expect(canvas.getByText(/recorded before steps were logged/i)).toBeVisible();
-    for (const name of ['Skills', 'Models', 'Advisor', 'Warnings']) {
+    for (const name of ['Skills', 'Models', 'Advisor', 'Context', 'Warnings']) {
       await expect(within(canvas.getByRole('region', { name })).getByText('None')).toBeVisible();
     }
   },
 };
 
-/** Full: the header, the timeline, and the run's skills, models, advisor notes and warnings. */
+/** Full: the header, the timeline, and the run's skills, models, advisor notes, context and warnings. */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
@@ -68,6 +68,13 @@ export const Full: Story = {
     await expect(models.getByText('claude-opus-5-5')).toBeVisible();
     await expect(models.getByText('$5.20')).toBeVisible();
     await expect(canvas.getByRole('region', { name: 'Advisor' })).toHaveTextContent('3 calls · 3 notes');
+    const context = canvas.getByRole('region', { name: 'Context' });
+    await expect([...context.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      '214 calls · median 281K · largest 1.3M',
+      `62 calls past the cap · handed off ${parseTime('2026-11-10T16:40:00.000Z').toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`,
+      'Tool results: 912K characters · read 44%',
+      'Sweeps: 1 inline · 4 delegated',
+    ]);
     const warnings = within(canvas.getByRole('region', { name: 'Warnings' }));
     await expect(warnings.getByText('0f1e2d3c')).toBeVisible();
     await expect(warnings.getByRole('button', { name: 'Copy session ID' })).toBeVisible();

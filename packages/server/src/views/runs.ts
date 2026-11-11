@@ -1,9 +1,11 @@
 import {
+  contextFacts,
   parseTime,
   projectNames,
   projectRoot,
   runFacts,
   sessionRootOf,
+  toolCharacters,
   weekOf,
   weekStart,
   type Finding,
@@ -142,15 +144,38 @@ export function addCount(counts: Record<string, number>, key: string, n = 1): vo
   counts[key] = (counts[key] ?? 0) + n;
 }
 
-/** The stored runs in the query's period (period), as their merged entries, and its weeks. */
+/**
+ * The query's period's stored units and its weeks: its runs (period's `matches`) and its sessions (periodSessions) that
+ * match period's filters, a session having no path, so a path filter leaves every session out, and its project's key
+ * from its root (sessionRootOf) when that is a stored run's root, else '', which no project filter matches. The one
+ * stored-unit period filter, which periodRuns and periodUnits map to merged entries.
+ */
+export function periodStoredUnits(
+  runs: StoredUnit<RunEntry>[],
+  sessions: StoredUnit<SessionEntry>[],
+  query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
+  now: Date,
+): { weeks: string[]; runs: StoredUnit<RunEntry>[]; sessions: StoredUnit<SessionEntry>[] } {
+  const { weeks, filters, matches } = period(query, now);
+  const names = storedNames(runs);
+  const runRoots = new Set(runs.map(rootOf));
+  const kept = ({ merged: { project } }: StoredUnit<SessionEntry>) =>
+    filters({ path: null, projectKey: sessionProjectKey(project, runRoots) ?? '' });
+  return {
+    weeks,
+    runs: runs.filter((unit) => matches(storedFacts(unit, names))),
+    sessions: periodSessions(sessions, weeks).filter(kept),
+  };
+}
+
+/** The stored runs in the query's period (periodStoredUnits), as their merged entries, and its weeks. */
 export function periodRuns(
   runs: StoredUnit<RunEntry>[],
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
 ): { weeks: string[]; runs: RunEntry[] } {
-  const { weeks, matches } = period(query, now);
-  const names = storedNames(runs);
-  return { weeks, runs: runs.filter((unit) => matches(storedFacts(unit, names))).map((unit) => unit.merged) };
+  const { weeks, runs: inPeriod } = periodStoredUnits(runs, [], query, now);
+  return { weeks, runs: inPeriod.map((unit) => unit.merged) };
 }
 
 /** The stored sessions that started in one of `weeks` (a period's weeks); a session with no start is in none. */
@@ -158,24 +183,19 @@ export function periodSessions(sessions: StoredUnit<SessionEntry>[], weeks: stri
   return sessions.filter(({ merged: { start } }) => !!start && weeks.includes(weekOf(parseTime(start))));
 }
 
-/**
- * The query's period's units, as their merged entries: its runs (periodRuns) and its sessions (periodSessions) that
- * match period's filters, a session having no path, so a path filter leaves every session out, and its project's key
- * from its root (sessionRootOf) when that is a stored run's root, else '', which no project filter matches; and its
- * weeks.
- */
+/** The query's period's units (periodStoredUnits), as their merged entries, and its weeks. */
 export function periodUnits(
   runs: StoredUnit<RunEntry>[],
   sessions: StoredUnit<SessionEntry>[],
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
 ): { weeks: string[]; runs: RunEntry[]; sessions: SessionEntry[] } {
-  const { filters } = period(query, now);
-  const { weeks, runs: inPeriod } = periodRuns(runs, query, now);
-  const runRoots = new Set(runs.map(rootOf));
-  const kept = ({ project }: SessionEntry) =>
-    filters({ path: null, projectKey: sessionProjectKey(project, runRoots) ?? '' });
-  return { weeks, runs: inPeriod, sessions: periodSessions(sessions, weeks).map((unit) => unit.merged).filter(kept) };
+  const units = periodStoredUnits(runs, sessions, query, now);
+  return {
+    weeks: units.weeks,
+    runs: units.runs.map((unit) => unit.merged),
+    sessions: units.sessions.map((unit) => unit.merged),
+  };
 }
 
 /**
@@ -277,7 +297,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
 }
 
 /** One run: its facts, timeline and findings, each with the workflow's label, which wins, and the app's from `labels`
- * (currentLabels), its review steps' strengths, its skills, models and advisor notes, its current warnings, and the
+ * (currentLabels), its review steps' strengths, its skills, models, advisor notes and context, its current warnings, and the
  * display labels of `list`'s (the active list's) categories; its project's name from `names`, every stored run's
  * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
  * named by the scope and its findings' texts, label reasons and strengths' summaries masked (maskText). */
@@ -321,6 +341,7 @@ export function runView(
   };
   const calls = entry.advisor?.calls;
   const notes = entry.notes?.notes;
+  const context = contextFacts(entry);
   return {
     facts,
     timeline: timeline(entry, steps, facts, labelOf),
@@ -337,6 +358,7 @@ export function runView(
     skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
     models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
+    context: context && { ...context, toolCharacters: toolCharacters(entry.tool_results) },
     warnings: currentWarnings([run], [], warnings).map((w) => showWarning(scope, w.text)),
     categoryLabels: categoryLabels(list),
   };

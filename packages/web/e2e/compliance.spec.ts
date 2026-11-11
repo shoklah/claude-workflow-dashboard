@@ -2,8 +2,8 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// dev:fixtures' data: report-full, report-later and report-v6, whose warnings carry their kinds and steps; the
-// webhooks run's final review has no agent id.
+// dev:fixtures' data: report-full, report-later, report-v6 and report-v7, whose warnings carry their kinds and steps;
+// the webhooks run's final review has no agent id.
 
 test.beforeEach(async ({ page }) => {
   await pinClock(page);
@@ -19,6 +19,11 @@ test('the compliance page lists a cell’s warnings with their run and has no ax
   await page.getByRole('button', { name: 'step has no agent id, week of Nov 8: 1' }).click();
   const list = page.getByRole('list', { name: 'Warnings' });
   await expect(list.getByText('final_review step 1 has no agent id')).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  // report-v7's information lines, below the warnings.
+  const information = page.getByRole('list', { name: 'Information from the reporter' });
+  await expect(information.getByRole('listitem').filter({ hasText: /^inline sweeps:/ })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await list.getByRole('link', { name: 'tidepool-api · feature/webhooks' }).click();
   await expect(page.getByRole('heading', { name: 'tidepool-api · feature/webhooks' })).toBeVisible();
