@@ -7,12 +7,12 @@ import { SPEND_GROUP_LABELS, formatCost, phaseLabel } from '../lib/format.ts';
 
 const COST = 'text-right tabular-nums';
 
-/** A row's figures after its name: cost, share, cost by model and the advisor's calls and cost. */
-function Figures({ row, models }: { row: SpendRow; models: string[] }) {
+/** A row's figures after its name: cost, share (none on the total row), cost by model and the advisor's calls and cost. */
+function Figures({ row, models, total = false }: { row: SpendRow; models: string[]; total?: boolean }) {
   return (
     <>
       <TableCell className={COST}>{formatCost(row.cost)}</TableCell>
-      <TableCell>{row.share !== null && <ShareBar share={row.share} />}</TableCell>
+      <TableCell>{!total && <ShareBar share={row.share} />}</TableCell>
       {models.map((model) => (
         <TableCell key={model} className={COST}>
           {formatCost(row.byModel[model] ?? null)}
@@ -111,7 +111,7 @@ export function SpendTable({ response }: { response: SpendResponse }) {
           ))}
           <TableRow className="border-t font-semibold">
             <TableCell>Total</TableCell>
-            <Figures row={response.total} models={models} />
+            <Figures row={response.total} models={models} total />
           </TableRow>
         </TableBody>
       </Table>

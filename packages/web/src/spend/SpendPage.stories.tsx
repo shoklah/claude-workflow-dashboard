@@ -62,7 +62,7 @@ export const EmptyUncounted: Story = {
   },
 };
 
-/** Every spend on an unpriced model: total $0, no share, every model cell a dash, the table and the unpriced note. */
+/** Every spend on an unpriced model: total $0, every share and model cell a dash, the table and the unpriced note. */
 export const Unpriced: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, [ALL]: spendUnpriced });
@@ -74,11 +74,13 @@ export const Unpriced: Story = {
     const spend = within(canvas.getByRole('region', { name: 'Spend by phase' }));
     const header = spend.getByRole('columnheader', { name: 'claude-nova-1' });
     const column = [...(header.parentElement as HTMLElement).children].indexOf(header);
-    for (const row of spend.getAllByRole('row').slice(2)) {
+    const rows = spend.getAllByRole('row').slice(2);
+    for (const [i, row] of rows.entries()) {
       const cells = within(row).getAllByRole('cell');
       await expect(cells[column].textContent).toBe('–');
       await expect(cells[1].textContent).toBe('$0.00');
-      await expect(cells[2].textContent).toBe('');
+      // An unknown share is ShareBar's dash; the total row has no share.
+      await expect(cells[2].textContent).toBe(i === rows.length - 1 ? '' : '–');
     }
     await expect(canvasElement.textContent).not.toContain('NaN');
   },

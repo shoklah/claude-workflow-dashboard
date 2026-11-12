@@ -100,7 +100,8 @@ export function singleBars(
  * Bars of several series by week, each series a palette slot in order unless it names its `color`, a 1px surface border
  * between bars, with a legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the
  * room under the plot for the legend: 64px by default, for a legend that wraps (Home's step kinds), 28px for one that
- * fits on one line. A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar.
+ * fits on one line. A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
+ * none over a week with no bar, and hides a total that would overlap another.
  */
 export function barsOption(
   weeks: string[],
@@ -122,24 +123,30 @@ export function barsOption(
     tooltip: cost ? { ...base.tooltip, valueFormatter: (value?: number | null) => formatCost(value ?? null) } : base.tooltip,
     yAxis: cost ? { ...base.yAxis, axisLabel: { ...base.yAxis.axisLabel, formatter: '${value}' } } : base.yAxis,
     legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: INK } },
-    series: series.map(({ name, data, color }, i) => ({
-      name,
-      type: 'bar',
-      stack,
-      data,
-      barMaxWidth: 24,
-      itemStyle: { color: color ?? SERIES[i], borderColor: SURFACE, borderWidth: 1 },
+    series: series.map(({ name, data, color }, i) => {
       // The top series carries each stack's total.
-      label:
-        totals && i === series.length - 1
+      const totalled = totals && i === series.length - 1;
+      return {
+        name,
+        type: 'bar',
+        stack,
+        data,
+        barMaxWidth: 24,
+        itemStyle: { color: color ?? SERIES[i], borderColor: SURFACE, borderWidth: 1 },
+        label: totalled
           ? {
               show: true,
               position: 'top',
               color: INK,
-              formatter: ({ dataIndex }: { dataIndex: number }) => format(total(dataIndex)),
+              formatter: ({ dataIndex }: { dataIndex: number }) => {
+                const sum = total(dataIndex);
+                return sum ? format(sum) : '';
+              },
             }
           : undefined,
-    })),
+        labelLayout: totalled ? { hideOverlap: true } : undefined,
+      };
+    }),
   };
 }
 
