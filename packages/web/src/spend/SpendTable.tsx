@@ -24,11 +24,12 @@ function Figures({ row, models }: { row: SpendRow; models: string[] }) {
   );
 }
 
-/** A group's row after its colour's swatch and, when it holds several phases and is open, its phases' rows below it. */
+/** A group's row after its colour's swatch and, when it names a phase other than itself and is open, its phases' rows
+ * below it. */
 function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
   const [open, setOpen] = useState(false);
   const name = SPEND_GROUP_LABELS[row.group];
-  const opens = row.phases.length > 1;
+  const opens = row.phases.some((phase) => phase.name !== row.group);
   return (
     <>
       <TableRow className="font-semibold">
@@ -69,9 +70,9 @@ function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
 }
 
 /**
- * The period's spend by phase: a row per group, a group of several phases opening to their rows, one column per model
- * (the API's order, largest first), then the advisor's calls and cost, counted apart; a total row. It scrolls sideways
- * when the models are many.
+ * The period's spend by phase: a row per group, a group naming a phase other than itself opening to its phases' rows,
+ * one column per model (the API's order, largest first), then the advisor's calls and cost, counted apart; a total row.
+ * It scrolls sideways when the models are many.
  */
 export function SpendTable({ response }: { response: SpendResponse }) {
   const { models } = response;

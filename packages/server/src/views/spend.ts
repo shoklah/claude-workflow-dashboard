@@ -1,11 +1,11 @@
-import {
-  type RunEntry,
-  type SessionEntry,
-  type SpendGroup,
-  type SpendGroupRow,
-  type SpendQuery,
-  type SpendResponse,
-  type SpendRow,
+import type {
+  RunEntry,
+  SessionEntry,
+  SpendGroup,
+  SpendGroupRow,
+  SpendQuery,
+  SpendResponse,
+  SpendRow,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
 import { periodUnits, unitWeeks } from './runs.ts';
@@ -27,11 +27,15 @@ export function groupOf(phase: string): SpendGroup {
   return GROUPS.find((group) => SPEND_GROUPS[group].includes(phase)) ?? 'unattributed';
 }
 
+/** Whether a SPEND_GROUPS entry holds the phase name. */
+const isKnown = (phase: string) => GROUPS.some((group) => SPEND_GROUPS[group].includes(phase));
+
 type PhaseCell = { byModel: Record<string, number | null>; advisor: { calls: number; cost: number } };
 
 export type PhaseSums = {
   phases: Record<string, PhaseCell>;
   uncounted: { runs: number; sessions: number };
+  unpriced: boolean;
 };
 
 /** Adds a model's cost to a cell's: absent until seen, null only while every cost seen for it is null. */
@@ -53,7 +57,7 @@ const emptyCell = (): PhaseCell => ({ byModel: {}, advisor: { calls: 0, cost: 0 
 /**
  * Spend by phase per week start date, over the units given: a run in its record's week, a session in its start's (a
  * unit with no such time counts nowhere). A unit with no `phases` counts in its week's `uncounted`; each model is named
- * by `name` before summing.
+ * by `name` before summing; `unpriced` holds when any cost seen in the week is null.
  */
 export function phaseSums(
   runs: RunEntry[],
@@ -62,7 +66,7 @@ export function phaseSums(
 ): Map<string, PhaseSums> {
   const sums = new Map<string, PhaseSums>();
   for (const { unit, week, kind } of unitWeeks(runs, sessions)) {
-    const sum = sums.get(week) ?? { phases: {}, uncounted: { runs: 0, sessions: 0 } };
+    const sum = sums.get(week) ?? { phases: {}, uncounted: { runs: 0, sessions: 0 }, unpriced: false };
     sums.set(week, sum);
     if (unit.phases == null) {
       sum.uncounted[kind] += 1;
@@ -70,7 +74,10 @@ export function phaseSums(
     }
     for (const phase of unit.phases) {
       const cell = (sum.phases[phase.name] ??= emptyCell());
-      for (const [model, usage] of Object.entries(phase.models ?? {})) addCost(cell.byModel, name(model), usage.cost);
+      for (const [model, usage] of Object.entries(phase.models ?? {})) {
+        addCost(cell.byModel, name(model), usage.cost);
+        if (usage.cost == null) sum.unpriced = true;
+      }
       cell.advisor.calls += phase.advisor?.calls ?? 0;
       cell.advisor.cost += phase.advisor?.cost ?? 0;
     }
@@ -84,8 +91,9 @@ const costOf = (cell: PhaseCell) => Object.values(cell.byModel).reduce<number>((
 /**
  * The Spend page: the period's units (periodUnits), runs only or sessions only as `units` asks (under a path, sessions
  * are already out), summed by phaseSums with each model masked (maskText); every period week with its cost by group, a
- * week with no sums 0; the five groups with their phases, a phase name no group holds masked; every row's `byModel`
- * dense over `models`, null for a model unpriced across the period. Sums count every project.
+ * week with no sums 0; the five groups with their phases, a phase name no group holds masked before the period's rows
+ * are summed; every row's `byModel` dense over `models`, null for a model unpriced across the period; the period's
+ * uncounted units; `unpriced` when any of its costs is null. Sums count every project.
  */
 export function spendView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -100,12 +108,12 @@ export function spendView(input: {
   const sessions = query.units === 'runs' ? [] : units.sessions;
   const sums = phaseSums(runs, sessions, (model) => maskText(scope, model));
 
-  // The period's cells by raw phase name, in first-seen order, and the period's total.
+  // The period's cells by phase name (masked when no group holds it), in first-seen order, and the period's total.
   const phases: Record<string, PhaseCell> = {};
   const all = emptyCell();
   for (const week of units.weeks) {
     for (const [name, cell] of Object.entries(sums.get(week)?.phases ?? {})) {
-      addCell((phases[name] ??= emptyCell()), cell);
+      addCell((phases[isKnown(name) ? name : maskText(scope, name)] ??= emptyCell()), cell);
       addCell(all, cell);
     }
   }
@@ -127,10 +135,7 @@ export function spendView(input: {
     const unknown = Object.keys(phases).filter((name) => groupOf(name) === group && !known.includes(name));
     const cell = emptyCell();
     for (const name of [...known, ...unknown]) addCell(cell, phases[name]);
-    const rows = [
-      ...known.map((name) => ({ ...rowOf(phases[name]), name })),
-      ...unknown.map((name) => ({ ...rowOf(phases[name]), name: maskText(scope, name) })),
-    ];
+    const rows = [...known, ...unknown].map((name) => ({ ...rowOf(phases[name]), name }));
     return { ...rowOf(cell), group, phases: rows };
   });
 
@@ -149,7 +154,11 @@ export function spendView(input: {
     groups,
     total: { ...rowOf(all), share: null },
     models,
-    unpriced: Object.values(all.byModel).includes(null),
+    unpriced: units.weeks.some((week) => sums.get(week)?.unpriced),
     fullFrom: weeks[last + 1]?.week ?? null,
+    uncounted: {
+      runs: weeks.reduce((sum, w) => sum + w.uncounted.runs, 0),
+      sessions: weeks.reduce((sum, w) => sum + w.uncounted.sessions, 0),
+    },
   };
 }

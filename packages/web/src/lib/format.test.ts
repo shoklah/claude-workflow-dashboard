@@ -13,6 +13,7 @@ import {
   kindLabel,
   phaseLabel,
   SPEND_GROUP_LABELS,
+  spendUncountedLabel,
   countsLabel,
   formatCount,
   formatMinutes,
@@ -408,6 +409,19 @@ describe('phaseLabel', () => {
   });
   it('lower-cases an unknown name', () => {
     expect(phaseLabel('Deploy_Check')).toBe('deploy check');
+  });
+});
+
+describe('spendUncountedLabel', () => {
+  it('counts the units, runs and sessions, then the week from which every week is counted', () => {
+    expect(spendUncountedLabel({ runs: 3, sessions: 1 }, '2026-10-04')).toBe(
+      'Not counted: 4 units with no spend by phase (3 runs, 1 session); every week from Oct 4 is fully counted.',
+    );
+  });
+  it('ends at the counts when the last week has an uncounted unit', () => {
+    expect(spendUncountedLabel({ runs: 1, sessions: 0 }, null)).toBe(
+      'Not counted: 1 unit with no spend by phase (1 run, 0 sessions).',
+    );
   });
 });
 

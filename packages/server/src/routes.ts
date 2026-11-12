@@ -1,6 +1,7 @@
 import type { Context, Hono } from 'hono';
 import {
   toPath,
+  toSpendUnits,
   toStepKind,
   weekStart,
   type ComplianceQuery,
@@ -259,8 +260,7 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
 
   // Spend page, task 2: the period's spend by phase, by group and by week.
   app.get('/api/spend', (c) => {
-    const units = c.req.query('units');
-    const query: SpendQuery = { ...periodQuery(c), units: units === 'runs' || units === 'sessions' ? units : 'all' };
+    const query: SpendQuery = { ...periodQuery(c), units: toSpendUnits(c.req.query('units')) };
     const runs = listUnits(deps.db, 'run');
     const sessions = listUnits(deps.db, 'session');
     return c.json(spendView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions) }));

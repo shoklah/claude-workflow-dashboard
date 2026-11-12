@@ -4,7 +4,7 @@ import { useLiveQuery } from '../api.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Option } from '../findings/FindingsPage.tsx';
 import { Chart, SPEND_GROUP_COLORS, barsOption } from '../home/WeeklyCharts.tsx';
-import { SPEND_GROUP_LABELS, formatCost, plural, total, weekLabel } from '../lib/format.ts';
+import { SPEND_GROUP_LABELS, formatCost, spendUncountedLabel, total, weekLabel } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 import { SpendTable } from './SpendTable.tsx';
 
@@ -54,13 +54,7 @@ function SpendWeeks({ response, groups }: { response: SpendResponse; groups: Spe
 
 /** The note under the chart, in the approved mockup's words. */
 function SpendNote({ response }: { response: SpendResponse }) {
-  const runs = response.weeks.reduce((sum, w) => sum + w.uncounted.runs, 0);
-  const sessions = response.weeks.reduce((sum, w) => sum + w.uncounted.sessions, 0);
-  const uncounted =
-    runs + sessions > 0
-      ? `Not counted: ${plural(runs + sessions, 'unit')} with no spend by phase (${plural(runs, 'run')}, ${plural(sessions, 'session')})` +
-        (response.fullFrom === null ? '. ' : `; every week from ${weekLabel(response.fullFrom)} is fully counted. `)
-      : '';
+  const uncounted = total(response.uncounted) > 0 ? `${spendUncountedLabel(response.uncounted, response.fullFrom)} ` : '';
   return (
     <p className="text-sm text-muted-foreground">
       List-price estimates from the reporter; the five groups are the app's grouping of the reporter's phases. A week
@@ -105,7 +99,12 @@ export function SpendPage() {
       </ListFilters>
       {spend.isPending && <p className="text-sm text-muted-foreground">Loading the spend…</p>}
       {spend.isError && <p className="text-sm">Couldn't load the spend.</p>}
-      {data && empty && <p className="text-sm">No spend by phase in this period.</p>}
+      {data && empty && (
+        <p className="text-sm">
+          No spend by phase in this period.
+          {total(data.uncounted) > 0 && ` ${spendUncountedLabel(data.uncounted, data.fullFrom)}`}
+        </p>
+      )}
       {data && !empty && (
         <>
           <Chart

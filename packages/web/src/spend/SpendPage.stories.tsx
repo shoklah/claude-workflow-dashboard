@@ -3,7 +3,7 @@ import { expect, waitFor, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
-import { spendEmpty, spendFull } from '../test/spend.ts';
+import { spendEmpty, spendFull, spendUncounted, spendUnpriced } from '../test/spend.ts';
 import { SpendPage } from './SpendPage.tsx';
 
 const meta = { component: SpendPage } satisfies Meta<typeof SpendPage>;
@@ -45,6 +45,41 @@ export const Empty: Story = {
   play: async ({ canvas, canvasElement }) => {
     await expect(await canvas.findByText('No spend by phase in this period.')).toBeVisible();
     await expect(canvas.queryByRole('region', { name: 'Spend by phase' })).toBeNull();
+    await expect(canvasElement.textContent).not.toContain('NaN');
+  },
+};
+
+/** Empty, with uncounted units: the empty line says what wasn't counted. */
+export const EmptyUncounted: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, ...projects, [ALL]: spendUncounted });
+  },
+  play: async ({ canvas }) => {
+    const line = await canvas.findByText(/No spend by phase in this period\./);
+    await expect(line).toHaveTextContent(
+      'No spend by phase in this period. Not counted: 2 units with no spend by phase (2 runs, 0 sessions).',
+    );
+  },
+};
+
+/** Every spend on an unpriced model: total $0, no share, every model cell a dash, the table and the unpriced note. */
+export const Unpriced: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, ...projects, [ALL]: spendUnpriced });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(await canvas.findByText(/List-price estimates/)).toHaveTextContent(
+      "Spend on a model with no price isn't counted.",
+    );
+    const spend = within(canvas.getByRole('region', { name: 'Spend by phase' }));
+    const header = spend.getByRole('columnheader', { name: 'claude-nova-1' });
+    const column = [...(header.parentElement as HTMLElement).children].indexOf(header);
+    for (const row of spend.getAllByRole('row').slice(2)) {
+      const cells = within(row).getAllByRole('cell');
+      await expect(cells[column].textContent).toBe('–');
+      await expect(cells[1].textContent).toBe('$0.00');
+      await expect(cells[2].textContent).toBe('');
+    }
     await expect(canvasElement.textContent).not.toContain('NaN');
   },
 };

@@ -66,6 +66,15 @@ export const spendFull: SpendResponse = {
   models: MODELS,
   unpriced: true,
   fullFrom: '2026-10-04',
+  uncounted: { runs: 3, sessions: 1 },
+};
+
+/** Full, but Unattributed holds one phase only, a name the app doesn't know. */
+export const spendUnknownPhase: SpendResponse = {
+  ...spendFull,
+  groups: spendFull.groups.map((g) =>
+    g.group === 'unattributed' ? { ...g, phases: [{ ...g.phases[0], name: 'deploy_check' }] } : g,
+  ),
 };
 
 const ZERO: SpendRow = { cost: 0, share: null, byModel: {}, advisor: { calls: 0, cost: 0 } };
@@ -79,4 +88,27 @@ export const spendEmpty: SpendResponse = {
   models: [],
   unpriced: false,
   fullFrom: '2026-09-20',
+  uncounted: { runs: 0, sessions: 0 },
+};
+
+/** Empty, with two runs of the last week that have no spend by phase. */
+export const spendUncounted: SpendResponse = {
+  ...spendEmpty,
+  weeks: spendEmpty.weeks.map((w, i) => (i === spendEmpty.weeks.length - 1 ? week(w.week, [0, 0, 0, 0, 0], 2) : w)),
+  fullFrom: null,
+  uncounted: { runs: 2, sessions: 0 },
+};
+
+/** Spend on one model only, which the reporter has no price for: every cost 0 and every share null. */
+const UNPRICED: SpendRow = { cost: 0, share: null, byModel: { [MODELS[3]]: null }, advisor: { calls: 0, cost: 0 } };
+export const spendUnpriced: SpendResponse = {
+  ...spendEmpty,
+  groups: GROUPS.map((g) => ({
+    group: g,
+    ...UNPRICED,
+    phases: g === 'implement' || g === 'unattributed' ? [{ name: g, ...UNPRICED }] : [],
+  })),
+  total: UNPRICED,
+  models: [MODELS[3]],
+  unpriced: true,
 };

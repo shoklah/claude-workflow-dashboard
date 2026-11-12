@@ -11,7 +11,7 @@ import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
-import { groupOf, phaseSums, type PhaseSums } from '../src/views/spend.ts';
+import { groupOf, phaseSums, spendView, type PhaseSums } from '../src/views/spend.ts';
 
 function report(): Report {
   const loaded = loadReport(fixture('report-v7'));
@@ -97,6 +97,12 @@ describe('phaseSums over inline units', () => {
     );
     const [sum] = [...sums.values()];
     expect(sum.phases.implement.byModel).toEqual({ m: 3 });
+    expect(sum.unpriced).toBe(true);
+  });
+
+  test('a week with every cost priced is not unpriced', () => {
+    const [sum] = [...phaseSums([run([{ name: 'implement', models: { m: { cost: 3 } } }])], []).values()];
+    expect(sum.unpriced).toBe(false);
   });
 });
 
@@ -214,11 +220,48 @@ describe('GET /api/spend', () => {
     expect(sessions.total.cost).toBeCloseTo(22.53);
   });
 
-  test('a period with no counted unit: cost 0, every share null and no NaN', async () => {
-    const body = await spend(`?weeks=52&path=small&project=${projectKey(TIDEPOOL)}`);
+  test('a period with no counted unit: cost 0, every share null and no NaN', () => {
+    const body = spendView({
+      runs: listUnits(db, 'run'),
+      sessions: listUnits(db, 'session'),
+      query: { weeks: 52, path: 'small', project: projectKey(TIDEPOOL), units: 'all' },
+      now: NOW,
+      scope: null,
+    });
     expect(body.total.cost).toBe(0);
     expect(rows(body).every((row) => row.share === null)).toBe(true);
-    expect(JSON.stringify(body)).not.toContain('NaN');
+    const numbers = rows(body).flatMap((row) => [row.cost, ...Object.values(row.byModel), row.advisor.cost]);
+    expect(numbers.some((n) => Number.isNaN(n))).toBe(false);
+  });
+
+  test("the period's uncounted runs and sessions sum its weeks'", async () => {
+    const body = await spend();
+    expect(body.uncounted).toEqual({ runs: 3, sessions: 0 });
+    reopen((raw) => {
+      raw.sessions.find((s: any) => s.start && s.phases).phases = null;
+    });
+    expect((await spend()).uncounted).toEqual({ runs: 3, sessions: 1 });
+  });
+
+  test('spend on a model priced in some units and not in others is unpriced', async () => {
+    const priced = (raw: any) => {
+      for (const unit of [...raw.runs, ...raw.sessions]) {
+        for (const phase of unit.phases ?? []) {
+          for (const [model, usage] of Object.entries<any>(phase.models ?? {})) if (usage.cost == null) delete phase.models[model];
+        }
+      }
+    };
+    reopen(priced);
+    expect((await spend()).unpriced).toBe(false);
+    reopen((raw) => {
+      priced(raw);
+      raw.runs.find((r: any) => r.phases?.some((p: any) => p.models?.['claude-opus-5-5'])).phases.find(
+        (p: any) => p.models?.['claude-opus-5-5'],
+      ).models['claude-opus-5-5'].cost = null;
+    });
+    const body = await spend();
+    expect(body.models).toContain('claude-opus-5-5');
+    expect(body.unpriced).toBe(true);
   });
 
   test('fullFrom is the week after the last uncounted run, and null when the last week has one', async () => {
@@ -284,6 +327,17 @@ describe('GET /api/spend', () => {
       const { forbidden, shown } = strings();
       expect(leaks(body, [...forbidden, '/Users/example'], shown)).toEqual([]);
       expect(group(body, 'unattributed').phases.map((p) => p.name)).toContain('another project');
+    });
+
+    test('two phases named after two hidden folders give one row', async () => {
+      reopen((raw) => {
+        const webhooks = raw.runs.find((r: any) => r.record.branch === 'feature/webhooks');
+        for (const name of ['tidepool-api', 'lantern']) webhooks.phases.push({ name, models: {}, advisor: { calls: 1, cost: 0 } });
+      });
+      setShowing(db, [projectKey(LANTERN)]);
+      const masked = group(await spend(), 'unattributed').phases.filter((p) => p.name === 'another project');
+      expect(masked).toHaveLength(1);
+      expect(masked[0].advisor.calls).toBe(2);
     });
   });
 });

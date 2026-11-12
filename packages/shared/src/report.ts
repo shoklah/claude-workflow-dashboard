@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { RELEVANCE } from './categories.ts';
+import type { SpendUnits } from './api/spend.ts';
 
 // The reporter's --json output (workflow-report.py, report_data). Every field is optional and nullable unless the
 // loader can't work without it; unknown keys are stripped.
@@ -331,4 +332,9 @@ export function toPath(value: unknown): Path | undefined {
 /** A value as a step kind, or undefined when it isn't one. */
 export function toStepKind(value: unknown): StepKind | undefined {
   return STEP_KINDS.find((k) => k === value);
+}
+
+/** A value as the Spend page's units, 'all' when it isn't 'runs' or 'sessions'. */
+export function toSpendUnits(value: unknown): SpendUnits {
+  return value === 'runs' || value === 'sessions' ? value : 'all';
 }

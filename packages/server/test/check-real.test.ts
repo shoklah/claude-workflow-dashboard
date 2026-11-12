@@ -193,7 +193,7 @@ describe('check:real', () => {
     for (const key of fixture('report-v7').runs.map((run: any) => run.key)) expect(`${stdout}${stderr}`).not.toContain(key);
   });
 
-  test('prints no phases line from an export with no phases', () => {
+  test('prints phases: not in the export from an export with no phases', () => {
     expect(checkReal(['cat', fixturePath('report-v6')]).stdout).toContain('\nphases: not in the export\nshowing: pass\n');
   });
 

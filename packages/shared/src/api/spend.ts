@@ -35,8 +35,8 @@ export type SpendWeek = {
 /**
  * The Spend page: the period's weeks, oldest first; all five groups, in SPEND_GROUPS' order, a group's phases those
  * with a counted entry, in the reporter's order; the total (share null); the models, largest cost first, unpriced ones
- * last; whether the period holds spend on a model with no price; and the first week from which every week has nothing
- * uncounted, null when the last week has.
+ * last; whether the period holds spend on a model with no price; the first week from which every week has nothing
+ * uncounted, null when the last week has; and the period's units with no spend by phase.
  */
 export type SpendResponse = {
   weeks: SpendWeek[];
@@ -45,4 +45,5 @@ export type SpendResponse = {
   models: string[];
   unpriced: boolean;
   fullFrom: string | null;
+  uncounted: { runs: number; sessions: number };
 };

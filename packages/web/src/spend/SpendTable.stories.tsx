@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { spendEmpty, spendFull } from '../test/spend.ts';
+import { spendEmpty, spendFull, spendUnknownPhase } from '../test/spend.ts';
 import { SpendTable } from './SpendTable.tsx';
 
 const meta = { component: SpendTable } satisfies Meta<typeof SpendTable>;
@@ -68,5 +68,18 @@ export const Empty: Story = {
     for (const name of ['Plan', 'Implement', 'Review and cleanup', 'Coordination', 'Unattributed']) {
       await expect(spend.getByText(name)).toBeVisible();
     }
+  },
+};
+
+/** A group whose only phase is another name than its own (an unknown phase under Unattributed) still opens to it. */
+export const UnknownPhase: Story = {
+  args: { response: spendUnknownPhase },
+  play: async ({ canvasElement, userEvent }) => {
+    const spend = table(canvasElement);
+    await expect(spend.queryByRole('button', { name: /Implement/ })).toBeNull();
+    const unattributed = spend.getByRole('button', { name: 'Unattributed' });
+    await expect(unattributed).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(unattributed);
+    await expect(spend.getByText('deploy check', { exact: true })).toBeVisible();
   },
 };
