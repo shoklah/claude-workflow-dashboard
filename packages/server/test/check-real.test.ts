@@ -13,7 +13,7 @@ const dirs: string[] = [];
 const LANTERN = '/Users/example/Work/lantern-notes';
 
 // An export from the old reporter, as report-full, has no totals but its weeks.
-const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models', 'units', 'context']
+const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models', 'units', 'context', 'phases']
   .map((name) => `${name}: not in the export\n`)
   .join('');
 
@@ -68,7 +68,7 @@ describe('check:real', () => {
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
-        'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nshowing: pass\n',
+        'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
     expect(status).toBe(0);
@@ -93,7 +93,7 @@ describe('check:real', () => {
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
         'run time: compared, 1 differ\nwith_waves\nsteps: 7 compared, 2 differ\ntask_review\nfinal_review\n' +
-        'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\ncontext: not in the export\nshowing: pass\n',
+        'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     // A skill or agent name can come from a project, so neither is printed.
     for (const name of ['test-driven-development', 'plan-reviewer', 'graphify', 'grill-me']) {
@@ -106,7 +106,7 @@ describe('check:real', () => {
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
-        'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nshowing: pass\n',
+        'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
     expect(status).toBe(0);
@@ -126,7 +126,7 @@ describe('check:real', () => {
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
-        'models: 0 differ\nunits: 3 differ\ndispatch_guard\nstartup\nadvisor\ncontext: not in the export\nshowing: pass\n',
+        'models: 0 differ\nunits: 3 differ\ndispatch_guard\nstartup\nadvisor\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     for (const name of ['grill-me', 'task-reviewer', 'no_model']) expect(`${stdout}${stderr}`).not.toContain(name);
   });
@@ -141,7 +141,7 @@ describe('check:real', () => {
   test("compares the weekly context with the reporter's and checks the context route", () => {
     for (const name of ['report-v7', 'report-projects']) {
       const { stdout, stderr, status } = checkReal(['cat', fixturePath(name)]);
-      expect(stdout).toContain('\ncontext: 2 compared, 0 differ\nshowing: pass\n');
+      expect(stdout).toMatch(/\ncontext: 2 compared, 0 differ\nphases: [^\n]+\nshowing: pass\n/);
       for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
       expect(status).toBe(0);
     }
@@ -151,7 +151,7 @@ describe('check:real', () => {
     expect(checkReal(['cat', fixturePath('report-v7')]).stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
-        'models: 0 differ\nunits: 0 differ\ncontext: 2 compared, 0 differ\nshowing: pass\n',
+        'models: 0 differ\nunits: 0 differ\ncontext: 2 compared, 0 differ\nphases: 9 compared, 0 differ\nshowing: pass\n',
     );
   });
 
@@ -163,21 +163,38 @@ describe('check:real', () => {
     ['the largest tokens', (row: any) => (row.max_tokens += 1)],
   ])("names a week whose context differs in %s", (_, change) => {
     const file = changed('report-v7', (raw) => change(raw.totals.context.find((w: any) => w.week === '2026-11-08')));
-    expect(checkReal(['cat', file]).stdout).toContain('\ncontext: 2 compared, 1 differ\n2026-11-08\nshowing: pass\n');
+    expect(checkReal(['cat', file]).stdout).toContain('\ncontext: 2 compared, 1 differ\n2026-11-08\nphases: 9 compared, 0 differ\nshowing: pass\n');
   });
 
   test('names a week only in the reporter\'s context', () => {
     const file = changed('report-v7', (raw) => {
       raw.totals.context.push({ ...raw.totals.context[0], week: '2026-11-15' });
     });
-    expect(checkReal(['cat', file]).stdout).toContain('\ncontext: 3 compared, 1 differ\n2026-11-15\nshowing: pass\n');
+    expect(checkReal(['cat', file]).stdout).toContain('\ncontext: 3 compared, 1 differ\n2026-11-15\nphases: 9 compared, 0 differ\nshowing: pass\n');
   });
 
   test("names a week only in the units' context", () => {
     const file = changed('report-v7', (raw) => {
       raw.totals.context = raw.totals.context.filter((w: any) => w.week !== '2026-11-01');
     });
-    expect(checkReal(['cat', file]).stdout).toContain('\ncontext: 2 compared, 1 differ\n2026-11-01\nshowing: pass\n');
+    expect(checkReal(['cat', file]).stdout).toContain('\ncontext: 2 compared, 1 differ\n2026-11-01\nphases: 9 compared, 0 differ\nshowing: pass\n');
+  });
+
+  test.each([
+    ['a phase cost', (phase: any) => (phase.models['claude-opus-5-5'].cost += 0.01)],
+    ["a phase's advisor calls", (phase: any) => (phase.advisor.calls += 1)],
+  ])("counts a unit whose phases differ from its models or advisor in %s, naming none", (_, change) => {
+    const file = changed('report-v7', (raw) => {
+      const unit = raw.runs.find((run: any) => run.phases?.some((p: any) => p.name === 'implement' && p.models['claude-opus-5-5']));
+      change(unit.phases.find((p: any) => p.name === 'implement'));
+    });
+    const { stdout, stderr } = checkReal(['cat', file]);
+    expect(stdout).toContain('\nphases: 9 compared, 1 differ\nshowing: pass\n');
+    for (const key of fixture('report-v7').runs.map((run: any) => run.key)) expect(`${stdout}${stderr}`).not.toContain(key);
+  });
+
+  test('prints phases: not in the export from an export with no phases', () => {
+    expect(checkReal(['cat', fixturePath('report-v6')]).stdout).toContain('\nphases: not in the export\nshowing: pass\n');
   });
 
   test('counts the leaks in the context route', () => {

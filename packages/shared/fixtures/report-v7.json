@@ -253,6 +253,7 @@
       "missing_skills": null,
       "refusals": null,
       "models": null,
+      "phases": null,
       "efforts": null,
       "advisor": null,
       "notes": null,
@@ -502,6 +503,7 @@
       "missing_skills": null,
       "refusals": null,
       "models": null,
+      "phases": null,
       "efforts": null,
       "advisor": null,
       "notes": null,
@@ -814,6 +816,7 @@
       "missing_skills": null,
       "refusals": null,
       "models": null,
+      "phases": null,
       "efforts": null,
       "advisor": null,
       "notes": null,
@@ -1122,6 +1125,32 @@
           "cost": null
         }
       },
+      "phases": [
+        {
+          "name": "design",
+          "models": {
+            "claude-fable-6-preview": {
+              "cost": null
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "plan_writing",
+          "models": {
+            "claude-sonnet-9-preview": {
+              "cost": null
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        }
+      ],
       "efforts": {
         "claude-fable-6-preview": {
           "high": 31
@@ -2110,6 +2139,140 @@
           "cost": 4.275
         }
       },
+      "phases": [
+        {
+          "name": "design",
+          "models": {
+            "claude-fable-5-1": {
+              "cost": 1.6
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "plan_writing",
+          "models": {
+            "claude-fable-5-1": {
+              "cost": 1.2
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "plan_simplify",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.4
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "plan_review",
+          "models": {
+            "claude-fable-5-1": {
+              "cost": 1.475
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "implement",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 5.1
+            }
+          },
+          "advisor": {
+            "calls": 4,
+            "cost": 0.34
+          }
+        },
+        {
+          "name": "task_review",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 1.5
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "fix_check",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.4
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "simplify",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.5
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "final_review",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.9
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "final_fix_check",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.22
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "coordination",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.5
+            }
+          },
+          "advisor": {
+            "calls": 1,
+            "cost": 0.08
+          }
+        }
+      ],
       "efforts": {
         "claude-opus-5-5": {
           "medium": 120,
@@ -3024,6 +3187,80 @@
           "cost": 2.455
         }
       },
+      "phases": [
+        {
+          "name": "plan_writing",
+          "models": {
+            "claude-fable-5-1": {
+              "cost": 1.2
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "plan_review",
+          "models": {
+            "claude-fable-5-1": {
+              "cost": 1.255
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "implement",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 4.0
+            }
+          },
+          "advisor": {
+            "calls": 3,
+            "cost": 0.27
+          }
+        },
+        {
+          "name": "task_review",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 1.1
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "final_review",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.8
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "coordination",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.38
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        }
+      ],
       "efforts": {
         "claude-opus-5-5": {
           "medium": 96,
@@ -3282,6 +3519,44 @@
           "cost": 0.71
         }
       },
+      "phases": [
+        {
+          "name": "implement",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.5
+            }
+          },
+          "advisor": {
+            "calls": 1,
+            "cost": 0.03
+          }
+        },
+        {
+          "name": "final_review",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.15
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "coordination",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.06
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        }
+      ],
       "efforts": {
         "claude-opus-5-5": {
           "medium": 18
@@ -3373,6 +3648,20 @@
           "cost": 0.12
         }
       },
+      "phases": [
+        {
+          "name": "unattributed",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.12
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        }
+      ],
       "efforts": {
         "claude-opus-5-5": {
           "medium": 4
@@ -3480,6 +3769,32 @@
           "cost": 0.24
         }
       },
+      "phases": [
+        {
+          "name": "design",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.14
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "unattributed",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.1
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        }
+      ],
       "efforts": {
         "claude-opus-5-5": {
           "medium": 6
@@ -3562,6 +3877,44 @@
           "cost": 1.05
         }
       },
+      "phases": [
+        {
+          "name": "design",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.45
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "plan_writing",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.35
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        },
+        {
+          "name": "coordination",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.25
+            }
+          },
+          "advisor": {
+            "calls": 0,
+            "cost": 0
+          }
+        }
+      ],
       "efforts": {
         "claude-opus-5-5": {
           "medium": 12
@@ -3634,6 +3987,20 @@
           "cost": 0.41
         }
       },
+      "phases": [
+        {
+          "name": "unattributed",
+          "models": {
+            "claude-opus-5-5": {
+              "cost": 0.41
+            }
+          },
+          "advisor": {
+            "calls": 1,
+            "cost": 0.06
+          }
+        }
+      ],
       "efforts": {
         "claude-opus-5-5": {
           "high": 9
@@ -3721,6 +4088,7 @@
       "skills": [],
       "typed": [],
       "models": {},
+      "phases": [],
       "efforts": {},
       "advisor": {
         "calls": 0,

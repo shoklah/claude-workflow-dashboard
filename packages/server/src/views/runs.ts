@@ -139,6 +139,20 @@ export function period(
   return { weeks, filters, matches };
 }
 
+/**
+ * The units given with their week start dates, as the reporter's weekly sums place them: a run in its record's week, a
+ * session in its start's; a unit with no such time is left out.
+ */
+export function unitWeeks(
+  runs: RunEntry[],
+  sessions: SessionEntry[],
+): ({ unit: RunEntry; week: string; kind: 'runs' } | { unit: SessionEntry; week: string; kind: 'sessions' })[] {
+  return [
+    ...runs.flatMap((unit) => (unit.record?.date ? [{ unit, week: weekOf(parseTime(unit.record.date)), kind: 'runs' as const }] : [])),
+    ...sessions.flatMap((unit) => (unit.start ? [{ unit, week: weekOf(parseTime(unit.start)), kind: 'sessions' as const }] : [])),
+  ];
+}
+
 /** Adds `n` to a count record's `key`. */
 export function addCount(counts: Record<string, number>, key: string, n = 1): void {
   counts[key] = (counts[key] ?? 0) + n;

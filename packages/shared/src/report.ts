@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { RELEVANCE } from './categories.ts';
+import type { SpendUnits } from './api/spend.ts';
 
 // The reporter's --json output (workflow-report.py, report_data). Every field is optional and nullable unless the
 // loader can't work without it; unknown keys are stripped.
@@ -86,6 +87,10 @@ const ModelsSchema = z
     z.object({ input: num, output: num, cache_read: num, cache_write: num, cost: num }),
   )
   .nullish();
+// Per workflow phase, in the reporter's order: its models and its advisor, which sum to the unit's own.
+const PhasesSchema = z
+  .array(z.object({ name: z.string(), models: ModelsSchema, advisor: z.object({ calls: num, cost: num }).nullish() }))
+  .nullish();
 const EffortsSchema = z.record(z.string(), z.record(z.string(), z.number())).nullish();
 
 // outcome is a file path, an object, a list, a boolean, 'ran' or null, depending on the skill.
@@ -163,6 +168,7 @@ export const RunEntrySchema = z.object({
   typed: z.array(TypedSchema).nullish(),
   refusals: counts,
   models: ModelsSchema,
+  phases: PhasesSchema,
   efforts: EffortsSchema,
   advisor: UnitAdvisorSchema.nullish(),
   notes: NotesSchema.nullish(),
@@ -184,6 +190,7 @@ export const SessionEntrySchema = z.object({
   skills: z.array(SkillSchema).nullish(),
   typed: z.array(TypedSchema).nullish(),
   models: ModelsSchema,
+  phases: PhasesSchema,
   efforts: EffortsSchema,
   advisor: UnitAdvisorSchema.nullish(),
   notes: NotesSchema.nullish(),
@@ -325,4 +332,9 @@ export function toPath(value: unknown): Path | undefined {
 /** A value as a step kind, or undefined when it isn't one. */
 export function toStepKind(value: unknown): StepKind | undefined {
   return STEP_KINDS.find((k) => k === value);
+}
+
+/** A value as the Spend page's units, 'all' when it isn't 'runs' or 'sessions'. */
+export function toSpendUnits(value: unknown): SpendUnits {
+  return value === 'runs' || value === 'sessions' ? value : 'all';
 }

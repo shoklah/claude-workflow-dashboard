@@ -1,4 +1,4 @@
-import { parseTime, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -78,6 +78,22 @@ export function kindLabel(kind: string | null): string {
   return kind === null ? 'other' : (KIND_LABELS[kind] ?? countLabel(kind));
 }
 
+/** A reporter's phase on screen, in lower case as the Spend page writes phases: a step kind by its step's label
+ * ("fix-check"), another name with spaces ("plan writing"). */
+export function phaseLabel(name: string): string {
+  const kind = toStepKind(name);
+  return (kind ? STEP_LABELS[kind] : countLabel(name)).toLowerCase();
+}
+
+/** A spend group's name on screen. */
+export const SPEND_GROUP_LABELS: Record<SpendGroup, string> = {
+  plan: 'Plan',
+  implement: 'Implement',
+  review: 'Review and cleanup',
+  coordination: 'Coordination',
+  unattributed: 'Unattributed',
+};
+
 /** A warning family's name on screen, as the Compliance page heads its rows. */
 export const FAMILY_LABELS: Record<string, string> = {
   review_flow: 'Review flow',
@@ -149,6 +165,17 @@ export const TOOL_CLASS_LABELS: Record<string, string> = {
  * facts." */
 export function uncountedLabel({ runs, sessions }: { runs: number; sessions: number }): string {
   return `Not counted: ${plural(runs, 'run')} and ${plural(sessions, 'session')} with no context facts.`;
+}
+
+/** The Spend page's line for the units its sums leave out, in the approved mockup's words: "Not counted: 4 units with
+ * no spend by phase (3 runs, 1 session); every week from Oct 4 is fully counted.", the last clause only when such a
+ * week is known. */
+export function spendUncountedLabel(
+  { runs, sessions }: { runs: number; sessions: number },
+  fullFrom: string | null,
+): string {
+  const counts = `Not counted: ${plural(runs + sessions, 'unit')} with no spend by phase (${plural(runs, 'run')}, ${plural(sessions, 'session')})`;
+  return fullFrom === null ? `${counts}.` : `${counts}; every week from ${weekLabel(fullFrom)} is fully counted.`;
 }
 
 /** The tokens of every kind together, compact with one fraction digit: "9.8M", "333K", a kind that isn't known as 0; a

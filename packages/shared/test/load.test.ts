@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { loadReport } from '../src/load.ts';
 import { reporterTotals } from '../src/report.ts';
+import { modelsCost } from '../src/facts.ts';
 import { fixture } from './fixture.ts';
 
 describe('loadReport', () => {
@@ -97,6 +98,37 @@ describe('loadReport', () => {
     if (result.ok) return;
     expect(result.reason).toBe('shape');
     expect(result.fields).toEqual(['runs[].steps']);
+  });
+
+  test("report-v7's phases add up to each unit's models and advisor", () => {
+    const result = loadReport(fixture('report-v7'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const units = [...result.report.runs, ...result.report.sessions].filter((u) => u.phases != null);
+    expect(units).toHaveLength(9);
+    for (const unit of units) {
+      const phases = unit.phases!;
+      const sum = (f: (p: (typeof phases)[number]) => number) => phases.reduce((total, p) => total + f(p), 0);
+      expect(sum((p) => modelsCost(p.models) ?? 0)).toBeCloseTo(modelsCost(unit.models) ?? 0, 6);
+      expect(sum((p) => p.advisor?.calls ?? 0)).toBe(unit.advisor?.calls ?? 0);
+      expect(sum((p) => p.advisor?.cost ?? 0)).toBeCloseTo(unit.advisor?.cost ?? 0, 6);
+    }
+  });
+
+  test('keeps a phase name the app does not know', () => {
+    const raw = fixture('report-v7');
+    raw.runs[4].phases[0].name = 'a_new_phase';
+    const result = loadReport(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.report.runs[4].phases?.[0].name).toBe('a_new_phase');
+  });
+
+  test('reads a null phases', () => {
+    const result = loadReport(fixture('report-v7'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.report.runs[0].phases).toBeNull();
   });
 
   test('ignores unknown keys', () => {
