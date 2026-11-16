@@ -114,9 +114,15 @@ export function formatCount(count: number | null): string {
 // The count keys whose words aren't their slug's.
 export const COUNT_LABELS: Record<string, string> = { couldnt_run: "Couldn't run", unneeded: 'Not required' };
 
-/** A count line's counts as lines, each its name, capitalised, and its number; null when the counts aren't known. */
+/** A count key, severity, outcome or verdict on screen, capitalised: `not_proportionate` as "Not proportionate",
+ * `unneeded` as "Not required". */
+export function countName(key: string): string {
+  return COUNT_LABELS[key] ?? capitalize(countLabel(key));
+}
+
+/** A count line's counts as lines, each its name (`countName`) and its number; null when the counts aren't known. */
 export function countLines(counts: Record<string, number | null> | null): [string, number | null][] | null {
-  return counts && Object.entries(counts).map(([key, n]) => [COUNT_LABELS[key] ?? capitalize(countLabel(key)), n]);
+  return counts && Object.entries(counts).map(([key, n]) => [countName(key), n]);
 }
 
 /** A share as a whole percent: "8%"; a dash when it isn't known. */

@@ -79,3 +79,34 @@ export const BeforeSteps: Story = {
     await expect(canvas.getByText('Record written')).toBeVisible();
   },
 };
+
+/** A count or a finding whose words aren't its slug's reads as on every screen: `unneeded` as "Not required". */
+export const NotRequired: Story = {
+  args: {
+    timeline: [
+      {
+        kind: 'final',
+        label: 'Final review',
+        at: null,
+        tasks: [],
+        steps: [
+          {
+            step: 'final_review',
+            round: 0,
+            agent: null,
+            counts: { unneeded: 1, minor: 0 },
+            findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'couldnt_run' }],
+          },
+        ],
+      },
+    ],
+    beforeSteps: false,
+  },
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.getByText('Not required 1')).toBeVisible();
+    await expect(canvas.queryByText(/Minor/)).toBeNull();
+    await userEvent.click(canvas.getByText('Not required 1'));
+    await expect(canvas.getByText('Not required')).toBeVisible();
+    await expect(canvas.getByText("Couldn't run")).toBeVisible();
+  },
+};

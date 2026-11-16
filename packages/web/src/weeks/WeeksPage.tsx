@@ -6,12 +6,17 @@ import { GROUP, NUM, Num, SUB } from '../components/Num.tsx';
 import { Line, PageTitle, SectionTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
-import { formatDollars, total, weekLabel } from '../lib/format.ts';
+import { PATH_LABELS, countName, formatDollars, total, weekLabel } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 type Week = WeeksResponse['weeks'][number];
 
-const SUBS = ['Small', 'Full', 'Plan', 'Critical', 'Important', 'Minor', 'Not required', 'Fable', 'All models'];
+const SUBS = [
+  ...Object.values(PATH_LABELS),
+  ...['critical', 'important', 'minor', 'unneeded'].map(countName),
+  'Fable',
+  'All models',
+];
 
 const RUN_TIMES: { key: keyof RunTime; label: string }[] = [
   { key: 'withWaves', label: 'With waves' },

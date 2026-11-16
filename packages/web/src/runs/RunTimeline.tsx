@@ -1,14 +1,14 @@
 import type { FindingRow, TimelineGroup, TimelineStep } from '@cwd/shared';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STEP_LABELS, capitalize, countLabel, formatWhole } from '../lib/format.ts';
+import { STEP_LABELS, countLines, countName, formatWhole } from '../lib/format.ts';
 
 function FindingItem({ finding }: { finding: FindingRow }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-2">
       <span className="text-xs text-muted-foreground tabular-nums">{finding.id}</span>
-      {finding.severity && <span className="text-xs text-muted-foreground">{capitalize(finding.severity)}</span>}
+      {finding.severity && <span className="text-xs text-muted-foreground">{countName(finding.severity)}</span>}
       <span>{finding.summary}</span>
-      {finding.outcome && <span className="text-xs text-muted-foreground">{capitalize(countLabel(finding.outcome))}</span>}
+      {finding.outcome && <span className="text-xs text-muted-foreground">{countName(finding.outcome)}</span>}
       {finding.reason && <span className="basis-full text-muted-foreground">{finding.reason}</span>}
     </li>
   );
@@ -17,9 +17,9 @@ function FindingItem({ finding }: { finding: FindingRow }) {
 /** A step: its kind (unless it is the one step its group is named for), round and counts, each its own word; one with
  * findings opens them. */
 function Step({ step, within = '' }: { step: TimelineStep; within?: string }) {
-  const counts = Object.entries(step.counts)
-    .filter(([, n]) => n > 0)
-    .map(([name, n]) => `${capitalize(countLabel(name))} ${formatWhole(n)}`);
+  const counts = (countLines(step.counts) ?? [])
+    .filter(([, n]) => n! > 0)
+    .map(([name, n]) => `${name} ${formatWhole(n!)}`);
   const name = STEP_LABELS[step.step];
   const label = (
     <span className="inline-flex flex-wrap gap-x-4">

@@ -6,6 +6,7 @@ import {
   cellShade,
   closedFindings,
   countLabel,
+  countName,
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
@@ -73,6 +74,15 @@ describe('stepWarningsLabel', () => {
 describe('countLabel', () => {
   it('writes a count line key as words', () => {
     expect(countLabel('not_proportionate')).toBe('not proportionate');
+  });
+});
+
+describe('countName', () => {
+  it('names a count key capitalised, the keys whose words aren’t their slug’s by name', () => {
+    expect(countName('not_proportionate')).toBe('Not proportionate');
+    expect(countName('important')).toBe('Important');
+    expect(countName('unneeded')).toBe('Not required');
+    expect(countName('couldnt_run')).toBe("Couldn't run");
   });
 });
 

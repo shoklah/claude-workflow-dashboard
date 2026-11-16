@@ -14,7 +14,7 @@ import { Text, Unknown } from '../components/Num.tsx';
 import { LINK, TERM } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
-import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countLabel } from '../lib/format.ts';
+import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -30,9 +30,6 @@ export function CategoryBadge({ category, labels }: { category: string | null; l
   return categoryLabel(category, labels);
 }
 
-/** An outcome or a verdict in the reader's words: `not_proportionate` as "Not proportionate". */
-const outcomeLabel = (value: string) => capitalize(countLabel(value));
-
 const helper = createColumnHelper<typeof features, Row>();
 /** The finding columns, each category named by `labels`. */
 const columnsOf = (labels: Record<string, string>) => helper.columns([
@@ -46,7 +43,7 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
   helper.accessor('severity', {
     header: 'Severity',
     filterFn: 'equalsString',
-    cell: (c) => <Text value={c.getValue() && capitalize(c.getValue()!)} />,
+    cell: (c) => <Text value={c.getValue() && countName(c.getValue()!)} />,
   }),
   helper.accessor('category', {
     header: 'Category',
@@ -61,7 +58,7 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
   helper.accessor('outcome', {
     header: 'Outcome',
     filterFn: 'equalsString',
-    cell: (c) => <Text value={c.getValue() && outcomeLabel(c.getValue()!)} />,
+    cell: (c) => <Text value={c.getValue() && countName(c.getValue()!)} />,
   }),
   helper.accessor('reason', {
     header: 'Reason',
@@ -79,13 +76,13 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
       ) : (
         c.getValue().map((verdict, i) => (
           <span key={i} className="block">
-            {outcomeLabel(verdict)}
+            {countName(verdict)}
           </span>
         ))
       ),
   }),
   // The session's call, as the workflow records it.
-  helper.accessor('validity', { header: 'Valid', cell: (c) => <Text value={c.getValue() && capitalize(c.getValue()!)} /> }),
+  helper.accessor('validity', { header: 'Valid', cell: (c) => <Text value={c.getValue() && countName(c.getValue()!)} /> }),
   helper.accessor('relevance', {
     header: 'App',
     cell: (c) => {
@@ -119,8 +116,8 @@ const runColumn = helper.columns([
 // The filters: each lists the values its column holds, in order, labelled as the column shows them.
 const FILTERS = [
   { id: 'step', label: 'Step', show: (v: string) => STEP_LABELS[v as StepKind] },
-  { id: 'severity', label: 'Severity', show: capitalize },
-  { id: 'outcome', label: 'Outcome', show: outcomeLabel },
+  { id: 'severity', label: 'Severity', show: countName },
+  { id: 'outcome', label: 'Outcome', show: countName },
 ] as const;
 
 /**
