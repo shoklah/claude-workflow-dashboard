@@ -97,7 +97,9 @@ export function RunPage({ runKey }: { runKey: string }) {
                     {strengths.map((strength, i) => (
                       <li key={i} className="flex flex-wrap items-baseline gap-x-2">
                         <CategoryBadge category={strength.category} labels={categoryLabels} />
-                        <span>{strength.summary ?? NONE}</span>
+                        <span>
+                          <Text value={strength.summary} />
+                        </span>
                         <span className="text-muted-foreground">{strengthWhere(strength)}</span>
                       </li>
                     ))}
@@ -109,11 +111,11 @@ export function RunPage({ runKey }: { runKey: string }) {
         </div>
         <Panel className="gap-4 lg:w-80 lg:flex-none">
           <Section title="Skills" none="No skill loaded.">
-            {skills.length > 0 && <Pairs pairs={skills.map((skill) => [skill.name, skill.outcome])} />}
+            {skills.length > 0 && <Pairs names pairs={skills.map((skill) => [skill.name, skill.outcome])} />}
           </Section>
           <Section title="Models" none="No model recorded.">
             {models.length > 0 && (
-              <Pairs pairs={models.map((model) => [modelLabel(model.model) ?? NONE, formatCost(model.cost)])} />
+              <Pairs names pairs={models.map((model) => [modelLabel(model.model) ?? NONE, formatCost(model.cost)])} />
             )}
           </Section>
           <Section title="Advisor" none="Not consulted.">

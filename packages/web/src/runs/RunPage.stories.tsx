@@ -96,6 +96,14 @@ export const Full: Story = {
       ['Opus 5.5', '$5.20'],
       ['Fable 5.1', '$1.90'],
     ]);
+    // A skill's and a model's name in primary ink, the outcome and cost muted; Advisor's terms muted as labels.
+    for (const name of ['Skills', 'Models']) {
+      for (const dt of canvas.getByRole('region', { name }).querySelectorAll('dt')) {
+        await expect(dt).not.toHaveClass('text-muted-foreground');
+        await expect(dt.nextElementSibling).toHaveClass('text-muted-foreground');
+      }
+    }
+    await expect(canvas.getByRole('region', { name: 'Advisor' }).querySelector('dt')).toHaveClass('text-muted-foreground');
     await expect(pairs(canvas.getByRole('region', { name: 'Advisor' }))).toEqual([
       ['Calls', '3'],
       ['Notes', '3'],
@@ -133,6 +141,21 @@ export const Strengths: Story = {
       'TestsEach view tested on both fixtures, null facts includedFinal review',
     ]);
     await expect(strengths.querySelector('[data-slot="badge"]')).toBeNull();
+  },
+};
+
+/** A strength with no summary shows the muted dash, read out as "not known". */
+export const StrengthWithoutSummary: Story = {
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      [`/api/runs/${fullRun.key}`]: { ...runFull, strengths: [{ ...runFull.strengths[0], summary: null }] },
+    });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Findings' }));
+    const strengths = canvas.getByRole('region', { name: 'Strengths' });
+    await expect(within(strengths).getByText('not known')).toHaveClass('sr-only');
   },
 };
 

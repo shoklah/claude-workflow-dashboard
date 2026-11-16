@@ -39,14 +39,16 @@ export function Panel({ title, aside, className, children }: { title?: string; a
   );
 }
 
-/** Labelled pairs: each fact's name in secondary ink, its value beside it, right-aligned in tabular figures. */
-export function Pairs({ pairs, className }: { pairs: [string, ReactNode][]; className?: string }) {
+/** Labelled pairs: each fact's name in secondary ink, its value beside it, right-aligned in tabular figures. With
+ * `names`, a list of names with their detail (a skill's outcome, a model's cost): each name in primary ink on its own
+ * row, its detail muted, so a long name keeps its line when another row's detail is long. */
+export function Pairs({ pairs, names = false, className }: { pairs: [string, ReactNode][]; names?: boolean; className?: string }) {
   return (
-    <dl className={cn('grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-sm', className)}>
+    <dl className={cn(names ? 'flex flex-col' : 'grid grid-cols-[minmax(0,1fr)_auto] gap-x-4', 'gap-y-1 text-sm', className)}>
       {pairs.map(([term, value], i) => (
-        <div key={i} className="contents">
-          <dt className="text-muted-foreground">{term}</dt>
-          <dd className={NUM}>{value}</dd>
+        <div key={i} className={names ? 'flex flex-wrap justify-between gap-x-4' : 'contents'}>
+          <dt className={cn(!names && 'text-muted-foreground')}>{term}</dt>
+          <dd className={cn(NUM, names && 'text-muted-foreground')}>{value}</dd>
         </div>
       ))}
     </dl>

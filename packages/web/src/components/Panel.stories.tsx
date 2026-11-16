@@ -60,6 +60,34 @@ export const PairsList: Story = {
   },
 };
 
+/** Names with their detail: each name in primary ink on its own row, its detail muted beside it, so a long name
+ * keeps one line when a short one has a long detail. */
+export const PairsNames: Story = {
+  args: {
+    title: 'Skills',
+    children: (
+      <div className="w-80">
+        <Pairs
+          names
+          pairs={[
+            ['subagent-driven-development', 'ran'],
+            ['simplify', 'applied 2, skipped 1'],
+          ]}
+        />
+      </div>
+    ),
+  },
+  play: async ({ canvas }) => {
+    const [long, short] = canvas.getAllByRole('term');
+    await expect(long).not.toHaveClass('text-muted-foreground');
+    await expect(long.nextElementSibling).toHaveClass('text-muted-foreground');
+    await expect(short.nextElementSibling).toHaveTextContent('applied 2, skipped 1');
+    // One line each: the long name sits level with its detail, its height one line's.
+    await expect(long.getBoundingClientRect().top).toBe(long.nextElementSibling!.getBoundingClientRect().top);
+    await expect(long.getBoundingClientRect().height).toBe(short.getBoundingClientRect().height);
+  },
+};
+
 /** The disclosure, closed: its body shows once the summary is clicked. */
 export const DetailsClosed: Story = {
   render: () => (

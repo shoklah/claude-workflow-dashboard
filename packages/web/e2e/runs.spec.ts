@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
+import { settled } from './settled.ts';
 
 // dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML, then report-v6
 // and report-v7, which adds each unit's context.
@@ -12,13 +13,6 @@ async function openFullRun(page: Page): Promise<void> {
   const row = page.getByRole('row').filter({ hasText: 'feature/offline-sync' }).filter({ hasText: 'full' });
   await row.getByRole('link').click();
   await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
-}
-
-/** Waits for the View switch's colour transition to end: axe run mid-transition reads its colours half-way. */
-async function viewSettled(page: Page): Promise<void> {
-  await page
-    .getByRole('group', { name: 'View' })
-    .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
 }
 
 test.beforeEach(async ({ page }) => {
@@ -36,7 +30,7 @@ test('runs list and run page have no axe violations', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Findings', exact: true }).click();
   await expect(page.getByRole('table')).toBeVisible();
-  await viewSettled(page);
+  await settled(page.getByRole('group', { name: 'View' }));
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
@@ -90,6 +84,6 @@ test('the schema 5 run page lists its strengths under the findings table', async
   await expect(strengths.getByRole('listitem')).toHaveCount(2);
   await expect(strengths.getByText('Each retry delay has its own test')).toBeVisible();
   await expect(strengths.getByText('The signing secret never reaches a log')).toBeVisible();
-  await viewSettled(page);
+  await settled(page.getByRole('group', { name: 'View' }));
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
