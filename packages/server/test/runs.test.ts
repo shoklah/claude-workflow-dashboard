@@ -10,7 +10,7 @@ import {
   type RunResponse,
   type RunsResponse,
 } from '@cwd/shared';
-import { fixture } from '../../shared/test/fixture.ts';
+import { fixture, reportFixtures } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
@@ -197,7 +197,8 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
   ]);
 });
 
-test.each(['report-full', 'report-later', 'report-projects', 'report-v5', 'report-v6', 'report-v7'])(
+// Every export fixture that loads (report-shape is a deliberate shape failure).
+test.each(reportFixtures().filter((name) => loadReport(fixture(name)).ok))(
   "every step of %s's runs sits in exactly one timeline group",
   async (name) => {
     db.$client.close();
