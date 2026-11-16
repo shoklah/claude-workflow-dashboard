@@ -209,17 +209,15 @@ test.each(reportFixtures().filter((name) => name !== 'report-shape'))(
   async (name) => {
     db.$client.close();
     db = dbWith(name);
-    const placed = (s: Parameters<typeof stepId>[0], task: number | null, wave: string | null) =>
-      `${stepId(s)} task ${task ?? '-'} wave ${wave ?? '-'}`;
+    type Placed = Parameters<typeof stepId>[0] & { task?: number | null; wave?: string | null };
+    const placed = (s: Placed) => `${stepId(s)} task ${s.task ?? '-'} wave ${s.wave ?? '-'}`;
     for (const entry of fixture(name).runs) {
       const { timeline } = await run(runKey(entry) as string);
       const shown = timeline.flatMap((g) => [
-        ...g.steps.map((s) => placed(s, null, g.kind === 'wave' ? g.label.replace(/^Wave /, '') : null)),
-        ...g.tasks.flatMap((t) => t.steps.map((s) => placed(s, t.task, null))),
+        ...g.steps.map((s) => placed({ ...s, wave: g.kind === 'wave' ? g.label.replace(/^Wave /, '') : null })),
+        ...g.tasks.flatMap((t) => t.steps.map((s) => placed({ ...s, task: t.task }))),
       ]);
-      type RawStep = Parameters<typeof stepId>[0] & { task?: number | null; wave?: string | null };
-      const raw = (entry.steps ?? []).map((s: RawStep) => placed(s, s.task ?? null, s.wave ?? null));
-      expect(shown.sort()).toEqual(raw.sort());
+      expect(shown.sort()).toEqual((entry.steps ?? []).map(placed).sort());
     }
   },
 );
