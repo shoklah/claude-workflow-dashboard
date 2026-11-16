@@ -95,7 +95,7 @@ export const NotRequired: Story = {
             round: 0,
             agent: null,
             counts: { unneeded: 1, minor: 0 },
-            findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'couldnt_run' }],
+            findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'to_owner' }],
           },
         ],
       },
@@ -107,6 +107,6 @@ export const NotRequired: Story = {
     await expect(canvas.queryByText(/Minor/)).toBeNull();
     await userEvent.click(canvas.getByText('Not required 1'));
     await expect(canvas.getByText('Not required')).toBeVisible();
-    await expect(canvas.getByText("Couldn't run")).toBeVisible();
+    await expect(canvas.getByText('To owner')).toBeVisible();
   },
 };

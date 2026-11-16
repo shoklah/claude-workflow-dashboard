@@ -175,16 +175,16 @@ export const WorkflowLabels: Story = {
   },
 };
 
-/** A severity, outcome or verdict whose words aren't its slug's reads as on every screen: `unneeded` as "Not required",
- * `couldnt_run` as "Couldn't run", in the cells and the filter's options. */
+/** A severity or verdict whose words aren't its slug's reads as on every screen: `unneeded` as "Not required",
+ * `couldnt_run` as "Couldn't run", in the cells and the filter's options; an outcome as words, `to_owner` as "To owner". */
 export const NotRequired: Story = {
   args: {
-    findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'couldnt_run', verdicts: ['couldnt_run'] }],
+    findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'to_owner', verdicts: ['couldnt_run'] }],
     categoryLabels: runFull.categoryLabels,
   },
   play: async ({ canvas, canvasElement }) => {
     await expect(column(canvasElement, 'Severity')).toEqual(['Not required']);
-    await expect(column(canvasElement, 'Outcome')).toEqual(["Couldn't run"]);
+    await expect(column(canvasElement, 'Outcome')).toEqual(['To owner']);
     await expect(column(canvasElement, 'Fix-check verdicts')).toEqual(["Couldn't run"]);
     const severities = canvas.getByRole('combobox', { name: 'Severity' });
     await expect([...severities.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', 'Not required']);
