@@ -52,8 +52,8 @@ export const Full: Story = {
     );
     // The darkest step for the grid's largest count, a grey for 0.
     const cell = canvas.getByRole('button', { name: 'Tests, week of Nov 8: 2' });
-    await expect(cell).toHaveClass('bg-[#184f95]');
-    await expect(canvas.getByRole('button', { name: 'Tests, week of Oct 18: 0' })).toHaveClass('bg-[#f0efec]');
+    await expect(cell).toHaveClass('bg-shade-5');
+    await expect(canvas.getByRole('button', { name: 'Tests, week of Oct 18: 0' })).toHaveClass('bg-shade-zero');
     await userEvent.click(cell);
     await expect(args.onSelect).toHaveBeenCalledWith({ category: 'tests', week: '2026-11-08' });
   },

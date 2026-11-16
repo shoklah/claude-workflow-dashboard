@@ -132,7 +132,6 @@ export function FindingsTable({
             <label key={filter.id} className="flex items-center gap-1.5">
               {filter.label}
               <select
-                className="rounded-md border bg-background px-2 py-1"
                 value={String(column.getFilterValue() ?? '')}
                 onChange={(e) => column.setFilterValue(e.target.value)}
               >

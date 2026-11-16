@@ -365,21 +365,25 @@ export function formatPercent(percent: number | null): string {
   return percent === null ? NONE : `${percent}%`;
 }
 
-// The dataviz blue ramp's five steps, light to dark, with black text on step 4 (white there is 4.42:1, under AA's
-// 4.5:1) and white on the darkest; and its neutral grey with secondary ink, for 0.
+// The theme's sequential ramp, near zero to high, each step with the ink that reads on it in both modes (DESIGN.md's
+// Chart colours); and the faint zero cell with secondary ink, for 0. Written out whole, so Tailwind finds the classes.
 const SHADES = [
-  'bg-[#cde2fb]',
-  'bg-[#9ec5f4]',
-  'bg-[#6da7ec]',
-  'bg-[#2a78d6] text-black',
-  'bg-[#184f95] text-white',
+  'bg-shade-1 text-on-shade-1',
+  'bg-shade-2 text-on-shade-2',
+  'bg-shade-3 text-on-shade-3',
+  'bg-shade-4 text-on-shade-4',
+  'bg-shade-5 text-on-shade-5',
 ];
-const ZERO_SHADE = 'bg-[#f0efec] text-[#52514e]';
+const ZERO_SHADE = 'bg-shade-zero text-on-shade-zero';
 
-// The dataviz palette's reserved status orange ("serious") for a warned step box's border, and the approved mockup's
-// darker orange for the warning text beside it, readable on white (5.9:1).
-export const WARNING_BORDER = 'border-[#ec835a]';
-export const WARNING_INK = 'text-[#a8461c]';
+// The reserved status orange ("serious") for a warned element's border, and the warning ink for its text, readable on
+// the panels in both modes (DESIGN.md's Status).
+export const WARNING_BORDER = 'border-warning-edge';
+export const WARNING_INK = 'text-warning-ink';
+// The edge that marks a finished run in Home's feed.
+export const SUCCESS_BORDER = 'border-success-edge';
+// The import notice's and showing mode's amber glass bar (DESIGN.md's Notice bars).
+export const NOTICE = 'rounded-panel border border-notice-edge bg-notice text-sm text-notice-ink';
 
 // A share bar (a meter): the ramp's dataviz blue for its fill (an empty bar, so the step's text colour does nothing),
 // on the ramp's lightest step for its track.

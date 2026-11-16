@@ -69,7 +69,7 @@ export const WithWarnings: Story = {
     const boxes = await within(canvas.getByRole('tabpanel')).findAllByRole('figure');
     const task = within(boxes[2]);
     await expect(task.getByRole('link', { name: '2 warnings on Task review' })).toHaveAttribute('href', '/compliance?step=task_review');
-    await expect(task.getByText('2 warnings').closest('.border-2')).toHaveClass('border-[#ec835a]');
+    await expect(task.getByText('2 warnings').closest('.border-2')).toHaveClass('border-warning-edge');
     await expect(within(boxes[4]).getByRole('link', { name: '1 warning on Final review' })).toHaveAttribute(
       'href',
       '/compliance?step=final_review',

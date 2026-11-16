@@ -1,6 +1,7 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
 import { STEP_LABELS, formatCompact, formatCost, weekLabel } from '../lib/format.ts';
+import { resolveVars, useDark } from '../lib/theme.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
 type Charts = HomeResponse['charts'];
@@ -8,10 +9,11 @@ type Charts = HomeResponse['charts'];
 /** The step kinds, in the order the API lists them (the reporter's). */
 const stepKinds = (charts: Charts) => Object.keys(charts.findingsByStep) as StepKind[];
 
-// The dataviz skill's reference palette, light mode, on the card's white surface: categorical slots 1 to 8 in their
-// fixed order (validated: adjacent pairs pass CVD and normal-vision; aqua, yellow and magenta sit under 3:1, so the
-// table view below carries every number), and the chart chrome's ink, gridline and baseline.
-const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
+// The dataviz skill's reference palette from the theme's tokens, light or dark steps (DESIGN.md's Chart colours):
+// categorical slots 1 to 8 in their fixed order (validated on both glass surfaces; four light slots sit under 3:1, so
+// the table view below carries every number), and the chart chrome's surface, ink, gridline and baseline. Each is a
+// `var()` that `Chart` resolves at render, since ECharts' SVG can't hold one.
+const SERIES = [1, 2, 3, 4, 5, 6, 7, 8].map((slot) => `var(--series-${slot})`);
 // A spend group's colour, in the chart and the table's swatches: the palette's first four slots in the groups' order,
 // and a neutral grey outside the palette for Unattributed, so it reads as "the rest" (the table view carries its numbers).
 export const SPEND_GROUP_COLORS: Record<SpendGroup, string> = {
@@ -19,12 +21,12 @@ export const SPEND_GROUP_COLORS: Record<SpendGroup, string> = {
   implement: SERIES[1],
   review: SERIES[2],
   coordination: SERIES[3],
-  unattributed: '#b5b4ad',
+  unattributed: 'var(--series-rest)',
 };
-const SURFACE = '#ffffff';
-const INK = '#52514e';
-const GRID = '#e1e0d9';
-const BASELINE = '#c3c2b7';
+const SURFACE = 'var(--chart-surface)';
+const INK = 'var(--chart-ink)';
+const GRID = 'var(--chart-grid)';
+const BASELINE = 'var(--chart-baseline)';
 
 /** The options every chart shares: weeks along the bottom, one value axis, an axis tooltip, no animation. */
 function baseOption(weeks: string[]) {
@@ -32,7 +34,13 @@ function baseOption(weeks: string[]) {
     animation: false,
     textStyle: { fontFamily: 'inherit' },
     grid: { left: 8, right: 8, top: 8, bottom: 8, containLabel: true },
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'var(--popover)',
+      borderColor: 'var(--panel-edge)',
+      textStyle: { color: 'var(--popover-foreground)' },
+    },
     xAxis: {
       type: 'category',
       data: weeks.map(weekLabel),
@@ -161,13 +169,14 @@ function findingsOption(charts: Charts) {
 }
 
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
+  useDark();
   return (
-    <div className="min-w-0 flex-1 rounded-lg border bg-card p-3">
+    <div className="glass min-w-0 flex-1 p-3">
       <h2 className="text-sm font-medium">{title}</h2>
       <ReactECharts
         role="img"
         aria-label={`${title}: bars by week; the numbers are in the table below.`}
-        option={option}
+        option={resolveVars(option)}
         opts={{ renderer: 'svg' }}
         style={{ height }}
       />

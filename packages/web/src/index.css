@@ -1,10 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/outfit";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --font-sans: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -12,6 +14,9 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-panel: 1.25rem;
+    --radius-control: 9999px;
+    --radius-swatch: 3px;
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -43,75 +48,177 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+    --color-warning-edge: var(--warning-edge);
+    --color-warning-ink: var(--warning-ink);
+    --color-success-edge: var(--success-edge);
+    --color-notice: var(--notice);
+    --color-notice-edge: var(--notice-edge);
+    --color-notice-ink: var(--notice-ink);
+    --color-shade-zero: var(--shade-zero);
+    --color-shade-1: var(--shade-1);
+    --color-shade-2: var(--shade-2);
+    --color-shade-3: var(--shade-3);
+    --color-shade-4: var(--shade-4);
+    --color-shade-5: var(--shade-5);
+    --color-on-shade-zero: var(--on-shade-zero);
+    --color-on-shade-1: var(--on-shade-1);
+    --color-on-shade-2: var(--on-shade-2);
+    --color-on-shade-3: var(--on-shade-3);
+    --color-on-shade-4: var(--on-shade-4);
+    --color-on-shade-5: var(--on-shade-5);
 }
 
+/* DESIGN.md's light pair, liquid glass: pale colour blobs behind frosted white panels, dark ink. */
 :root {
-    --radius: 0.625rem;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    color-scheme: light;
+    --radius: 0.875rem;
+    --backdrop:
+      radial-gradient(600px 500px at 10% 10%, #a5f3fc, transparent 60%),
+      radial-gradient(700px 600px at 90% 20%, #c4b5fd, transparent 60%),
+      radial-gradient(700px 600px at 70% 95%, #fecdd3, transparent 60%),
+      radial-gradient(500px 500px at 20% 90%, #bbf7d0, transparent 60%);
+    --panel: rgb(255 255 255 / 0.62);
+    --panel-sheen: linear-gradient(135deg, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.05));
+    --panel-edge: rgb(255 255 255 / 0.85);
+    --panel-highlight: rgb(255 255 255 / 0.9);
+    --panel-shadow: 0 10px 30px rgb(30 40 90 / 0.12);
+    --panel-solid: #f7f8fd;
+    --background: #eef1fb;
+    --foreground: #10162f;
+    --card: var(--panel);
+    --card-foreground: var(--foreground);
+    --popover: var(--panel-solid);
+    --popover-foreground: var(--foreground);
+    --primary: #10162f;
+    --primary-foreground: #ffffff;
+    --secondary: rgb(255 255 255 / 0.55);
+    --secondary-foreground: var(--foreground);
+    --muted: rgb(255 255 255 / 0.45);
+    --muted-foreground: #3d4664;
+    --accent: rgb(255 255 255 / 0.75);
+    --accent-foreground: var(--foreground);
+    --destructive: #d03b3b;
+    --border: rgb(16 22 47 / 0.1);
+    --input: rgb(16 22 47 / 0.2);
+    --ring: #3f5cf0;
+    /* A select's chevron, in the secondary ink (an image can't read a colour token). */
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%233d4664' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    --chart-1: var(--series-1);
+    --chart-2: var(--series-2);
+    --chart-3: var(--series-3);
+    --chart-4: var(--series-4);
+    --chart-5: var(--series-5);
+    --sidebar: var(--panel);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--panel-edge);
+    --sidebar-ring: var(--ring);
+    --warning-edge: #ec835a;
+    --warning-ink: #a8461c;
+    --success-edge: #15803d;
+    --notice: #fff4e0;
+    --notice-edge: #d97706;
+    --notice-ink: #5a2d00;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --series-6: #008300;
+    --series-7: #6250d6;
+    --series-8: #e34948;
+    --series-rest: #b5b4ad;
+    --chart-surface: #f3f4fb;
+    --chart-ink: var(--muted-foreground);
+    --chart-grid: rgb(16 22 47 / 0.08);
+    --chart-baseline: rgb(16 22 47 / 0.25);
+    --shade-zero: rgb(255 255 255 / 0.55);
+    --shade-1: #cde2fb;
+    --shade-2: #9ec5f4;
+    --shade-3: #6da7ec;
+    --shade-4: #2a78d6;
+    --shade-5: #184f95;
+    --on-shade-zero: var(--muted-foreground);
+    --on-shade-1: #10162f;
+    --on-shade-2: #10162f;
+    --on-shade-3: #10162f;
+    --on-shade-4: #000000;
+    --on-shade-5: #ffffff;
 }
 
+/* DESIGN.md's look, night glass: tinted frosted panels over a night gradient lit by colour orbs, white ink. */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    color-scheme: dark;
+    --backdrop:
+      radial-gradient(520px 520px at 12% 18%, rgb(255 60 172 / 0.55), transparent 62%),
+      radial-gradient(620px 620px at 88% 12%, rgb(43 134 197 / 0.55), transparent 62%),
+      radial-gradient(560px 560px at 75% 92%, rgb(120 75 160 / 0.55), transparent 62%),
+      radial-gradient(420px 420px at 30% 85%, rgb(0 210 184 / 0.55), transparent 62%),
+      linear-gradient(135deg, #1a1240, #2a1060 50%, #10204f);
+    --panel: rgb(28 18 72 / 0.55);
+    --panel-sheen: linear-gradient(135deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02));
+    --panel-edge: rgb(255 255 255 / 0.3);
+    --panel-highlight: rgb(255 255 255 / 0.4);
+    --panel-shadow: 0 20px 50px rgb(10 5 40 / 0.45);
+    --panel-solid: #2a1d5e;
+    --background: #1a1240;
+    --foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #2a1a6e;
+    --secondary: rgb(255 255 255 / 0.12);
+    --muted: rgb(255 255 255 / 0.08);
+    --muted-foreground: #d9d3ff;
+    --accent: rgb(255 255 255 / 0.16);
+    --destructive: #ff6b81;
+    --border: rgb(255 255 255 / 0.14);
+    --input: rgb(255 255 255 / 0.35);
+    --ring: #7ef9ff;
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23d9d3ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    --warning-ink: #ffb08a;
+    --success-edge: #34d399;
+    --notice: rgb(250 178 25 / 0.14);
+    --notice-edge: #fab219;
+    --notice-ink: #ffe2a8;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #0ca30c;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --series-rest: #8b8794;
+    --chart-surface: #2a1d5e;
+    --chart-grid: rgb(255 255 255 / 0.12);
+    --chart-baseline: rgb(255 255 255 / 0.35);
+    --shade-zero: rgb(255 255 255 / 0.06);
+    --shade-1: #184f95;
+    --shade-2: #256abf;
+    --shade-3: #5598e7;
+    --shade-4: #86b6ef;
+    --shade-5: #cde2fb;
+    --on-shade-1: #ffffff;
+    --on-shade-2: #ffffff;
+    --on-shade-3: #10162f;
+    --on-shade-4: #10162f;
+    --on-shade-5: #10162f;
+}
+
+/* A panel: DESIGN.md's glass recipe. */
+@utility glass {
+    background: var(--panel-sheen), var(--panel);
+    border: 1px solid var(--panel-edge);
+    box-shadow: inset 0 1px 0 var(--panel-highlight), var(--panel-shadow);
+    border-radius: var(--radius-panel);
+    -webkit-backdrop-filter: blur(26px) saturate(160%);
+    backdrop-filter: blur(26px) saturate(160%);
+    @media (prefers-reduced-transparency: reduce) {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
 }
 
 @layer base {
@@ -121,4 +228,39 @@
   body {
     @apply bg-background text-foreground;
     }
+  /* The backdrop on its own fixed layer, so scrolling moves the page over it without repainting it. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--backdrop);
+    }
+  select {
+    @apply appearance-none rounded-control border border-input bg-secondary py-1 pr-9 pl-3;
+    /* The native arrow ignores padding and hugs the pill's curve, so the chevron is drawn, inset like the text. */
+    background-image: var(--select-chevron);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    }
+  /* Every table sits on a panel, its header a lighter band (DESIGN.md's Table). */
+  [data-slot='table-container'] {
+    @apply glass;
+    }
+  [data-slot='table-header'] {
+    @apply bg-secondary;
+    }
+  /* React Flow's own colours, from the theme's tokens. */
+  .react-flow {
+    --xy-edge-stroke: var(--chart-baseline);
+    --xy-attribution-background-color: transparent;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root, .dark {
+    --panel: var(--panel-solid);
+    --panel-sheen: none;
+  }
 }

@@ -42,7 +42,7 @@ export function HeatmapTable({
 }) {
   return (
     // Its container is a named tab stop for keyboard users, since it scrolls sideways.
-    <Table className="w-auto" containerProps={{ tabIndex: 0, role: 'region', 'aria-label': label }}>
+    <Table className="w-auto" containerProps={{ className: 'relative w-fit max-w-full overflow-x-auto', tabIndex: 0, role: 'region', 'aria-label': label }}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <TableHead>{corner}</TableHead>

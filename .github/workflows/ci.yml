@@ -26,6 +26,6 @@ jobs:
       # The stories and the web unit tests run in Playwright's chromium inside vitest.
       - run: pnpm --filter @cwd/web exec playwright install --with-deps chromium
       - run: pnpm vitest run
-      - run: pnpm --filter @cwd/web exec playwright test --project=checks
+      - run: pnpm --filter @cwd/web exec playwright test --project=checks --project=checks-dark
       # The screenshot comparisons, in the Playwright container pinned to the installed @playwright/test version.
       - run: pnpm test:screens

@@ -34,8 +34,6 @@ export function useProjects(): RunsResponse['projects'] | undefined {
   return useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 })).data?.projects;
 }
 
-const SELECT = 'rounded-md border bg-background px-2 py-1';
-
 /** A list's path, project and period filters, then the page's own controls; `projects` are the project options. */
 export function ListFilters({
   query,
@@ -53,7 +51,6 @@ export function ListFilters({
       <label className="flex items-center gap-1.5">
         Path
         <select
-          className={SELECT}
           value={query.path ?? ''}
           onChange={(e) => onChange({ path: toPath(e.target.value) })}
         >
@@ -66,7 +63,6 @@ export function ListFilters({
       <label className="flex items-center gap-1.5">
         Project
         <select
-          className={SELECT}
           value={query.project ?? ''}
           onChange={(e) => onChange({ project: e.target.value || undefined })}
         >
@@ -80,7 +76,7 @@ export function ListFilters({
       </label>
       <label className="flex items-center gap-1.5">
         Period
-        <select className={SELECT} value={query.weeks} onChange={(e) => onChange({ weeks: Number(e.target.value) })}>
+        <select value={query.weeks} onChange={(e) => onChange({ weeks: Number(e.target.value) })}>
           {PERIODS.map((period) => (
             <option key={period.weeks} value={period.weeks}>
               {period.label}
