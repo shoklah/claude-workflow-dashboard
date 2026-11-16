@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
-import { Menu } from './Menu.tsx';
+import { expect, fn } from 'storybook/test';
+import { Menu, MenuButton } from './Menu.tsx';
 
-const meta = { component: Menu } satisfies Meta<typeof Menu>;
+const meta = { component: Menu, args: { onNavigate: fn() } } satisfies Meta<typeof Menu>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -32,4 +32,22 @@ export const OnARun: Story = {
     await expect(await canvas.findByRole('link', { name: 'Runs' })).toHaveAttribute('aria-current', 'page');
     await expect(canvas.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current');
   },
+};
+
+/** Following a link tells the caller, so the dialog that holds the menu under 768 px closes. */
+export const Navigates: Story = {
+  play: async ({ canvas, args, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Runs' }));
+    await expect(args.onNavigate).toHaveBeenCalledTimes(1);
+  },
+};
+
+/**
+ * The Menu button, shown only under 768 px, so this story sets Storybook's page to a phone's width; the stories' test
+ * browser is 1200 px wide, where the button is hidden, so it asserts nothing: e2e/shell.spec.ts checks it at 375 px.
+ */
+export const Button: Story = {
+  render: () => <MenuButton />,
+  parameters: { viewport: { options: { phone: { name: 'Phone', styles: { width: '375px', height: '812px' } } } } },
+  globals: { viewport: { value: 'phone' } },
 };

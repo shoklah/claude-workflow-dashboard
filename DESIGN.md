@@ -112,7 +112,7 @@ Three levels of emphasis at most on a screen: the page title, section titles, an
 
 ## Layout
 
-A glass menu rail on the left (a wrapped bar above the page under 768px), a header row with the import status, showing mode and refresh, then the page. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
+A glass menu rail on the left (under 768px the rail is hidden and a Menu button in the header row opens the page list in a dialog), a header row with the import status, showing mode and refresh, then the page. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
 
 ## Elevation & Depth
 

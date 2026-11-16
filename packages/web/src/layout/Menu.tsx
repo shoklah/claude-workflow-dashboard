@@ -1,4 +1,8 @@
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { Menu as MenuIcon } from 'lucide-react';
+import { Button } from '../components/ui/button.tsx';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
 
 // The built pages only; the menu's later entries (decision 22) appear as their pages are built. An entry is current on
 // its pages below it too (Runs on a run's page), except Home, which every path is below.
@@ -16,13 +20,15 @@ const ENTRIES = [
   { to: '/weeks', label: 'Weeks', exact: false },
 ] as const;
 
-export function Menu() {
+/** The pages' links, one under the other; `onNavigate` runs when one is followed. */
+export function Menu({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav aria-label="Main" className="flex flex-wrap gap-1 text-sm md:flex-col">
+    <nav aria-label="Main" className="flex flex-col gap-1 text-sm">
       {ENTRIES.map((entry) => (
         <Link
           key={entry.to}
           to={entry.to}
+          onClick={onNavigate}
           activeOptions={{ exact: entry.exact }}
           className="rounded-control px-3 py-1 hover:bg-accent"
           activeProps={{ className: 'bg-accent font-semibold' }}
@@ -31,5 +37,27 @@ export function Menu() {
         </Link>
       ))}
     </nav>
+  );
+}
+
+/** The menu under 768 px: one button in the header row that opens the pages' links in a dialog, closed by following one. */
+export function MenuButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="rounded-control md:hidden">
+          <MenuIcon aria-hidden />
+          Menu
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="top-2 left-2 max-w-64 translate-x-0 translate-y-0 rounded-panel p-4 sm:max-w-64">
+        <DialogHeader>
+          <DialogTitle className="text-section-title">Pages</DialogTitle>
+          <DialogDescription className="sr-only">Go to a page of the dashboard.</DialogDescription>
+        </DialogHeader>
+        <Menu onNavigate={() => setOpen(false)} />
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -18,6 +18,8 @@ export const Loading: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('navigation')).toBeVisible();
+    // From 768 px the rail holds the menu, so the Menu button is hidden; e2e/shell.spec.ts checks it at 375 px.
+    await expect(canvas.queryByRole('button', { name: 'Menu' })).toBeNull();
     await expect(canvas.getByText('The page')).toBeVisible();
     await expect(canvas.queryByRole('status')).toBeNull();
   },
