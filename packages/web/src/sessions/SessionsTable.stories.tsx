@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { fullRun, smallRun } from '../test/runs.ts';
 import { sessionsFull } from '../test/sessions.ts';
+import { expectColgroups } from '../test/table.ts';
 import { SessionsTable } from './SessionsTable.tsx';
 
 const meta = { component: SessionsTable } satisfies Meta<typeof SessionsTable>;
@@ -29,6 +30,7 @@ export const Empty: Story = {
 export const Full: Story = {
   args: { sessions: sessionsFull.sessions },
   play: async ({ canvas, canvasElement, userEvent }) => {
+    await expectColgroups(canvasElement);
     const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
     await expect(headers).toEqual([
       'Session',

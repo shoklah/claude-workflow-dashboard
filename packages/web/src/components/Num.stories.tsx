@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
-import { Num, Text } from './Num.tsx';
+import { Table, TableHeader, TableRow } from './ui/table.tsx';
+import { GroupHead, Num, Text } from './Num.tsx';
 
 const meta = {
   component: Num,
@@ -47,5 +48,24 @@ export const Values: Story = {
     await expect(canvas.getByTestId('formatted')).toHaveTextContent('12.40');
     await expect(canvas.getByTestId('text')).toHaveTextContent('main');
     await expect(canvas.getByTestId('no-text').querySelector('.sr-only')).toHaveTextContent('no branch');
+  },
+};
+
+/** A group header spans its sub-columns and is scoped to their group. */
+export const Group: Story = {
+  render: () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <GroupHead span={3}>Runs</GroupHead>
+        </TableRow>
+      </TableHeader>
+    </Table>
+  ),
+  play: async ({ canvas }) => {
+    const head = canvas.getByRole('columnheader', { name: 'Runs' });
+    await expect(head).toHaveAttribute('colspan', '3');
+    await expect(head).toHaveAttribute('scope', 'colgroup');
+    await expect(head).toHaveClass('text-center');
   },
 };

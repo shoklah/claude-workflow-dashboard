@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { RunRow } from '@cwd/shared';
-import { GROUP, NUM, Num, SUB, Text } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
 import { LINK } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -29,9 +29,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
           <TableHead rowSpan={2} className={NUM}>
             Waves
           </TableHead>
-          <TableHead colSpan={2} className={GROUP}>
-            Findings
-          </TableHead>
+          <GroupHead span={2}>Findings</GroupHead>
           <TableHead rowSpan={2} className={NUM}>
             Stops
           </TableHead>

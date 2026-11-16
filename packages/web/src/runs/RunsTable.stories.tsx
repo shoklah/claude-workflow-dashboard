@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { HTML_TEXT, fullRun, oldRun, smallRun } from '../test/runs.ts';
+import { expectColgroups } from '../test/table.ts';
 import { RunsTable } from './RunsTable.tsx';
 
 const meta = { component: RunsTable } satisfies Meta<typeof RunsTable>;
@@ -28,6 +29,7 @@ export const Full: Story = {
   args: { runs: [{ ...smallRun, minutes: 25.4 }, fullRun, oldRun] },
   play: async ({ canvas, canvasElement }) => {
     const [top, sub] = canvas.getAllByRole('row').slice(0, 2);
+    await expectColgroups(canvasElement);
     await expect(within(top).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
       'Branch',
       'Project',

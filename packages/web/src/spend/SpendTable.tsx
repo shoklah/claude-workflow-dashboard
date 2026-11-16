@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from 'cn';
 import type { SpendGroupRow, SpendResponse, SpendRow } from '@cwd/shared';
-import { GROUP, NUM, Num, SUB, Text } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
 import { LINK, SectionTitle } from '../components/Panel.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -102,13 +102,9 @@ export function SpendTable({ response }: { response: SpendResponse }) {
             </TableHead>
             <TableHead rowSpan={2}>Share</TableHead>
             {models.length > 0 && (
-              <TableHead colSpan={models.length} scope="colgroup" className={GROUP}>
-                By model ($)
-              </TableHead>
+              <GroupHead span={models.length}>By model ($)</GroupHead>
             )}
-            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-              Advisor, counted apart
-            </TableHead>
+            <GroupHead span={2}>Advisor, counted apart</GroupHead>
           </TableRow>
           <TableRow>
             {models.map((model) => (

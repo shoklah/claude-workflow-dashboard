@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { cn } from 'cn';
+import { TableHead } from './ui/table.tsx';
 import { formatWhole, NONE } from '../lib/format.ts';
 
 /** A numeric column's alignment, for its header and its cells. */
@@ -6,6 +8,15 @@ export const NUM = 'text-right tabular-nums';
 
 /** A group header over its sub-columns, in a table's two-row header. */
 export const GROUP = 'h-8 border-b text-center';
+
+/** A group header over `span` sub-columns, scoped to their column group. */
+export function GroupHead({ span, className, children }: { span: number; className?: string; children: ReactNode }) {
+  return (
+    <TableHead colSpan={span} scope="colgroup" className={cn(GROUP, className)}>
+      {children}
+    </TableHead>
+  );
+}
 
 /** A sub-column's header, under its group. */
 export const SUB = 'h-8 font-medium text-muted-foreground';

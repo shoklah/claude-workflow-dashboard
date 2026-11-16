@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, StepsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GROUP, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
 import { PageTitle, SectionTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { RULE_LABELS, STEP_LABELS, capitalize, countLines, formatCompactFixed, formatDollars, total } from '../lib/format.ts';
@@ -67,12 +67,8 @@ function StepsTables({ response }: { response: StepsResponse }) {
             <TableHead rowSpan={2} className={NUM}>
               Found something
             </TableHead>
-            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-              Counts
-            </TableHead>
-            <TableHead colSpan={OUTCOMES.length} scope="colgroup" className={GROUP}>
-              Findings, by outcome
-            </TableHead>
+            <GroupHead span={2}>Counts</GroupHead>
+            <GroupHead span={OUTCOMES.length}>Findings, by outcome</GroupHead>
             <TableHead rowSpan={2} className={NUM}>
               Tokens
             </TableHead>
@@ -120,9 +116,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
             <TableHead rowSpan={2} className={NUM}>
               Found something
             </TableHead>
-            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-              Counts
-            </TableHead>
+            <GroupHead span={2}>Counts</GroupHead>
             <TableHead rowSpan={2} className={NUM}>
               Est. cost ($)
             </TableHead>

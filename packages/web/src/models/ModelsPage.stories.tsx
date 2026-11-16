@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
+import { expectColgroups } from '../test/table.ts';
 import { modelsEmpty, modelsFull, modelsOldReporter } from '../test/models.ts';
 import { runsFull } from '../test/runs.ts';
 import { ModelsPage } from './ModelsPage.tsx';
@@ -108,6 +109,7 @@ export const Full: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('rowheader', { name: 'final-reviewer' });
+    await expectColgroups(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Models and advisor', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
 

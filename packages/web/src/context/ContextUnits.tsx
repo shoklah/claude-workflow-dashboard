@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { ContextUnit } from '@cwd/shared';
-import { GROUP, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
 import { LINK, Line, SectionTitle } from '../components/Panel.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
@@ -64,19 +64,13 @@ export function ContextUnits({
             <TableHead rowSpan={2} className={NUM}>
               Calls
             </TableHead>
-            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-              Context (tokens)
-            </TableHead>
+            <GroupHead span={2}>Context (tokens)</GroupHead>
             <TableHead rowSpan={2} className={NUM}>
               Calls past the cap
             </TableHead>
-            <TableHead colSpan={3} scope="colgroup" className={GROUP}>
-              Handoff
-            </TableHead>
+            <GroupHead span={3}>Handoff</GroupHead>
             <TableHead rowSpan={2}>Read share</TableHead>
-            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-              Sweeps
-            </TableHead>
+            <GroupHead span={2}>Sweeps</GroupHead>
           </TableRow>
           <TableRow>
             <TableHead className={cn(SUB, NUM)}>Median per call</TableHead>

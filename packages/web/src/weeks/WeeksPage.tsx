@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, RunTime, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GROUP, NUM, Num, SUB } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB } from '../components/Num.tsx';
 import { Line, PageTitle, SectionTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
@@ -58,24 +58,18 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
       <TableHeader>
         <TableRow>
           <TableHead rowSpan={2}>Week</TableHead>
-          <TableHead colSpan={3} scope="colgroup" className={GROUP}>
-            Runs
-          </TableHead>
+          <GroupHead span={3}>Runs</GroupHead>
           <TableHead rowSpan={2} className={NUM}>
             Tasks
           </TableHead>
-          <TableHead colSpan={4} scope="colgroup" className={GROUP}>
-            Final review findings
-          </TableHead>
+          <GroupHead span={4}>Final review findings</GroupHead>
           <TableHead rowSpan={2} className={NUM}>
             Fix rounds
           </TableHead>
           <TableHead rowSpan={2} className={NUM}>
             Stops
           </TableHead>
-          <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-            Usage (points)
-          </TableHead>
+          <GroupHead span={2}>Usage (points)</GroupHead>
           <TableHead rowSpan={2} className={NUM}>
             Est. cost ($)
           </TableHead>

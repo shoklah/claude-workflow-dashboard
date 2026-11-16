@@ -5,6 +5,7 @@ import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { skillsEmpty, skillsFull } from '../test/skills.ts';
+import { expectColgroups } from '../test/table.ts';
 import { SkillsPage } from './SkillsPage.tsx';
 
 const meta = { component: SkillsPage } satisfies Meta<typeof SkillsPage>;
@@ -61,8 +62,9 @@ export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/skills?weeks=4': skillsFull });
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const simplify = await canvas.findByRole('rowheader', { name: 'simplify' });
+    await expectColgroups(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Skills', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await expect(canvas.getAllByRole('columnheader').map((c) => c.textContent)).toEqual([

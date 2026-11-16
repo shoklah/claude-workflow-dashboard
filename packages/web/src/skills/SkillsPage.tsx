@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, SkillsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GROUP, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
 import { Details, PageTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -37,9 +37,7 @@ export function SkillsPage() {
                 Required but missing
               </TableHead>
               <TableHead rowSpan={2}>Last loaded</TableHead>
-              <TableHead colSpan={2} className={GROUP}>
-                Loads, by outcome
-              </TableHead>
+              <GroupHead span={2}>Loads, by outcome</GroupHead>
             </TableRow>
             <TableRow>
               <TableHead className={SUB}>Outcome</TableHead>

@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
-import { GROUP, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
 import { LINK } from '../components/Panel.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -189,9 +189,7 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
           <TableHead rowSpan={2} className={NUM}>
             Skills
           </TableHead>
-          <TableHead colSpan={2} className={GROUP}>
-            Commands
-          </TableHead>
+          <GroupHead span={2}>Commands</GroupHead>
           <TableHead rowSpan={2} className={NUM}>
             Runs
           </TableHead>

@@ -2,7 +2,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, ModelsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GROUP, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
 import { PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -81,12 +81,8 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
         <TableHeader>
           <TableRow>
             <TableHead rowSpan={2}>Agent</TableHead>
-            <TableHead colSpan={3} className={GROUP}>
-              Requested
-            </TableHead>
-            <TableHead colSpan={3} className={GROUP}>
-              Ran on
-            </TableHead>
+            <GroupHead span={3}>Requested</GroupHead>
+            <GroupHead span={3}>Ran on</GroupHead>
             <TableHead rowSpan={2} className={NUM}>
               Mismatches
               <ReporterMark />
@@ -137,13 +133,11 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
         <TableHeader>
           <TableRow>
             <TableHead rowSpan={2}>Path</TableHead>
-            <TableHead colSpan={4} className={GROUP}>
+            <GroupHead span={4}>
               Recommended, by stage
               <ReporterMark />
-            </TableHead>
-            <TableHead colSpan={3} className={GROUP}>
-              Ran on
-            </TableHead>
+            </GroupHead>
+            <GroupHead span={3}>Ran on</GroupHead>
             <TableHead rowSpan={2} className={NUM}>
               Differs
               <ReporterMark />

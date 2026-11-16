@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from 'cn';
 import type { ContextResponse, ContextWeek, FindingsQuery } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GROUP, NUM, Num, SUB } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB } from '../components/Num.tsx';
 import { Option } from '../components/Option.tsx';
 import { Details, PageTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -72,21 +72,15 @@ function ContextTable({ weeks }: { weeks: ContextWeek[] }) {
             <TableHead rowSpan={2} className={NUM}>
               Calls
             </TableHead>
-            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-              Context (tokens)
-            </TableHead>
+            <GroupHead span={2}>Context (tokens)</GroupHead>
             <TableHead rowSpan={2} className={NUM}>
               Over the cap
             </TableHead>
-            <TableHead colSpan={CLASSES.length} scope="colgroup" className={GROUP}>
-              Tool results (characters)
-            </TableHead>
+            <GroupHead span={CLASSES.length}>Tool results (characters)</GroupHead>
             <TableHead rowSpan={2} className={NUM}>
               Read share (%)
             </TableHead>
-            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
-              Sweeps
-            </TableHead>
+            <GroupHead span={2}>Sweeps</GroupHead>
           </TableRow>
           <TableRow>
             {subs.map((column) => (
