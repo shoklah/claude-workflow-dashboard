@@ -14,10 +14,16 @@ test('the steps and rules page shows each step and rule, summed over the period,
   await page.goto('/');
   await page.getByRole('navigation').getByRole('link', { name: 'Steps and rules' }).click();
   await expect(page.getByRole('heading', { name: 'Steps and rules' })).toBeVisible();
-  await expect(page.getByRole('rowheader', { name: 'Task review' })).toBeVisible();
-  // report-v6's dispatch guard, over the period's runs and sessions: no_model 2, no_simplify 1.
-  const guard = page.getByRole('row', { name: /^dispatch guard/ });
-  await expect(guard.getByRole('cell', { name: 'no model 2 · no simplify 1' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Steps', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Rules', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Steps', exact: true }).getByRole('rowheader', { name: 'Task review' })).toBeVisible();
+  // report-v6's dispatch guard, over the period's runs and sessions: no_model 2, no_simplify 1, a line each.
+  const rules = page.getByRole('region', { name: 'Rules', exact: true });
+  const guard = rules.getByRole('row', { name: /^Dispatch guard/ });
+  await expect(guard.getByRole('cell', { name: 'No model', exact: true })).toBeVisible();
+  await expect(guard.getByRole('cell', { name: '2', exact: true })).toBeVisible();
+  const next = rules.getByRole('row').filter({ has: page.getByRole('cell', { name: 'No simplify', exact: true }) });
+  await expect(next.getByRole('cell', { name: '1', exact: true })).toBeVisible();
   await expect(page.getByText('reporter, all time')).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
