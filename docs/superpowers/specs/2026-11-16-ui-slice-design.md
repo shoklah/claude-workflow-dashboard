@@ -106,10 +106,12 @@ Light passes 4.5:1 on every panel surface (warning ink 4.79 at worst) and fails 
 | Teal orb's opacity in `--backdrop` | 0.55 | 0.3 |
 | `--panel` tint | 0.55 | 0.62 |
 | `--secondary` (the header band) | white 12% | white 10% |
-| `--accent` (row hover, the menu's current page) | white 16% | white 12% |
+| `--accent` (the menu's current page, a hovered button) | white 16% | white 12% |
 | `--warning-ink` | `#ffb08a` | `#ffc8ab` |
 
 With them the worst cases are: warning ink 6.49 on a panel, 4.90 in a header band, 4.63 on a hovered row; secondary ink 5.11 in a band, 4.83 on a hovered row; the notice bar's ink 4.55; primary ink 6.67 on the backdrop. `DESIGN.md` records the new values (its front matter, Colors and Elevation). Light is unchanged.
+
+Correction from the plan review: "row hover" in this section is the `--accent` surface. A table row itself hovers with `--muted` at 50%, which is lighter than the header band, so the band's figures cover it.
 
 ### The test
 
@@ -117,7 +119,7 @@ A Vitest test in `packages/web` reads `src/index.css` as text, takes the tokens 
 
 - Backdrop colours: each gradient stop, and each orb's colour at its opacity over each stop. Light: each blob's colour, and the background.
 - Surfaces: the panel tint over each backdrop colour, with each end of the sheen; then the header band (`--secondary`) and the row hover (`--accent`) over that.
-- Asserted at 4.5:1 or more: primary ink on every backdrop colour; primary, secondary and warning ink on every surface; notice ink on the notice bar over every backdrop colour; each `--on-shade-*` ink on its `--shade-*` step (the zero step over every surface).
+- Asserted at 4.5:1 or more: primary ink on every backdrop colour; primary, secondary and warning ink on every surface; notice ink on the notice bar over every backdrop colour; each `--on-shade-*` ink on its `--shade-*` step (the zero step over the panel only: heatmap rows don't hover and its cells are never in the header band; over the band it would be 4.38).
 
 The blur and the 160% saturation are left out: a blur only averages towards colours already in the set, and the test says so in a comment. The test fails on today's tokens and passes on the tuned ones; that failure is the tuning task's failing test.
 
