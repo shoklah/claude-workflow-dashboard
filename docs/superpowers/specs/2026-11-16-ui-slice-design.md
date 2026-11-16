@@ -55,7 +55,7 @@ How it gets built (my call, for the owner to check): **the mock is the reference
 - **The backdrop takes primary ink only** (see Contrast).
 - **Home:** the week's tiles become one panel of four small tables; the findings chart has its own row, with cost and warnings side by side under it; the feed is a panel whose items hold labelled pairs, with a swatch in place of the coloured side border.
 - **Every switch is an option-pill group**; `Tabs` is dropped.
-- **Times** read "Nov 12, 10:20" (24-hour) wherever a day and time is shown.
+- **Times** read "Nov 12, 10:20" (24-hour) wherever a day and time is shown. My call: `Time` pins the `en-US` format, as the number formatters do, and keeps the reader's time zone, so the page never mixes languages.
 - **Models' stage cells** hold a model over its effort in secondary ink (two values in one cell, accepted).
 - **Warnings** show without the "WARN:" prefix and without the run's own "branch (date):" lead, for display only; the session a warning names trails on its own line.
 - **Sessions:** a row holds counts (skills, commands typed, never loaded, runs); names show only in its timeline.
@@ -86,13 +86,17 @@ Computed from the tokens, at the worst place a text can sit (an orb's centre ove
 | Table header band | 5.68 | 3.98 | 3.20 |
 | Row hover | 5.14 | 3.60 | 2.90 |
 
+The notice bar's ink (`#ffe2a8` on its 14% amber, straight over the backdrop) is 3.39 at the same place, so the import banner is under AA there too.
+
 Light passes 4.5:1 on every panel surface (warning ink 4.79 at worst) and fails only for warning ink on the backdrop (3.2), which the rule covers. In dark, every worst case is the teal orb's centre. So the rule alone is not enough: secondary ink in a header band or a hovered row, and warning ink anywhere on a panel, fall under AA when the panel is over the teal orb.
 
 ### The fix: tune the dark tokens until the test passes
 
 **Open for the owner (it changes the look `DESIGN.md` records, slightly):** the dark tokens are tuned so every ink passes 4.5:1 on every panel surface at the worst case. A tuning that does it, computed: the teal orb from 55% to 30% opacity, warning ink from `#ffb08a` to `#ffc2a3`, the panel tint from 55% to 62%, the header band from 12% to 10% white and the row hover from 16% to 11%. The implementer may find a smaller set, in this order of preference: the teal orb, the warning ink, the band and hover, the panel tint last. `DESIGN.md` is updated with the final values, and the captures are rendered again if the change is visible beside them.
 
-The alternative, not recommended: keep the tokens and accept 3:1 for warning ink and for secondary ink in bands and hovered rows. That is under AA for 14 px text.
+The alternative, not recommended: keep the tokens and accept 3:1 for warning ink and for secondary ink in bands and hovered rows. That is under AA for 14 px text, and it leaves the notice bar under AA as well, which only dimming the teal orb fixes (30% brings it to 4.55).
+
+If the tuning is approved, it is applied on the mock first and the dark captures are rendered again from it before the plan is written, so the kit reviewer's reference shows the final look.
 
 ### The test
 
@@ -266,7 +270,7 @@ Under Code conventions, new:
 
 ## Delivery
 
-One design, likely more than ten tasks, so two pull requests: first the shared patterns (tokens and contrast, `Panel.tsx`, `Num.tsx`, `format.ts`, the adapted shared components, the shell and menu, the conventions), then the screens. A screen's task is independent of the other screens once the first PR's patterns exist, so screens can run in waves.
+One design, likely more than ten tasks, so two pull requests: first the shared patterns (tokens and contrast, `Panel.tsx`, `Num.tsx`, `format.ts`, the adapted shared components, the shell and menu, the conventions), then the screens. A screen's task is independent of the other screens once the first PR's patterns exist, so screens can run in waves. The first pull request must pass CI on its own: it updates the stories, e2e specs and screens baselines that its shared changes break (the pills, `Time`, `WarningText`, `ReporterMark`, the menu), and the second rewrites the rest with their screens.
 
 ## Known gaps, accepted
 
