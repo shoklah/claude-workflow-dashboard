@@ -10,7 +10,7 @@ import {
   type RunResponse,
   type RunsResponse,
 } from '@cwd/shared';
-import { fixture } from '../../shared/test/fixture.ts';
+import { fixture, reportFixtures } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
@@ -196,6 +196,20 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
     'fix_check',
   ]);
 });
+
+// Every export fixture that loads (report-shape is a deliberate shape failure).
+test.each(reportFixtures().filter((name) => loadReport(fixture(name)).ok))(
+  "every step of %s's runs sits in exactly one timeline group",
+  async (name) => {
+    db.$client.close();
+    db = dbWith(name);
+    for (const entry of fixture(name).runs) {
+      const { timeline } = await run(runKey(entry) as string);
+      const shown = timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]);
+      expect(shown.map((s) => s.step).sort()).toEqual((entry.steps ?? []).map((s: { step: string }) => s.step).sort());
+    }
+  },
+);
 
 test('a wave check sits in its wave', async () => {
   const { timeline } = await run(FULL);
