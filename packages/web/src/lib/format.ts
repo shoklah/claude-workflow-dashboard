@@ -291,9 +291,9 @@ export function sessionName(title: string | null): string {
   return title ?? 'no title';
 }
 
-/** A session's project: its name, "other project" for one in no stored run's project. */
+/** A session's project: its name, "Other project" for one in no stored run's project. */
 export function projectLabel(project: string | null): string {
-  return project ?? 'other project';
+  return project ?? 'Other project';
 }
 
 /** An empty list of names, as a cell writes it. */

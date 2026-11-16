@@ -14,6 +14,7 @@ import {
   formatLength,
   modelLabel,
   pathLabel,
+  projectLabel,
   sessionName,
   timelineTimes,
   usageName,
@@ -111,7 +112,7 @@ function SessionRows({ session }: { session: SessionRow }) {
         <TableCell className="align-top text-muted-foreground">
           {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} />}
         </TableCell>
-        <TableCell className="align-top text-muted-foreground">{session.project ?? 'Other project'}</TableCell>
+        <TableCell className="align-top text-muted-foreground">{projectLabel(session.project)}</TableCell>
         <TableCell className="align-top text-muted-foreground tabular-nums">
           <Time iso={session.start} />
         </TableCell>

@@ -76,3 +76,13 @@ export const Full: Story = {
     await expect(canvasElement.querySelector('img')).toBeNull();
   },
 };
+
+/** A run with no branch: its link shows the muted dash, read out as "no branch". */
+export const NoBranch: Story = {
+  args: { runs: [{ ...fullRun, branch: null }] },
+  play: async ({ canvas }) => {
+    const link = canvas.getByRole('link', { name: 'no branch' });
+    await expect(link).toHaveTextContent('–');
+    await expect(link.querySelector('.text-muted-foreground')).not.toBeNull();
+  },
+};

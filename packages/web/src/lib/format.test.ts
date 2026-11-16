@@ -386,9 +386,9 @@ describe('sessionName', () => {
 });
 
 describe('projectLabel', () => {
-  it('names a project, "other project" for a session in no stored run\'s project', () => {
+  it('names a project, "Other project" for a session in no stored run\'s project', () => {
     expect(projectLabel('atlas')).toBe('atlas');
-    expect(projectLabel(null)).toBe('other project');
+    expect(projectLabel(null)).toBe('Other project');
   });
 });
 
