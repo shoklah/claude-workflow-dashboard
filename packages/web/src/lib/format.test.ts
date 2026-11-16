@@ -1,10 +1,7 @@
 import { describe, expect, it, test } from 'vitest';
 import { parseTime, type FindingRow } from '@cwd/shared';
 import {
-  advisorLabel,
   appCallLabel,
-  byAppSplit,
-  judgedInvalidLabel,
   strengthWhere,
   cellShade,
   closedFindings,
@@ -15,7 +12,6 @@ import {
   phaseLabel,
   SPEND_GROUP_LABELS,
   spendUncountedLabel,
-  countsLabel,
   countLines,
   formatCount,
   formatMinutes,
@@ -26,17 +22,10 @@ import {
   total,
   hiddenWarningsLabel,
   warningsSummary,
-  labellerLabel,
-  nonZeroCountsLabel,
-  ofLabel,
   usageName,
-  outcomesLabel,
   reporterMark,
-  runName,
   stepWarningsLabel,
   weekLabel,
-  modelsLabel,
-  sessionsSummary,
   yesNoLabel,
   timelineTimes,
   projectLabel,
@@ -81,29 +70,9 @@ describe('stepWarningsLabel', () => {
   });
 });
 
-describe('runName', () => {
-  it('joins the project and the branch, leaving out what is missing', () => {
-    expect(runName({ project: 'atlas', branch: 'feat/search' })).toBe('atlas · feat/search');
-    expect(runName({ project: 'atlas', branch: null })).toBe('atlas');
-    expect(runName({ project: null, branch: null })).toBe('');
-  });
-});
-
 describe('countLabel', () => {
   it('writes a count line key as words', () => {
     expect(countLabel('not_proportionate')).toBe('not proportionate');
-  });
-});
-
-describe('countsLabel', () => {
-  it('writes each count after its key as words, a dash for a count that isn’t known', () => {
-    expect(countsLabel({ cuts: 11, not_proportionate: 0 })).toBe('cuts 11 · not proportionate 0');
-    expect(countsLabel({ with: 38, without: null })).toBe('with 38 · without –');
-  });
-
-  it('shows a dash for no counts, or counts that aren’t known', () => {
-    expect(countsLabel({})).toBe('–');
-    expect(countsLabel(null)).toBe('–');
   });
 });
 
@@ -119,17 +88,6 @@ describe('countLines', () => {
 
   it('is null when the counts aren’t known', () => {
     expect(countLines(null)).toBeNull();
-  });
-});
-
-describe('nonZeroCountsLabel', () => {
-  it('writes the counts that are not 0, in their order, as words', () => {
-    expect(nonZeroCountsLabel({ small: 4, full: 0, plan: 1 })).toBe('small 4 · plan 1');
-    expect(nonZeroCountsLabel({ fix_rounds: 2 })).toBe('fix rounds 2');
-  });
-  it('writes "none" when every count is 0', () => {
-    expect(nonZeroCountsLabel({ critical: 0, important: 0 })).toBe('none');
-    expect(nonZeroCountsLabel({})).toBe('none');
   });
 });
 
@@ -176,16 +134,6 @@ describe('formatShare', () => {
   });
 });
 
-describe('advisorLabel', () => {
-  it('writes the notes, the changed ones and the share as a whole percent', () => {
-    expect(advisorLabel({ notes: 12, changed: 9, share: 7.8 })).toBe('notes 12 · changed 9 · share 8%');
-  });
-
-  it('shows a dash for each figure that isn’t known', () => {
-    expect(advisorLabel({ notes: null, changed: 3, share: null })).toBe('notes – · changed 3 · share –');
-  });
-});
-
 describe('cellShade', () => {
   it("shades a value on the theme's five ramp steps by its share of the max, each step with its own ink", () => {
     expect(cellShade(1, 10)).toBe('bg-shade-1 text-on-shade-1');
@@ -218,33 +166,12 @@ describe('weekLabel', () => {
   });
 });
 
-describe('labellerLabel', () => {
-  const tokensThisWeek = { input: 41_200, output: 2_150 };
-
-  it('says the labeller is off with no API key', () => {
-    expect(labellerLabel({ on: false, labelled: 17, waiting: 0, tokensThisWeek })).toBe('Labeller off: no API key');
-  });
-
-  it('counts the labelled and waiting findings and the week’s tokens, input and output together', () => {
-    expect(labellerLabel({ on: true, labelled: 8, waiting: 1, tokensThisWeek })).toBe(
-      '8 labelled · 1 waiting · 43,350 tokens this week',
-    );
-  });
-});
-
 describe('reporterMark', () => {
   it('names the latest export\'s all-time figure, and says why in its tooltip', () => {
     expect(reporterMark.text).toBe('reporter, all time');
     expect(reporterMark.tooltip).toBe(
       "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
     );
-  });
-});
-
-describe('outcomesLabel', () => {
-  it('writes each outcome with its count, or a dash with none', () => {
-    expect(outcomesLabel({ ran: 2, 'applied 2, skipped 1': 1 })).toBe('ran × 2 · applied 2, skipped 1 × 1');
-    expect(outcomesLabel({})).toBe('–');
   });
 });
 
@@ -320,19 +247,6 @@ describe('appCallLabel', () => {
   });
 });
 
-describe('byAppSplit', () => {
-  it("adds the app's part of a count when it has one", () => {
-    expect(byAppSplit({ raised: 7, byApp: 5 })).toBe('7 · 5 by the app');
-    expect(byAppSplit({ raised: 2, byApp: 0 })).toBe('2');
-  });
-});
-
-describe('judgedInvalidLabel', () => {
-  it('counts the findings the session judged invalid', () => {
-    expect(judgedInvalidLabel(6)).toBe('6 judged invalid by the session');
-  });
-});
-
 describe('strengthWhere', () => {
   it("names a strength's step, and its task when it has one", () => {
     expect(strengthWhere({ step: 'task_review', task: 3 })).toBe('Task review · task 3');
@@ -360,37 +274,11 @@ describe('usageName', () => {
   });
 });
 
-describe('ofLabel', () => {
-  it('writes a count out of its whole, a count that isn’t known as a dash', () => {
-    expect(ofLabel(8, 23)).toBe('8 of 23');
-    expect(ofLabel(null, 6)).toBe('–');
-  });
-});
-
-describe('modelsLabel', () => {
-  it('writes each model with its effort, a dash with none', () => {
-    expect(
-      modelsLabel([
-        { model: 'claude-opus-5-5', effort: 'medium' },
-        { model: 'claude-sonnet-5-5', effort: null },
-      ]),
-    ).toBe('claude-opus-5-5 · medium, claude-sonnet-5-5');
-    expect(modelsLabel([])).toBe('–');
-  });
-});
-
 describe('yesNoLabel', () => {
   it('writes yes or no, a dash when it isn’t known', () => {
     expect(yesNoLabel(true)).toBe('yes');
     expect(yesNoLabel(false)).toBe('no');
     expect(yesNoLabel(null)).toBe('–');
-  });
-});
-
-describe('sessionsSummary', () => {
-  it('counts the sessions and those holding a run', () => {
-    expect(sessionsSummary([{ holds: [{}] }, { holds: [] }, { holds: [{}, {}] }])).toBe('3 sessions · 2 hold a run');
-    expect(sessionsSummary([{ holds: [{}] }])).toBe('1 session · 1 holds a run');
   });
 });
 

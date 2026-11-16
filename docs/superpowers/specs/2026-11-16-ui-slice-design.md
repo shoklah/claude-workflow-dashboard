@@ -154,7 +154,7 @@ Each is marked existing, adapted (from what), or new (and why nothing existing f
 
 `format.ts` gains: `PATH_LABELS` and `pathLabel`; `modelLabel` ("claude-opus-5-5" as "Opus 5.5") and `splitPair`; `formatDollars` ("12.40" under "($)"); `formatWhole`; `formatLength`; `formatCompactFixed` ("2.0M"); `capitalize`; `warningBody`; `STEP_LABELS.simplify` becomes "Simplify".
 
-Removed, once nothing calls them: `countsLabel`, `nonZeroCountsLabel`, `advisorLabel`, `sessionsSummary`, `byAppSplit`, `judgedInvalidLabel`, `runName`, `ofLabel`, `modelsLabel`, `projectLabel`, `yesNoLabel`, `warningsSummary`, `labellerLabel`, `outcomesLabel`, `stopLabel`, `uncountedLabel`, `RULE_LABELS`, `runWhere`, `findingsLabel`, `NO_NAMES`, `actedOnSplit`, `stageTableLabel`, `advisorRolesLabel`, `SUCCESS_BORDER`, with their tests; and the shadcn files `badge.tsx`, `card.tsx`, `tabs.tsx`. `joined` stays while `appCallLabel` and `strengthWhere` use it.
+Removed, once nothing calls them: `countsLabel`, `nonZeroCountsLabel`, `advisorLabel`, `sessionsSummary`, `byAppSplit`, `judgedInvalidLabel`, `runName`, `ofLabel`, `modelsLabel`, `labellerLabel`, `outcomesLabel`, `stopLabel`, `runWhere`, `findingsLabel`, `NO_NAMES`, `actedOnSplit`, `stageTableLabel`, `advisorRolesLabel`, `SUCCESS_BORDER`, with their tests; and the shadcn files `badge.tsx`, `card.tsx`, `tabs.tsx`. These stay, each the one formatter for its fact: `projectLabel` (Sessions, Context, Compliance), `warningsSummary` (Compliance), `yesNoLabel` (Models), `uncountedLabel` (Context) and `RULE_LABELS` (Steps and rules). `joined` stays while `appCallLabel` and `strengthWhere` use it.
 
 ## The screens
 

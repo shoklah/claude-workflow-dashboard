@@ -1,4 +1,4 @@
-import { parseTime, toStepKind, type Area, type Path, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type Path, type FindingRow, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -111,13 +111,6 @@ export function formatCount(count: number | null): string {
   return count === null ? NONE : String(count);
 }
 
-/** A count line as words: "cuts 11 · flags 5", a count that isn't known as a dash; a dash when it has no counts or
- * isn't known. */
-export function countsLabel(counts: Record<string, number | null> | null): string {
-  if (!counts || Object.keys(counts).length === 0) return NONE;
-  return joined(Object.entries(counts).map(([key, n]) => `${countLabel(key)} ${formatCount(n)}`));
-}
-
 // The count keys whose words aren't their slug's.
 export const COUNT_LABELS: Record<string, string> = { couldnt_run: "Couldn't run", unneeded: 'Not required' };
 
@@ -126,26 +119,9 @@ export function countLines(counts: Record<string, number | null> | null): [strin
   return counts && Object.entries(counts).map(([key, n]) => [COUNT_LABELS[key] ?? capitalize(countLabel(key)), n]);
 }
 
-/** Counts by key without the zeros, as the approved basics mockup writes them: "small 4 · full 2", or "none". */
-export function nonZeroCountsLabel(counts: Record<string, number>): string {
-  const nonZero = Object.entries(counts).filter(([, n]) => n > 0);
-  return nonZero.length === 0 ? 'none' : countsLabel(Object.fromEntries(nonZero));
-}
-
-/** The advisor's notes, those that changed something and its share of Fable spend, as a whole percent: "notes 12 ·
- * changed 9 · share 8%". */
-export function advisorLabel(advisor: { notes: number | null; changed: number | null; share: number | null }): string {
-  return `${countsLabel({ notes: advisor.notes, changed: advisor.changed })} · share ${formatShare(advisor.share)}`;
-}
-
 /** A share as a whole percent: "8%"; a dash when it isn't known. */
 export function formatShare(share: number | null): string {
   return formatPercent(share == null ? null : Math.round(share));
-}
-
-/** An advisor week's stop mark: "STOP" when its share passed the stop share, else nothing. */
-export function stopLabel(stop: boolean | null): string {
-  return stop ? 'STOP' : '';
 }
 
 /** The sum of a record's or a list's counts, a count that isn't known as 0. */
@@ -224,16 +200,6 @@ export function appCallLabel(f: FindingRow, labels: Record<string, string>): str
   return differs || (f.judge === 'workflow' ? 'agrees' : f.relevance);
 }
 
-/** A Findings cell's count raised, with the app's part of it when it has one: "7 · 5 by the app". */
-export function byAppSplit(cell: Pick<FindingCell, 'raised' | 'byApp'>): string {
-  return joined([formatCount(cell.raised), cell.byApp > 0 ? `${formatCount(cell.byApp)} by the app` : null]);
-}
-
-/** The findings the session judged invalid: "6 judged invalid by the session". */
-export function judgedInvalidLabel(count: number): string {
-  return `${formatCount(count)} judged invalid by the session`;
-}
-
 /** Where a reviewer's strength comes from: its step, and its task when it has one: "Task review · task 3". */
 export function strengthWhere(strength: { step: StepKind; task: number | null }): string {
   return joined([STEP_LABELS[strength.step], strength.task !== null ? `task ${strength.task}` : null]);
@@ -257,41 +223,15 @@ export function joined(parts: (string | null)[]): string {
   return parts.filter(Boolean).join(' · ');
 }
 
-/** A run's name: its project and branch, as far as they are known. */
-export function runName(run: { project: string | null; branch: string | null }): string {
-  return joined([run.project, run.branch]);
-}
-
-/** Where a run is: "atlas · feat/search · full", its name and its path. */
-export function runWhere(run: { project: string | null; branch: string | null; path: string | null }): string {
-  return joined([runName(run), run.path]);
-}
-
 /** A run's closed findings: acted on + not acted on, the findings with an outcome other than open; null for a record
  * from before steps, which has no findings to count. */
 export function closedFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
   return run.beforeSteps ? null : run.findings.actedOn + run.findings.notActedOn;
 }
 
-/** "14 · 12 closed"; "–" for a record from before steps, which has no findings to count. */
-export function findingsLabel(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): string {
-  if (run.beforeSteps) return NONE;
-  return `${run.findings.total} · ${closedFindings(run)} closed`;
-}
-
-/** A count out of its whole: "8 of 23"; a dash when it isn't known. */
-export function ofLabel(count: number | null, of: number): string {
-  return count === null ? NONE : `${count} of ${of}`;
-}
-
 /** A skill or command on Home's skills and commands: a command with its slash, "/model", a skill bare. */
 export function usageName(row: { name: string; kind: 'skill' | 'command' }): string {
   return row.kind === 'command' ? `/${row.name}` : row.name;
-}
-
-/** A session's models, each with its most-used effort: "claude-opus-5-5 · medium, claude-sonnet-5-5"; a dash with none. */
-export function modelsLabel(models: { model: string; effort: string | null }[]): string {
-  return models.map(({ model, effort }) => joined([model, effort])).join(', ') || NONE;
 }
 
 /** A session's name: its title, "no title" without one. */
@@ -303,9 +243,6 @@ export function sessionName(title: string | null): string {
 export function projectLabel(project: string | null): string {
   return project ?? 'Other project';
 }
-
-/** An empty list of names, as a cell writes it. */
-export const NO_NAMES = 'none';
 
 /** A day as "Nov 8", the time of day as "09:07" (en-US, 24-hour), the one pair of date options on every screen. */
 const DAY = { month: 'short', day: 'numeric' } as const;
@@ -342,12 +279,6 @@ export function yesNoLabel(value: boolean | null): string {
   return value === null ? NONE : value ? 'yes' : 'no';
 }
 
-/** The Sessions page's line: "31 sessions · 6 hold a run". */
-export function sessionsSummary(sessions: { holds: unknown[] }[]): string {
-  const holding = sessions.filter((s) => s.holds.length > 0).length;
-  return `${plural(sessions.length, 'session')} · ${holding} ${holding === 1 ? 'holds' : 'hold'} a run`;
-}
-
 /** A count with its noun, plural unless it is 1: "1 run", "2 runs". */
 export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -381,11 +312,6 @@ export function hiddenInformationLabel(count: number): string {
   return `${plural(count, 'information line')} ${count === 1 ? 'is' : 'are'} hidden while showing`;
 }
 
-/** The findings' split as the tiles and the feed read it: "13 acted on · 1 open". */
-export function actedOnSplit(findings: FindingSplit): string {
-  return `${findings.actedOn} acted on · ${findings.open} open`;
-}
-
 /** A week's start date, as an axis or a column names it: "Nov 8". */
 export function weekLabel(week: string): string {
   return WEEK_FORMAT.format(new Date(week));
@@ -411,8 +337,6 @@ const ZERO_SHADE = 'bg-shade-zero text-on-shade-zero';
 // the panels in both modes (DESIGN.md's Status).
 export const WARNING_BORDER = 'border-warning-edge';
 export const WARNING_INK = 'text-warning-ink';
-// The edge that marks a finished run in Home's feed.
-export const SUCCESS_BORDER = 'border-success-edge';
 // The import notice's and showing mode's amber glass bar (DESIGN.md's Notice bars).
 export const NOTICE = 'rounded-panel border border-notice-edge bg-notice text-sm text-notice-ink';
 
@@ -425,37 +349,6 @@ export const SHARE_TRACK = SHADES[0];
 export function cellShade(value: number, max: number): string {
   if (value <= 0 || max <= 0) return ZERO_SHADE;
   return SHADES[Math.min(SHADES.length, Math.ceil((SHADES.length * value) / max)) - 1];
-}
-
-/** The labeller's line: "Labeller off: no API key", or "8 labelled · 1 waiting · 43,350 tokens this week". */
-export function labellerLabel(labeller: FindingsResponse['labeller']): string {
-  if (!labeller.on) return 'Labeller off: no API key';
-  const tokens = labeller.tokensThisWeek.input + labeller.tokensThisWeek.output;
-  return `${labeller.labelled} labelled · ${labeller.waiting} waiting · ${tokens.toLocaleString('en-US')} tokens this week`;
-}
-
-/** A skill's loads by outcome: "ran × 2 · applied 2, skipped 1 × 1"; a dash with none. */
-export function outcomesLabel(outcomes: Record<string, number>): string {
-  return joined(Object.entries(outcomes).map(([label, count]) => `${label} × ${count}`)) || NONE;
-}
-
-/** A path's stage table as the static page writes it: "1=opus/medium 2=opus/medium", a stage with no
- * recommendation as a dash; a dash when it isn't known. */
-export function stageTableLabel(recommended: Record<string, string | null | undefined> | null): string {
-  if (!recommended) return NONE;
-  return Object.entries(recommended)
-    .map(([stage, want]) => `${stage}=${want ?? NONE}`)
-    .join(' ');
-}
-
-/** The advisor's calls by role: "implementer 3 · task-reviewer 2 (should not consult)", a role that should never
- * consult flagged; a dash when they aren't known. */
-export function advisorRolesLabel(byRole: Record<string, { calls: number; flagged: boolean }> | null): string {
-  if (!byRole) return NONE;
-  return (
-    joined(Object.entries(byRole).map(([role, { calls, flagged }]) => `${role} ${calls}${flagged ? ' (should not consult)' : ''}`)) ||
-    NONE
-  );
 }
 
 /** A path's name on screen. */
