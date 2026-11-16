@@ -1,56 +1,78 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { HTML_TEXT, fullRun, runsFull } from '../test/runs.ts';
+import { HTML_TEXT, fullRun, oldRun, smallRun } from '../test/runs.ts';
 import { RunsTable } from './RunsTable.tsx';
 
 const meta = { component: RunsTable } satisfies Meta<typeof RunsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const EMPTY = 'No runs in this period. A run shows here once its record is written and imported.';
+
 export const Empty: Story = {
   args: { runs: [] },
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('table')).toBeVisible();
-    await expect(canvas.getByText('No runs in this period.')).toBeVisible();
+    await expect(canvas.getByText(EMPTY)).toBeVisible();
   },
 };
 
-/** Full: one row per run, each linking to its page; a before-steps record shows "–" with its mark. */
+/** The cells of a body row, by column. */
+function cells(row: HTMLElement): string[] {
+  return [...row.querySelectorAll('td')].map((td) => td.textContent ?? '');
+}
+
+/** Full: one row per run, its branch linking to its page, one value per cell with the unit in the header; a record
+ * from before steps says so in muted text and shows the dash for what it can't give. */
 export const Full: Story = {
-  args: { runs: runsFull.runs },
+  args: { runs: [{ ...smallRun, minutes: 25.4 }, fullRun, oldRun] },
   play: async ({ canvas, canvasElement }) => {
-    const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
-    await expect(headers).toEqual([
-      'Finished',
-      'Project · branch',
+    const [top, sub] = canvas.getAllByRole('row').slice(0, 2);
+    await expect(within(top).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      'Branch',
+      'Project',
       'Path',
-      'Time',
+      'Finished',
+      'Time (min)',
       'Tasks',
+      'Waves',
       'Findings',
       'Stops',
-      'Est. cost',
+      'Est. cost ($)',
       'Warnings',
     ]);
-    const rows = canvas.getAllByRole('row').slice(1);
+    await expect(within(top).getByRole('columnheader', { name: 'Findings' })).toHaveAttribute('colspan', '2');
+    await expect(within(sub).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Found', 'Closed']);
+
+    const rows = canvas.getAllByRole('row').slice(2);
     await expect(rows).toHaveLength(3);
     // It scrolls sideways at a phone's width: its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Runs table' })).toHaveAttribute('tabindex', '0');
 
-    const full = within(rows[1]);
-    await expect(full.getByRole('link', { name: 'atlas · feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
-    await expect(rows[1]).toHaveTextContent('2 h 10');
-    await expect(rows[1]).toHaveTextContent('4 in 2 waves');
-    await expect(rows[1]).toHaveTextContent('6 · 5 closed');
-    await expect(rows[1]).toHaveTextContent('$7.10');
+    // Branch, Project, Path, Finished, Time, Tasks, Waves, Found, Closed, Stops, Cost, Warnings.
+    const full = cells(rows[1]);
+    await expect(within(rows[1]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
+    await expect(full[1]).toBe('atlas');
+    await expect(full[2]).toBe('Full');
+    await expect(full.slice(4)).toEqual(['130', '4', '2', '6', '5', '0', '7.10', '1']);
 
-    await expect(rows[0]).toHaveTextContent('25 min');
+    // The time is whole minutes.
+    await expect(cells(rows[0])[4]).toBe('25');
 
+    // Before steps: muted text, not a badge; what it can't give is the dash, read as "not known".
     const old = within(rows[2]);
-    await expect(old.getByText('before steps')).toBeVisible();
-    await expect(old.getAllByText('–').length).toBeGreaterThanOrEqual(5);
+    const mark = old.getByText('before steps');
+    await expect(mark).toHaveClass('text-muted-foreground');
+    await expect(mark.closest('[data-slot="badge"]')).toBeNull();
+    const cost = rows[2].querySelectorAll('td')[10];
+    await expect(cost).toHaveTextContent('–');
+    await expect(within(cost).getByText('not known')).toBeInTheDocument();
+
+    // One value per cell.
+    for (const row of rows) for (const text of cells(row)) await expect(text).not.toContain(' · ');
 
     // Free text with HTML in it shows as text.
-    await expect(canvas.getByRole('link', { name: `harbor · ${HTML_TEXT}` })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: HTML_TEXT })).toBeVisible();
     await expect(canvasElement.querySelector('img')).toBeNull();
   },
 };

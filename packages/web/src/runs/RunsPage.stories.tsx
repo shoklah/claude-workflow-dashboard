@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
-import { runsEmpty, runsFull, runsHidden, runsWarned } from '../test/runs.ts';
+import { HTML_TEXT, runsEmpty, runsFull, runsHidden, runsWarned } from '../test/runs.ts';
 import { RunsPage } from './RunsPage.tsx';
 
 const meta = { component: RunsPage } satisfies Meta<typeof RunsPage>;
@@ -17,7 +17,9 @@ export const Loading: Story = {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': 'pending' });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Loading the runs…')).toBeVisible();
+    const state = await canvas.findByText('Loading the runs…');
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -26,7 +28,9 @@ export const Failed: Story = {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': 500 });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Couldn't load the runs.")).toBeVisible();
+    const state = await canvas.findByText("Couldn't load the runs.");
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -35,7 +39,9 @@ export const Empty: Story = {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': runsEmpty });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('No runs in this period.')).toBeVisible();
+    await expect(
+      await canvas.findByText('No runs in this period. A run shows here once its record is written and imported.'),
+    ).toBeVisible();
   },
 };
 
@@ -45,8 +51,10 @@ export const Full: Story = {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': runsFull });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('link', { name: 'atlas · feat/search' })).toBeVisible();
-    await expect(canvas.getAllByRole('row')).toHaveLength(4);
+    await expect(await canvas.findByRole('link', { name: 'feat/search' })).toBeVisible();
+    // The two header rows, then one row per run.
+    await expect(canvas.getAllByRole('row')).toHaveLength(5);
+    await expect(canvas.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     const paths = canvas.getByRole('combobox', { name: 'Path' });
     await expect([...paths.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', 'Small', 'Full', 'Plan']);
@@ -67,8 +75,11 @@ export const HiddenRuns: Story = {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': runsHidden });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('link', { name: 'atlas · feat/search' })).toBeVisible();
-    await expect(canvas.getByText('+ 2 runs in other projects, counted in totals and charts only')).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: 'feat/search' })).toBeVisible();
+    const line = canvas.getByText('+ 2 runs in other projects, counted in totals and charts only');
+    await expect(line).toBeVisible();
+    // On the backdrop, in primary ink.
+    await expect(line).not.toHaveClass('text-muted-foreground');
   },
 };
 
@@ -78,12 +89,12 @@ export const HasWarnings: Story = {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': runsFull, '/api/runs?weeks=4&warnings=1': runsWarned });
   },
   play: async ({ canvas, userEvent }) => {
-    await expect(await canvas.findByRole('link', { name: /^harbor/ })).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: HTML_TEXT })).toBeVisible();
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Has warnings' }));
     await expect(fetch).toHaveBeenCalledWith('/api/runs?weeks=4&warnings=1');
-    await expect(await canvas.findAllByRole('row')).toHaveLength(2);
-    await expect(canvas.getByRole('link', { name: 'atlas · feat/search' })).toBeVisible();
-    await expect(canvas.queryByRole('link', { name: /^harbor/ })).toBeNull();
+    await expect(await canvas.findAllByRole('row')).toHaveLength(3);
+    await expect(canvas.getByRole('link', { name: 'feat/search' })).toBeVisible();
+    await expect(canvas.queryByRole('link', { name: HTML_TEXT })).toBeNull();
   },
 };
 
@@ -99,7 +110,7 @@ export const Filters: Story = {
     });
   },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('link', { name: /^harbor/ });
+    await canvas.findByRole('link', { name: HTML_TEXT });
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Project' }), 'atlas');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '12');

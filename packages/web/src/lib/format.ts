@@ -259,12 +259,16 @@ export function runWhere(run: { project: string | null; branch: string | null; p
   return joined([runName(run), run.path]);
 }
 
+/** A run's closed findings: acted on + not acted on, the findings with an outcome other than open; null for a record
+ * from before steps, which has no findings to count. */
+export function closedFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
+  return run.beforeSteps ? null : run.findings.actedOn + run.findings.notActedOn;
+}
+
 /** "14 · 12 closed"; "–" for a record from before steps, which has no findings to count. */
 export function findingsLabel(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): string {
   if (run.beforeSteps) return NONE;
-  // closed: acted on + not acted on, the findings with an outcome other than open.
-  const closed = run.findings.actedOn + run.findings.notActedOn;
-  return `${run.findings.total} · ${closed} closed`;
+  return `${run.findings.total} · ${closedFindings(run)} closed`;
 }
 
 /** A count out of its whole: "8 of 23"; a dash when it isn't known. */
