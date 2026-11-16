@@ -20,7 +20,8 @@ It is a presentation slice. The API, the views, the stored data and the reporter
 
 - **The run page's rethink.** The owner finds its data too condensed and wants a more visual part, such as diagrams; that is its own design session. Here the run page is restyled to the shared patterns only, as its capture shows.
 - **Mobile as a design.** Screens fit, scroll in their own regions and pass the checks at 375 px, and the menu moves behind a Menu button. Layouts thought out for a phone are a later review; what was seen is parked in `docs/design/2026-11-16-ui-slice/mobile-review.md`.
-- The themes picker (issue #30). New facts, new API fields, new pages. Motion.
+- **Motion.** Transitions on refresh or page switch are a later small slice of their own, with a scroll frame-time measurement first (the owner raised them and kept them out). The backdrop is already fixed while the page scrolls over it.
+- The themes picker (issue #30). New facts, new API fields, new pages.
 
 ## Anti-goals
 
@@ -46,10 +47,13 @@ How the design was shown and agreed:
 
 How it gets built (approved by the owner): **the mock is the reference source, ported under tests, not merged.** The mock has no updated stories, tests or baselines, carries capture scripts, and was never reviewed, so it can't be merged. But it holds the approved result file by file. Each task ports its files from `claude/ui-slice-mock` (readable in any worktree with `git show claude/ui-slice-mock:<path>`), writing the stories and tests first. The branch stays local and is deleted once the slice is merged. Rebuilding from the captures alone would redo solved work and drift from what was approved.
 
+**The spec, the captures and the conventions win over the mock's code.** The mock is a starting point, never reviewed: ported code is judged as new code, so a shortcut in it (a hard-coded column count, a literal where a formatter exists) is a finding like any other, and tasks go to the full implementer, not the copy one.
+
 ## Decisions the owner made
 
 - **The floor wins over the "·" conventions.** Breakdowns become sub-columns, small tables or labelled pairs; "project · branch" becomes two cells. The `CLAUDE.md` conventions are rewritten here (see Conventions).
 - **Units go in the header, cells hold plain numbers with a fixed number of decimals.** Costs are "Est. cost ($)" with "12.40"; durations in tables are whole minutes under "(min)". Tiles and prose keep "$12.40" and "2 h 10".
+- **Run times stay whole minutes** under "(min)" on Runs and Weeks, even for a long run; to revisit if long runs become common.
 - **One exception: a session's length is adaptive**, "45 min", "7 h 46", "3 d 11 h", under a plain "Length" header, right-aligned. Sessions run from minutes to days, and neither minutes nor decimal hours read well across that range (the owner compared the three on the mock).
 - **ReporterMark** is muted small text with a dotted underline that opens its explanation, never a pill.
 - **The backdrop takes primary ink only** (see Contrast).
@@ -68,6 +72,9 @@ How it gets built (approved by the owner): **the mock is the reference source, p
 - **Weeks' charts** sit two by two below 1536 px, four across from there.
 - **Under 768 px** the menu rail is replaced by one header row: Menu, showing mode, Refresh. Menu opens the page list in a dialog, closed by following a link.
 - **Native selects and the native checkbox stay**, styled from the tokens.
+- **A table that scrolls sideways shows a cue:** its edge fades where more columns are hidden (the right edge at the start, both in the middle, the left at the end); a table that fits has none.
+- **The run page keeps its light restyle** in this slice, though its redesign follows.
+- **Two pull requests on main**, shared patterns first; the in-between state on main is accepted.
 
 ## Contrast
 
@@ -135,6 +142,7 @@ Each is marked existing, adapted (from what), or new (and why nothing existing f
 | `SessionChip` | `components/SessionChip.tsx` | Adapted: tabular figures, no monospace. |
 | `HeatmapTable` | `components/HeatmapTable.tsx` | Adapted: full width; an `extras` prop for numeric columns after the weeks; group headings small and muted; cells 32 px high at body size; a zero total muted. |
 | Table, grouped headers | shadcn `Table` | Existing. A breakdown is a two-row header: the group's name over its sub-columns, the other headers spanning both rows. |
+| Scroll cue | `index.css`, on `[data-slot='table-container']` | New, CSS only: a `mask-image` whose two edge widths are registered custom properties (`--cue-start`, `--cue-end`) driven by a `scroll(self inline)` timeline, inside `@supports (animation-timeline: scroll())`. The timeline is inactive on a table that fits, so it gets no mask; a browser without scroll timelines shows no cue. No component changes. |
 | `Menu`, `MenuButton` | `layout/Menu.tsx`, `layout/Shell.tsx` | Adapted: `Menu` takes `onNavigate`; `MenuButton` is new and opens it in the existing `Dialog` under 768 px. The rail is hidden under 768 px. The shell's header wraps the import banner under the controls there. |
 | `Time` | `layout/StatusBanner.tsx` | Adapted: "Nov 12, 10:20". |
 | `Chart` | `home/WeeklyCharts.tsx` | Existing. `SERIES` is exported; chart titles are section titles with the unit ("(tokens)", "($)"); the x axis always shows the latest week; a cap label sits at the line's start. |
@@ -147,7 +155,7 @@ Removed, once nothing calls them: `countsLabel`, `nonZeroCountsLabel`, `advisorL
 
 ## The screens
 
-For every screen: the capture is `docs/design/2026-11-16-ui-slice/<name>-<width>-<mode>.jpg`; at 1440 px the layout is as captured; at 768 px the rail is still shown and side columns stack under the main content (they sit beside it from `lg`); at 375 px the Menu button replaces the rail and every table scrolls sideways inside its own panel. Loading and error are a `State` panel; the texts below are the ones to keep.
+For every screen: the capture is `docs/design/2026-11-16-ui-slice/<name>-<width>-<mode>.jpg`; at 1440 px the layout is as captured; at 768 px the rail is still shown and side columns stack under the main content (they sit beside it from `lg`); at 375 px the Menu button replaces the rail and every table scrolls sideways inside its own panel, with the scroll cue. Loading and error are a `State` panel; the texts below are the ones to keep.
 
 ### Home, `/` (`home-*`)
 
@@ -250,7 +258,7 @@ Under Code conventions, rewritten:
 - **A finding's category** is plain text through `categoryLabel`; who labelled it is the table's "Labelled by" column, and the Findings grid's "Labelled by the app" column replaces the "N · M by the app" split (still shown only once a finding of the period carries the workflow's label).
 - **ReporterMark** is dotted-underline text, never a badge.
 - **A page's switch** is an `Option` pill group with a visible label when it sits on the backdrop; no tabs.
-- **Every page fits from 375 px:** adds the Menu button under 768 px and that the rail is hidden there.
+- **Every page fits from 375 px:** adds the Menu button under 768 px, that the rail is hidden there, and that a table container that scrolls sideways fades at the edge hiding columns, from `index.css` alone.
 - **A table row that opens a detail row:** the detail may be a small table of its own.
 - **Stories' providers, fixtures:** unchanged.
 
@@ -271,6 +279,7 @@ Under Code conventions, new:
 - Stories for `Panel.tsx`'s parts and `Num.tsx`'s, and updated stories for every changed component; the stale ones (the sweep found ten story files and six e2e specs referring to removed text, tabs or roles) are rewritten with their screen, first, as the failing test.
 - `e2e/shell.spec.ts` gains the Menu button at 375 px (opens, lists the pages, closes on follow) and keeps the no-sideways-scroll check at 375, 768 and 1440.
 - The contrast test and the backdrop-ink e2e check above.
+- An e2e check of the scroll cue at 375 px: a table that overflows has a mask at scroll start, a table that fits has none.
 - Screens baselines regenerated for all twelve screens, light and dark, in the container.
 - The kit's checks per task: `screens` on the task's paths, `tokens`, `catalog`.
 
@@ -280,7 +289,6 @@ One design, likely more than ten tasks, so two pull requests: first the shared p
 
 ## Known gaps, accepted
 
-- A table that scrolls sideways at 375 px shows no cue (parked in `mobile-review.md`).
 - Weeks' "Full runs" table spreads three columns over the full width.
 - A zero in secondary ink is hard to tell from primary ink in dark; the tuned tokens don't change that.
 
