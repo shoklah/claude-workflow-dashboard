@@ -15,10 +15,12 @@ test('the skills page lists the period’s skills with their missing counts and 
   await page.goto('/');
   await page.getByRole('navigation').getByRole('link', { name: 'Skills' }).click();
   await expect(page.getByRole('heading', { name: 'Skills' })).toBeVisible();
-  const row = page.getByRole('row').filter({ hasText: 'subagent-driven-development' });
-  await expect(row.getByRole('cell').nth(4)).toHaveText('0');
-  const grill = page.getByRole('row').filter({ hasText: 'grill-me' });
-  await expect(grill.getByRole('cell').nth(4)).toHaveText('2');
+  // A row's cells after its skill: Runs and sessions, Required but missing, Last loaded, Outcome, Loads.
+  const row = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'subagent-driven-development' }) });
+  await expect(row.getByRole('cell').nth(1)).toHaveText('0');
+  const grill = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'grill-me' }) });
+  await expect(grill.getByRole('cell').nth(1)).toHaveText('2');
+  await expect(page.getByText('How skills are counted')).toBeVisible();
   await expect(page.getByText('reporter, all time')).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

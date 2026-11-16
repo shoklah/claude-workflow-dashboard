@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import type { StatusResponse } from '@cwd/shared';
+import { parseTime, type StatusResponse } from '@cwd/shared';
+import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { skillsEmpty, skillsFull } from '../test/skills.ts';
@@ -20,7 +21,9 @@ export const Loading: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/skills?weeks=4': 'pending' });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Loading the skills…')).toBeVisible();
+    const state = await canvas.findByText('Loading the skills…');
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -29,7 +32,11 @@ export const Failed: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/skills?weeks=4': 500 });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Couldn't load the skills.")).toBeVisible();
+    const state = await canvas.findByText(
+      "Couldn't load the skills. Check that the dashboard server is running, then refresh.",
+    );
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -38,41 +45,55 @@ export const Empty: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/skills?weeks=4': skillsEmpty });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('No skill loads in this period.')).toBeVisible();
+    const empty = await canvas.findByText(
+      'No skill loads in this period. A skill shows here once a run or session loads it.',
+    );
+    await expect(empty).toBeVisible();
+    await expect(empty).toHaveAttribute('colspan', String(canvas.getAllByRole('columnheader').length - 1));
   },
 };
 
 /**
- * Full: the last 4 weeks' skills by name, under the static page's columns, each with its outcomes counted and its
- * "required but missing" count over the period, unmarked; a skill required but never loaded in the period has a row
- * with no loads.
+ * Full: the last 4 weeks' skills by name, one line per outcome with the skill's cells spanning them; a skill required
+ * but never loaded in the period has one line reading "No loads"; how they are counted folds under the table.
  */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/skills?weeks=4': skillsFull });
   },
   play: async ({ canvas }) => {
-    const simplify = await canvas.findByRole('row', { name: /^simplify/ });
+    const simplify = await canvas.findByRole('rowheader', { name: 'simplify' });
+    await expect(canvas.getByRole('heading', { name: 'Skills', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await expect(canvas.getAllByRole('columnheader').map((c) => c.textContent)).toEqual([
       'Skill',
-      'Runs',
-      'Last',
-      'Outcomes',
+      'Runs and sessions',
       'Required but missing',
+      'Last loaded',
+      'Loads, by outcome',
+      'Outcome',
+      'Loads',
     ]);
-    await expect(canvas.queryByText('reporter, all time')).toBeNull();
-    const cells = within(simplify).getAllByRole('cell').map((c) => c.textContent);
-    expect(cells[0]).toBe('simplify');
-    expect(cells[1]).toBe('5');
-    expect(cells[3]).toBe('applied 2, skipped 1 × 3 · applied 0, skipped 0 × 2');
-    expect(cells[4]).toBe('1');
-    const plans = within(canvas.getByRole('row', { name: /^writing-plans/ })).getAllByRole('cell');
-    await expect(plans[4]).toHaveTextContent('0');
-    const never = within(canvas.getByRole('row', { name: /^requesting-code-review/ })).getAllByRole('cell');
-    expect(never.map((c) => c.textContent)).toEqual(['requesting-code-review', '0', '–', '–', '3']);
-    await expect(canvas.getByText(/every session's loads count/)).toBeVisible();
-    await expect(canvas.getByText(/a path filter leaving the sessions out/)).toBeVisible();
+    // simplify's two outcomes take two rows, its Skill cell spanning them.
+    await expect(simplify).toHaveAttribute('rowspan', '2');
+    const first = within(simplify.closest('tr')!).getAllByRole('cell').map((c) => c.textContent);
+    expect(first).toEqual(['5', '1', formatDayTime(parseTime('2026-11-09T16:02:00Z')), 'Applied 2, skipped 1', '3']);
+    const second = simplify.closest('tr')!.nextElementSibling as HTMLElement;
+    expect(within(second).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Applied 0, skipped 0', '2']);
+    // An outcome reads capitalised.
+    const brainstorming = canvas.getByRole('rowheader', { name: 'brainstorming' }).closest('tr')!;
+    await expect(within(brainstorming).getByRole('cell', { name: 'Wrote a file' })).toBeVisible();
+    // A skill never loaded: one row reading "No loads".
+    const never = canvas.getByRole('rowheader', { name: 'requesting-code-review' });
+    await expect(never).toHaveAttribute('rowspan', '1');
+    await expect(within(never.closest('tr')!).getByRole('cell', { name: 'No loads' })).toBeVisible();
+    // One value per cell.
+    for (const cell of canvas.getAllByRole('cell')) expect(cell.textContent).not.toContain(' · ');
+    const notes = canvas.getByText('How skills are counted').closest('details')!;
+    await expect(notes).not.toHaveAttribute('open');
+    await expect(canvas.getByRole('region', { name: 'Skills' }).compareDocumentPosition(notes)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   },
 };
 
@@ -88,7 +109,7 @@ export const Filters: Story = {
     });
   },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('row', { name: /^simplify/ });
+    await canvas.findByRole('rowheader', { name: 'simplify' });
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '12');
     await expect(fetch).toHaveBeenCalledWith('/api/skills?path=full&weeks=12');
