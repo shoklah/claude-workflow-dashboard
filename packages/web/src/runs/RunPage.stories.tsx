@@ -43,6 +43,25 @@ export const Failed: Story = {
   },
 };
 
+/** A zero time, cost or token count shows muted, as every zero does. */
+export const Zeros: Story = {
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      [`/api/runs/${fullRun.key}`]: {
+        ...runFull,
+        facts: { ...runFull.facts, minutes: 0, cost: 0 },
+        context: { ...runFull.context!, medianTokens: 0 },
+      },
+    });
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText('0 min')).toHaveClass('text-muted-foreground');
+    await expect(canvas.getByText('$0.00')).toHaveClass('text-muted-foreground');
+    await expect(within(canvas.getByRole('region', { name: 'Context' })).getByText('0')).toHaveClass('text-muted-foreground');
+  },
+};
+
 /** Empty: a record from before steps, with no skills, models, advisor notes, context or warnings: each says so. */
 export const Empty: Story = {
   args: { runKey: oldRun.key },

@@ -52,7 +52,7 @@ export function Pairs({
   inline,
   className,
 }: {
-  pairs: [string, ReactNode][];
+  pairs: [ReactNode, ReactNode][];
   names?: boolean;
   text?: boolean;
   inline?: 'beside' | 'over';

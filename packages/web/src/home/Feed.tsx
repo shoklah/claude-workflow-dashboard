@@ -49,8 +49,8 @@ function Item({ item }: { item: FeedItem }) {
             ['Findings', <Num value={item.findings?.total} />],
             ['Acted on', <Num value={item.findings?.actedOn} />],
             ['Open', <Num value={item.findings?.open} />],
-            ['Time', <Text value={item.minutes === null ? null : formatMinutes(item.minutes)} />],
-            ['Est. cost', <Text value={item.cost === null ? null : formatCost(item.cost)} />],
+            ['Time', <Num value={item.minutes} format={formatMinutes} />],
+            ['Est. cost', <Num value={item.cost} format={formatCost} />],
           ]}
         />
       )}

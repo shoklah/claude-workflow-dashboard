@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from 'cn';
 import type { SpendGroupRow, SpendResponse, SpendRow } from '@cwd/shared';
-import { GROUP, NUM, Num, SUB } from '../components/Num.tsx';
+import { GROUP, NUM, Num, SUB, Text } from '../components/Num.tsx';
 import { LINK, SectionTitle } from '../components/Panel.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -113,7 +113,7 @@ export function SpendTable({ response }: { response: SpendResponse }) {
           <TableRow>
             {models.map((model) => (
               <TableHead key={model} className={cn(SUB, NUM)}>
-                {modelLabel(model) ?? model}
+                <Text value={modelLabel(model)} />
               </TableHead>
             ))}
             <TableHead className={cn(SUB, NUM)}>Calls</TableHead>

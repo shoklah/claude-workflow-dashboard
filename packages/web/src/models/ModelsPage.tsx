@@ -15,6 +15,7 @@ import {
   formatTokens,
   pathLabel,
   splitPair,
+  total,
   weekLabel,
   yesNoLabel,
 } from '../lib/format.ts';
@@ -201,12 +202,12 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
             <Pairs
               pairs={[
                 ['Calls', <Num value={facts.calls} />],
-                ['Tokens', formatTokens(facts.tokens)],
-                ['Est. cost', formatCost(facts.cost)],
+                ['Tokens', <Num value={facts.tokens && total(facts.tokens)} format={(n) => formatTokens({ n })} />],
+                ['Est. cost', <Num value={facts.cost} format={formatCost} />],
                 ['Notes', <Num value={facts.notes} />],
                 ['Notes that changed something', <Num value={facts.changed} />],
                 ['Notes missing', <Num value={facts.missing} />],
-                ['Share of Fable spend', formatShare(facts.share)],
+                ['Share of Fable spend', <Num value={facts.share} format={formatShare} />],
               ]}
             />
           )}

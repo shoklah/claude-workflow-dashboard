@@ -9,7 +9,6 @@ import { Time } from '../layout/StatusBanner.tsx';
 import { CategoryBadge, FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
 import {
-  NONE,
   closedFindings,
   formatCompact,
   formatCost,
@@ -37,8 +36,8 @@ function Header({ run }: { run: RunResponse['facts'] }) {
     ['Project', <Text value={run.project} />],
     ['Path', <Text value={pathLabel(run.path)} />],
     ['Stage', <Text value={run.stage} />],
-    ['Time', <Text value={run.minutes === null ? null : formatMinutes(run.minutes)} />],
-    ['Est. cost', <Text value={run.cost === null ? null : formatCost(run.cost)} />],
+    ['Time', <Num value={run.minutes} format={formatMinutes} />],
+    ['Est. cost', <Num value={run.cost} format={formatCost} />],
     ['Findings', <Num value={run.beforeSteps ? null : run.findings.total} />],
     ['Closed', <Num value={closedFindings(run)} />],
     ['Warnings', <Num value={run.warnings} />],
@@ -107,7 +106,7 @@ export function RunPage({ runKey }: { runKey: string }) {
           </Section>
           <Section title="Models" none="No model recorded.">
             {models.length > 0 && (
-              <Pairs names pairs={models.map((model) => [modelLabel(model.model) ?? NONE, formatCost(model.cost)])} />
+              <Pairs names pairs={models.map((model) => [<Text value={modelLabel(model.model)} />, formatCost(model.cost)])} />
             )}
           </Section>
           <Section title="Advisor" none="Not consulted.">
@@ -125,12 +124,12 @@ export function RunPage({ runKey }: { runKey: string }) {
               <Pairs
                 pairs={[
                   ['Calls', <Num value={context.calls} />],
-                  ['Median tokens', <Text value={context.medianTokens === null ? null : formatCompact(context.medianTokens)} />],
-                  ['Largest tokens', <Text value={context.maxTokens === null ? null : formatCompact(context.maxTokens)} />],
+                  ['Median tokens', <Num value={context.medianTokens} format={formatCompact} />],
+                  ['Largest tokens', <Num value={context.maxTokens} format={formatCompact} />],
                   ['Calls past the cap', <Num value={context.callsOverCap} />],
                   ['Handed off', context.handoff ? <Time iso={context.handoff} /> : <span className="text-muted-foreground">no</span>],
                   ['Tool results (characters)', formatCompact(context.toolCharacters)],
-                  ['Read share', <Text value={context.readShare === null ? null : formatShare(context.readShare)} />],
+                  ['Read share', <Num value={context.readShare} format={formatShare} />],
                   ['Sweeps inline', <Num value={context.sweeps.inline} />],
                   ['Sweeps delegated', <Num value={context.sweeps.delegated} />],
                 ]}

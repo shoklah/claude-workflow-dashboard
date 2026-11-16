@@ -89,6 +89,10 @@ export const Empty: Story = {
     ]);
     const period = within(canvas.getByRole('region', { name: 'This period' }));
     await expect(period.getAllByRole('definition')[0]).toHaveTextContent('0');
+    // A zero shows muted, tokens, cost and share alike.
+    for (const zero of ['0', '$0.00', '0%']) {
+      for (const value of period.getAllByText(zero, { selector: 'span' })) await expect(value).toHaveClass('text-muted-foreground');
+    }
     await oneValuePerCell(canvasElement);
   },
 };
