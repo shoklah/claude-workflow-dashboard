@@ -6,6 +6,9 @@ import { NUM } from './Num.tsx';
 /** A link's underline: the disclosure's summary and every in-table link. */
 export const LINK = 'underline decoration-input underline-offset-4 hover:decoration-foreground';
 
+/** A tooltip term's dotted underline: a focusable name whose tooltip says more (a session's chip, the reporter's mark). */
+export const TERM = 'underline decoration-dotted underline-offset-4';
+
 /** A page's title, directly on the backdrop in primary ink. */
 export function PageTitle({ children }: { children: ReactNode }) {
   return <h1 className="text-page-title">{children}</h1>;

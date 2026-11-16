@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, spyOn, within } from 'storybook/test';
+import { TERM } from './Panel.tsx';
 import { SessionChip } from './SessionChip.tsx';
 
 const ID = '7d1e4b2a-9c3f-4a8e-b5d6-1f2e3a4b5c6d';
@@ -19,6 +20,7 @@ export const Default: Story = {
   play: async ({ canvas, userEvent }) => {
     const name = canvas.getByText('7d1e4b2a');
     await expect(canvas.queryByText(ID)).toBeNull();
+    await expect(name).toHaveClass(...TERM.split(' '));
 
     await userEvent.hover(name);
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(ID);

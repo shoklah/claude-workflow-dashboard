@@ -2,9 +2,9 @@
 version: alpha
 name: Workflow dashboard
 description: >-
-  A night-glass dashboard for reading a coding workflow's runs, findings and spend. Frosted, tinted panels float over a
+  A night-glass dashboard for reading a coding workflow's runs, findings and spend. Tinted glass panels, with a sheen and a bright edge, float over a
   vivid night gradient lit by soft colour orbs; type is white, numbers line up, and colour carries data or state, never
-  decoration. Light mode is the same glass in daylight: pale colour blobs behind frosted white panels, dark ink.
+  decoration. Light mode is the same glass in daylight: pale colour blobs behind white glass panels, dark ink.
 colors:
   primary: "#ffffff"
   primary-foreground: "#2a1a6e"
@@ -62,7 +62,7 @@ spacing:
   inside-group: 12px
   between-groups: 24px
 components:
-  panel: tinted frosted glass, 1px bright edge, inner top highlight, soft drop shadow, panel radius
+  panel: tinted glass with a white sheen, 1px bright edge, inner top highlight, soft drop shadow, panel radius
   button: pill; the pressed option is solid primary, the others clear glass with an edge
   select: pill, clear glass, a drawn chevron inset like the text
   table: rows on the panel, hairline row borders, header row slightly lighter, row hover lightens
@@ -80,7 +80,7 @@ components:
 
 The dashboard answers one person's questions about their own coding workflow: what ran, what the reviews found, what it cost, what broke a rule. It is a playground and a portfolio piece, so it has a look of its own: **night glass**. A deep violet-to-navy gradient fills the page, lit from behind by four large, soft colour orbs. Everything the reader works with sits on glass panels that tint what is behind them. The look is bold in one place, the backdrop, and quiet everywhere the data is: on a panel, type is plain white, numbers line up, and colour appears only where it encodes a series or a state.
 
-Dark is the look. Light mode is its daylight pair: the same panels, radii, type and rules, with pale blobs behind white frosted glass and dark ink. The app follows the system's setting.
+Dark is the look. Light mode is its daylight pair: the same panels, radii, type and rules, with pale blobs behind white glass and dark ink. The app follows the system's setting.
 
 ## Colors
 
@@ -88,7 +88,7 @@ Dark is the look. Light mode is its daylight pair: the same panels, radii, type 
 
 **Panels.** Dark panels are `rgb(28 18 72 / 0.62)` with a white sheen from 10% to 2% top-left to bottom-right; light panels are white at 62%. The tint is what keeps text contrast independent of the orb behind it. At the worst place in dark (the teal orb's centre), warning ink measures 6.49:1 on a panel, 4.90:1 in a table's header band and 4.63:1 on a hovered item; secondary ink 5.11:1 in the band and 4.83:1 on a hovered item; the notice bar's ink 4.55:1; primary ink 6.67:1 on the backdrop itself. Every ink passes 4.5:1 on every panel surface wherever the panel sits; `contrast.test.ts` computes it from the tokens.
 
-**Ink.** Primary text white / `#10162f`; secondary `#d9d3ff` / `#3d4664`. There are only these two text inks plus the status inks; a value, label or legend never takes a series colour. Text directly on the backdrop is primary ink only; secondary and status inks appear only on a panel.
+**Ink.** Primary text white / `#10162f`; secondary `#d9d3ff` / `#3d4664`. There are only these two text inks plus the status inks; a value, label or legend never takes a series colour. Text directly on the backdrop is primary ink only; secondary and status inks appear only on a panel, a table container, a dialog, a popover or a notice bar.
 
 **Primary and focus.** The primary action is a white pill with violet ink (`#2a1a6e`) in dark mode and an ink pill with white text in light mode. The focus ring is cyan `#7ef9ff` / indigo `#3f5cf0`, 2px, offset 2px.
 
@@ -141,7 +141,7 @@ Panels and notice bars use a 1.25rem radius; buttons, selects and pressed option
 Do:
 - Let the backdrop be the one bold element; keep panels calm.
 - Put every data region on a panel, and every number in tabular figures.
-- Use frosted, see-through panels and the coloured glow of the orbs: they are this project's look, not a template's.
+- Use tinted, see-through panels and the coloured glow of the orbs: they are this project's look, not a template's.
 
 Don't:
 - Glow text, gradient-fill text or add neon edges: the glass is the effect, and more of it fights the data.

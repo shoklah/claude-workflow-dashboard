@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { informationMark } from '../lib/format.ts';
+import { TERM } from './Panel.tsx';
 import { ReporterMark } from './ReporterMark.tsx';
 
 const meta = { component: ReporterMark } satisfies Meta<typeof ReporterMark>;
@@ -12,7 +13,7 @@ export const Mark: Story = {
   play: async ({ canvas, userEvent }) => {
     const mark = canvas.getByText('reporter, all time');
     await expect(mark.closest('[data-slot="badge"]')).toBeNull();
-    await expect(mark).toHaveClass('decoration-dotted');
+    await expect(mark).toHaveClass(...TERM.split(' '));
     await userEvent.tab();
     await expect(mark).toHaveFocus();
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('over everything the reporter reads');
@@ -25,7 +26,7 @@ export const Information: Story = {
   play: async ({ canvas, userEvent }) => {
     const mark = canvas.getByText('reporter');
     await expect(mark.closest('[data-slot="badge"]')).toBeNull();
-    await expect(mark).toHaveClass('decoration-dotted');
+    await expect(mark).toHaveClass(...TERM.split(' '));
     await userEvent.tab();
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('not filtered by period');
   },

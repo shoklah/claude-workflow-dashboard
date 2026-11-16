@@ -76,7 +76,7 @@
     --color-on-shade-5: var(--on-shade-5);
 }
 
-/* DESIGN.md's light pair, liquid glass: pale colour blobs behind frosted white panels, dark ink. */
+/* DESIGN.md's light pair, liquid glass: pale colour blobs behind white glass panels, dark ink. */
 :root {
     color-scheme: light;
     --radius: 0.875rem;
@@ -157,7 +157,7 @@
     --on-shade-5: #ffffff;
 }
 
-/* DESIGN.md's look, night glass: tinted frosted panels over a night gradient lit by colour orbs, white ink. */
+/* DESIGN.md's look, night glass: tinted glass panels over a night gradient lit by colour orbs, white ink. */
 .dark {
     color-scheme: dark;
     --backdrop:
