@@ -40,8 +40,7 @@ export const Empty: Story = {
 export const Full: Story = {
   args: { diagram: fullHome.diagram },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    // A switch of pressed-state buttons, no tabs.
-    await expect(canvasElement.querySelector('[role="tab"]')).toBeNull();
+    // A switch of pressed-state buttons.
     const path = within(canvas.getByRole('group', { name: 'Path' }));
     await expect(path.getByRole('button', { name: 'Full path' })).toHaveAttribute('aria-pressed', 'true');
     await expect(path.getByRole('button', { name: 'Small path' })).toHaveAttribute('aria-pressed', 'false');

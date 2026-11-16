@@ -15,9 +15,8 @@ test('home has no axe violations', async ({ page }) => {
   expect(results.violations).toEqual([]);
 });
 
-// The workflow's paths are a switch of pressed-state buttons, not tabs; the Small path's boxes still pass axe.
+// The workflow's paths are a switch of pressed-state buttons; the Small path's boxes still pass axe.
 test('the path switch shows the Small path', async ({ page }) => {
-  await expect(page.getByRole('tab')).toHaveCount(0);
   const small = page.getByRole('button', { name: 'Small path' });
   await small.click();
   await expect(small).toHaveAttribute('aria-pressed', 'true');

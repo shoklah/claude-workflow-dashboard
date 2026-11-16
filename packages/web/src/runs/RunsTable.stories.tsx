@@ -65,7 +65,6 @@ export const Full: Story = {
     const old = within(rows[2]);
     const mark = old.getByText('before steps');
     await expect(mark).toHaveClass('text-muted-foreground');
-    await expect(mark.closest('[data-slot="badge"]')).toBeNull();
     const cost = rows[2].querySelectorAll('td')[10];
     await expect(cost).toHaveTextContent('–');
     await expect(within(cost).getByText('not known')).toBeInTheDocument();

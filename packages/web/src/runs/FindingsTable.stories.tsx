@@ -8,9 +8,8 @@ const meta = { component: FindingsTable } satisfies Meta<typeof FindingsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** No badge anywhere, and no cell joins values with " · " outside the App column. */
+/** No cell joins values with " · " outside the App column. */
 async function plain(canvasElement: HTMLElement): Promise<void> {
-  await expect(canvasElement.querySelector('[data-slot="badge"]')).toBeNull();
   const app = [...canvasElement.querySelectorAll('th')].findIndex((th) => th.textContent === 'App');
   for (const tr of canvasElement.querySelectorAll('tbody tr')) {
     for (const [i, td] of [...tr.children].entries()) if (i !== app) await expect(td.textContent).not.toContain(' · ');

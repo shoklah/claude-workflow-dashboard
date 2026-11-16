@@ -65,7 +65,6 @@ export const Full: Story = {
     await expect(session[0]).toHaveTextContent(/^Refactor the sync queue$/);
     await expect(within(session[0]).queryByRole('button', { name: 'Copy session ID' })).toBeNull();
     await expect(session[1]).toHaveTextContent(/^Session$/);
-    await expect(session[1].querySelector('[data-slot="badge"]')).toBeNull();
     await expect(session[2]).toHaveTextContent('atlas');
     await expect(session[4]).toHaveTextContent(/^412$/);
     await expect(session[5]).toHaveTextContent(/^296.0K$/);

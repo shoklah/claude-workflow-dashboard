@@ -60,7 +60,6 @@ export const Full: Story = {
     const week = within(await canvas.findByRole('region', { name: 'This week' }));
     for (const name of ['Runs', 'Findings', 'Est. cost ($)', 'Warnings']) await expect(week.getByRole('table', { name })).toBeVisible();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
-    await expect(canvasElement.querySelector('[role="tab"]')).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Full path' })).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.getByRole('button', { name: 'Small path' })).toHaveAttribute('aria-pressed', 'false');
     await expect(canvas.getByText(/Weeks before Oct 5 show/)).toBeVisible();

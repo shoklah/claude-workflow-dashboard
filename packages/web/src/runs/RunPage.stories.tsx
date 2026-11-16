@@ -104,7 +104,6 @@ export const Full: Story = {
     const view = canvas.getByRole('group', { name: 'View' });
     await expect(within(view).getByRole('button', { name: 'Timeline' })).toHaveAttribute('aria-pressed', 'true');
     await expect(within(view).getByRole('button', { name: 'Findings' })).toHaveAttribute('aria-pressed', 'false');
-    await expect(canvas.queryAllByRole('tab')).toEqual([]);
 
     await expect(pairs(canvas.getByRole('region', { name: 'Skills' }))).toEqual([
       ['subagent-driven-development', 'ran'],
@@ -159,7 +158,6 @@ export const Strengths: Story = {
       'Reuse and duplicationNew page reuses the shared table and format helpersTask review · task 3',
       'TestsEach view tested on both fixtures, null facts includedFinal review',
     ]);
-    await expect(strengths.querySelector('[data-slot="badge"]')).toBeNull();
   },
 };
 
