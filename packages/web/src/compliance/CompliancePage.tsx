@@ -15,7 +15,6 @@ import {
   FAMILY_LABELS,
   STEP_LABELS,
   WARNING_INK,
-  capitalize,
   hiddenInformationLabel,
   hiddenWarningsLabel,
   informationMark,
@@ -35,7 +34,7 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
     if (groups.at(-1)?.family !== row.family) {
       groups.push({ family: row.family, heading: FAMILY_LABELS[row.family] ?? row.family, rows: [] });
     }
-    const name = capitalize(kindLabel(row.kind));
+    const name = kindLabel(row.kind);
     groups.at(-1)!.rows.push({ id: row.kind ?? '', name, values: row.cells });
   }
   return groups;
@@ -126,7 +125,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
       {cell && (
         <>
           <SectionTitle>
-            {`${plural(listed.length, 'warning')} of "${capitalize(kindLabel(cell.id || null))}", week of ${weekLabel(cell.week)}`}
+            {`${plural(listed.length, 'warning')} of "${kindLabel(cell.id || null)}", week of ${weekLabel(cell.week)}`}
           </SectionTitle>
           <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Warnings' }}>
             <TableHeader>

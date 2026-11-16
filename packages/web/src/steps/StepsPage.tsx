@@ -5,7 +5,7 @@ import { useLiveQuery } from '../api.ts';
 import { GroupHead, Lines, NUM, Num, SUB } from '../components/Num.tsx';
 import { PageTitle, SectionTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { RULE_LABELS, STEP_LABELS, capitalize, countLines, formatCompactFixed, formatDollars, total } from '../lib/format.ts';
+import { RULE_LABELS, STEP_LABELS, countLines, formatCompactFixed, formatDollars, total } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 const OUTCOMES = ['Fixed or applied', 'Declined', 'Deferred', 'Open or to owner'];
@@ -92,21 +92,21 @@ function StepsTables({ response }: { response: StepsResponse }) {
         <TableBody>
           <Lines
             none="No counts"
-            name={capitalize(RULE_LABELS.failingTest)}
+            name={RULE_LABELS.failingTest}
             before={[n(total(rules.failingTest)), n(null)]}
             counts={countLines(rules.failingTest)}
             after={[n(null)]}
           />
           <Lines
             none="No counts"
-            name={capitalize(RULE_LABELS.dispatchGuard)}
+            name={RULE_LABELS.dispatchGuard}
             before={[n(null), n(rules.dispatchGuard && total(rules.dispatchGuard))]}
             counts={countLines(rules.dispatchGuard)}
             after={[n(null)]}
           />
           <Lines
             none="No counts"
-            name={capitalize(RULE_LABELS.advisor)}
+            name={RULE_LABELS.advisor}
             before={[n(advisor?.calls), n(null)]}
             counts={
               advisor && [
@@ -119,7 +119,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
           />
           <Lines
             none="No counts"
-            name={capitalize(RULE_LABELS.startup)}
+            name={RULE_LABELS.startup}
             before={[n(startup && startup.with + startup.without), n(null)]}
             counts={
               startup && [
@@ -131,7 +131,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
           />
           <Lines
             none="No counts"
-            name={capitalize(RULE_LABELS.fixRoundCap)}
+            name={RULE_LABELS.fixRoundCap}
             before={[n(null), n(null)]}
             counts={[
               ['Runs reaching round 3', rules.fixRoundCap.runs],
@@ -141,7 +141,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
           />
           <Lines
             none="No counts"
-            name={capitalize(RULE_LABELS.stopRule)}
+            name={RULE_LABELS.stopRule}
             before={[n(null), n(null)]}
             counts={[['Stops', rules.stopRule]]}
             after={[n(null)]}
@@ -150,7 +150,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
             <Lines
               none="No counts"
               key={skill}
-              name={`${capitalize(RULE_LABELS.offer)} of ${skill}`}
+              name={`${RULE_LABELS.offer} of ${skill}`}
               before={[n(offered), n(null)]}
               counts={countLines(outcomes)}
               after={[n(null)]}

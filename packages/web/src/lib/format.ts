@@ -40,44 +40,45 @@ export function countLabel(key: string): string {
   return key.replaceAll('_', ' ');
 }
 
-/** A warning kind's short wording, from PR #8's and CR10's sentences. */
+/** A warning kind's short wording, capitalised, from PR #8's and CR10's sentences. */
 export const KIND_LABELS: Record<string, string> = {
-  simplify_not_run: 'simplify not run',
-  no_transcript: 'no session transcript',
-  final_review_without_simplify: 'final review without simplify',
-  simplify_record_differs: 'simplify record differs',
-  agent_not_found: 'agent type not found',
-  count_line_missing: 'count line missing',
-  final_findings_differ: 'final findings differ',
-  named_role_by_general_purpose: 'named role by general-purpose',
-  model_less_dispatch: 'model-less dispatch',
-  startup_missing: 'startup guidelines missing',
-  step_count_differs: 'step count differs',
-  step_counts_differ: 'step counts differ',
-  findings_dont_add_up: "findings don't add up",
-  verdicts_dont_add_up: "fix-check verdicts don't add up",
-  required_skill_missing: 'required skill did not run',
-  agent_off_pin: 'agent off its pin',
-  agent_skill_missing: 'agent ran without its skill',
-  risk_area_small_path: 'risk area on the Small path',
-  wave_unchecked: 'wave has no wave check',
-  offer_not_recorded: 'offer not recorded',
-  fix_added_differs: "fix_added differs from git's",
-  conventions_not_added: 'conventions entry not added',
-  unrecorded_session: 'session wrote no run record',
-  plan_review_without_simplify: 'plan review without plan simplify',
-  typed_skill_not_loaded: 'typed skill never loaded',
-  step_agent_missing: 'step has no agent id',
-  step_agent_unknown: "step's agent id matches no dispatch",
-  step_agent_mismatch: "step's agent id is another kind's",
-  step_agent_duplicate: 'steps share an agent id',
-  findings_unlabelled: 'findings unlabelled',
-  strengths_unrecorded: 'strengths unrecorded',
+  simplify_not_run: 'Simplify not run',
+  no_transcript: 'No session transcript',
+  final_review_without_simplify: 'Final review without simplify',
+  simplify_record_differs: 'Simplify record differs',
+  agent_not_found: 'Agent type not found',
+  count_line_missing: 'Count line missing',
+  final_findings_differ: 'Final findings differ',
+  named_role_by_general_purpose: 'Named role by general-purpose',
+  model_less_dispatch: 'Model-less dispatch',
+  startup_missing: 'Startup guidelines missing',
+  step_count_differs: 'Step count differs',
+  step_counts_differ: 'Step counts differ',
+  findings_dont_add_up: "Findings don't add up",
+  verdicts_dont_add_up: "Fix-check verdicts don't add up",
+  required_skill_missing: 'Required skill did not run',
+  agent_off_pin: 'Agent off its pin',
+  agent_skill_missing: 'Agent ran without its skill',
+  risk_area_small_path: 'Risk area on the Small path',
+  wave_unchecked: 'Wave has no wave check',
+  offer_not_recorded: 'Offer not recorded',
+  fix_added_differs: "Fix_added differs from git's",
+  conventions_not_added: 'Conventions entry not added',
+  unrecorded_session: 'Session wrote no run record',
+  plan_review_without_simplify: 'Plan review without plan simplify',
+  typed_skill_not_loaded: 'Typed skill never loaded',
+  step_agent_missing: 'Step has no agent id',
+  step_agent_unknown: "Step's agent id matches no dispatch",
+  step_agent_mismatch: "Step's agent id is another kind's",
+  step_agent_duplicate: 'Steps share an agent id',
+  findings_unlabelled: 'Findings unlabelled',
+  strengths_unrecorded: 'Strengths unrecorded',
 };
 
-/** A warning kind on screen: its wording, a kind the dashboard doesn't know as its slug with spaces, none as "other". */
+/** A warning kind on screen, capitalised: its wording, a kind the dashboard doesn't know as its slug with spaces, none as
+ * "Other". */
 export function kindLabel(kind: string | null): string {
-  return kind === null ? 'other' : (KIND_LABELS[kind] ?? countLabel(kind));
+  return kind === null ? 'Other' : (KIND_LABELS[kind] ?? capitalize(countLabel(kind)));
 }
 
 /** A reporter's phase on screen, capitalised as the Spend page writes phases: a step kind by its step's label
@@ -177,15 +178,16 @@ export function formatTokens(tokens: Record<string, number | null> | null): stri
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(total(tokens));
 }
 
-/** A rule's name on the Steps and rules page, as the static page names it; an offer's is followed by its skill. */
+/** A rule's name on the Steps and rules page, capitalised, as the static page names it; an offer's is followed by its
+ * skill. */
 export const RULE_LABELS = {
-  failingTest: 'failing-test check',
-  dispatchGuard: 'dispatch guard',
-  advisor: 'advisor',
-  startup: 'startup guidelines',
-  fixRoundCap: 'fix-round cap',
-  stopRule: 'stop rule',
-  offer: 'offer',
+  failingTest: 'Failing-test check',
+  dispatchGuard: 'Dispatch guard',
+  advisor: 'Advisor',
+  startup: 'Startup guidelines',
+  fixRoundCap: 'Fix-round cap',
+  stopRule: 'Stop rule',
+  offer: 'Offer',
 };
 
 /** A finding's category by its display label from `labels` (a response's `categoryLabels`), its id when the labels

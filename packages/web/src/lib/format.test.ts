@@ -10,6 +10,7 @@ import {
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
+  RULE_LABELS,
   phaseLabel,
   SPEND_GROUP_LABELS,
   spendUncountedLabel,
@@ -185,17 +186,24 @@ describe('reporterMark', () => {
   });
 });
 
+describe('RULE_LABELS', () => {
+  it('names each rule capitalised', () => {
+    expect(RULE_LABELS.failingTest).toBe('Failing-test check');
+    expect(RULE_LABELS.offer).toBe('Offer');
+  });
+});
+
 describe('kindLabel', () => {
-  it('words each of PR #8’s and CR10’s 31 kinds by hand', () => {
+  it('words each of PR #8’s and CR10’s 31 kinds by hand, capitalised', () => {
     expect(Object.keys(KIND_LABELS)).toHaveLength(31);
-    expect(kindLabel('step_agent_missing')).toBe('step has no agent id');
-    expect(kindLabel('model_less_dispatch')).toBe('model-less dispatch');
-    expect(kindLabel('findings_unlabelled')).toBe('findings unlabelled');
+    expect(kindLabel('step_agent_missing')).toBe('Step has no agent id');
+    expect(kindLabel('model_less_dispatch')).toBe('Model-less dispatch');
+    expect(kindLabel('findings_unlabelled')).toBe('Findings unlabelled');
   });
 
-  it('shows a kind it doesn’t hold as its slug with spaces, and no kind as "other"', () => {
-    expect(kindLabel('brand_new_check')).toBe('brand new check');
-    expect(kindLabel(null)).toBe('other');
+  it('shows a kind it doesn’t hold as its slug with spaces, and no kind as "Other", capitalised', () => {
+    expect(kindLabel('brand_new_check')).toBe('Brand new check');
+    expect(kindLabel(null)).toBe('Other');
   });
 });
 
