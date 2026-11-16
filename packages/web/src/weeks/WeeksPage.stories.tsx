@@ -88,6 +88,19 @@ export const Full: Story = {
       'with waves332 h 30',
       'without waves433 h 05',
     ]);
+    // The numeric columns, headers included, are right-aligned in tabular figures; the week and the breakdowns aren't.
+    const aligned = (cell: Element) => {
+      const style = getComputedStyle(cell);
+      return style.textAlign === 'right' && style.fontVariantNumeric === 'tabular-nums';
+    };
+    const numeric = [false, false, true, false, true, true, true, true, true, true, true];
+    for (const row of weeks.getAllByRole('row').slice(0, 2)) {
+      await expect([...row.children].map(aligned)).toEqual(numeric);
+    }
+    for (const row of runTime.getAllByRole('row').slice(0, 2)) {
+      await expect([...row.children].map(aligned)).toEqual([false, true, true, true]);
+    }
+
     await expect(canvas.getByText(/the reporter can no longer read them/)).toHaveTextContent(
       'Weeks before Oct 13, 2026 show what was stored; the reporter can no longer read them.',
     );
