@@ -51,3 +51,24 @@ test('a table that scrolls sideways fades at the edge hiding columns, and one th
   // No mask at all on a table that fits: a mask clips the panel's shadow and the region's focus outline.
   expect(await mask('Skills')).toBe('none');
 });
+
+test('under 768 px the menu is behind a Menu button', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/spend');
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeHidden();
+  const menu = page.getByRole('button', { name: 'Menu' });
+  const pages = page.getByRole('dialog', { name: 'Pages' });
+  await menu.click();
+  await expect(pages.getByRole('link')).toHaveCount(11);
+  await page.keyboard.press('Escape');
+  await expect(pages).toBeHidden();
+  await menu.click();
+  await pages.getByRole('button', { name: 'Close' }).click();
+  await expect(pages).toBeHidden();
+  await menu.click();
+  await pages.getByRole('link', { name: 'Runs' }).click();
+  await expect(page).toHaveURL(/\/runs$/);
+  await expect(pages).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Refresh' })).toBeInViewport();
+});

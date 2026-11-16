@@ -11,7 +11,7 @@ export function RefreshButton({ importing }: { importing: boolean }) {
     await queryClient.invalidateQueries({ queryKey: ['status'] });
   }
   return (
-    <Button variant="outline" size="sm" disabled={importing} onClick={onClick}>
+    <Button variant="outline" size="sm" className="rounded-control" disabled={importing} onClick={onClick}>
       <RefreshCw className={importing ? 'animate-spin' : undefined} aria-hidden />
       {importing ? 'Importing…' : 'Refresh'}
     </Button>
