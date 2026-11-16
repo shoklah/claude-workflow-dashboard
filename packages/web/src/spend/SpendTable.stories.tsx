@@ -8,64 +8,72 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const table = (canvas: HTMLElement) => within(within(canvas).getByRole('region', { name: 'Spend by phase' }));
+const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((cell) => cell.textContent);
 
 /**
- * Full: the five groups, a group of several phases opening to its phases' rows, one column per model under "By model"
- * (the unpriced one a dash), then the advisor's, counted apart.
+ * Full: "All phases" first, then the five groups, a group of several phases opening to its phases' rows (its toggle a
+ * button with a chevron), one column per model under "By model ($)" (the unpriced one a dash), then the advisor's,
+ * counted apart.
  */
 export const Full: Story = {
   args: { response: spendFull },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const spend = table(canvasElement);
-    await expect(canvas.getByText('By phase, over the period')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'By phase, over the period' })).toBeVisible();
     await expect(spend.getByText('Review and cleanup')).toBeVisible();
-    await expect(spend.queryByText('task review', { exact: true })).toBeNull();
+    await expect(spend.queryByText('Task review', { exact: true })).toBeNull();
     await expect(spend.queryByRole('button', { name: /Implement/ })).toBeNull();
     await expect(spend.queryByRole('button', { name: /Coordination/ })).toBeNull();
 
+    await expect(spend.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+      'Phase',
+      'Est. cost ($)',
+      'Share',
+      'By model ($)',
+      'Advisor, counted apart',
+      'Opus 5.5',
+      'Fable 5.2',
+      'Haiku 5.5',
+      'Nova 1',
+      'Calls',
+      'Cost ($)',
+    ]);
+    const rows = spend.getAllByRole('row');
+    await expect(cells(rows[2])).toEqual([
+      'All phases',
+      '763.00',
+      '',
+      '605.00',
+      '152.00',
+      '6.00',
+      '–not known',
+      '66',
+      '38.00',
+    ]);
+    for (const row of rows) {
+      for (const cell of within(row).queryAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
+    }
+
     const review = spend.getByRole('button', { name: 'Review and cleanup' });
     await expect(review).toHaveAttribute('aria-expanded', 'false');
-    const before = spend.getAllByRole('row').length;
+    await expect(review.querySelector('svg')).not.toBeNull();
     await userEvent.click(review);
     await expect(review).toHaveAttribute('aria-expanded', 'true');
-    await expect(spend.getByText('task review', { exact: true })).toBeVisible();
-    await expect(spend.getAllByRole('row')).toHaveLength(before + 5);
-
-    await expect(spend.getByRole('columnheader', { name: 'By model' })).toBeVisible();
-    const headers = spend.getAllByRole('columnheader').map((header) => header.textContent);
-    await expect(headers.slice(headers.indexOf('Share') + 1)).toEqual([
-      'claude-opus-5-5',
-      'claude-fable-5-2',
-      'claude-haiku-5-5',
-      'claude-nova-1',
-      'Calls',
-      'Cost',
-    ]);
-    await expect(spend.getByRole('columnheader', { name: 'Advisor, counted apart' })).toBeVisible();
-    const total = spend.getByText('Total').closest('tr') as HTMLElement;
-    await expect(within(total).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      'Total',
-      '$763.00',
-      '',
-      '$605.00',
-      '$152.00',
-      '$6.00',
-      '–',
-      '66',
-      '$38.00',
-    ]);
+    await expect(spend.getByText('Task review', { exact: true })).toBeVisible();
+    await expect(spend.getByText('Fix-check', { exact: true })).toBeVisible();
+    await expect(spend.getAllByRole('row')).toHaveLength(rows.length + 5);
   },
 };
 
-/** Empty: the five groups at $0, none opens, and no model column. */
+/** Empty: the five groups at 0.00, none opens, and no model column. */
 export const Empty: Story = {
   args: { response: spendEmpty },
   play: async ({ canvasElement }) => {
     const spend = table(canvasElement);
-    await expect(spend.getAllByText('$0.00').length).toBeGreaterThanOrEqual(5);
+    await expect(spend.getAllByText('0.00').length).toBeGreaterThanOrEqual(5);
     await expect(spend.queryAllByRole('button')).toHaveLength(0);
-    await expect(spend.queryByRole('columnheader', { name: 'By model' })).toBeNull();
-    for (const name of ['Plan', 'Implement', 'Review and cleanup', 'Coordination', 'Unattributed']) {
+    await expect(spend.queryByRole('columnheader', { name: 'By model ($)' })).toBeNull();
+    for (const name of ['All phases', 'Plan', 'Implement', 'Review and cleanup', 'Coordination', 'Unattributed']) {
       await expect(spend.getByText(name)).toBeVisible();
     }
   },
@@ -80,6 +88,6 @@ export const UnknownPhase: Story = {
     const unattributed = spend.getByRole('button', { name: 'Unattributed' });
     await expect(unattributed).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(unattributed);
-    await expect(spend.getByText('deploy check', { exact: true })).toBeVisible();
+    await expect(spend.getByText('Deploy check', { exact: true })).toBeVisible();
   },
 };

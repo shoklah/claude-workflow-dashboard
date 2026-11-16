@@ -427,16 +427,16 @@ describe('timelineTimes', () => {
 });
 
 describe('phaseLabel', () => {
-  it('names a step kind by its step label, in lower case', () => {
-    expect(phaseLabel('fix_check')).toBe('fix-check');
-    expect(phaseLabel('plan_simplify')).toBe('plan simplify');
+  it('names a step kind by its step label, capitalised', () => {
+    expect(phaseLabel('fix_check')).toBe('Fix-check');
+    expect(phaseLabel('plan_simplify')).toBe('Plan simplify');
   });
-  it('writes another phase with spaces', () => {
-    expect(phaseLabel('plan_writing')).toBe('plan writing');
-    expect(phaseLabel('design')).toBe('design');
+  it('writes another phase with spaces, capitalised', () => {
+    expect(phaseLabel('plan_writing')).toBe('Plan writing');
+    expect(phaseLabel('design')).toBe('Design');
   });
-  it('lower-cases an unknown name', () => {
-    expect(phaseLabel('Deploy_Check')).toBe('deploy check');
+  it('lower-cases an unknown name after its first letter', () => {
+    expect(phaseLabel('Deploy_Check')).toBe('Deploy check');
   });
 });
 
