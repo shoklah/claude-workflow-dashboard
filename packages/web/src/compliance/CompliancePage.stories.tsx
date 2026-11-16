@@ -96,7 +96,7 @@ export const Full: Story = {
     await expect(list.getByRole('link', { name: 'atlas · feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(list.getByText('new')).toBeVisible();
     // The run's own "branch (date):" lead is gone: the link already names the run.
-    await expect(list.getByText('Final_review step 0 has no agent id')).toBeVisible();
+    await expect(list.getByText('final_review step 0 has no agent id')).toBeVisible();
 
     // Two warnings of one cell, neither new.
     await userEvent.click(canvas.getByRole('button', { name: 'step has no agent id, week of Nov 1: 2' }));

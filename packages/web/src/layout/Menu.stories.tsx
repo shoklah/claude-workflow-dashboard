@@ -44,10 +44,16 @@ export const Navigates: Story = {
 
 /**
  * The Menu button, shown only under 768 px, so this story sets Storybook's page to a phone's width; the stories' test
- * browser is 1200 px wide, where the button is hidden, so it asserts nothing: e2e/shell.spec.ts checks it at 375 px.
+ * browser is 1200 px wide, where the button is hidden, so it asserts only its pill radius: e2e/shell.spec.ts checks it
+ * at 375 px.
  */
 export const Button: Story = {
   render: () => <MenuButton />,
+  play: async ({ canvasElement }) => {
+    // The dialog's trigger renames the button's data-slot, and it is still a pill.
+    const button = canvasElement.querySelector('button')!;
+    await expect(getComputedStyle(button).borderTopLeftRadius).toBe('9999px');
+  },
   parameters: { viewport: { options: { phone: { name: 'Phone', styles: { width: '375px', height: '812px' } } } } },
   globals: { viewport: { value: 'phone' } },
 };

@@ -23,7 +23,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {status.isError && <Banner>Can't reach the dashboard server.</Banner>}
             {status.data && <StatusBanner status={status.data} />}
           </div>
-          <span className="ml-auto md:ml-0"><ShowingControl /></span>
+          <div className="ml-auto md:ml-0"><ShowingControl /></div>
           <RefreshButton importing={status.data?.importing ?? false} />
         </header>
         <main className="min-w-0 flex-1">{children}</main>

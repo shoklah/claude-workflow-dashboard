@@ -12,7 +12,6 @@ export const Pressed: Story = {
   play: async ({ canvas }) => {
     const button = canvas.getByRole('button', { name: 'Raised' });
     await expect(button).toHaveAttribute('aria-pressed', 'true');
-    await expect(button).toHaveClass('rounded-control');
     await expect(getComputedStyle(button).borderTopLeftRadius).toBe('9999px');
   },
 };
@@ -22,7 +21,7 @@ export const NotPressed: Story = {
   play: async ({ canvas, args, userEvent }) => {
     const button = canvas.getByRole('button', { name: 'Raised' });
     await expect(button).toHaveAttribute('aria-pressed', 'false');
-    await expect(button).toHaveClass('rounded-control');
+    await expect(getComputedStyle(button).borderTopLeftRadius).toBe('9999px');
     await userEvent.click(button);
     await expect(args.onClick).toHaveBeenCalledOnce();
   },
@@ -34,7 +33,7 @@ export const Disabled: Story = {
   play: async ({ canvas, userEvent }) => {
     const button = canvas.getByRole('button', { name: 'Raised' });
     await expect(button).toBeDisabled();
-    await expect(button).toHaveClass('rounded-control');
+    await expect(getComputedStyle(button).borderTopLeftRadius).toBe('9999px');
     await userEvent.tab();
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('Needs the workflow to label findings');
   },

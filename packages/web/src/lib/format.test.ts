@@ -470,7 +470,8 @@ test('formatLength uses the largest units that fit', () => {
 });
 test('warningBody drops the log prefix and the run\'s own lead', () => {
   expect(warningBody('WARN: feat/sync (2026-11-08): no session transcript', 'feat/sync')).toBe('No session transcript');
-  expect(warningBody('WARN: feat/other (2026-11-08): no session transcript', 'feat/sync')).toBe('Feat/other (2026-11-08): no session transcript');
+  expect(warningBody('WARN: feat/other (2026-11-08): no session transcript', 'feat/sync')).toBe('feat/other (2026-11-08): no session transcript');
+  expect(warningBody('final_review step 1 ran late')).toBe('final_review step 1 ran late');
   expect(warningBody('session {session}: startup guidelines missing')).toBe('Startup guidelines missing');
   expect(warningBody('the handoff in {session} came late')).toBe('The handoff in the session came late');
   expect(warningBody('already plain')).toBe('Already plain'); expect(warningBody('WARN:')).toBe('');

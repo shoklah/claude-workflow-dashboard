@@ -508,10 +508,11 @@ export function capitalize(label: string): string {
 }
 
 /** A warning's text for display: without the "WARN:" log prefix, without the run's own "branch (date): " lead when
- * `branch` is the run's, and with "{session}" in words, capitalised; the stored text stays whole. */
+ * `branch` is the run's, and with "{session}" in words, capitalised unless its first word is an identifier (one with
+ * `/`, `_` or `-`: a branch, a step), which stays as written; the stored text stays whole. */
 export function warningBody(text: string, branch: string | null = null): string {
   let body = text.replace(/^WARN:\s*/, '');
   if (branch && body.startsWith(`${branch} (`)) body = body.replace(/^.*?\):\s*/, '');
   body = body.replace(/^session \{session\}:?\s*/, '').replace(/\s*\{session\}\s*/, ' the session ').trim();
-  return capitalize(body);
+  return /^\S*[/_-]/.test(body) ? body : capitalize(body);
 }

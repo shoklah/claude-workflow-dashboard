@@ -1,5 +1,5 @@
 import { cn } from 'cn';
-import { NONE } from '../lib/format.ts';
+import { formatWhole, NONE } from '../lib/format.ts';
 
 /** A numeric column's alignment, for its header and its cells. */
 export const NUM = 'text-right tabular-nums';
@@ -20,8 +20,8 @@ export function Unknown({ label = 'not known' }: { label?: string }) {
   );
 }
 
-/** A number: zero muted, unknown as the muted dash. */
-export function Num({ value, format = String }: { value: number | null | undefined; format?: (n: number) => string }) {
+/** A number, whole and grouped unless `format` says otherwise: zero muted, unknown as the muted dash. */
+export function Num({ value, format = formatWhole }: { value: number | null | undefined; format?: (n: number) => string }) {
   if (value == null) return <Unknown />;
   return <span className={cn(value === 0 && 'text-muted-foreground')}>{format(value)}</span>;
 }

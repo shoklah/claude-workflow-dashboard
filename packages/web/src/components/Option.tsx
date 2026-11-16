@@ -18,7 +18,6 @@ export function Option({
   const button = (
     <Button
       size="sm"
-      className="rounded-control"
       variant={pressed ? 'default' : 'outline'}
       aria-pressed={pressed}
       disabled={disabledReason !== undefined}

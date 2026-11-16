@@ -56,6 +56,7 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+    --color-panel-edge: var(--panel-edge);
     --color-warning-edge: var(--warning-edge);
     --color-warning-ink: var(--warning-ink);
     --color-success-edge: var(--success-edge);
@@ -285,6 +286,13 @@
     --xy-edge-stroke: var(--chart-baseline);
     --xy-attribution-background-color: transparent;
     }
+}
+
+/* Every button is a pill (DESIGN.md), and no call site sets its radius. Unlayered, so it wins over the generated
+   Button's `rounded-md` utilities; matched by its variant and size, since a Radix trigger's `asChild` (the Menu
+   button) replaces its `data-slot`. */
+[data-variant][data-size] {
+  border-radius: var(--radius-control);
 }
 
 @media (prefers-reduced-transparency: reduce) {
