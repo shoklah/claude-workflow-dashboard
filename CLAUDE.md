@@ -27,6 +27,18 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - Screens are checked on fixtures with Playwright screenshot comparisons and axe accessibility checks.
 - Charts are written with the `dataviz` skill loaded.
 
+## Kits
+
+- ui [react-tailwind-shadcn]
+  - serve: pnpm build && PORT={port} pnpm --filter @cwd/server dev:fixtures
+  - base-url: http://localhost:{port}
+  - checks-from: packages/web
+  - look: floor
+  - dark: dark
+  - theme: src/index.css
+  - generated: src/components/ui
+  - catalog-skip: main.tsx,router.tsx
+
 ## Code conventions
 
 - The data is personal (project paths, branch names, session IDs, costs, finding text): never commit real data, never put it in fixtures, never publish it publicly. Fixtures are invented.
@@ -93,6 +105,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - A page that fetches takes what its route gives it (a run's key) as a prop, so its stories render it without route params.
 - Story fixtures a screen's stories share are invented API responses in `packages/web/src/test/<screen>.ts`.
 - The web app's display formatting (costs, durations, plurals, step names, "project · branch") lives in `packages/web/src/lib/format.ts`, one function or map per fact on every screen (`STEP_LABELS` for step kinds); a fact that isn't known shows as its `NONE`, "–", and a duration is rounded to whole minutes first, then shown as "25 min" or "2 h 10".
+- A table's numeric columns, headers included, are right-aligned in tabular figures (`text-right tabular-nums`); breakdowns written as text stay left-aligned.
 - A token or character count shows compact through `formatCompact` in `format.ts` ("281K", "1.3M"); `formatTokens` keeps the Models page's one fraction digit.
 - Counts by key show through `countsLabel` in `format.ts` (zeros kept, an unknown count as `NONE`), and a week's breakdowns (runs by path, findings by severity) through `nonZeroCountsLabel`, as the approved basics mockup writes them: "small 4 · full 2", "none" when all are 0; both join through `joined`.
 - A finding's category shows through `categoryLabel(category, labels)` in `packages/web/src/lib/format.ts`, named by the response's `categoryLabels` (its id when they don't name it, "unlabelled" when null), a set category in `CategoryBadge`'s outline badge (`runs/FindingsTable.tsx`), dashed and titled "The app's label" only on the app's labels (`judge: 'app'`).

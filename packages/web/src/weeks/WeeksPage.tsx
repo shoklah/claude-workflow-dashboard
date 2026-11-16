@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { cn } from 'cn';
 import type { FindingsQuery, RunTime, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -8,19 +9,21 @@ import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 type Week = WeeksResponse['weeks'][number];
 
-// The static page's "Whole workflow" columns.
+const COUNT = 'text-right tabular-nums';
+
+// The static page's "Whole workflow" columns, its counts right-aligned in tabular figures.
 const COLUMNS = [
-  'Week',
-  'Runs',
-  'Tasks',
-  'Findings',
-  'Fix rounds',
-  'Stops',
-  'Fable points',
-  'All points',
-  'Estimated dollars',
-  'Minutes per run',
-  'Later fix commits',
+  { label: 'Week', count: false },
+  { label: 'Runs', count: false },
+  { label: 'Tasks', count: true },
+  { label: 'Findings', count: false },
+  { label: 'Fix rounds', count: true },
+  { label: 'Stops', count: true },
+  { label: 'Fable points', count: true },
+  { label: 'All points', count: true },
+  { label: 'Estimated dollars', count: true },
+  { label: 'Minutes per run', count: true },
+  { label: 'Later fix commits', count: true },
 ];
 
 const RUN_TIMES: { key: keyof RunTime; label: string }[] = [
@@ -64,7 +67,9 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
       <TableHeader>
         <TableRow>
           {COLUMNS.map((column) => (
-            <TableHead key={column}>{column}</TableHead>
+            <TableHead key={column.label} className={cn(column.count && COUNT)}>
+              {column.label}
+            </TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -73,15 +78,15 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
           <TableRow key={w.week}>
             <TableHead scope="row">{weekLabel(w.week)}</TableHead>
             <TableCell>{nonZeroCountsLabel(w.runs)}</TableCell>
-            <TableCell>{w.tasks}</TableCell>
+            <TableCell className={COUNT}>{w.tasks}</TableCell>
             <TableCell>{nonZeroCountsLabel(w.findings)}</TableCell>
-            <TableCell>{w.fixRounds}</TableCell>
-            <TableCell>{w.stops}</TableCell>
-            <TableCell>{formatCount(w.fablePoints)}</TableCell>
-            <TableCell>{formatCount(w.allPoints)}</TableCell>
-            <TableCell>{formatCost(w.cost)}</TableCell>
-            <TableCell>{formatMinutes(w.minutesPerRun)}</TableCell>
-            <TableCell>{w.laterFixes}</TableCell>
+            <TableCell className={COUNT}>{w.fixRounds}</TableCell>
+            <TableCell className={COUNT}>{w.stops}</TableCell>
+            <TableCell className={COUNT}>{formatCount(w.fablePoints)}</TableCell>
+            <TableCell className={COUNT}>{formatCount(w.allPoints)}</TableCell>
+            <TableCell className={COUNT}>{formatCost(w.cost)}</TableCell>
+            <TableCell className={COUNT}>{formatMinutes(w.minutesPerRun)}</TableCell>
+            <TableCell className={COUNT}>{w.laterFixes}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -94,8 +99,11 @@ function RunTimeTable({ runTime }: { runTime: RunTime }) {
     <Table aria-label="Full runs" className="w-auto">
       <TableHeader>
         <TableRow>
-          {['Full runs', 'Runs', 'With a run time', 'Median minutes'].map((column) => (
-            <TableHead key={column}>{column}</TableHead>
+          <TableHead>Full runs</TableHead>
+          {['Runs', 'With a run time', 'Median minutes'].map((column) => (
+            <TableHead key={column} className={COUNT}>
+              {column}
+            </TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -103,9 +111,9 @@ function RunTimeTable({ runTime }: { runTime: RunTime }) {
         {RUN_TIMES.map(({ key, label }) => (
           <TableRow key={key}>
             <TableHead scope="row">{label}</TableHead>
-            <TableCell>{runTime[key].runs}</TableCell>
-            <TableCell>{runTime[key].timed}</TableCell>
-            <TableCell>{formatMinutes(runTime[key].medianMinutes)}</TableCell>
+            <TableCell className={COUNT}>{runTime[key].runs}</TableCell>
+            <TableCell className={COUNT}>{runTime[key].timed}</TableCell>
+            <TableCell className={COUNT}>{formatMinutes(runTime[key].medianMinutes)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
