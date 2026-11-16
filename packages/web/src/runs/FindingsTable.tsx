@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Link } from '@tanstack/react-router';
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -9,9 +8,9 @@ import {
   useTable,
 } from '@tanstack/react-table';
 import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
-import { cn } from 'cn';
 import { EmptyRow, Text, Unknown } from '../components/Num.tsx';
-import { LINK, TERM } from '../components/Panel.tsx';
+import { TERM } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
 import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName } from '../lib/format.ts';
@@ -99,9 +98,7 @@ const runColumn = helper.columns([
     id: 'run',
     header: 'Run',
     cell: (c) => (
-      <Link to="/runs/$key" params={{ key: c.row.original.runKey ?? '' }} className={cn('font-medium', LINK)}>
-        <Text value={c.getValue()} unknown="no branch" />
-      </Link>
+      <RunLink runKey={c.row.original.runKey ?? ''} branch={c.getValue()} className="font-medium" />
     ),
   }),
   helper.accessor((f) => f.project ?? null, { id: 'project', header: 'Project', cell: (c) => <Text value={c.getValue()} /> }),

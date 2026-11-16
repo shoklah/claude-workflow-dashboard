@@ -1,11 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { FeedItem } from '@cwd/shared';
 import { markSeen } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
-import { Num, Text } from '../components/Num.tsx';
-import { LINK, Pairs, Panel } from '../components/Panel.tsx';
+import { Num } from '../components/Num.tsx';
+import { Pairs, Panel } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatCost, formatMinutes, pathLabel } from '../lib/format.ts';
@@ -29,9 +29,7 @@ function Item({ item }: { item: FeedItem }) {
         </span>
       </div>
       {item.runKey !== null ? (
-        <Link to="/runs/$key" params={{ key: item.runKey }} className={cn('break-words', LINK)}>
-          <Text value={item.branch} unknown="no branch" />
-        </Link>
+        <RunLink runKey={item.runKey} branch={item.branch} className="break-words" />
       ) : (
         item.branch !== null && <span className="break-words">{item.branch}</span>
       )}

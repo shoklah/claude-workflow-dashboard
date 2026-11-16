@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
 import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
-import { LINK } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { RowToggle } from '../components/RowToggle.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -56,9 +55,7 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
               <td className="py-1 pr-6 whitespace-nowrap text-muted-foreground">{KINDS[item.kind]}</td>
               <td className="py-1 pr-6 font-medium">
                 {item.kind === 'run' && hold ? (
-                  <Link to="/runs/$key" params={{ key: hold.runKey }} className={LINK}>
-                    <Text value={hold.branch} unknown="no branch" />
-                  </Link>
+                  <RunLink runKey={hold.runKey} branch={hold.branch} />
                 ) : (
                   usageName({ name: item.name, kind: item.kind === 'command' ? 'command' : 'skill' })
                 )}

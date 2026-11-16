@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { ContextUnit } from '@cwd/shared';
 import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
-import { LINK, Line, SectionTitle } from '../components/Panel.tsx';
+import { Line, SectionTitle } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -23,9 +23,7 @@ const COLUMN_COUNT = 14;
 function UnitName({ unit }: { unit: ContextUnit }) {
   if (unit.run) {
     return (
-      <Link to="/runs/$key" params={{ key: unit.run.key }} className={LINK}>
-        <Text value={unit.run.branch} unknown="no branch" />
-      </Link>
+      <RunLink runKey={unit.run.key} branch={unit.run.branch} />
     );
   }
   const title = unit.session?.title ?? null;

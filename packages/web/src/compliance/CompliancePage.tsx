@@ -6,7 +6,8 @@ import type { ComplianceResponse, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
-import { LINK, Line, PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
+import { Line, PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Option, Options } from '../components/Option.tsx';
@@ -142,9 +143,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
                     {w.runKey === null ? (
                       <Unknown label="no run" />
                     ) : (
-                      <Link to="/runs/$key" params={{ key: w.runKey }} className={LINK}>
-                        <Text value={w.branch} unknown="no branch" />
-                      </Link>
+                      <RunLink runKey={w.runKey} branch={w.branch} />
                     )}
                   </TableCell>
                   <TableCell className="align-top text-muted-foreground">

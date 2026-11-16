@@ -1,8 +1,7 @@
-import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { RunRow } from '@cwd/shared';
 import { EmptyRow, GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
-import { LINK } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { closedFindings, formatDollars, pathLabel } from '../lib/format.ts';
@@ -54,9 +53,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
         {runs.map((run) => (
           <TableRow key={run.key}>
             <TableCell className="font-medium">
-              <Link to="/runs/$key" params={{ key: run.key }} className={LINK}>
-                <Text value={run.branch} unknown="no branch" />
-              </Link>
+              <RunLink runKey={run.key} branch={run.branch} />
               {run.beforeSteps && <span className="ml-2 text-xs font-normal text-muted-foreground">before steps</span>}
             </TableCell>
             <TableCell className="text-muted-foreground">
