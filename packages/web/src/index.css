@@ -17,6 +17,14 @@
     --radius-panel: 1.25rem;
     --radius-control: 9999px;
     --radius-swatch: 3px;
+    --text-page-title: 1.75rem;
+    --text-page-title--line-height: 1.15;
+    --text-page-title--letter-spacing: -0.03em;
+    --text-page-title--font-weight: 700;
+    --text-section-title: 1rem;
+    --text-section-title--line-height: 1.4;
+    --text-section-title--letter-spacing: -0.01em;
+    --text-section-title--font-weight: 600;
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -207,6 +215,15 @@
     --on-shade-5: #10162f;
 }
 
+@property --cue-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --cue-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@keyframes scroll-cue {
+    0% { --cue-start: 0px; --cue-end: 3rem; }
+    8% { --cue-start: 3rem; --cue-end: 3rem; }
+    92% { --cue-start: 3rem; --cue-end: 3rem; }
+    100% { --cue-start: 3rem; --cue-end: 0px; }
+}
+
 /* A panel: DESIGN.md's glass recipe. */
 @utility glass {
     background: var(--panel-sheen), var(--panel);
@@ -238,9 +255,21 @@
     background-position: right 0.75rem center;
     background-size: 1rem;
     }
+  input[type='checkbox'] {
+    accent-color: var(--primary);
+    }
   /* Every table sits on a panel, its header a lighter band (DESIGN.md's Table). */
   [data-slot='table-container'] {
     @apply glass;
+    }
+  /* The cue on a table that scrolls sideways: its edge fades where more columns are hidden. The scroll timeline is
+     inactive on a table that fits, so it gets no mask. */
+  @supports (animation-timeline: scroll()) {
+    [data-slot='table-container'] {
+      mask-image: linear-gradient(to right, transparent, #000 var(--cue-start), #000 calc(100% - var(--cue-end)), transparent);
+      animation: scroll-cue linear both;
+      animation-timeline: scroll(self inline);
+      }
     }
   [data-slot='table-header'] {
     @apply bg-secondary;
