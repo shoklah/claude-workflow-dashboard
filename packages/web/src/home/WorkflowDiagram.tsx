@@ -6,7 +6,7 @@ import { cn } from 'cn';
 import type { DiagramStep, FixLine, HomeResponse } from '@cwd/shared';
 import { STEP_LABELS, WARNING_BORDER, WARNING_INK, plural, stepWarningsLabel } from '../lib/format.ts';
 import { Num } from '../components/Num.tsx';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
 import { Pairs, Panel } from '../components/Panel.tsx';
 
 type StepNode = Node<DiagramStep, 'step'>;
@@ -128,14 +128,14 @@ export function WorkflowDiagram({ diagram }: { diagram: HomeResponse['diagram'] 
     <Panel
       title="Workflow, last 7 days"
       aside={
-        <div role="group" aria-label="Path" className="flex flex-wrap gap-1">
+        <Options label="Path">
           <Option pressed={path === 'full'} onClick={() => setPath('full')}>
             Full path
           </Option>
           <Option pressed={path === 'small'} onClick={() => setPath('small')}>
             Small path
           </Option>
-        </div>
+        </Options>
       }
     >
       <Flow key={path} steps={diagram[path]} name={path === 'full' ? 'Full path' : 'Small path'} />

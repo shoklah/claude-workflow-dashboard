@@ -3,7 +3,7 @@ import { cn } from 'cn';
 import type { ContextResponse, ContextWeek, FindingsQuery } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { GroupHead, NUM, Num, SUB } from '../components/Num.tsx';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
 import { Details, PageTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, SERIES, barsOption, singleBars } from '../home/WeeklyCharts.tsx';
@@ -144,15 +144,14 @@ export function ContextPage() {
   const data = context.data;
   // The units' switch, kept on an error too, so a failed "All" can go back over the cap.
   const show = (
-    <div role="group" aria-label="Show" className="ml-auto flex flex-wrap items-center gap-1">
-      <span className="mr-1">Show</span>
+    <Options label="Show" shown className="ml-auto">
       <Option pressed={over} onClick={() => setOver(true)}>
         Over the cap
       </Option>
       <Option pressed={!over} onClick={() => setOver(false)}>
         All
       </Option>
-    </div>
+    </Options>
   );
   return (
     <div className="flex flex-col gap-4">

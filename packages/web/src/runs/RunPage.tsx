@@ -2,7 +2,7 @@ import { useId, useState, type ReactNode } from 'react';
 import type { RunResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
 import { PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -66,14 +66,14 @@ export function RunPage({ runKey }: { runKey: string }) {
       <Header run={facts} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div role="group" aria-label="View" className="flex flex-wrap gap-1">
+          <Options label="View">
             <Option pressed={view === 'timeline'} onClick={() => setView('timeline')}>
               Timeline
             </Option>
             <Option pressed={view === 'findings'} onClick={() => setView('findings')}>
               Findings
             </Option>
-          </div>
+          </Options>
           {view === 'timeline' ? (
             <Panel>
               <RunTimeline timeline={timeline} beforeSteps={facts.beforeSteps} />

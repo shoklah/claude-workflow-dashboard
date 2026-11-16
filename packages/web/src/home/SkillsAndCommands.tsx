@@ -4,7 +4,7 @@ import { EmptyRow, NUM, Num } from '../components/Num.tsx';
 import { SectionTitle } from '../components/Panel.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
 import { cn } from 'cn';
 import { WARNING_INK, plural, usageName } from '../lib/format.ts';
 
@@ -32,13 +32,13 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
     <section aria-labelledby={titleId} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <SectionTitle id={titleId}>Skills and commands</SectionTitle>
-        <div role="group" aria-label="Period" className="flex flex-wrap gap-1">
+        <Options label="Period">
           {PERIODS.map((option) => (
             <Option key={option.period} pressed={period === option.period} onClick={() => setPeriod(option.period)}>
               {option.label}
             </Option>
           ))}
-        </div>
+        </Options>
         <span>
           {plural(shown.sessions, 'session')} and {plural(shown.runs, 'run')}
         </span>

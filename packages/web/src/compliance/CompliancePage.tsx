@@ -9,7 +9,7 @@ import { Text, Unknown } from '../components/Num.tsx';
 import { LINK, Line, PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import {
   FAMILY_LABELS,
@@ -72,8 +72,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           setSelected(null);
         }}
       >
-        <div role="group" aria-label="Warnings" className="flex flex-wrap items-center gap-1">
-          <span className="mr-1">Warnings</span>
+        <Options label="Warnings" shown>
           {[false, true].map((option) => (
             <Option
               key={String(option)}
@@ -86,7 +85,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
               {option ? 'Including resolved' : 'Current'}
             </Option>
           ))}
-        </div>
+        </Options>
         {step && (
           <span className="inline-flex items-center gap-1 rounded-control border border-input px-3 py-1">
             Step: {STEP_LABELS[step]}

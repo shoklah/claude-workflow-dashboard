@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FindingsQuery, SpendGroup, SpendResponse, SpendUnits } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { NUM, Num } from '../components/Num.tsx';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
 import { Details, PageTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, SPEND_GROUP_COLORS, barsOption } from '../home/WeeklyCharts.tsx';
@@ -93,8 +93,7 @@ export function SpendPage() {
     <div className="flex flex-col gap-4">
       <PageTitle>Spend</PageTitle>
       <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })}>
-        <div role="group" aria-label="Count" className="flex flex-wrap items-center gap-1">
-          <span className="mr-1">Count</span>
+        <Options label="Count" shown>
           {UNITS.map((option) => (
             <Option
               key={option.units}
@@ -105,7 +104,7 @@ export function SpendPage() {
               {option.label}
             </Option>
           ))}
-        </div>
+        </Options>
       </ListFilters>
       {spend.isPending && <State>Loading the spend…</State>}
       {spend.isError && <State error>Couldn't load the spend.</State>}

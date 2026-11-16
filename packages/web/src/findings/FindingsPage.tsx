@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AREAS, type Area, type FindingsQuery, type FindingsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
 import { Line, PageTitle, SectionTitle, State } from '../components/Panel.tsx';
 import { AREA_LABELS, categoryLabel, hiddenLabel, plural, weekLabel } from '../lib/format.ts';
 import { FindingsTable } from '../runs/FindingsTable.tsx';
@@ -46,16 +46,14 @@ export function FindingsPage() {
         }}
       />
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
-        <div role="group" aria-label="Measure" className="flex flex-wrap items-center gap-1">
-          <span className="mr-1">Measure</span>
+        <Options label="Measure" shown>
           {MEASURES.map((option) => (
             <Option key={option.measure} pressed={measure === option.measure} onClick={() => setMeasure(option.measure)}>
               {option.label}
             </Option>
           ))}
-        </div>
-        <div role="group" aria-label="Area" className="flex flex-wrap items-center gap-1">
-          <span className="mr-1">Area</span>
+        </Options>
+        <Options label="Area" shown>
           {AREAS.map((option) => (
             <Option
               key={option}
@@ -68,7 +66,7 @@ export function FindingsPage() {
               {AREA_LABELS[option]}
             </Option>
           ))}
-        </div>
+        </Options>
       </div>
       {findings.isPending && <State>Loading the findings…</State>}
       {findings.isError && (
