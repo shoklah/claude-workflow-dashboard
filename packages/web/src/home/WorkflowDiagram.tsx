@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Handle, Position, ReactFlow, type Edge, type Node, type NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -11,8 +11,10 @@ import { Pairs, Panel } from '../components/Panel.tsx';
 
 type StepNode = Node<DiagramStep, 'step'>;
 
-const BOX_WIDTH = 140;
-const GAP = 40;
+const BOX_WIDTH = 132;
+const GAP = 32;
+// The room around the flow, so a box's border is never cut at the edge.
+const PAD = 16;
 
 /**
  * A step box: the step, how many ran, their findings and how many were acted on; with current warnings naming its step,
@@ -56,8 +58,9 @@ function StepBox({ data }: NodeProps<StepNode>) {
 
 const nodeTypes = { step: StepBox };
 
-/** One path's steps, left to right, each joined to the next; a picture, not a canvas to edit. */
-function Flow({ steps }: { steps: DiagramStep[] }) {
+/** One path's steps, left to right, each joined to the next; a picture, not a canvas to edit. Drawn at full size, never
+ * shrunk to fit: where the boxes are wider than the panel, the flow scrolls sideways in its own focusable region. */
+function Flow({ steps, name }: { steps: DiagramStep[]; name: string }) {
   const nodes: StepNode[] = steps.map((step, i) => ({
     id: step.step,
     type: 'step',
@@ -74,53 +77,46 @@ function Flow({ steps }: { steps: DiagramStep[] }) {
   }));
   // React Flow's attribution stays (it asks to be hidden only with a Pro plan), in an ink dark enough to read;
   // marked important, since its CSS is unlayered and would beat the utility.
+  const width = steps.length * (BOX_WIDTH + GAP) - GAP + 2 * PAD;
   return (
-    <div className="h-40 [&_.react-flow\_\_attribution_a]:text-muted-foreground!">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ maxZoom: 1 }}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        nodesFocusable={false}
-        edgesFocusable={false}
-        elementsSelectable={false}
-        panOnDrag={false}
-        zoomOnScroll={false}
-        zoomOnPinch={false}
-        zoomOnDoubleClick={false}
-        preventScrolling={false}
-        disableKeyboardA11y
-      />
+    <div tabIndex={0} role="region" aria-label={`Workflow steps, ${name}`} className="overflow-x-auto">
+      <div style={{ minWidth: width }} className="h-40 [&_.react-flow\_\_attribution_a]:text-muted-foreground!">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ maxZoom: 1, padding: `${PAD}px` }}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          nodesFocusable={false}
+          edgesFocusable={false}
+          elementsSelectable={false}
+          panOnDrag={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          zoomOnDoubleClick={false}
+          preventScrolling={false}
+          disableKeyboardA11y
+        />
+      </div>
     </div>
   );
 }
 
 /** The fix-check facts under the flow, a group named by its visible title. */
 function FixChecks({ line }: { line: FixLine }) {
-  const titleId = useId();
-  const pairs: [string, number][] = [
-    ['Ran', line.ran],
-    ['Still open', line.open],
-    ['Reached round 3', line.roundThree],
-  ];
   return (
-    <div role="group" aria-labelledby={titleId} className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-t pt-3 text-sm">
-      <span id={titleId} className="font-semibold">
-        Fix-checks
-      </span>
-      <dl className="flex flex-wrap gap-x-6 gap-y-1">
-        {pairs.map(([term, value]) => (
-          <div key={term} className="flex gap-2">
-            <dt className="text-muted-foreground">{term}</dt>
-            <dd className="tabular-nums">
-              <Num value={value} />
-            </dd>
-          </div>
-        ))}
-      </dl>
+    <div role="group" aria-label="Fix-checks" className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-t pt-3 text-sm">
+      <span className="font-semibold">Fix-checks</span>
+      <Pairs
+        inline="beside"
+        pairs={[
+          ['Ran', <Num value={line.ran} />],
+          ['Still open', <Num value={line.open} />],
+          ['Reached round 3', <Num value={line.roundThree} />],
+        ]}
+      />
     </div>
   );
 }
@@ -142,7 +138,7 @@ export function WorkflowDiagram({ diagram }: { diagram: HomeResponse['diagram'] 
         </div>
       }
     >
-      <Flow key={path} steps={diagram[path]} />
+      <Flow key={path} steps={diagram[path]} name={path === 'full' ? 'Full path' : 'Small path'} />
       <FixChecks line={diagram.fixChecks[path]} />
       {diagram.beforeSteps > 0 && (
         <p className="text-sm text-muted-foreground">{plural(diagram.beforeSteps, 'run')} before steps, not counted</p>

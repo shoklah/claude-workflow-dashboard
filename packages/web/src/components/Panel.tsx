@@ -41,8 +41,32 @@ export function Panel({ title, aside, className, children }: { title?: string; a
 
 /** Labelled pairs: each fact's name in secondary ink, its value beside it, right-aligned in tabular figures. With
  * `names`, a list of names with their detail (a skill's outcome, a model's cost): each name in primary ink on its own
- * row, its detail muted, so a long name keeps its line when another row's detail is long. */
-export function Pairs({ pairs, names = false, className }: { pairs: [string, ReactNode][]; names?: boolean; className?: string }) {
+ * row, its detail muted, so a long name keeps its line when another row's detail is long. With `inline`, one row of
+ * facts that wraps: each term `beside` its value (a line of facts under a flow), or `over` it, the term small and the
+ * value bold (a page's header facts). */
+export function Pairs({
+  pairs,
+  names = false,
+  inline,
+  className,
+}: {
+  pairs: [string, ReactNode][];
+  names?: boolean;
+  inline?: 'beside' | 'over';
+  className?: string;
+}) {
+  if (inline) {
+    return (
+      <dl className={cn('flex flex-wrap gap-x-6 gap-y-1 text-sm', className)}>
+        {pairs.map(([term, value], i) => (
+          <div key={i} className={cn(inline === 'beside' && 'flex gap-2')}>
+            <dt className={cn('text-muted-foreground', inline === 'over' && 'text-xs font-medium')}>{term}</dt>
+            <dd className={cn('tabular-nums', inline === 'over' && 'font-semibold')}>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
   return (
     <dl className={cn(names ? 'flex flex-col' : 'grid grid-cols-[minmax(0,1fr)_auto] gap-x-4', 'gap-y-1 text-sm', className)}>
       {pairs.map(([term, value], i) => (

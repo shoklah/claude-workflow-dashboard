@@ -36,3 +36,28 @@ test('a summary with HTML shows as text', async ({ page }) => {
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   await expect(feed).not.toContainText('WARN:');
 });
+
+// The diagram keeps its boxes at their own size (12 px text) at every width: where they don't fit, the flow scrolls
+// sideways in its own focusable region, so every box is whole and reachable, and the page itself never scrolls sideways.
+for (const width of [375, 768, 1440]) {
+  test(`every step box is readable and reachable at ${width} px`, async ({ page }) => {
+    // Sized before loading, as the shell's check does: a chart resizes a moment after the window does.
+    await page.setViewportSize({ width, height: 900 });
+    await page.reload();
+    const flow = page.getByRole('region', { name: 'Workflow steps, Full path' });
+    await expect(flow).toHaveAttribute('tabindex', '0');
+    const boxes = flow.getByRole('figure');
+    await expect(boxes).toHaveCount(5);
+    for (const box of await boxes.all()) {
+      await box.scrollIntoViewIfNeeded();
+      await expect(box).toBeInViewport({ ratio: 1 });
+      // Drawn at full size: the box's 12 px text is never scaled down.
+      const scale = await box.evaluate((el) => el.getBoundingClientRect().width / (el as HTMLElement).offsetWidth);
+      expect(scale).toBeGreaterThanOrEqual(1);
+      const size = await box.getByText('Ran').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+      expect(size * scale).toBeGreaterThanOrEqual(12);
+    }
+    const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(extra).toBe(0);
+  });
+}

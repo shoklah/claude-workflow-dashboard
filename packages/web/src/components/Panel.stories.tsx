@@ -60,6 +60,37 @@ export const PairsList: Story = {
   },
 };
 
+/** Inline pairs: one row of facts that wraps, each term beside its value (a line of facts under a flow), or over it
+ * (a page's header facts). */
+export const PairsInline: Story = {
+  args: {
+    title: 'Facts',
+    children: (
+      <div className="flex flex-col gap-4">
+        <Pairs inline="beside" pairs={[['Ran', 7], ['Still open', 1]]} />
+        <Pairs inline="over" pairs={[['Project', 'atlas'], ['Findings', 4]]} />
+      </div>
+    ),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const [beside, over] = [...canvasElement.querySelectorAll('dl')];
+    for (const dl of [beside, over]) await expect(getComputedStyle(dl).flexWrap).toBe('wrap');
+    const pairs = (dl: Element) => [...dl.children].map((pair) => [pair.children[0].textContent, pair.children[1].textContent]);
+    await expect(pairs(beside)).toEqual([['Ran', '7'], ['Still open', '1']]);
+    await expect(pairs(over)).toEqual([['Project', 'atlas'], ['Findings', '4']]);
+    // Beside: the value on the term's line. Over: the value under its term, in bold, the term small.
+    const ran = canvas.getByText('Ran').getBoundingClientRect();
+    const seven = canvas.getByText('7').getBoundingClientRect();
+    await expect(seven.left).toBeGreaterThan(ran.right);
+    await expect(Math.abs(seven.top - ran.top)).toBeLessThan(4);
+    const project = canvas.getByText('Project');
+    const atlas = canvas.getByText('atlas');
+    await expect(atlas.getBoundingClientRect().top).toBeGreaterThanOrEqual(project.getBoundingClientRect().bottom - 1);
+    await expect(getComputedStyle(atlas).fontWeight).toBe('600');
+    await expect(getComputedStyle(project).fontSize).toBe('12px');
+  },
+};
+
 /** Names with their detail: each name in primary ink on its own row, its detail muted beside it, so a long name
  * keeps one line when a short one has a long detail. */
 export const PairsNames: Story = {

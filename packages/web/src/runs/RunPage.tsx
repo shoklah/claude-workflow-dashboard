@@ -45,14 +45,7 @@ function Header({ run }: { run: RunResponse['facts'] }) {
   ];
   return (
     <Panel className="py-3">
-      <dl className="flex flex-wrap gap-x-10 gap-y-3 text-sm">
-        {facts.map(([term, value]) => (
-          <div key={term}>
-            <dt className="text-xs font-medium text-muted-foreground">{term}</dt>
-            <dd className="font-semibold tabular-nums">{value}</dd>
-          </div>
-        ))}
-      </dl>
+      <Pairs inline="over" className="gap-x-10 gap-y-3" pairs={facts} />
     </Panel>
   );
 }

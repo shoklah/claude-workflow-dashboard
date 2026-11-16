@@ -1,6 +1,7 @@
 import type { FindingsResponse } from '@cwd/shared';
 import { Num } from '../components/Num.tsx';
 import { Pairs, Panel } from '../components/Panel.tsx';
+import { formatCompact } from '../lib/format.ts';
 
 /** The period's relevance signals, each a sum over the stored runs, as labelled pairs; then the labeller's facts, or
  * the line that it is off. */
@@ -22,7 +23,7 @@ export function SignalsPanel({ signals, labeller }: Pick<FindingsResponse, 'sign
             pairs={[
               ['Labelled by the app', <Num value={labeller.labelled} />],
               ['Waiting', <Num value={labeller.waiting} />],
-              ['Labeller tokens this week', <Num value={labeller.tokensThisWeek.input + labeller.tokensThisWeek.output} />],
+              ['Labeller tokens this week', <Num value={labeller.tokensThisWeek.input + labeller.tokensThisWeek.output} format={formatCompact} />],
             ]}
           />
         ) : (

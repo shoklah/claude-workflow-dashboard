@@ -43,7 +43,7 @@ export const Full: Story = {
       [SIGNALS[4], '6'],
       ['Labelled by the app', '8'],
       ['Waiting', '1'],
-      ['Labeller tokens this week', '43,350'],
+      ['Labeller tokens this week', '43K'],
     ]);
     await expect(canvas.queryByText(/The labeller is off/)).toBeNull();
   },
