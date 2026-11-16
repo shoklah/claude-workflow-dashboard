@@ -4,7 +4,7 @@ import { pinClock } from './fixed-time.ts';
 test('the weeks page matches its screenshot', async ({ page }) => {
   await pinClock(page);
   await page.goto('/weeks');
-  await expect(page.getByRole('region', { name: 'Full runs' }).getByRole('table')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Full runs', exact: true }).getByRole('table')).toBeVisible();
   await expect(page.getByRole('img', { name: /: bars by week/ })).toHaveCount(4);
   await expect(page.getByRole('main')).toHaveScreenshot('weeks.png');
 });

@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table.tsx';
 import { cellShade, formatCount, total, weekLabel } from '../lib/format.ts';
+import { NUM, Num } from './Num.tsx';
 
 /** A cell of a heatmap: its row's id and a week. */
 export type HeatmapSelection = { id: string; week: string };
 
 /** A row of a heatmap: `id` identifies it in the selection, `name` names it in its cells' labels, `header` is what its
- * header shows; `texts`, when given, is each cell's text in place of `format`'s. */
-export type HeatmapRow = { id: string; name: string; header: ReactNode; values: (number | null)[]; texts?: string[] };
+ * header shows; `texts`, when given, is each cell's text in place of `format`'s; `extras` are its cells in the extra columns. */
+export type HeatmapRow = { id: string; name: string; header: ReactNode; values: (number | null)[]; texts?: string[]; extras?: ReactNode[] };
 
 /** A group of rows, under a full-width heading row unless its heading is null. */
 export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
@@ -17,7 +18,8 @@ export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
  * Rows down and the weeks across, each cell a button with its number written in it (`format`, a count by default), so
  * the heatmap is its own table view. One blue ramp shades the cells against `max`, the grey for 0 or an unknown value.
  * It scrolls sideways over many weeks, in a region named `label`; `corner` heads the rows' column. With `total`, a last
- * "Total" column holds each row's values summed, written by `format` too.
+ * "Total" column holds each row's values summed, written by `format` too (muted when 0); `extras` heads numeric columns
+ * after it, each row giving their cells.
  */
 export function HeatmapTable({
   label,
@@ -27,6 +29,7 @@ export function HeatmapTable({
   max,
   format = formatCount,
   total: withTotal = false,
+  extras = [],
   selected,
   onSelect,
 }: {
@@ -37,21 +40,28 @@ export function HeatmapTable({
   max: number;
   format?: (value: number | null) => string;
   total?: boolean;
+  extras?: string[];
   selected: HeatmapSelection | null;
   onSelect: (cell: HeatmapSelection) => void;
 }) {
+  const labels = weeks.map(weekLabel);
   return (
     // Its container is a named tab stop for keyboard users, since it scrolls sideways.
-    <Table className="w-auto" containerProps={{ className: 'relative w-fit max-w-full overflow-x-auto', tabIndex: 0, role: 'region', 'aria-label': label }}>
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': label }}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <TableHead>{corner}</TableHead>
-          {weeks.map((week) => (
+          {weeks.map((week, i) => (
             <TableHead key={week} className="text-center">
-              {weekLabel(week)}
+              {labels[i]}
             </TableHead>
           ))}
-          {withTotal && <TableHead className="text-right">Total</TableHead>}
+          {withTotal && <TableHead className={NUM}>Total</TableHead>}
+          {extras.map((extra) => (
+            <TableHead key={extra} className={NUM}>
+              {extra}
+            </TableHead>
+          ))}
         </TableRow>
       </TableHeader>
       {groups.map((group, g) => (
@@ -60,8 +70,8 @@ export function HeatmapTable({
             <TableRow className="border-0 hover:bg-transparent">
               <TableHead
                 scope="rowgroup"
-                colSpan={weeks.length + (withTotal ? 2 : 1)}
-                className="pt-3 font-semibold text-foreground"
+                colSpan={weeks.length + extras.length + (withTotal ? 2 : 1)}
+                className="h-8 pt-2 text-xs font-medium text-muted-foreground"
               >
                 {group.heading}
               </TableHead>
@@ -69,7 +79,7 @@ export function HeatmapTable({
           )}
           {group.rows.map((row) => (
             <TableRow key={row.id} className="border-0 hover:bg-transparent">
-              <TableHead scope="row" className="font-normal">
+              <TableHead scope="row" className="w-px font-normal whitespace-nowrap">
                 {row.header}
               </TableHead>
               {row.values.map((value, i) => {
@@ -81,10 +91,10 @@ export function HeatmapTable({
                     <button
                       type="button"
                       aria-pressed={pressed}
-                      aria-label={`${row.name}, week of ${weekLabel(week)}: ${text}`}
+                      aria-label={`${row.name}, week of ${labels[i]}: ${text}`}
                       onClick={() => onSelect({ id: row.id, week })}
                       className={cn(
-                        'h-7 min-w-12 rounded-sm px-1 text-xs whitespace-nowrap tabular-nums',
+                        'h-8 w-full min-w-12 rounded-sm px-1 text-sm whitespace-nowrap tabular-nums',
                         cellShade(value ?? 0, max),
                         pressed && 'outline-2 outline-offset-1 outline-foreground',
                       )}
@@ -95,8 +105,15 @@ export function HeatmapTable({
                 );
               })}
               {withTotal && (
-                <TableCell className="text-right text-xs tabular-nums">{format(total(row.values))}</TableCell>
+                <TableCell className={NUM}>
+                  <Num value={total(row.values)} format={format} />
+                </TableCell>
               )}
+              {row.extras?.map((extra, i) => (
+                <TableCell key={i} className={NUM}>
+                  {extra}
+                </TableCell>
+              ))}
             </TableRow>
           ))}
         </TableBody>

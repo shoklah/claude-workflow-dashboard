@@ -2,15 +2,15 @@
 version: alpha
 name: Workflow dashboard
 description: >-
-  A night-glass dashboard for reading a coding workflow's runs, findings and spend. Frosted, tinted panels float over a
+  A night-glass dashboard for reading a coding workflow's runs, findings and spend. Tinted glass panels, with a sheen and a bright edge, float over a
   vivid night gradient lit by soft colour orbs; type is white, numbers line up, and colour carries data or state, never
-  decoration. Light mode is the same glass in daylight: pale colour blobs behind frosted white panels, dark ink.
+  decoration. Light mode is the same glass in daylight: pale colour blobs behind white glass panels, dark ink.
 colors:
   primary: "#ffffff"
   primary-foreground: "#2a1a6e"
   background: "#1a1240"
   foreground: "#ffffff"
-  panel: "rgb(28 18 72 / 0.55)"
+  panel: "rgb(28 18 72 / 0.62)"
   panel-edge: "rgb(255 255 255 / 0.3)"
   muted-foreground: "#d9d3ff"
   border: "rgb(255 255 255 / 0.14)"
@@ -18,7 +18,7 @@ colors:
   ring: "#7ef9ff"
   destructive: "#ff6b81"
   warning-edge: "#ec835a"
-  warning-ink: "#ffb08a"
+  warning-ink: "#ffc8ab"
   success-edge: "#34d399"
   notice: "rgb(250 178 25 / 0.14)"
   notice-edge: "#fab219"
@@ -62,7 +62,7 @@ spacing:
   inside-group: 12px
   between-groups: 24px
 components:
-  panel: tinted frosted glass, 1px bright edge, inner top highlight, soft drop shadow, panel radius
+  panel: tinted glass with a white sheen, 1px bright edge, inner top highlight, soft drop shadow, panel radius
   button: pill; the pressed option is solid primary, the others clear glass with an edge
   select: pill, clear glass, a drawn chevron inset like the text
   table: rows on the panel, hairline row borders, header row slightly lighter, row hover lightens
@@ -78,21 +78,21 @@ components:
 
 ## Overview
 
-The dashboard answers one person's questions about their own coding workflow: what ran, what the reviews found, what it cost, what broke a rule. It is a playground and a portfolio piece, so it has a look of its own: **night glass**. A deep violet-to-navy gradient fills the page, lit from behind by four large, soft colour orbs. Everything the reader works with sits on frosted panels that tint and blur what is behind them. The look is bold in one place, the backdrop, and quiet everywhere the data is: on a panel, type is plain white, numbers line up, and colour appears only where it encodes a series or a state.
+The dashboard answers one person's questions about their own coding workflow: what ran, what the reviews found, what it cost, what broke a rule. It is a playground and a portfolio piece, so it has a look of its own: **night glass**. A deep violet-to-navy gradient fills the page, lit from behind by four large, soft colour orbs. Everything the reader works with sits on glass panels that tint what is behind them. The look is bold in one place, the backdrop, and quiet everywhere the data is: on a panel, type is plain white, numbers line up, and colour appears only where it encodes a series or a state.
 
-Dark is the look. Light mode is its daylight pair: the same panels, radii, type and rules, with pale blobs behind white frosted glass and dark ink. The app follows the system's setting.
+Dark is the look. Light mode is its daylight pair: the same panels, radii, type and rules, with pale blobs behind white glass and dark ink. The app follows the system's setting.
 
 ## Colors
 
-**Backdrop.** Dark: a 135° gradient from `#1a1240` through `#2a1060` to `#10204f`, under four radial orbs (pink `#ff3cac` top left, blue `#2b86c5` top right, violet `#784ba0` bottom right, teal `#00d2b8` bottom left), each fading to nothing at about 60% of its radius and held at 55% opacity so no orb dominates a panel. Light: `#eef1fb` under cyan `#a5f3fc`, lavender `#c4b5fd`, rose `#fecdd3` and mint `#bbf7d0` blobs. The backdrop is fixed; it does not scroll with the page.
+**Backdrop.** Dark: a 135° gradient from `#1a1240` through `#2a1060` to `#10204f`, under four radial orbs (pink `#ff3cac` top left, blue `#2b86c5` top right, violet `#784ba0` bottom right, teal `#00d2b8` bottom left), each fading to nothing at about 60% of its radius, the teal orb held at 30% opacity, the others at 55%, so no orb dominates a panel. Light: `#eef1fb` under cyan `#a5f3fc`, lavender `#c4b5fd`, rose `#fecdd3` and mint `#bbf7d0` blobs. The backdrop is fixed; it does not scroll with the page.
 
-**Panels.** Dark panels are `rgb(28 18 72 / 0.55)` with a white sheen from 10% to 2% top-left to bottom-right; light panels are white at 62%. The tint is what keeps text contrast independent of the orb behind it: body text measures 14.6:1 (dark) and 16.3:1 (light) against the panels' effective colour.
+**Panels.** Dark panels are `rgb(28 18 72 / 0.62)` with a white sheen from 10% to 2% top-left to bottom-right; light panels are white at 62%. The tint is what keeps text contrast independent of the orb behind it. At the worst place in dark (the teal orb's centre), warning ink measures 6.49:1 on a panel, 4.90:1 in a table's header band and 4.63:1 on a hovered item; secondary ink 5.11:1 in the band and 4.83:1 on a hovered item; the notice bar's ink 4.55:1; primary ink 6.67:1 on the backdrop itself. Every ink passes 4.5:1 on every panel surface wherever the panel sits; `contrast.test.ts` computes it from the tokens.
 
-**Ink.** Primary text white / `#10162f`; secondary `#d9d3ff` / `#3d4664`. There are only these two text inks plus the status inks; a value, label or legend never takes a series colour.
+**Ink.** Primary text white / `#10162f`; secondary `#d9d3ff` / `#3d4664`. There are only these two text inks plus the status inks; a value, label or legend never takes a series colour. Text directly on the backdrop is primary ink only; secondary and status inks appear only on a panel, a table container, a dialog, a popover or a notice bar.
 
 **Primary and focus.** The primary action is a white pill with violet ink (`#2a1a6e`) in dark mode and an ink pill with white text in light mode. The focus ring is cyan `#7ef9ff` / indigo `#3f5cf0`, 2px, offset 2px.
 
-**Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffb08a` dark / `#a8461c` light. A finished run's edge in the feed is green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
+**Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffc8ab` dark / `#a8461c` light. A finished run's edge in the feed is green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
 
 ## Typography
 
@@ -106,17 +106,19 @@ One family, **Outfit** (open licence, variable weight), bundled with the app so 
 | Table header | 14px | 600 | 0 |
 | Small, captions | 12px | 500 | 0 |
 
+The page and section title sizes are the tokens `text-page-title` and `text-section-title` (size, line height, tracking and weight in one utility).
+
 Three levels of emphasis at most on a screen: the page title, section titles, and body. Weight and size carry them; colour does not.
 
 ## Layout
 
-A glass menu rail on the left (a wrapped bar above the page under 768px), a header row with the import status, showing mode and refresh, then the page. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
+A glass menu rail on the left (under 768px the rail is hidden and a Menu button in the header row opens the page list in a dialog), a header row with the import status, showing mode and refresh, then the page. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
 
 ## Elevation & Depth
 
-Depth comes from glass, not from stacked shadows. One level: a panel has a 1px edge (white 30% dark / 85% light), an inner 1px top highlight (white 40% / 90%), a 26px backdrop blur with 160% saturation, and one soft drop shadow (`0 20px 50px rgb(10 5 40 / 0.45)` dark, `0 10px 30px rgb(30 40 90 / 0.12)` light). Popovers and chart tooltips are solid (`--popover`, the panel's solid colour) with the panel's edge, and shadcn's small tooltips invert (ink background, page-colour text), so they read over any panel. Never a panel inside a panel.
+Depth comes from glass, not from stacked shadows. One level: a panel has a 1px edge (white 30% dark / 85% light), an inner 1px top highlight (white 40% / 90%), and one soft drop shadow (`0 20px 50px rgb(10 5 40 / 0.45)` dark, `0 10px 30px rgb(30 40 90 / 0.12)` light), over its tint and sheen. A panel has no backdrop blur or saturation, since a filter on a panel is recomputed on every scroll frame over the fixed backdrop, and the backdrop is already soft. Popovers and chart tooltips are solid (`--popover`, the panel's solid colour) with the panel's edge, and shadcn's small tooltips invert (ink background, page-colour text), so they read over any panel. Never a panel inside a panel.
 
-With `prefers-reduced-transparency: reduce`, panels become solid (`#2a1d5e` / `#f7f8fd`) with no blur; under `forced-colors`, the system colours take over and the edge stays.
+With `prefers-reduced-transparency: reduce`, panels become solid (`#2a1d5e` / `#f7f8fd`); under `forced-colors`, the system colours take over and the edge stays.
 
 ## Shapes
 
@@ -127,7 +129,7 @@ Panels and notice bars use a 1.25rem radius; buttons, selects and pressed option
 - **Panel:** the glass recipe above. Charts, tables and the workflow diagram sit on panels; prose notes do not.
 - **Button and option switch:** pills. In a switch, the pressed option is solid primary and the others are clear glass with an edge; a disabled option is 50% opacity with its tooltip still reachable.
 - **Select:** a clear glass pill with a drawn chevron in secondary ink, inset from the right as far as the text is from the left; its open list uses the system's popup.
-- **Table:** header row a slightly lighter glass band, header text 600; hairline row borders; row hover lightens the row by one glass step. Numeric columns right-aligned with tabular figures; the unit goes in the header.
+- **Table:** header row a slightly lighter glass band, header text 600; hairline row borders; row hover lightens the row by one glass step. Numeric columns right-aligned with tabular figures; the unit goes in the header. A table that scrolls sideways fades at the edge where columns are hidden.
 - **Menu rail:** glass; the current page is a lighter pill with 600 weight, the rest 400 with hover.
 - **Heatmap cell:** the ramp under Chart colours, its number written in it.
 - **Share bar:** the ramp's fourth step on its first step, the percent written beside it.
@@ -139,7 +141,7 @@ Panels and notice bars use a 1.25rem radius; buttons, selects and pressed option
 Do:
 - Let the backdrop be the one bold element; keep panels calm.
 - Put every data region on a panel, and every number in tabular figures.
-- Use frosted, see-through panels and the coloured glow of the orbs: they are this project's look, not a template's.
+- Use tinted, see-through panels and the coloured glow of the orbs: they are this project's look, not a template's.
 
 Don't:
 - Glow text, gradient-fill text or add neon edges: the glass is the effect, and more of it fights the data.

@@ -1,12 +1,19 @@
+import { cn } from 'cn';
 import { reporterMark } from '../lib/format.ts';
-import { Badge } from './ui/badge.tsx';
+import { TERM } from './Panel.tsx';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
-/** The dashed mark on a figure from the latest export's totals, not summed over the period; `mark` gives its text and
- * tooltip, `reporterMark` by default. */
+/** The mark on a figure from the latest export's totals, not summed over the period: muted small text with a dotted
+ * underline, titled by its tooltip on hover and focus; `mark` gives its text and tooltip, `reporterMark` by default. */
 export function ReporterMark({ mark = reporterMark }: { mark?: { text: string; tooltip: string } }) {
   return (
-    <Badge variant="outline" className="ml-2 border-dashed font-normal" title={mark.tooltip}>
-      {mark.text}
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className={cn('ml-2 rounded-sm text-xs text-muted-foreground', TERM)}>
+          {mark.text}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{mark.tooltip}</TooltipContent>
+    </Tooltip>
   );
 }

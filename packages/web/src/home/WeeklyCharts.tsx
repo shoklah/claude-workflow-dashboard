@@ -1,7 +1,8 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCompact, formatCost, weekLabel } from '../lib/format.ts';
+import { STEP_LABELS, formatCompact, formatCost, formatDay, weekLabel } from '../lib/format.ts';
 import { resolveVars, useDark } from '../lib/theme.ts';
+import { Line, Panel } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
 type Charts = HomeResponse['charts'];
@@ -13,7 +14,7 @@ const stepKinds = (charts: Charts) => Object.keys(charts.findingsByStep) as Step
 // categorical slots 1 to 8 in their fixed order (validated on both glass surfaces; four light slots sit under 3:1, so
 // the table view below carries every number), and the chart chrome's surface, ink, gridline and baseline. Each is a
 // `var()` that `Chart` resolves at render, since ECharts' SVG can't hold one.
-const SERIES = [1, 2, 3, 4, 5, 6, 7, 8].map((slot) => `var(--series-${slot})`);
+export const SERIES = [1, 2, 3, 4, 5, 6, 7, 8].map((slot) => `var(--series-${slot})`);
 // A spend group's colour, in the chart and the table's swatches: the palette's first four slots in the groups' order,
 // and a neutral grey outside the palette for Unattributed, so it reads as "the rest" (the table view carries its numbers).
 export const SPEND_GROUP_COLORS: Record<SpendGroup, string> = {
@@ -46,7 +47,7 @@ function baseOption(weeks: string[]) {
       data: weeks.map(weekLabel),
       axisTick: { show: false },
       axisLine: { lineStyle: { color: BASELINE } },
-      axisLabel: { color: INK },
+      axisLabel: { color: INK, showMaxLabel: true, hideOverlap: true },
     },
     yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: GRID } }, axisLabel: { color: INK } },
   };
@@ -92,7 +93,7 @@ export function singleBars(
                 lineStyle: { color: INK, type: 'dashed', width: 1.5 },
                 label: {
                   color: INK,
-                  position: 'insideEndTop',
+                  position: 'insideStartTop',
                   formatter: `cap ${formatCompact(cap)}`,
                   textBorderColor: SURFACE,
                   textBorderWidth: 3,
@@ -171,8 +172,7 @@ function findingsOption(charts: Charts) {
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
   useDark();
   return (
-    <div className="glass min-w-0 flex-1 p-3">
-      <h2 className="text-sm font-medium">{title}</h2>
+    <Panel title={title} className="min-w-0 flex-1">
       <ReactECharts
         role="img"
         aria-label={`${title}: bars by week; the numbers are in the table below.`}
@@ -180,7 +180,7 @@ export function Chart({ title, option, height }: { title: string; option: object
         opts={{ renderer: 'svg' }}
         style={{ height }}
       />
-    </div>
+    </Panel>
   );
 }
 
@@ -221,10 +221,9 @@ function ChartsTable({ charts }: { charts: Charts }) {
 export function CoverageNote({ coverageFrom, firstWeek }: { coverageFrom: string | null; firstWeek: string }) {
   if (coverageFrom === null || weekOf(parseTime(coverageFrom)) <= firstWeek) return null;
   return (
-    <p className="text-sm text-muted-foreground">
-      Weeks before {parseTime(coverageFrom).toLocaleDateString(undefined, { dateStyle: 'medium' })} show what was
-      stored; the reporter can no longer read them.
-    </p>
+    <Line>
+      Weeks before {formatDay(parseTime(coverageFrom))} show what was stored; the reporter can no longer read them.
+    </Line>
   );
 }
 

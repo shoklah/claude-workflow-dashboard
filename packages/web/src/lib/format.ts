@@ -1,4 +1,4 @@
-import { parseTime, toStepKind, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type Path, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -9,7 +9,7 @@ export const STEP_LABELS: Record<StepKind, string> = {
   plan_review: 'Plan review',
   task_review: 'Task review',
   fix_check: 'Fix-check',
-  simplify: 'simplify',
+  simplify: 'Simplify',
   final_review: 'Final review',
   final_fix_check: 'Final fix-check',
   kit_review: 'Kit review',
@@ -295,14 +295,33 @@ export function projectLabel(project: string | null): string {
 /** An empty list of names, as a cell writes it. */
 export const NO_NAMES = 'none';
 
-/** A session's timeline times, in its order: the time of day, "9:07 AM", with the date before it on the first entry
- * and on the first entry of each new day, "Nov 8, 8:02 AM". */
+/** A day as "Nov 8", the time of day as "09:07" (en-US, 24-hour), the one pair of date options on every screen. */
+const DAY = { month: 'short', day: 'numeric' } as const;
+const CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const;
+// Built once: a call with options builds a new formatter each time, and a heatmap labels every cell.
+const DAY_FORMAT = new Intl.DateTimeFormat('en-US', DAY);
+const DAY_TIME_FORMAT = new Intl.DateTimeFormat('en-US', { ...DAY, ...CLOCK });
+const CLOCK_FORMAT = new Intl.DateTimeFormat('en-US', CLOCK);
+const WEEK_FORMAT = new Intl.DateTimeFormat('en-US', { ...DAY, timeZone: 'UTC' });
+
+/** A day in the reader's time zone, written in en-US: "Nov 12". */
+export function formatDay(date: Date): string {
+  return DAY_FORMAT.format(date);
+}
+
+/** A day and time in the reader's time zone, written in en-US on the 24-hour clock: "Nov 12, 10:20". */
+export function formatDayTime(date: Date): string {
+  return DAY_TIME_FORMAT.format(date);
+}
+
+/** A session's timeline times, in its order and the reader's time zone, written in en-US on the 24-hour clock: the
+ * time of day, "09:07", with the date before it on the first entry and on the first entry of each new day,
+ * "Nov 8, 08:02". */
 export function timelineTimes(isos: string[]): string[] {
   const dates = isos.map((iso) => parseTime(iso));
   return dates.map((date, i) => {
-    const time = date.toLocaleTimeString(undefined, { timeStyle: 'short' });
     const newDay = i === 0 || date.toDateString() !== dates[i - 1].toDateString();
-    return newDay ? `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}` : time;
+    return newDay ? formatDayTime(date) : CLOCK_FORMAT.format(date);
   });
 }
 
@@ -357,7 +376,7 @@ export function actedOnSplit(findings: FindingSplit): string {
 
 /** A week's start date, as an axis or a column names it: "Nov 8". */
 export function weekLabel(week: string): string {
-  return new Date(week).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return WEEK_FORMAT.format(new Date(week));
 }
 
 /** A whole percent, or a dash when it isn't known. */
@@ -425,4 +444,74 @@ export function advisorRolesLabel(byRole: Record<string, { calls: number; flagge
     joined(Object.entries(byRole).map(([role, { calls, flagged }]) => `${role} ${calls}${flagged ? ' (should not consult)' : ''}`)) ||
     NONE
   );
+}
+
+/** A path's name on screen. */
+export const PATH_LABELS: Record<Path, string> = { small: 'Small', full: 'Full', plan: 'Plan' };
+
+/** A path on screen: its name, a path the dashboard doesn't know as it is; null for none. */
+export function pathLabel(path: string | null): string | null {
+  return path === null ? null : ((PATH_LABELS as Record<string, string>)[path] ?? path);
+}
+
+/** A model id in the reader's words: "claude-opus-5-5" as "Opus 5.5", "claude-fable-6-preview" as "Fable 6 preview",
+ * a short name ("opus") capitalised, an id of another shape ("<synthetic>") as it is; null for none ("-" or empty). */
+export function modelLabel(id: string | null | undefined): string | null {
+  if (!id || id === '-') return null;
+  // A dated id drops its date ("-20251001"), and the older shape "claude-3-5-sonnet" puts its family first.
+  const name = id.replace(/-\d{8}$/, '').replace(/^claude-(\d+)(-\d+)?-([a-z]+)$/, 'claude-$3-$1$2');
+  const match = /^(?:claude-)?([a-z]+)(?:-(\d+))?(?:-(\d+))?(?:-(.+))?$/.exec(name);
+  if (!match) return id;
+  const [, family, major, minor, rest] = match;
+  const version = major ? ` ${major}${minor ? `.${minor}` : ''}` : '';
+  return `${capitalize(family)}${version}${rest ? ` ${rest}` : ''}`;
+}
+
+/** A "model/effort" pair's two parts, the model through `modelLabel`, none ("-") as null. */
+export function splitPair(pair: string): { model: string | null; effort: string | null } {
+  const [model, effort] = pair.split('/');
+  return { model: modelLabel(model), effort: !effort || effort === '-' ? null : effort };
+}
+
+const DOLLARS = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Dollars for a cell under a "($)" header: "12.40", "1,234.50". */
+export function formatDollars(cost: number): string {
+  return DOLLARS.format(cost);
+}
+
+const WHOLE = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+/** A whole number with grouping, for a cell under a header that names its unit: "5,759". */
+export function formatWhole(value: number): string {
+  return WHOLE.format(value);
+}
+
+const COMPACT_FIXED = new Intl.NumberFormat('en-US', { notation: 'compact', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** A count compact with one fixed decimal, so a column of token counts lines up: "2.0M", "333.0K". */
+export function formatCompactFixed(value: number): string {
+  return COMPACT_FIXED.format(value);
+}
+
+/** A session's length in the largest units that fit, rounded to whole minutes first: "45 min", "7 h 46" under a day
+ * (as `formatMinutes`), "3 d 11 h" from a day. */
+export function formatLength(minutes: number): string {
+  const total = Math.round(minutes);
+  if (total < 24 * 60) return formatMinutes(total);
+  return `${Math.floor(total / (24 * 60))} d ${Math.floor((total % (24 * 60)) / 60)} h`;
+}
+
+/** A label's first letter in upper case: "important" as "Important". */
+export function capitalize(label: string): string {
+  return label ? label[0].toUpperCase() + label.slice(1) : label;
+}
+
+/** A warning's text for display: without the "WARN:" log prefix, without the run's own "branch (date): " lead when
+ * `branch` is the run's, and with "{session}" in words, capitalised; the stored text stays whole. */
+export function warningBody(text: string, branch: string | null = null): string {
+  let body = text.replace(/^WARN:\s*/, '');
+  if (branch && body.startsWith(`${branch} (`)) body = body.replace(/^.*?\):\s*/, '');
+  body = body.replace(/^session \{session\}:?\s*/, '').replace(/\s*\{session\}\s*/, ' the session ').trim();
+  return capitalize(body);
 }

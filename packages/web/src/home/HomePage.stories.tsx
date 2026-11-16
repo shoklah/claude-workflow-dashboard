@@ -53,7 +53,7 @@ export const Full: Story = {
     await expect(await canvas.findByRole('group', { name: 'Findings' })).toHaveTextContent('19');
     await expect(canvas.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
     await expect(canvas.getByText('fix-checks: 7 ran · 1 still open · 1 reached round 3')).toBeVisible();
-    await expect(canvas.getByText(/Weeks before Oct 5, 2026/)).toBeVisible();
+    await expect(canvas.getByText(/Weeks before Oct 5 show/)).toBeVisible();
     await expect(canvas.getAllByRole('listitem')).toHaveLength(4);
     await expect(canvas.getByRole('button', { name: 'Mark all seen' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Skills and commands' })).toBeVisible();

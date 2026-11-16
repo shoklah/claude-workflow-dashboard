@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
+import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { fullRun, oldRun, runBeforeSteps, runFull } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
@@ -71,13 +72,15 @@ export const Full: Story = {
     const context = canvas.getByRole('region', { name: 'Context' });
     await expect([...context.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
       '214 calls · median 281K · largest 1.3M',
-      `62 calls past the cap · handed off ${parseTime('2026-11-10T16:40:00.000Z').toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`,
+      `62 calls past the cap · handed off ${formatDayTime(parseTime('2026-11-10T16:40:00.000Z'))}`,
       'Tool results: 912K characters · read 44%',
       'Sweeps: 1 inline · 4 delegated',
     ]);
     const warnings = within(canvas.getByRole('region', { name: 'Warnings' }));
     await expect(warnings.getByText('0f1e2d3c')).toBeVisible();
     await expect(warnings.getByRole('button', { name: 'Copy session ID' })).toBeVisible();
+    // The run's own "branch (date):" lead is gone: the page already names the run.
+    await expect(warnings.getByText('Final review without simplify: final_review at step 4')).toBeVisible();
   },
 };
 

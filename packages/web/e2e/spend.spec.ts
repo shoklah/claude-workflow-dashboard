@@ -11,7 +11,7 @@ test('the spend page shows the groups, opens one to its phases and has no axe vi
   await page.getByRole('navigation').getByRole('link', { name: 'Spend' }).click();
   await expect(page.getByRole('heading', { name: 'Spend', level: 1 })).toBeVisible();
   await expect(page.getByRole('img', { name: /: bars by week/ })).toBeVisible();
-  const table = page.getByRole('region', { name: 'Spend by phase' });
+  const table = page.getByRole('region', { name: 'Spend by phase', exact: true });
   for (const group of ['Plan', 'Implement', 'Review and cleanup', 'Coordination', 'Unattributed']) {
     await expect(table.getByRole('row').filter({ hasText: group })).not.toHaveCount(0);
   }

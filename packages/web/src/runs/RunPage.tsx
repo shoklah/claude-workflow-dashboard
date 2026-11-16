@@ -125,7 +125,7 @@ export function RunPage({ runKey }: { runKey: string }) {
           <Section title="Warnings">
             {warnings.map((warning, i) => (
               <li key={i}>
-                <WarningText text={warning.text} sessionId={warning.sessionId} />
+                <WarningText text={warning.text} sessionId={warning.sessionId} branch={facts.branch} />
               </li>
             ))}
           </Section>

@@ -197,6 +197,7 @@ export const runFull: RunResponse = {
   categoryLabels,
   warnings: [
     { text: 'session {session}: final-reviewer ran on another model than its pin', sessionId: '0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e' },
+    { text: 'WARN: feat/search (2026-11-10): final review without simplify: final_review at step 4', sessionId: null },
   ],
 };
 

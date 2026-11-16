@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { cn } from 'cn';
 import { parseTime, type StatusResponse } from '@cwd/shared';
-import { NOTICE } from '../lib/format.ts';
+import { formatDayTime, NOTICE } from '../lib/format.ts';
 
-/** A time in the reader's locale and time zone, its ISO value in `datetime`. */
+/** A day and time as "Nov 12, 10:20" (`en-US`, 24-hour, in the reader's time zone), its ISO value in `datetime`. */
 export function Time({ iso }: { iso: string }) {
-  return <time dateTime={iso}>{parseTime(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</time>;
+  return <time dateTime={iso}>{formatDayTime(parseTime(iso))}</time>;
 }
 
 /** A notice above the page, read out when it appears. */

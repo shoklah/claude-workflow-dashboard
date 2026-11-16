@@ -38,7 +38,7 @@ function Item({ item }: { item: FeedItem }) {
     return (
       <li className={cn('border-l-3 py-0.5 pl-2', WARNING_BORDER)}>
         <Headline item={item} title="New warning" />
-        <div>{item.text !== null && <WarningText text={item.text} sessionId={item.sessionId} />}</div>
+        <div>{item.text !== null && <WarningText text={item.text} sessionId={item.sessionId} branch={item.branch} />}</div>
       </li>
     );
   }

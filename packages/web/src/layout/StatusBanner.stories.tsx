@@ -28,6 +28,7 @@ export const Failed: Story = {
     await expect(banner).toHaveTextContent(/data is from the last good import/i);
     await expect(banner.querySelector(`time[datetime="${FAILED_AT}"]`)).not.toBeNull();
     await expect(banner.querySelector(`time[datetime="${LAST_GOOD}"]`)).not.toBeNull();
+    for (const time of banner.querySelectorAll('time')) await expect(time.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{2}:\d{2}$/);
   },
 };
 

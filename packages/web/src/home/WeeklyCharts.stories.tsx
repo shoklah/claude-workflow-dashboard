@@ -25,7 +25,7 @@ export const Full: Story = {
   args: { charts: fullHome.charts, coverageFrom: fullHome.coverageFrom },
   play: async ({ canvas, userEvent }) => {
     await expect(canvas.getByText(NOTE)).toHaveTextContent(
-      'Weeks before Oct 5, 2026 show what was stored; the reporter can no longer read them.',
+      'Weeks before Oct 5 show what was stored; the reporter can no longer read them.',
     );
     await expect(canvas.getAllByRole('img')).toHaveLength(3);
 

@@ -48,7 +48,7 @@ test('showing lantern-notes hides tidepool-api from the pages', async ({ page })
   // Home: the feed holds no tidepool-api item.
   await page.goto('/');
   await expect(page.getByText('Showing: lantern-notes')).toBeVisible();
-  const feed = page.getByRole('region', { name: 'Since you last looked' });
+  const feed = page.getByRole('region', { name: 'Since you last looked', exact: true });
   await expect(feed.getByText(/lantern-notes/).first()).toBeVisible();
   await expect(feed.getByText(/tidepool-api/)).toHaveCount(0);
   await expectNoSessionId(page);
