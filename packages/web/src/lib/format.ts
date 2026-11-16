@@ -118,6 +118,14 @@ export function countsLabel(counts: Record<string, number | null> | null): strin
   return joined(Object.entries(counts).map(([key, n]) => `${countLabel(key)} ${formatCount(n)}`));
 }
 
+// The count keys whose words aren't their slug's.
+export const COUNT_LABELS: Record<string, string> = { couldnt_run: "Couldn't run", unneeded: 'Not required' };
+
+/** A count line's counts as lines, each its name, capitalised, and its number; null when the counts aren't known. */
+export function countLines(counts: Record<string, number | null> | null): [string, number | null][] | null {
+  return counts && Object.entries(counts).map(([key, n]) => [COUNT_LABELS[key] ?? capitalize(countLabel(key)), n]);
+}
+
 /** Counts by key without the zeros, as the approved basics mockup writes them: "small 4 · full 2", or "none". */
 export function nonZeroCountsLabel(counts: Record<string, number>): string {
   const nonZero = Object.entries(counts).filter(([, n]) => n > 0);

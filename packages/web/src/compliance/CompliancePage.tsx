@@ -173,10 +173,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           {data.information.hidden > 0 ? (
             <p className="text-sm text-muted-foreground">{hiddenInformationLabel(data.information.hidden)}</p>
           ) : (
-            <Pairs
-              className="max-w-3xl grid-cols-[minmax(0,auto)_minmax(0,1fr)] [&_dd]:text-left"
-              pairs={data.information.lines.map(informationPair)}
-            />
+            <Pairs text className="max-w-3xl" pairs={data.information.lines.map(informationPair)} />
           )}
           <p className="text-xs text-muted-foreground">Not warnings, and not filtered by period.</p>
         </Panel>

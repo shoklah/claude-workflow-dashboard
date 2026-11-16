@@ -119,6 +119,33 @@ export const PairsNames: Story = {
   },
 };
 
+/** Prose values: each term in its own column, as wide as the widest term, its value left-aligned beside it. */
+export const PairsText: Story = {
+  args: {
+    title: 'Information',
+    children: (
+      <div className="w-96">
+        <Pairs
+          text
+          pairs={[
+            ['Coverage', 'from Nov 3'],
+            ['Note', 'a long line of prose that wraps onto a second line inside its own column, under its first'],
+          ]}
+        />
+      </div>
+    ),
+  },
+  play: async ({ canvas }) => {
+    const [coverage, note] = canvas.getAllByRole('term');
+    for (const dt of [coverage, note]) await expect(getComputedStyle(dt.nextElementSibling!).textAlign).toBe('left');
+    // The values start in one column, right after the widest term, and a long one wraps there.
+    const values = [coverage, note].map((dt) => dt.nextElementSibling!.getBoundingClientRect());
+    await expect(values[0].left).toBe(values[1].left);
+    await expect(values[0].left - coverage.getBoundingClientRect().left).toBeLessThan(150);
+    await expect(values[1].height).toBeGreaterThan(values[0].height);
+  },
+};
+
 /** The disclosure, closed: its body shows once the summary is clicked. */
 export const DetailsClosed: Story = {
   render: () => (

@@ -43,15 +43,18 @@ export function Panel({ title, aside, className, children }: { title?: string; a
  * `names`, a list of names with their detail (a skill's outcome, a model's cost): each name in primary ink on its own
  * row, its detail muted, so a long name keeps its line when another row's detail is long. With `inline`, one row of
  * facts that wraps: each term `beside` its value (a line of facts under a flow), or `over` it, the term small and the
- * value bold (a page's header facts). */
+ * value bold (a page's header facts). With `text`, prose values: the terms' column as wide as the widest term, each
+ * value left-aligned beside its term and wrapping there (Compliance's information lines). */
 export function Pairs({
   pairs,
   names = false,
+  text = false,
   inline,
   className,
 }: {
   pairs: [string, ReactNode][];
   names?: boolean;
+  text?: boolean;
   inline?: 'beside' | 'over';
   className?: string;
 }) {
@@ -68,11 +71,18 @@ export function Pairs({
     );
   }
   return (
-    <dl className={cn(names ? 'flex flex-col' : 'grid grid-cols-[minmax(0,1fr)_auto] gap-x-4', 'gap-y-1 text-sm', className)}>
+    <dl
+      className={cn(
+        names ? 'flex flex-col' : 'grid gap-x-4',
+        !names && (text ? 'grid-cols-[minmax(0,auto)_minmax(0,1fr)]' : 'grid-cols-[minmax(0,1fr)_auto]'),
+        'gap-y-1 text-sm',
+        className,
+      )}
+    >
       {pairs.map(([term, value], i) => (
         <div key={i} className={names ? 'flex flex-wrap justify-between gap-x-4' : 'contents'}>
           <dt className={cn(!names && 'text-muted-foreground')}>{term}</dt>
-          <dd className={cn(NUM, names && 'text-muted-foreground')}>{value}</dd>
+          <dd className={cn(text ? 'text-left tabular-nums' : NUM, names && 'text-muted-foreground')}>{value}</dd>
         </div>
       ))}
     </dl>

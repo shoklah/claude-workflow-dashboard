@@ -5,17 +5,12 @@ import { useLiveQuery } from '../api.ts';
 import { GROUP, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
 import { PageTitle, SectionTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { RULE_LABELS, STEP_LABELS, capitalize, countLabel, formatCompactFixed, formatDollars, total } from '../lib/format.ts';
+import { RULE_LABELS, STEP_LABELS, capitalize, countLines, formatCompactFixed, formatDollars, total } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 const OUTCOMES = ['Fixed or applied', 'Declined', 'Deferred', 'Open or to owner'];
 
 type Count = [string, number | null];
-// The count keys whose words aren't their slug's.
-const COUNT_LABELS: Record<string, string> = { couldnt_run: "Couldn't run", unneeded: 'Not required' };
-/** A record's counts as lines, each its name and number; null when the counts aren't known. */
-const countsOf = (counts: Record<string, number | null> | null): Count[] | null =>
-  counts && Object.entries(counts).map(([key, n]) => [COUNT_LABELS[key] ?? capitalize(countLabel(key)), n]);
 
 /**
  * A step's or rule's rows, one per count: its name and the cells before and after the counts span them; "No counts"
@@ -101,7 +96,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
               key={row.step}
               name={STEP_LABELS[row.step]}
               before={[n(row.ran), n(row.found)]}
-              counts={countsOf(row.counts)}
+              counts={countLines(row.counts)}
               after={[
                 n(row.fixedOrApplied),
                 n(row.declined),
@@ -141,13 +136,13 @@ function StepsTables({ response }: { response: StepsResponse }) {
           <Lines
             name={capitalize(RULE_LABELS.failingTest)}
             before={[n(total(rules.failingTest)), n(null)]}
-            counts={countsOf(rules.failingTest)}
+            counts={countLines(rules.failingTest)}
             after={[n(null)]}
           />
           <Lines
             name={capitalize(RULE_LABELS.dispatchGuard)}
             before={[n(null), n(rules.dispatchGuard && total(rules.dispatchGuard))]}
-            counts={countsOf(rules.dispatchGuard)}
+            counts={countLines(rules.dispatchGuard)}
             after={[n(null)]}
           />
           <Lines
@@ -193,7 +188,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
               key={skill}
               name={`${capitalize(RULE_LABELS.offer)} of ${skill}`}
               before={[n(offered), n(null)]}
-              counts={countsOf(outcomes)}
+              counts={countLines(outcomes)}
               after={[n(null)]}
             />
           ))}

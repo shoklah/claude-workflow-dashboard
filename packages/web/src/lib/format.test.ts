@@ -16,6 +16,7 @@ import {
   SPEND_GROUP_LABELS,
   spendUncountedLabel,
   countsLabel,
+  countLines,
   formatCount,
   formatMinutes,
   formatPercent,
@@ -103,6 +104,21 @@ describe('countsLabel', () => {
   it('shows a dash for no counts, or counts that aren’t known', () => {
     expect(countsLabel({})).toBe('–');
     expect(countsLabel(null)).toBe('–');
+  });
+});
+
+describe('countLines', () => {
+  it('writes each count as a line, its name capitalised, the keys whose words aren’t their slug’s by name', () => {
+    expect(countLines({ ran: 7, not_proportionate: 0, couldnt_run: 1, unneeded: null })).toEqual([
+      ['Ran', 7],
+      ['Not proportionate', 0],
+      ["Couldn't run", 1],
+      ['Not required', null],
+    ]);
+  });
+
+  it('is null when the counts aren’t known', () => {
+    expect(countLines(null)).toBeNull();
   });
 });
 
