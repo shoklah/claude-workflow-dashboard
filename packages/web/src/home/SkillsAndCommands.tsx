@@ -38,7 +38,7 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
         <h2 id="skills-and-commands" className="font-medium">
           Skills and commands
         </h2>
-        <div role="group" aria-label="Period" className="flex gap-1">
+        <div role="group" aria-label="Period" className="flex flex-wrap gap-1">
           {PERIODS.map((option) => (
             <Option key={option.period} pressed={period === option.period} onClick={() => setPeriod(option.period)}>
               {option.label}
@@ -49,7 +49,7 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
           {plural(shown.sessions, 'session')} · {plural(shown.runs, 'run')}
         </span>
       </div>
-      <Table>
+      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Skills and commands table' }}>
         <TableHeader>
           <TableRow>
             {COLUMNS.map((column) => (

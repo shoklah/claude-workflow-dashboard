@@ -15,14 +15,14 @@ export function HomePage() {
       {home.isPending && <p className="text-muted-foreground">Loading…</p>}
       {home.isError && <p>Can't load the home screen.</p>}
       {home.data && (
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <WeekTiles thisWeek={home.data.thisWeek} lastWeek={home.data.lastWeek} />
             <WorkflowDiagram diagram={home.data.diagram} />
             <WeeklyCharts charts={home.data.charts} coverageFrom={home.data.coverageFrom} />
             <SkillsAndCommands usage={home.data.usage} />
           </div>
-          <div className="w-64 flex-none border-l pl-3">
+          <div className="border-t pt-3 lg:w-64 lg:flex-none lg:border-t-0 lg:border-l lg:pt-0 lg:pl-3">
             <Feed items={home.data.feed} />
           </div>
         </div>

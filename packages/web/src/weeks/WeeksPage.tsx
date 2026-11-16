@@ -96,7 +96,7 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
 
 function RunTimeTable({ runTime }: { runTime: RunTime }) {
   return (
-    <Table aria-label="Full runs" className="w-auto">
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Full runs' }} className="w-auto">
       <TableHeader>
         <TableRow>
           <TableHead>Full runs</TableHead>

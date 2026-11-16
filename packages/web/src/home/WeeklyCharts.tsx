@@ -180,7 +180,7 @@ function ChartsTable({ charts }: { charts: Charts }) {
   return (
     <details className="text-sm">
       <summary className="cursor-pointer text-muted-foreground">The charts as a table</summary>
-      <Table>
+      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'The charts as a table' }}>
         <TableHeader>
           <TableRow>
             <TableHead>Week</TableHead>
@@ -226,7 +226,7 @@ export function CoverageNote({ coverageFrom, firstWeek }: { coverageFrom: string
 export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverageFrom: string | null }) {
   return (
     <section aria-label="Weekly charts" className="flex flex-col gap-2">
-      <div className="flex gap-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         <Chart title="Findings by week, by step" option={findingsOption(charts)} height={260} />
         <Chart title="Cost by week" option={singleBars(charts.weeks, 'Cost', charts.cost, { cost: true })} height={260} />
         <Chart title="Warnings by week" option={singleBars(charts.weeks, 'Warnings', charts.warnings)} height={260} />
