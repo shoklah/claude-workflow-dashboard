@@ -458,7 +458,9 @@ export function pathLabel(path: string | null): string | null {
  * a short name ("opus") capitalised, an id of another shape ("<synthetic>") as it is; null for none ("-" or empty). */
 export function modelLabel(id: string | null | undefined): string | null {
   if (!id || id === '-') return null;
-  const match = /^(?:claude-)?([a-z]+)(?:-(\d+))?(?:-(\d+))?(?:-(.+))?$/.exec(id);
+  // A dated id drops its date ("-20251001"), and the older shape "claude-3-5-sonnet" puts its family first.
+  const name = id.replace(/-\d{8}$/, '').replace(/^claude-(\d+)(-\d+)?-([a-z]+)$/, 'claude-$3-$1$2');
+  const match = /^(?:claude-)?([a-z]+)(?:-(\d+))?(?:-(\d+))?(?:-(.+))?$/.exec(name);
   if (!match) return id;
   const [, family, major, minor, rest] = match;
   const version = major ? ` ${major}${minor ? `.${minor}` : ''}` : '';

@@ -449,6 +449,9 @@ test('modelLabel writes an id in the reader\'s words', () => {
   expect(modelLabel('claude-opus-5-5')).toBe('Opus 5.5');
   expect(modelLabel('claude-fable-6-preview')).toBe('Fable 6 preview');
   expect(modelLabel('opus')).toBe('Opus');
+  // A dated id drops its date, and the older "claude-3-5-family" shape names its family first.
+  expect(modelLabel('claude-haiku-4-5-20251001')).toBe('Haiku 4.5');
+  expect(modelLabel('claude-3-5-sonnet-20241022')).toBe('Sonnet 3.5');
   expect(modelLabel('<synthetic>')).toBe('<synthetic>');
   for (const none of ['-', '', null, undefined]) expect(modelLabel(none)).toBeNull();
 });
