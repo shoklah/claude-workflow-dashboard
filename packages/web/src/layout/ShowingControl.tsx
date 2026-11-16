@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { cn } from 'cn';
 import type { ShowingResponse } from '@cwd/shared';
 import { showProjects, useLiveQuery } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
@@ -13,6 +14,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog.tsx';
 import { Switch } from '../components/ui/switch.tsx';
+import { NOTICE } from '../lib/format.ts';
 
 /** Showing mode: while off, a switch that opens the project picker; while on, an orange bar naming what it shows. */
 export function ShowingControl() {
@@ -32,7 +34,7 @@ export function ShowingControl() {
   if (showing.isError) return <p className="text-sm">Couldn't read showing mode.</p>;
   if (showing.data?.on) {
     return (
-      <div className="flex items-center gap-3 rounded-md border border-orange-500 bg-orange-50 px-3 py-1 text-sm text-orange-950">
+      <div className={cn('flex items-center gap-3 px-3 py-1', NOTICE)}>
         <b>Showing: {showing.data.projects.map((project) => project.name).join(', ')}</b>
         <Button variant="outline" size="sm" onClick={() => show([])}>
           Stop showing

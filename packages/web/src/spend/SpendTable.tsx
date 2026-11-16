@@ -39,7 +39,7 @@ function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
           </span>
           <i
             aria-hidden
-            className="mr-1.5 inline-block size-2.5 rounded-xs align-baseline"
+            className="mr-1.5 inline-block size-2.5 rounded-swatch align-baseline"
             style={{ background: SPEND_GROUP_COLORS[row.group] }}
           />
           {opens ? (

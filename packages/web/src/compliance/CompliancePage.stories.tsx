@@ -82,7 +82,7 @@ export const Full: Story = {
     await expect(canvas.getByRole('rowheader', { name: 'Review flow' })).toHaveAttribute('colspan', '6');
     // The grid's largest count takes the darkest step.
     await expect(canvas.getByRole('button', { name: 'step has no agent id, week of Nov 1: 2' })).toHaveClass(
-      'bg-[#184f95]',
+      'bg-shade-5',
     );
     await expect(canvas.getByText('Select a cell to list its warnings.')).toBeVisible();
 
@@ -92,7 +92,7 @@ export const Full: Story = {
     const items = list.getAllByRole('listitem');
     await expect(items).toHaveLength(1);
     await expect(items[0]).toHaveTextContent('step has no agent id');
-    await expect(items[0]).toHaveClass('border-[#ec835a]');
+    await expect(items[0]).toHaveClass('border-warning-edge');
     await expect(list.getByRole('link', { name: 'atlas · feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(list.getByText('new')).toBeVisible();
     await expect(list.getByText('WARN: feat/search (2026-11-10): final_review step 0 has no agent id')).toBeVisible();

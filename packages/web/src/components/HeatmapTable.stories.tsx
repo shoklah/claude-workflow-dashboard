@@ -57,10 +57,10 @@ export const Full: Story = {
     await expect(beta.getAllByRole('button').map((b) => b.textContent)).toEqual(['2', '0', '–']);
     // The darkest step for `max`, a grey for 0 and for an unknown value.
     const top = canvas.getByRole('button', { name: 'alpha, week of Nov 8: 4' });
-    await expect(top).toHaveClass('bg-[#184f95]');
+    await expect(top).toHaveClass('bg-shade-5');
     await expect(top).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.getByRole('button', { name: 'alpha, week of Nov 1: 1' })).toHaveAttribute('aria-pressed', 'false');
-    await expect(canvas.getByRole('button', { name: 'beta, week of Nov 8: –' })).toHaveClass('bg-[#f0efec]');
+    await expect(canvas.getByRole('button', { name: 'beta, week of Nov 8: –' })).toHaveClass('bg-shade-zero');
     await userEvent.click(canvas.getByRole('button', { name: 'gamma, week of Nov 8: 1' }));
     await expect(args.onSelect).toHaveBeenCalledWith({ id: 'gamma', week: '2026-11-08' });
   },

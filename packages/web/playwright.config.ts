@@ -17,8 +17,15 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/api/status`,
     reuseExistingServer: false,
   },
+  // Each again in dark (`-dark`), DESIGN.md's look, which the app takes from the system's colour scheme.
   projects: [
     { name: 'checks', testMatch: /\.spec\.ts$/ },
-    ...(process.env.PLAYWRIGHT_SCREENS === '1' ? [{ name: 'screens', testMatch: /\.screens\.ts$/ }] : []),
+    { name: 'checks-dark', testMatch: /\.spec\.ts$/, use: { colorScheme: 'dark' as const } },
+    ...(process.env.PLAYWRIGHT_SCREENS === '1'
+      ? [
+          { name: 'screens', testMatch: /\.screens\.ts$/ },
+          { name: 'screens-dark', testMatch: /\.screens\.ts$/, use: { colorScheme: 'dark' as const } },
+        ]
+      : []),
   ],
 });

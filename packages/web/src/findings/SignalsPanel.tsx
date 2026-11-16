@@ -18,7 +18,7 @@ export function SignalsPanel({
     <section aria-label="Relevance signals" className="flex flex-col gap-2 text-sm">
       <h2 className="font-semibold">Relevance signals</h2>
       {SIGNALS.map(([key, label]) => (
-        <div key={key} role="group" aria-label={label} className="rounded-lg border bg-card px-3 py-2">
+        <div key={key} role="group" aria-label={label} className="glass px-3 py-2">
           <div className="text-lg font-semibold">{signals[key]}</div>
           {key === 'declinedOrRuled' ? joined([label, judgedInvalidLabel(signals.judgedInvalid)]) : label}
         </div>

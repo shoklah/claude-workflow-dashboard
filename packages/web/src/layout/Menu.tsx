@@ -24,8 +24,8 @@ export function Menu() {
           key={entry.to}
           to={entry.to}
           activeOptions={{ exact: entry.exact }}
-          className="rounded-md px-2 py-1 hover:bg-accent"
-          activeProps={{ className: 'font-semibold' }}
+          className="rounded-control px-3 py-1 hover:bg-accent"
+          activeProps={{ className: 'bg-accent font-semibold' }}
         >
           {entry.label}
         </Link>

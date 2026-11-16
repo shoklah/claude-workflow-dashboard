@@ -10,7 +10,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const status = useStatus();
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="flex-none border-b bg-muted/40 p-3 md:w-44 md:border-r md:border-b-0">
+      <aside className="glass m-2 flex-none p-3 md:m-3 md:w-44 md:self-start">
         <Menu />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">

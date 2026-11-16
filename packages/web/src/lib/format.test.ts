@@ -158,22 +158,21 @@ describe('advisorLabel', () => {
 });
 
 describe('cellShade', () => {
-  it('shades a value on five steps of the blue ramp by its share of the max, black text on step 4, white on the darkest', () => {
-    expect(cellShade(1, 10)).toBe('bg-[#cde2fb]');
-    expect(cellShade(4, 10)).toBe('bg-[#9ec5f4]');
-    expect(cellShade(6, 10)).toBe('bg-[#6da7ec]');
-    // White on #2a78d6 is 4.42:1, under AA's 4.5:1 for the grid's small text; black is 4.76:1.
-    expect(cellShade(8, 10)).toBe('bg-[#2a78d6] text-black');
-    expect(cellShade(10, 10)).toBe('bg-[#184f95] text-white');
+  it("shades a value on the theme's five ramp steps by its share of the max, each step with its own ink", () => {
+    expect(cellShade(1, 10)).toBe('bg-shade-1 text-on-shade-1');
+    expect(cellShade(4, 10)).toBe('bg-shade-2 text-on-shade-2');
+    expect(cellShade(6, 10)).toBe('bg-shade-3 text-on-shade-3');
+    expect(cellShade(8, 10)).toBe('bg-shade-4 text-on-shade-4');
+    expect(cellShade(10, 10)).toBe('bg-shade-5 text-on-shade-5');
   });
 
-  it('gives the smallest value the lightest step, never the grey', () => {
-    expect(cellShade(1, 100)).toBe('bg-[#cde2fb]');
+  it('gives the smallest value the lightest step, never the zero cell', () => {
+    expect(cellShade(1, 100)).toBe('bg-shade-1 text-on-shade-1');
   });
 
-  it('greys a 0, in a grid of zeros too', () => {
-    expect(cellShade(0, 10)).toBe('bg-[#f0efec] text-[#52514e]');
-    expect(cellShade(0, 0)).toBe('bg-[#f0efec] text-[#52514e]');
+  it('gives a 0 the zero cell, in a grid of zeros too', () => {
+    expect(cellShade(0, 10)).toBe('bg-shade-zero text-on-shade-zero');
+    expect(cellShade(0, 0)).toBe('bg-shade-zero text-on-shade-zero');
   });
 });
 

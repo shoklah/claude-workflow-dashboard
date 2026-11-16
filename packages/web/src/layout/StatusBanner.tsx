@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { cn } from 'cn';
 import { parseTime, type StatusResponse } from '@cwd/shared';
+import { NOTICE } from '../lib/format.ts';
 
 /** A time in the reader's locale and time zone, its ISO value in `datetime`. */
 export function Time({ iso }: { iso: string }) {
@@ -9,7 +11,7 @@ export function Time({ iso }: { iso: string }) {
 /** A notice above the page, read out when it appears. */
 export function Banner({ children }: { children: ReactNode }) {
   return (
-    <div role="status" className="rounded-md border border-amber-600/50 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+    <div role="status" className={cn('px-3 py-2', NOTICE)}>
       {children}
     </div>
   );
