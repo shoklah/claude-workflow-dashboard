@@ -44,7 +44,7 @@ How the design was shown and agreed:
 - B. Static HTML mockups, as earlier slices did. Cheaper, but the glass, the charts and the tables' real widths can't be judged from them.
 - C. Stories only, component by component. No whole screen to approve.
 
-How it gets built (my call, for the owner to check): **the mock is the reference source, ported under tests, not merged.** The mock has no updated stories, tests or baselines, carries capture scripts, and was never reviewed, so it can't be merged. But it holds the approved result file by file. Each task ports its files from `claude/ui-slice-mock` (readable in any worktree with `git show claude/ui-slice-mock:<path>`), writing the stories and tests first. The branch stays local and is deleted once the slice is merged. Rebuilding from the captures alone would redo solved work and drift from what was approved.
+How it gets built (approved by the owner): **the mock is the reference source, ported under tests, not merged.** The mock has no updated stories, tests or baselines, carries capture scripts, and was never reviewed, so it can't be merged. But it holds the approved result file by file. Each task ports its files from `claude/ui-slice-mock` (readable in any worktree with `git show claude/ui-slice-mock:<path>`), writing the stories and tests first. The branch stays local and is deleted once the slice is merged. Rebuilding from the captures alone would redo solved work and drift from what was approved.
 
 ## Decisions the owner made
 
@@ -92,11 +92,17 @@ Light passes 4.5:1 on every panel surface (warning ink 4.79 at worst) and fails 
 
 ### The fix: tune the dark tokens until the test passes
 
-**Open for the owner (it changes the look `DESIGN.md` records, slightly):** the dark tokens are tuned so every ink passes 4.5:1 on every panel surface at the worst case. A tuning that does it, computed: the teal orb from 55% to 30% opacity, warning ink from `#ffb08a` to `#ffc2a3`, the panel tint from 55% to 62%, the header band from 12% to 10% white and the row hover from 16% to 11%. The implementer may find a smaller set, in this order of preference: the teal orb, the warning ink, the band and hover, the panel tint last. `DESIGN.md` is updated with the final values, and the captures are rendered again if the change is visible beside them.
+**Approved by the owner:** the dark tokens are tuned so every ink passes 4.5:1 on every panel surface at the worst case. The values, applied on the mock and shown in the captures:
 
-The alternative, not recommended: keep the tokens and accept 3:1 for warning ink and for secondary ink in bands and hovered rows. That is under AA for 14 px text, and it leaves the notice bar under AA as well, which only dimming the teal orb fixes (30% brings it to 4.55).
+| Token (dark) | Was | Now |
+|---|---|---|
+| Teal orb's opacity in `--backdrop` | 0.55 | 0.3 |
+| `--panel` tint | 0.55 | 0.62 |
+| `--secondary` (the header band) | white 12% | white 10% |
+| `--accent` (row hover, the menu's current page) | white 16% | white 12% |
+| `--warning-ink` | `#ffb08a` | `#ffc8ab` |
 
-If the tuning is approved, it is applied on the mock first and the dark captures are rendered again from it before the plan is written, so the kit reviewer's reference shows the final look.
+With them the worst cases are: warning ink 6.49 on a panel, 4.90 in a header band, 4.63 on a hovered row; secondary ink 5.11 in a band, 4.83 on a hovered row; the notice bar's ink 4.55; primary ink 6.67 on the backdrop. `DESIGN.md` records the new values (its front matter, Colors and Elevation). Light is unchanged.
 
 ### The test
 
@@ -106,7 +112,7 @@ A Vitest test in `packages/web` reads `src/index.css` as text, takes the tokens 
 - Surfaces: the panel tint over each backdrop colour, with each end of the sheen; then the header band (`--secondary`) and the row hover (`--accent`) over that.
 - Asserted at 4.5:1 or more: primary ink on every backdrop colour; primary, secondary and warning ink on every surface; notice ink on the notice bar over every backdrop colour; each `--on-shade-*` ink on its `--shade-*` step (the zero step over every surface).
 
-The blur and the 160% saturation are left out: a blur only averages towards colours already in the set, and the test says so in a comment. The test fails on today's tokens; that failure is the tuning task's failing test.
+The blur and the 160% saturation are left out: a blur only averages towards colours already in the set, and the test says so in a comment. The test fails on today's tokens and passes on the tuned ones; that failure is the tuning task's failing test.
 
 The backdrop rule itself is checked by review and by a small e2e check: on each screen, no element with `text-muted-foreground` or `WARNING_INK` has the page's backdrop as its nearest painted ancestor (no ancestor that is a `glass` panel, a table container, a dialog, a popover or a notice bar).
 
@@ -257,7 +263,7 @@ Under Code conventions, new:
 - A day and time shows through `Time` ("Nov 12, 10:20").
 - A warning's text shows through `WarningText`, never raw.
 
-`DESIGN.md` changes: the tuned dark tokens (if approved); Layout's "a wrapped bar above the page under 768px" becomes the Menu button; Table gains the session-length exception; Typography's title sizes are now tokens.
+`DESIGN.md` changes: the tuned dark tokens; Layout's "a wrapped bar above the page under 768px" becomes the Menu button; Table gains the session-length exception; Typography's title sizes are now tokens.
 
 ## Tests and checks
 
@@ -282,6 +288,5 @@ One design, likely more than ten tasks, so two pull requests: first the shared p
 
 - The order of screens and how they group into tasks and waves.
 - Whether `Option` moves out of `findings/FindingsPage.tsx` into `components/` now that every page uses it (it should, if a move is all it takes).
-- The exact tuned token values, within the order of preference above.
 - How the backdrop-ink e2e check finds "on a panel" (a class list, or computed background up the ancestors).
 - Fixed column counts in detail rows (`colSpan`) as constants or computed.
