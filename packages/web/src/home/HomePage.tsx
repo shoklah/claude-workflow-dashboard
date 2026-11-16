@@ -1,5 +1,6 @@
 import type { HomeResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { PageTitle, State } from '../components/Panel.tsx';
 import { Feed } from './Feed.tsx';
 import { SkillsAndCommands } from './SkillsAndCommands.tsx';
 import { WeekTiles } from './WeekTiles.tsx';
@@ -10,23 +11,23 @@ import { WorkflowDiagram } from './WorkflowDiagram.tsx';
 export function HomePage() {
   const home = useLiveQuery<HomeResponse>('/api/home');
   return (
-    <>
-      <h1 className="sr-only">Home</h1>
-      {home.isPending && <p className="text-muted-foreground">Loading…</p>}
-      {home.isError && <p>Can't load the home screen.</p>}
+    <div className="flex flex-col gap-4">
+      <PageTitle>Home</PageTitle>
+      {home.isPending && <State>Loading the home screen…</State>}
+      {home.isError && <State error>Can't load the home screen.</State>}
       {home.data && (
-        <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="flex min-w-0 flex-1 flex-col gap-6">
             <WeekTiles thisWeek={home.data.thisWeek} lastWeek={home.data.lastWeek} />
             <WorkflowDiagram diagram={home.data.diagram} />
             <WeeklyCharts charts={home.data.charts} coverageFrom={home.data.coverageFrom} />
             <SkillsAndCommands usage={home.data.usage} />
           </div>
-          <div className="border-t pt-3 lg:w-64 lg:flex-none lg:border-t-0 lg:border-l lg:pt-0 lg:pl-3">
+          <div className="lg:w-72 lg:flex-none">
             <Feed items={home.data.feed} />
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

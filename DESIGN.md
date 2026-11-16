@@ -92,7 +92,7 @@ Dark is the look. Light mode is its daylight pair: the same panels, radii, type 
 
 **Primary and focus.** The primary action is a white pill with violet ink (`#2a1a6e`) in dark mode and an ink pill with white text in light mode. The focus ring is cyan `#7ef9ff` / indigo `#3f5cf0`, 2px, offset 2px.
 
-**Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffc8ab` dark / `#a8461c` light. A finished run's edge in the feed is green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
+**Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffc8ab` dark / `#a8461c` light. In the feed, each item's status is a swatch beside its word: a new warning's in the warning orange, a finished run's in green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
 
 ## Typography
 
