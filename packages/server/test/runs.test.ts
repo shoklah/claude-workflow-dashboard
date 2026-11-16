@@ -197,16 +197,19 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
   ]);
 });
 
-// Every export fixture that loads (report-shape is a deliberate shape failure).
-test.each(reportFixtures().filter((name) => loadReport(fixture(name)).ok))(
+// Every export fixture but report-shape, a deliberate shape failure, so a fixture that stops loading fails here. A
+// step is its kind, round and agent, so a dropped step and a doubled one of the same kind can't cancel out.
+test.each(reportFixtures().filter((name) => name !== 'report-shape'))(
   "every step of %s's runs sits in exactly one timeline group",
   async (name) => {
     db.$client.close();
     db = dbWith(name);
+    const id = (s: { step: string; round?: number | null; agent?: string | null }) =>
+      `${s.step} ${s.round ?? '-'} ${s.agent ?? '-'}`;
     for (const entry of fixture(name).runs) {
       const { timeline } = await run(runKey(entry) as string);
       const shown = timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]);
-      expect(shown.map((s) => s.step).sort()).toEqual((entry.steps ?? []).map((s: { step: string }) => s.step).sort());
+      expect(shown.map(id).sort()).toEqual((entry.steps ?? []).map(id).sort());
     }
   },
 );
