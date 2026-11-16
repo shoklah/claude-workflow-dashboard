@@ -10,6 +10,7 @@ import { CategoryBadge, FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
 import {
   NONE,
+  closedFindings,
   formatCompact,
   formatCost,
   formatMinutes,
@@ -32,8 +33,6 @@ function Section({ title, none, children }: { title: string; none: string; child
 
 /** The run's facts, each a term over its value. */
 function Header({ run }: { run: RunResponse['facts'] }) {
-  // closed: acted on + not acted on, the findings with an outcome other than open.
-  const closed = run.beforeSteps ? null : run.findings.actedOn + run.findings.notActedOn;
   const facts: [string, ReactNode][] = [
     ['Project', <Text value={run.project} />],
     ['Path', <Text value={pathLabel(run.path)} />],
@@ -41,7 +40,7 @@ function Header({ run }: { run: RunResponse['facts'] }) {
     ['Time', <Text value={run.minutes === null ? null : formatMinutes(run.minutes)} />],
     ['Est. cost', <Text value={run.cost === null ? null : formatCost(run.cost)} />],
     ['Findings', <Num value={run.beforeSteps ? null : run.findings.total} />],
-    ['Closed', <Num value={closed} />],
+    ['Closed', <Num value={closedFindings(run)} />],
     ['Warnings', <Num value={run.warnings} />],
   ];
   return (
