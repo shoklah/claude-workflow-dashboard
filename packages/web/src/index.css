@@ -222,6 +222,9 @@
     8% { --cue-start: 3rem; --cue-end: 3rem; }
     92% { --cue-start: 3rem; --cue-end: 3rem; }
     100% { --cue-start: 3rem; --cue-end: 0px; }
+    /* The mask lives only in the animation, so a table that fits (an inactive timeline) has none: a mask would clip the
+       panel's shadow and the region's focus outline. */
+    0%, 100% { mask-image: linear-gradient(to right, transparent, #000 var(--cue-start), #000 calc(100% - var(--cue-end)), transparent); }
 }
 
 /* A panel: DESIGN.md's glass recipe. */
@@ -263,10 +266,9 @@
     @apply glass;
     }
   /* The cue on a table that scrolls sideways: its edge fades where more columns are hidden. The scroll timeline is
-     inactive on a table that fits, so it gets no mask. */
+     inactive on a table that fits, so the animation, and with it the mask, doesn't apply. */
   @supports (animation-timeline: scroll()) {
     [data-slot='table-container'] {
-      mask-image: linear-gradient(to right, transparent, #000 var(--cue-start), #000 calc(100% - var(--cue-end)), transparent);
       animation: scroll-cue linear both;
       animation-timeline: scroll(self inline);
       }

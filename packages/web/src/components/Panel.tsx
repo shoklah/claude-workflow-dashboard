@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { cn } from 'cn';
 import { WARNING_BORDER } from '../lib/format.ts';
+import { NUM } from './Num.tsx';
 
 /** A link's underline: the disclosure's summary and every in-table link. */
 export const LINK = 'underline decoration-input underline-offset-4 hover:decoration-foreground';
@@ -42,7 +43,7 @@ export function Pairs({ pairs, className }: { pairs: [string, ReactNode][]; clas
       {pairs.map(([term, value]) => (
         <div key={term} className="contents">
           <dt className="text-muted-foreground">{term}</dt>
-          <dd className="text-right tabular-nums">{value}</dd>
+          <dd className={NUM}>{value}</dd>
         </div>
       ))}
     </dl>
