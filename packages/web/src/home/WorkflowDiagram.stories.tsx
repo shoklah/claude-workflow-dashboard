@@ -30,7 +30,7 @@ export const Full: Story = {
       'Plan simplify',
       'Plan review',
       'Task review',
-      'simplify',
+      'Simplify',
       'Final review',
     ]);
     await expect(within(boxes[2]).getByText('ran 11')).toBeVisible();
@@ -43,7 +43,7 @@ export const Full: Story = {
     const smallBoxes = await small.findAllByRole('figure');
     await expect(smallBoxes.map((box) => box.getAttribute('aria-label'))).toEqual([
       'Task review',
-      'simplify',
+      'Simplify',
       'Final review',
     ]);
     await expect(within(smallBoxes[1]).getByText('4 found · 3 acted on')).toBeVisible();
