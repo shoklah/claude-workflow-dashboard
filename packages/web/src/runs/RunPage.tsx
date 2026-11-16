@@ -1,9 +1,9 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { RunResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
 import { Option, Options } from '../components/Option.tsx';
-import { PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
+import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
@@ -21,13 +21,11 @@ import {
 } from '../lib/format.ts';
 
 /** A titled section of the side panel, its `none` line when it has nothing to show. */
-function Section({ title, none, children }: { title: string; none: string; children: ReactNode }) {
-  const titleId = useId();
+function SideSection({ title, none, children }: { title: string; none: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-1.5 border-b pb-4 last:border-0 last:pb-0">
-      <SectionTitle id={titleId}>{title}</SectionTitle>
+    <Section title={title} className="gap-1.5 border-b pb-4 last:border-0 last:pb-0">
       {children || <p className="text-sm text-muted-foreground">{none}</p>}
-    </section>
+    </Section>
   );
 }
 
@@ -102,15 +100,15 @@ export function RunPage({ runKey }: { runKey: string }) {
           )}
         </div>
         <Panel className="gap-4 lg:w-80 lg:flex-none">
-          <Section title="Skills" none="No skill loaded.">
+          <SideSection title="Skills" none="No skill loaded.">
             {skills.length > 0 && <Pairs names pairs={skills.map((skill) => [skill.name, skill.outcome])} />}
-          </Section>
-          <Section title="Models" none="No model recorded.">
+          </SideSection>
+          <SideSection title="Models" none="No model recorded.">
             {models.length > 0 && (
               <Pairs names pairs={models.map((model) => [<Text value={modelLabel(model.model)} />, formatCost(model.cost)])} />
             )}
-          </Section>
-          <Section title="Advisor" none="Not consulted.">
+          </SideSection>
+          <SideSection title="Advisor" none="Not consulted.">
             {advisor && (
               <Pairs
                 pairs={[
@@ -119,8 +117,8 @@ export function RunPage({ runKey }: { runKey: string }) {
                 ]}
               />
             )}
-          </Section>
-          <Section title="Context" none="No context facts for this run.">
+          </SideSection>
+          <SideSection title="Context" none="No context facts for this run.">
             {context && (
               <Pairs
                 pairs={[
@@ -136,8 +134,8 @@ export function RunPage({ runKey }: { runKey: string }) {
                 ]}
               />
             )}
-          </Section>
-          <Section title="Warnings" none="No warnings.">
+          </SideSection>
+          <SideSection title="Warnings" none="No warnings.">
             {warnings.length > 0 && (
               <ul className="flex flex-col gap-2 text-sm">
                 {warnings.map((warning, i) => (
@@ -147,7 +145,7 @@ export function RunPage({ runKey }: { runKey: string }) {
                 ))}
               </ul>
             )}
-          </Section>
+          </SideSection>
         </Panel>
       </div>
     </div>

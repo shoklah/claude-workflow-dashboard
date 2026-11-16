@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from 'cn';
 import type { SpendGroupRow, SpendResponse, SpendRow } from '@cwd/shared';
 import { GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
-import { SectionTitle } from '../components/Panel.tsx';
+import { Section } from '../components/Panel.tsx';
 import { RowToggle } from '../components/RowToggle.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -83,8 +83,7 @@ function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
 export function SpendTable({ response }: { response: SpendResponse }) {
   const { models } = response;
   return (
-    <section className="flex flex-col gap-3">
-      <SectionTitle>By phase, over the period</SectionTitle>
+    <Section title="By phase, over the period">
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Spend by phase' }}>
         <TableHeader>
           <TableRow>
@@ -118,6 +117,6 @@ export function SpendTable({ response }: { response: SpendResponse }) {
           ))}
         </TableBody>
       </Table>
-    </section>
+    </Section>
   );
 }

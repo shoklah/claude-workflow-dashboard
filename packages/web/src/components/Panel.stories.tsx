@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { Button } from './ui/button.tsx';
-import { Details, Line, PageTitle, Pairs, Panel, SectionTitle, State } from './Panel.tsx';
+import { Details, Line, PageTitle, Pairs, Panel, Section, SectionTitle, State } from './Panel.tsx';
 
 const meta = {
   component: Panel,
@@ -34,6 +34,20 @@ export const PanelWithAside: Story = {
     await expect(region).toHaveClass('glass');
     await expect(within(region).getByRole('heading', { level: 2, name: 'Things' })).toBeVisible();
     await expect(within(region).getByRole('button', { name: 'Mark seen' })).toBeVisible();
+  },
+};
+
+/** A section without glass: a region named by its title, its aside beside the title. */
+export const SectionWithoutGlass: Story = {
+  render: () => (
+    <Section title="Runs and sessions" aside={<Button size="sm">Over the cap</Button>}>
+      <p>A section's body.</p>
+    </Section>
+  ),
+  play: async ({ canvas }) => {
+    const region = canvas.getByRole('region', { name: 'Runs and sessions' });
+    await expect(region).not.toHaveClass('glass');
+    await expect(within(region).getByRole('button', { name: 'Over the cap' })).toBeVisible();
   },
 };
 

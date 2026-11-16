@@ -23,11 +23,14 @@ export function SectionTitle({ id, children }: { id?: string; children: ReactNod
   );
 }
 
-/** A glass panel holding one group of related content, labelled by its title when it has one. */
-export function Panel({ title, aside, className, children }: { title?: string; aside?: ReactNode; className?: string; children: ReactNode }) {
+type SectionProps = { title?: string; aside?: ReactNode; className?: string; children: ReactNode };
+
+/** A section without glass, a region labelled by its title when it has one, the title and `aside` (a switch, a count)
+ * in a row above its content. */
+export function Section({ title, aside, className, children }: SectionProps) {
   const titleId = useId();
   return (
-    <section aria-labelledby={title ? titleId : undefined} className={cn('glass flex flex-col gap-3 p-4', className)}>
+    <section aria-labelledby={title ? titleId : undefined} className={cn('flex flex-col gap-3', className)}>
       {(title || aside) && (
         <div className="flex flex-wrap items-center gap-3">
           {title && <SectionTitle id={titleId}>{title}</SectionTitle>}
@@ -37,6 +40,11 @@ export function Panel({ title, aside, className, children }: { title?: string; a
       {children}
     </section>
   );
+}
+
+/** A glass panel holding one group of related content, labelled by its title when it has one. */
+export function Panel({ className, ...section }: SectionProps) {
+  return <Section className={cn('glass p-4', className)} {...section} />;
 }
 
 /** Labelled pairs: each fact's name in secondary ink, its value beside it, right-aligned in tabular figures. With

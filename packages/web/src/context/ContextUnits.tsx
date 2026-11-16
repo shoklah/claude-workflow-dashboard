@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from 'cn';
 import type { ContextUnit } from '@cwd/shared';
 import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
-import { Line, SectionTitle } from '../components/Panel.tsx';
+import { Line, Section } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
@@ -47,12 +47,8 @@ export function ContextUnits({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <SectionTitle>Runs and sessions</SectionTitle>
-        {children}
-      </div>
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs and sessions' }}>
+    <Section title="Runs and sessions" aside={children}>
+      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs and sessions table' }}>
         <TableHeader>
           <TableRow>
             <TableHead rowSpan={2}>Name</TableHead>
@@ -147,6 +143,6 @@ export function ContextUnits({
         </TableBody>
       </Table>
       {hidden > 0 && <Line>{hiddenLabel(hidden, 'row')}</Line>}
-    </div>
+    </Section>
   );
 }

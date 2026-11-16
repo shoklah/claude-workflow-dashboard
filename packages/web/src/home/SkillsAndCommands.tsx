@@ -1,7 +1,7 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import type { HomeResponse } from '@cwd/shared';
 import { EmptyRow, NUM, Num } from '../components/Num.tsx';
-import { SectionTitle } from '../components/Panel.tsx';
+import { Section } from '../components/Panel.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Option, Options } from '../components/Option.tsx';
@@ -27,22 +27,24 @@ const isCount = (column: string) => COLUMNS.indexOf(column) >= 2;
 export function SkillsAndCommands({ usage }: { usage: Usage }) {
   const [period, setPeriod] = useState<keyof Usage>('thisWeek');
   const shown = usage[period];
-  const titleId = useId();
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <SectionTitle id={titleId}>Skills and commands</SectionTitle>
-        <Options label="Period">
-          {PERIODS.map((option) => (
-            <Option key={option.period} pressed={period === option.period} onClick={() => setPeriod(option.period)}>
-              {option.label}
-            </Option>
-          ))}
-        </Options>
-        <span>
-          {plural(shown.sessions, 'session')} and {plural(shown.runs, 'run')}
-        </span>
-      </div>
+    <Section
+      title="Skills and commands"
+      aside={
+        <>
+          <Options label="Period">
+            {PERIODS.map((option) => (
+              <Option key={option.period} pressed={period === option.period} onClick={() => setPeriod(option.period)}>
+                {option.label}
+              </Option>
+            ))}
+          </Options>
+          <span className="text-sm">
+            {plural(shown.sessions, 'session')} and {plural(shown.runs, 'run')}
+          </span>
+        </>
+      }
+    >
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Skills and commands table' }}>
         <TableHeader>
           <TableRow>
@@ -84,6 +86,6 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
           })}
         </TableBody>
       </Table>
-    </section>
+    </Section>
   );
 }
