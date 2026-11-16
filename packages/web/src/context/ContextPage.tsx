@@ -1,23 +1,35 @@
 import { useState } from 'react';
+import { cn } from 'cn';
 import type { ContextResponse, ContextWeek, FindingsQuery } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { GROUP, NUM, Num, SUB } from '../components/Num.tsx';
 import { Option } from '../components/Option.tsx';
+import { Details, PageTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { Chart, barsOption, singleBars } from '../home/WeeklyCharts.tsx';
-import { TOOL_CLASS_LABELS, formatCompact, formatShare, uncountedLabel, weekLabel } from '../lib/format.ts';
+import { Chart, SERIES, barsOption, singleBars } from '../home/WeeklyCharts.tsx';
+import {
+  TOOL_CLASS_LABELS,
+  formatCompact,
+  formatCompactFixed,
+  formatShare,
+  uncountedLabel,
+  weekLabel,
+} from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 import { ContextUnits } from './ContextUnits.tsx';
 
 const CLASSES = Object.keys(TOOL_CLASS_LABELS);
-const COUNT = 'text-right tabular-nums';
 
 /** The five charts, the weeks oldest first as the API gives them, the cap drawn on the two token charts. */
 function ContextCharts({ weeks, cap }: { weeks: ContextWeek[]; cap: number }) {
   const names = weeks.map((w) => w.week);
   const tokens = { cap, format: formatCompact };
   const charts = [
-    { title: 'Mean context per call', option: singleBars(names, 'Mean per call', weeks.map((w) => w.meanTokens), tokens) },
-    { title: 'Largest context', option: singleBars(names, 'Largest', weeks.map((w) => w.maxTokens), tokens) },
+    {
+      title: 'Mean context per call (tokens)',
+      option: singleBars(names, 'Mean per call', weeks.map((w) => w.meanTokens), tokens),
+    },
+    { title: 'Largest context (tokens)', option: singleBars(names, 'Largest', weeks.map((w) => w.maxTokens), tokens) },
     { title: 'Runs and sessions over the cap', option: singleBars(names, 'Over the cap', weeks.map((w) => w.unitsOverCap)) },
     {
       title: 'Read share of tool results',
@@ -25,19 +37,19 @@ function ContextCharts({ weeks, cap }: { weeks: ContextWeek[]; cap: number }) {
     },
     {
       title: 'Sweeps',
-      // Its two series' legend fits on one line.
+      // Blue and aqua: orange stays the warning's colour. Its two series' legend fits on one line.
       option: barsOption(
         names,
         [
-          { name: 'inline', data: weeks.map((w) => w.sweeps.inline) },
-          { name: 'delegated', data: weeks.map((w) => w.sweeps.delegated) },
+          { name: 'Inline', data: weeks.map((w) => w.sweeps.inline), color: SERIES[0] },
+          { name: 'Delegated', data: weeks.map((w) => w.sweeps.delegated), color: SERIES[2] },
         ],
         { legendRoom: 28 },
       ),
     },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {charts.map((chart) => (
         <Chart key={chart.title} title={chart.title} option={chart.option} height={180} />
       ))}
@@ -47,32 +59,38 @@ function ContextCharts({ weeks, cap }: { weeks: ContextWeek[]; cap: number }) {
 
 /** The charts' table view: a row per week, newest first, with the tool results' characters by class. */
 function ContextTable({ weeks }: { weeks: ContextWeek[] }) {
+  const subs = ['Mean per call', 'Largest', ...CLASSES.map((kind) => TOOL_CLASS_LABELS[kind]), 'Inline', 'Delegated'];
   return (
-    <details className="text-sm">
-      <summary className="cursor-pointer text-muted-foreground">The charts as a table</summary>
+    <Details summary="The charts as a table">
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Weekly context' }}>
         <TableHeader>
           <TableRow>
-            <TableCell colSpan={6} />
-            <TableHead colSpan={CLASSES.length} scope="colgroup" className="border-b text-center">
-              Tool-result characters
+            <TableHead rowSpan={2}>Week</TableHead>
+            <TableHead rowSpan={2} className={NUM}>
+              Runs and sessions
             </TableHead>
-            <TableCell colSpan={3} />
+            <TableHead rowSpan={2} className={NUM}>
+              Calls
+            </TableHead>
+            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
+              Context (tokens)
+            </TableHead>
+            <TableHead rowSpan={2} className={NUM}>
+              Over the cap
+            </TableHead>
+            <TableHead colSpan={CLASSES.length} scope="colgroup" className={GROUP}>
+              Tool results (characters)
+            </TableHead>
+            <TableHead rowSpan={2} className={NUM}>
+              Read share (%)
+            </TableHead>
+            <TableHead colSpan={2} scope="colgroup" className={GROUP}>
+              Sweeps
+            </TableHead>
           </TableRow>
           <TableRow>
-            <TableHead>Week</TableHead>
-            {['Units', 'Calls', 'Mean per call', 'Largest', 'Over the cap'].map((column) => (
-              <TableHead key={column} className={COUNT}>
-                {column}
-              </TableHead>
-            ))}
-            {CLASSES.map((kind) => (
-              <TableHead key={kind} className={COUNT}>
-                {TOOL_CLASS_LABELS[kind]}
-              </TableHead>
-            ))}
-            {['Read share', 'Inline', 'Delegated'].map((column) => (
-              <TableHead key={column} className={COUNT}>
+            {subs.map((column) => (
+              <TableHead key={column} className={cn(SUB, NUM)}>
                 {column}
               </TableHead>
             ))}
@@ -82,31 +100,47 @@ function ContextTable({ weeks }: { weeks: ContextWeek[] }) {
           {weeks.toReversed().map((w) => (
             <TableRow key={w.week}>
               <TableHead scope="row">{weekLabel(w.week)}</TableHead>
-              <TableCell className={COUNT}>{w.units}</TableCell>
-              <TableCell className={COUNT}>{w.calls}</TableCell>
-              <TableCell className={COUNT}>{formatCompact(w.meanTokens)}</TableCell>
-              <TableCell className={COUNT}>{formatCompact(w.maxTokens)}</TableCell>
-              <TableCell className={COUNT}>{w.unitsOverCap}</TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.units} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.calls} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.meanTokens} format={formatCompactFixed} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.maxTokens} format={formatCompactFixed} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.unitsOverCap} />
+              </TableCell>
               {CLASSES.map((kind) => (
-                <TableCell key={kind} className={COUNT}>
-                  {formatCompact(w.toolResults[kind] ?? 0)}
+                <TableCell key={kind} className={NUM}>
+                  <Num value={w.toolResults[kind] ?? 0} format={formatCompactFixed} />
                 </TableCell>
               ))}
-              <TableCell className={COUNT}>{formatShare(w.readShare)}</TableCell>
-              <TableCell className={COUNT}>{w.sweeps.inline}</TableCell>
-              <TableCell className={COUNT}>{w.sweeps.delegated}</TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.readShare} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.sweeps.inline} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.sweeps.delegated} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </details>
+    </Details>
   );
 }
 
 /**
  * The Context page: the period's weekly context (mean and largest per call against the cap, units over the cap, the
- * read share of tool results and the sweeps), their table view, and the runs and sessions behind them, over the cap by
- * default through the "Units" switch beside the filters.
+ * read share of tool results and the sweeps), their table view, how they are counted, and the runs and sessions behind
+ * them, over the cap by default through the "Show" switch beside their title.
  */
 export function ContextPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 12 });
@@ -114,31 +148,44 @@ export function ContextPage() {
   const context = useLiveQuery<ContextResponse>(listPath('/api/context', { ...query, over }));
   const projects = useProjects();
   const data = context.data;
+  // The units' switch, kept on an error too, so a failed "All" can go back over the cap.
+  const show = (
+    <div role="group" aria-label="Show" className="ml-auto flex flex-wrap items-center gap-1">
+      <span className="mr-1">Show</span>
+      <Option pressed={over} onClick={() => setOver(true)}>
+        Over the cap
+      </Option>
+      <Option pressed={!over} onClick={() => setOver(false)}>
+        All
+      </Option>
+    </div>
+  );
   return (
-    <div className="flex flex-col gap-3">
-      <h1 className="text-xl font-semibold">Context</h1>
-      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })}>
-        <div role="group" aria-label="Units" className="flex flex-wrap gap-1">
-          <Option pressed={over} onClick={() => setOver(true)}>
-            Over the cap
-          </Option>
-          <Option pressed={!over} onClick={() => setOver(false)}>
-            All
-          </Option>
-        </div>
-      </ListFilters>
-      {context.isPending && <p className="text-sm text-muted-foreground">Loading the context…</p>}
-      {context.isError && <p className="text-sm">Couldn't load the context.</p>}
+    <div className="flex flex-col gap-4">
+      <PageTitle>Context</PageTitle>
+      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })} />
+      {context.isPending && <State>Loading the context…</State>}
+      {context.isError && (
+        <>
+          <State error>Couldn't load the context.</State>
+          {show}
+        </>
+      )}
       {data && (
         <>
           <ContextCharts weeks={data.weeks} cap={data.cap} />
-          <p className="text-sm text-muted-foreground">
-            Context is a main call's input plus cache tokens, as the reporter counts it. A week sums its runs, by finish,
-            and its sessions, by start. {uncountedLabel(data.uncounted)} The dashed line is the context cap,{' '}
-            {formatCompact(data.cap)}: the app's default until the reporter exports its own.
-          </p>
           <ContextTable weeks={data.weeks} />
-          <ContextUnits units={data.units} hidden={data.hidden} over={over} />
+          <Details summary="How context is counted">
+            <p className="max-w-prose">
+              Context is a main call's input plus cache tokens, as the reporter counts it. A week sums its runs, by
+              finish, and its sessions, by start. The dashed line is the context cap, {formatCompact(data.cap)}: the
+              app's default until the reporter exports its own.
+            </p>
+            <p className="max-w-prose">{uncountedLabel(data.uncounted)}</p>
+          </Details>
+          <ContextUnits units={data.units} hidden={data.hidden} over={over}>
+            {show}
+          </ContextUnits>
         </>
       )}
     </div>

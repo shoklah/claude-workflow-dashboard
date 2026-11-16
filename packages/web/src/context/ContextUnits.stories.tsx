@@ -10,6 +10,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const headers = (canvas: HTMLElement) =>
+  within(within(canvas).getByRole('region', { name: 'Runs and sessions' }))
+    .getAllByRole('columnheader')
+    .map((header) => header.textContent);
+
 /** Empty: no unit past the cap. */
 export const Empty: Story = {
   args: { units: [] },
@@ -27,33 +32,72 @@ export const EmptyAll: Story = {
 };
 
 /**
- * Full: the rows in the response's order, a run linking to its page, a session with its chip and project, and a
- * "Handed off to" cell naming its session or reading a dash.
+ * Full: the rows in the response's order, under grouped headers; a run's branch linking to its page, a session's name
+ * without its ID, the kind as plain text, and the handoff's session and ID in their own cells or as dashes.
  */
 export const Full: Story = {
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getByRole('heading', { name: 'Runs and sessions', level: 2 })).toBeVisible();
+    await expect(headers(canvasElement)).toEqual([
+      'Name',
+      'Kind',
+      'Project',
+      'When',
+      'Calls',
+      'Context (tokens)',
+      'Calls past the cap',
+      'Handoff',
+      'Read share',
+      'Sweeps',
+      'Median per call',
+      'Largest',
+      'At',
+      'To session',
+      'ID',
+      'Inline',
+      'Delegated',
+    ]);
     const table = within(canvas.getByRole('region', { name: 'Runs and sessions' }));
-    const body = table.getAllByRole('row').slice(1);
+    const body = table.getAllByRole('row').slice(2);
     await expect(body).toHaveLength(3);
-    await expect(body[0]).toHaveTextContent(/^sessionRefactor the sync queue/);
-    await expect(within(body[0]).getByText('atlas')).toBeVisible();
-    await expect(within(body[0]).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
-    await expect(within(body[0]).getByText('187')).toBeVisible();
-    await expect(within(body[0]).getByText('61%')).toBeVisible();
-    await expect(within(body[0]).getByText('9 · 0')).toBeVisible();
-    const cells = within(body[0]).getAllByRole('cell');
-    await expect(cells[8]).toHaveTextContent('–');
 
-    const run = within(body[1]).getByRole('link', { name: 'atlas · feat/search · full' });
-    await expect(run).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
-    await expect(within(body[1]).getByText('281K')).toBeVisible();
-    await expect(within(body[1]).getByText('744K')).toBeVisible();
+    const session = within(body[0]).getAllByRole('cell');
+    await expect(session[0]).toHaveTextContent(/^Refactor the sync queue$/);
+    await expect(within(session[0]).queryByRole('button', { name: 'Copy session ID' })).toBeNull();
+    await expect(session[1]).toHaveTextContent(/^Session$/);
+    await expect(session[1].querySelector('[data-slot="badge"]')).toBeNull();
+    await expect(session[2]).toHaveTextContent('atlas');
+    await expect(session[4]).toHaveTextContent(/^412$/);
+    await expect(session[5]).toHaveTextContent(/^296.0K$/);
+    await expect(session[6]).toHaveTextContent(/^902.0K$/);
+    await expect(session[7]).toHaveTextContent(/^187$/);
+    await expect(session[8]).toHaveTextContent('no handoff');
+    await expect(session[9]).toHaveTextContent('no handoff');
+    await expect(session[11]).toHaveTextContent('61%');
+    await expect(session[12]).toHaveTextContent(/^9$/);
+    await expect(session[13]).toHaveTextContent(/^0$/);
 
-    const handedOff = within(body[2]).getAllByRole('cell')[8];
-    await expect(handedOff).toHaveTextContent('Plan the offline sync, part 2');
-    await expect(within(handedOff).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
+    const run = within(body[1]).getAllByRole('cell');
+    await expect(within(run[0]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(run[1]).toHaveTextContent(/^Run$/);
+    await expect(run[2]).toHaveTextContent('atlas');
 
+    const handedOff = within(body[2]).getAllByRole('cell');
+    await expect(handedOff[9]).toHaveTextContent(/^Plan the offline sync, part 2$/);
+    await expect(within(handedOff[10]).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
+
+    for (const row of body) {
+      for (const cell of within(row).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
+    }
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
+  },
+};
+
+/** With the page's switch beside the title. */
+export const WithSwitch: Story = {
+  args: { children: <button type="button">Switch</button> },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('button', { name: 'Switch' })).toBeVisible();
   },
 };
 
