@@ -1,5 +1,5 @@
 import { describe, expect, it, test } from 'vitest';
-import type { FindingRow } from '@cwd/shared';
+import { parseTime, type FindingRow } from '@cwd/shared';
 import {
   advisorLabel,
   appCallLabel,
@@ -49,6 +49,8 @@ import {
   capitalize,
   warningBody,
   STEP_LABELS,
+  formatDay,
+  formatDayTime,
 } from './format.ts';
 
 describe('formatMinutes', () => {
@@ -476,6 +478,14 @@ test('week and timeline times are written in en-US, on the 24-hour clock', () =>
   const [first, second] = timelineTimes(['2026-11-08T08:02:00Z', '2026-11-08T08:07:00Z']);
   expect(first).toMatch(/^Nov [78], \d{2}:\d{2}$/);
   expect(second).toMatch(/^\d{2}:\d{2}$/);
+});
+test('a day and a day and time are written in en-US, in the reader\'s time zone, on the 24-hour clock', () => {
+  // Midday UTC is the same day in every time zone but the date line's edges; the hour is the reader's.
+  const date = parseTime('2026-11-12T12:20:00Z');
+  expect(formatDay(date)).toMatch(/^Nov 1[12]$/);
+  expect(formatDayTime(date)).toMatch(/^Nov 1[12], \d{2}:20$/);
+  expect(formatDayTime(date).startsWith(`${formatDay(date)}, `)).toBe(true);
+  expect(formatDayTime(date).slice(-5)).toBe(timelineTimes(['2026-11-12T12:20:00Z', '2026-11-12T12:20:00Z'])[1]);
 });
 test('capitalize', () => { expect(capitalize('important')).toBe('Important'); expect(capitalize('')).toBe(''); });
 test('STEP_LABELS names simplify as a step, capitalised', () => { expect(STEP_LABELS.simplify).toBe('Simplify'); });

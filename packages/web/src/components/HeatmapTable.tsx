@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table.tsx';
 import { cellShade, formatCount, total, weekLabel } from '../lib/format.ts';
-import { NUM } from './Num.tsx';
+import { NUM, Num } from './Num.tsx';
 
 /** A cell of a heatmap: its row's id and a week. */
 export type HeatmapSelection = { id: string; week: string };
@@ -104,7 +104,9 @@ export function HeatmapTable({
                 );
               })}
               {withTotal && (
-                <TableCell className={cn(NUM, total(row.values) === 0 && 'text-muted-foreground')}>{format(total(row.values))}</TableCell>
+                <TableCell className={NUM}>
+                  <Num value={total(row.values)} format={format} />
+                </TableCell>
               )}
               {row.extras?.map((extra, i) => (
                 <TableCell key={i} className={NUM}>

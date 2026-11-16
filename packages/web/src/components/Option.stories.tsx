@@ -13,6 +13,7 @@ export const Pressed: Story = {
     const button = canvas.getByRole('button', { name: 'Raised' });
     await expect(button).toHaveAttribute('aria-pressed', 'true');
     await expect(button).toHaveClass('rounded-control');
+    await expect(getComputedStyle(button).borderTopLeftRadius).toBe('9999px');
   },
 };
 

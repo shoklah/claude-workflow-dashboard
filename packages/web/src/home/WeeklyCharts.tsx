@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCompact, formatCost, weekLabel } from '../lib/format.ts';
+import { STEP_LABELS, formatCompact, formatCost, formatDay, weekLabel } from '../lib/format.ts';
 import { resolveVars, useDark } from '../lib/theme.ts';
 import { Line, Panel } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -222,8 +222,7 @@ export function CoverageNote({ coverageFrom, firstWeek }: { coverageFrom: string
   if (coverageFrom === null || weekOf(parseTime(coverageFrom)) <= firstWeek) return null;
   return (
     <Line>
-      Weeks before {parseTime(coverageFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} show what
-      was stored; the reporter can no longer read them.
+      Weeks before {formatDay(parseTime(coverageFrom))} show what was stored; the reporter can no longer read them.
     </Line>
   );
 }

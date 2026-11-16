@@ -107,9 +107,9 @@ export const WithExtras: Story = {
     const alphaCells = within(alpha).getAllByRole('cell');
     await expect(alphaCells.at(-1)).toHaveTextContent('3');
     await expect(alphaCells.at(-2)).toHaveTextContent('5');
-    await expect(alphaCells.at(-2)).not.toHaveClass('text-muted-foreground');
+    await expect(within(alphaCells.at(-2)!).getByText('5')).not.toHaveClass('text-muted-foreground');
     const beta = within(canvas.getByRole('rowheader', { name: 'beta' }).closest('tr')!).getAllByRole('cell');
     await expect(beta.at(-1)).toHaveTextContent('0');
-    await expect(beta.at(-2)).toHaveClass('text-muted-foreground');
+    await expect(within(beta.at(-2)!).getByText('0')).toHaveClass('text-muted-foreground');
   },
 };

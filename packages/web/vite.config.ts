@@ -9,6 +9,12 @@ const api = `http://localhost:${process.env.PORT ?? 4317}`;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  resolve: {
+    alias: [
+      { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+      // Every `cn` import gets the one taught the theme's scales (`src/lib/utils.ts`); `cn/config` stays the package.
+      { find: /^cn$/, replacement: fileURLToPath(new URL('./src/lib/utils.ts', import.meta.url)) },
+    ],
+  },
   server: { proxy: { '/api': { target: api, changeOrigin: true, headers: { Origin: api } } } },
 });

@@ -295,15 +295,28 @@ export function projectLabel(project: string | null): string {
 /** An empty list of names, as a cell writes it. */
 export const NO_NAMES = 'none';
 
+/** A day as "Nov 8", the time of day as "09:07" (en-US, 24-hour), the one pair of date options on every screen. */
+const DAY = { month: 'short', day: 'numeric' } as const;
+const CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const;
+
+/** A day in the reader's time zone, written in en-US: "Nov 12". */
+export function formatDay(date: Date): string {
+  return date.toLocaleDateString('en-US', DAY);
+}
+
+/** A day and time in the reader's time zone, written in en-US on the 24-hour clock: "Nov 12, 10:20". */
+export function formatDayTime(date: Date): string {
+  return date.toLocaleString('en-US', { ...DAY, ...CLOCK });
+}
+
 /** A session's timeline times, in its order and the reader's time zone, written in en-US on the 24-hour clock: the
  * time of day, "09:07", with the date before it on the first entry and on the first entry of each new day,
  * "Nov 8, 08:02". */
 export function timelineTimes(isos: string[]): string[] {
   const dates = isos.map((iso) => parseTime(iso));
   return dates.map((date, i) => {
-    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
     const newDay = i === 0 || date.toDateString() !== dates[i - 1].toDateString();
-    return newDay ? `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}` : time;
+    return newDay ? formatDayTime(date) : date.toLocaleTimeString('en-US', CLOCK);
   });
 }
 
@@ -358,7 +371,7 @@ export function actedOnSplit(findings: FindingSplit): string {
 
 /** A week's start date, as an axis or a column names it: "Nov 8". */
 export function weekLabel(week: string): string {
-  return new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return new Date(week).toLocaleDateString('en-US', { ...DAY, timeZone: 'UTC' });
 }
 
 /** A whole percent, or a dash when it isn't known. */
