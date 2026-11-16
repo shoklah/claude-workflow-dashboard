@@ -1,7 +1,6 @@
 import type { Area, FindingCell, FindingsResponse } from '@cwd/shared';
 import { HeatmapTable } from '../components/HeatmapTable.tsx';
 import { Num } from '../components/Num.tsx';
-import { CategoryBadge } from '../runs/FindingsTable.tsx';
 import { categoryLabel, formatCount, formatPercent, total } from '../lib/format.ts';
 
 export type Measure = 'raised' | 'actedOn' | 'invalid' | 'appDiffers' | 'strengths';
@@ -57,7 +56,6 @@ export function FindingsGrid({
           rows: rows.map((row) => ({
             id: row.category ?? '',
             name: categoryLabel(row.category, response.categoryLabels),
-            header: <CategoryBadge category={row.category} labels={response.categoryLabels} />,
             values: row.cells.map((cell) => value(cell, measure)),
             extras: byApp ? [<Num value={total(row.cells.map((c) => c.byApp))} />] : undefined,
           })),

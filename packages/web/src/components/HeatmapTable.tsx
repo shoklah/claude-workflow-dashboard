@@ -7,9 +7,9 @@ import { NUM, Num } from './Num.tsx';
 /** A cell of a heatmap: its row's id and a week. */
 export type HeatmapSelection = { id: string; week: string };
 
-/** A row of a heatmap: `id` identifies it in the selection, `name` names it in its cells' labels, `header` is what its
- * header shows; `texts`, when given, is each cell's text in place of `format`'s; `extras` are its cells in the extra columns. */
-export type HeatmapRow = { id: string; name: string; header: ReactNode; values: (number | null)[]; texts?: string[]; extras?: ReactNode[] };
+/** A row of a heatmap: `id` identifies it in the selection, `name` heads it and names it in its cells' labels;
+ * `extras` are its cells in the extra columns. */
+export type HeatmapRow = { id: string; name: string; values: (number | null)[]; extras?: ReactNode[] };
 
 /** A group of rows, under a full-width heading row unless its heading is null. */
 export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
@@ -80,11 +80,11 @@ export function HeatmapTable({
           {group.rows.map((row) => (
             <TableRow key={row.id} className="border-0 hover:bg-transparent">
               <TableHead scope="row" className="w-px font-normal whitespace-nowrap">
-                {row.header}
+                {row.name}
               </TableHead>
               {row.values.map((value, i) => {
                 const week = weeks[i];
-                const text = row.texts?.[i] ?? format(value);
+                const text = format(value);
                 const pressed = selected?.id === row.id && selected.week === week;
                 return (
                   <TableCell key={week} className="p-0.5">

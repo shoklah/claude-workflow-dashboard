@@ -36,7 +36,7 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
       groups.push({ family: row.family, heading: FAMILY_LABELS[row.family] ?? row.family, rows: [] });
     }
     const name = capitalize(kindLabel(row.kind));
-    groups.at(-1)!.rows.push({ id: row.kind ?? '', name, header: name, values: row.cells });
+    groups.at(-1)!.rows.push({ id: row.kind ?? '', name, values: row.cells });
   }
   return groups;
 }

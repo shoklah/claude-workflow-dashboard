@@ -24,12 +24,6 @@ const features = tableFeatures({
 // A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
 type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
 
-/** A category by its label from `labels`, as plain text; "unlabelled" while it has none. Whose label it is shows in
- * its own column ("Labelled by"), never on the category. */
-export function CategoryBadge({ category, labels }: { category: string | null; labels: Record<string, string> }) {
-  return categoryLabel(category, labels);
-}
-
 const helper = createColumnHelper<typeof features, Row>();
 /** The finding columns, each category named by `labels`. */
 const columnsOf = (labels: Record<string, string>) => helper.columns([
@@ -47,7 +41,7 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
   }),
   helper.accessor('category', {
     header: 'Category',
-    cell: (c) => <CategoryBadge category={c.getValue()} labels={labels} />,
+    cell: (c) => categoryLabel(c.getValue(), labels),
   }),
   helper.accessor((f) => (f.category === null ? null : f.judge === 'app' ? 'App' : 'Workflow'), {
     id: 'labelledBy',

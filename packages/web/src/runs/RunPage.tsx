@@ -6,9 +6,10 @@ import { Option } from '../components/Option.tsx';
 import { PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { CategoryBadge, FindingsTable } from './FindingsTable.tsx';
+import { FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
 import {
+  categoryLabel,
   closedFindings,
   formatCompact,
   formatCost,
@@ -87,7 +88,7 @@ export function RunPage({ runKey }: { runKey: string }) {
                   <ul className="flex flex-col gap-1">
                     {strengths.map((strength, i) => (
                       <li key={i} className="flex flex-wrap items-baseline gap-x-2">
-                        <CategoryBadge category={strength.category} labels={categoryLabels} />
+                        {categoryLabel(strength.category, categoryLabels)}
                         <span>
                           <Text value={strength.summary} />
                         </span>
