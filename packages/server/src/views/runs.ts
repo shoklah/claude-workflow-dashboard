@@ -282,8 +282,8 @@ function group(
 
 /**
  * The untimed timeline, in the workflow's order: start, plan, a group per wave (its tasks' steps, then its wave
- * check's steps), a group per task in no wave, simplify, final review, end. A kit review with no task or wave sits in
- * the final group, beside the final review it runs with. A plan, simplify or final group with no steps is left out,
+ * check's steps), a group per task in no wave, simplify, final review, end. A kit's review and fix-checks with no task or
+ * wave sit in the final group, beside the final review they run with. A plan, simplify or final group with no steps is left out,
  * except a run from before steps, which gets an empty final group between start and end.
  */
 function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: LabelOf): TimelineGroup[] {
@@ -314,7 +314,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
         (s) =>
           s.step === 'final_review' ||
           s.step === 'final_fix_check' ||
-          (s.step === 'kit_review' && s.task == null && s.wave == null),
+          (s.kit != null && s.task == null && s.wave == null),
       ),
     ),
     end,

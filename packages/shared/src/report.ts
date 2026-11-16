@@ -41,6 +41,8 @@ const StepSchema = z.object({
   step: z.enum(STEP_KINDS).nullish(),
   task: num,
   wave: str,
+  // The kit's name, on a kit's own review and fix-checks (schema 6).
+  kit: str,
   round: num,
   agent: str,
   model: str,
