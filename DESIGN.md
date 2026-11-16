@@ -10,7 +10,7 @@ colors:
   primary-foreground: "#2a1a6e"
   background: "#1a1240"
   foreground: "#ffffff"
-  panel: "rgb(28 18 72 / 0.55)"
+  panel: "rgb(28 18 72 / 0.62)"
   panel-edge: "rgb(255 255 255 / 0.3)"
   muted-foreground: "#d9d3ff"
   border: "rgb(255 255 255 / 0.14)"
@@ -18,7 +18,7 @@ colors:
   ring: "#7ef9ff"
   destructive: "#ff6b81"
   warning-edge: "#ec835a"
-  warning-ink: "#ffb08a"
+  warning-ink: "#ffc8ab"
   success-edge: "#34d399"
   notice: "rgb(250 178 25 / 0.14)"
   notice-edge: "#fab219"
@@ -78,21 +78,21 @@ components:
 
 ## Overview
 
-The dashboard answers one person's questions about their own coding workflow: what ran, what the reviews found, what it cost, what broke a rule. It is a playground and a portfolio piece, so it has a look of its own: **night glass**. A deep violet-to-navy gradient fills the page, lit from behind by four large, soft colour orbs. Everything the reader works with sits on frosted panels that tint and blur what is behind them. The look is bold in one place, the backdrop, and quiet everywhere the data is: on a panel, type is plain white, numbers line up, and colour appears only where it encodes a series or a state.
+The dashboard answers one person's questions about their own coding workflow: what ran, what the reviews found, what it cost, what broke a rule. It is a playground and a portfolio piece, so it has a look of its own: **night glass**. A deep violet-to-navy gradient fills the page, lit from behind by four large, soft colour orbs. Everything the reader works with sits on glass panels that tint what is behind them. The look is bold in one place, the backdrop, and quiet everywhere the data is: on a panel, type is plain white, numbers line up, and colour appears only where it encodes a series or a state.
 
 Dark is the look. Light mode is its daylight pair: the same panels, radii, type and rules, with pale blobs behind white frosted glass and dark ink. The app follows the system's setting.
 
 ## Colors
 
-**Backdrop.** Dark: a 135° gradient from `#1a1240` through `#2a1060` to `#10204f`, under four radial orbs (pink `#ff3cac` top left, blue `#2b86c5` top right, violet `#784ba0` bottom right, teal `#00d2b8` bottom left), each fading to nothing at about 60% of its radius and held at 55% opacity so no orb dominates a panel. Light: `#eef1fb` under cyan `#a5f3fc`, lavender `#c4b5fd`, rose `#fecdd3` and mint `#bbf7d0` blobs. The backdrop is fixed; it does not scroll with the page.
+**Backdrop.** Dark: a 135° gradient from `#1a1240` through `#2a1060` to `#10204f`, under four radial orbs (pink `#ff3cac` top left, blue `#2b86c5` top right, violet `#784ba0` bottom right, teal `#00d2b8` bottom left), each fading to nothing at about 60% of its radius, the teal orb held at 30% opacity, the others at 55%, so no orb dominates a panel. Light: `#eef1fb` under cyan `#a5f3fc`, lavender `#c4b5fd`, rose `#fecdd3` and mint `#bbf7d0` blobs. The backdrop is fixed; it does not scroll with the page.
 
-**Panels.** Dark panels are `rgb(28 18 72 / 0.55)` with a white sheen from 10% to 2% top-left to bottom-right; light panels are white at 62%. The tint is what keeps text contrast independent of the orb behind it: body text measures 14.6:1 (dark) and 16.3:1 (light) against the panels' effective colour.
+**Panels.** Dark panels are `rgb(28 18 72 / 0.62)` with a white sheen from 10% to 2% top-left to bottom-right; light panels are white at 62%. The tint is what keeps text contrast independent of the orb behind it. At the worst place in dark (the teal orb's centre), warning ink measures 6.49:1 on a panel, 4.90:1 in a table's header band and 4.63:1 on a hovered item; secondary ink 5.11:1 in the band and 4.83:1 on a hovered item; the notice bar's ink 4.55:1; primary ink 6.67:1 on the backdrop itself. Every ink passes 4.5:1 on every panel surface wherever the panel sits; `contrast.test.ts` computes it from the tokens.
 
-**Ink.** Primary text white / `#10162f`; secondary `#d9d3ff` / `#3d4664`. There are only these two text inks plus the status inks; a value, label or legend never takes a series colour.
+**Ink.** Primary text white / `#10162f`; secondary `#d9d3ff` / `#3d4664`. There are only these two text inks plus the status inks; a value, label or legend never takes a series colour. Text directly on the backdrop is primary ink only; secondary and status inks appear only on a panel.
 
 **Primary and focus.** The primary action is a white pill with violet ink (`#2a1a6e`) in dark mode and an ink pill with white text in light mode. The focus ring is cyan `#7ef9ff` / indigo `#3f5cf0`, 2px, offset 2px.
 
-**Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffb08a` dark / `#a8461c` light. A finished run's edge in the feed is green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
+**Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffc8ab` dark / `#a8461c` light. A finished run's edge in the feed is green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
 
 ## Typography
 
@@ -114,9 +114,9 @@ A glass menu rail on the left (a wrapped bar above the page under 768px), a head
 
 ## Elevation & Depth
 
-Depth comes from glass, not from stacked shadows. One level: a panel has a 1px edge (white 30% dark / 85% light), an inner 1px top highlight (white 40% / 90%), a 26px backdrop blur with 160% saturation, and one soft drop shadow (`0 20px 50px rgb(10 5 40 / 0.45)` dark, `0 10px 30px rgb(30 40 90 / 0.12)` light). Popovers and chart tooltips are solid (`--popover`, the panel's solid colour) with the panel's edge, and shadcn's small tooltips invert (ink background, page-colour text), so they read over any panel. Never a panel inside a panel.
+Depth comes from glass, not from stacked shadows. One level: a panel has a 1px edge (white 30% dark / 85% light), an inner 1px top highlight (white 40% / 90%), and one soft drop shadow (`0 20px 50px rgb(10 5 40 / 0.45)` dark, `0 10px 30px rgb(30 40 90 / 0.12)` light), over its tint and sheen. A panel has no backdrop blur or saturation, since a filter on a panel is recomputed on every scroll frame over the fixed backdrop, and the backdrop is already soft. Popovers and chart tooltips are solid (`--popover`, the panel's solid colour) with the panel's edge, and shadcn's small tooltips invert (ink background, page-colour text), so they read over any panel. Never a panel inside a panel.
 
-With `prefers-reduced-transparency: reduce`, panels become solid (`#2a1d5e` / `#f7f8fd`) with no blur; under `forced-colors`, the system colours take over and the edge stays.
+With `prefers-reduced-transparency: reduce`, panels become solid (`#2a1d5e` / `#f7f8fd`); under `forced-colors`, the system colours take over and the edge stays.
 
 ## Shapes
 
