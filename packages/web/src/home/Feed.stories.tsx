@@ -33,7 +33,7 @@ export const Full: Story = {
     await expect(items[0]).toHaveTextContent('6 findings · 5 acted on · 0 open · 2 h 10 · $7.10');
     await expect(items[1]).toHaveTextContent('New warning');
     await expect(within(items[1]).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
-    await expect(items[1]).toHaveTextContent('typed "grill me" but grill-me never loaded');
+    await expect(items[1]).toHaveTextContent('Typed "grill me" but grill-me never loaded');
     await expect(items[2]).toHaveTextContent('New warning · atlas · feat/search');
     await expect(items[3]).toHaveTextContent('Run finished · harbor · <img src=x onerror=alert(1)> · small');
     await expect(items[3]).toHaveTextContent('1 finding · 1 acted on · 0 open · 25 min · $1.20');

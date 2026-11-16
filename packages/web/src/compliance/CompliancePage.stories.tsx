@@ -95,7 +95,7 @@ export const Full: Story = {
     await expect(items[0]).toHaveClass('border-warning-edge');
     await expect(list.getByRole('link', { name: 'atlas · feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(list.getByText('new')).toBeVisible();
-    await expect(list.getByText('WARN: feat/search (2026-11-10): final_review step 0 has no agent id')).toBeVisible();
+    await expect(list.getByText('Feat/search (2026-11-10): final_review step 0 has no agent id')).toBeVisible();
 
     // Two warnings of one cell, neither new.
     await userEvent.click(canvas.getByRole('button', { name: 'step has no agent id, week of Nov 1: 2' }));

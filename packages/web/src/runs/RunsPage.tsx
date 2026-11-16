@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { PATHS, toPath, type FindingsQuery, type RunsQuery, type RunsResponse, type SpendUnits, type StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { hiddenLabel } from '../lib/format.ts';
+import { hiddenLabel, PATH_LABELS } from '../lib/format.ts';
 import { RunsTable } from './RunsTable.tsx';
 
 const PERIODS = [
@@ -56,7 +56,9 @@ export function ListFilters({
         >
           <option value="">All</option>
           {PATHS.map((path) => (
-            <option key={path}>{path}</option>
+            <option key={path} value={path}>
+              {PATH_LABELS[path]}
+            </option>
           ))}
         </select>
       </label>

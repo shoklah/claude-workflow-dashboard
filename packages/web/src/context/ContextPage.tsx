@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ContextResponse, ContextWeek, FindingsQuery } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { Option } from '../findings/FindingsPage.tsx';
+import { Option } from '../components/Option.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, barsOption, singleBars } from '../home/WeeklyCharts.tsx';
 import { TOOL_CLASS_LABELS, formatCompact, formatShare, uncountedLabel, weekLabel } from '../lib/format.ts';

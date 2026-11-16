@@ -17,7 +17,7 @@ export function SessionChip({ id }: { id: string }) {
     <span className="inline-flex items-center gap-0.5 align-baseline">
       <Tooltip>
         <TooltipTrigger asChild>
-          <span tabIndex={0} className="rounded font-mono text-[0.9em] underline decoration-dotted underline-offset-2">
+          <span tabIndex={0} className="rounded tabular-nums underline decoration-dotted underline-offset-2">
             {id.slice(0, 8)}
           </span>
         </TooltipTrigger>

@@ -71,7 +71,7 @@ export const Full: Story = {
     const context = canvas.getByRole('region', { name: 'Context' });
     await expect([...context.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
       '214 calls · median 281K · largest 1.3M',
-      `62 calls past the cap · handed off ${parseTime('2026-11-10T16:40:00.000Z').toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`,
+      `62 calls past the cap · handed off ${parseTime('2026-11-10T16:40:00.000Z').toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`,
       'Tool results: 912K characters · read 44%',
       'Sweeps: 1 inline · 4 delegated',
     ]);
