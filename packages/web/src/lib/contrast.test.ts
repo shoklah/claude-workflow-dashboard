@@ -11,7 +11,7 @@ import css from '../index.css?raw';
 
 type Rgba = [number, number, number, number];
 
-const COLOUR = /#[0-9a-f]{6}|rgb\([^)]*\)/gi;
+const COLOUR = /#[0-9a-f]{8}|#[0-9a-f]{6}|rgb\([^)]*\)/gi;
 
 /** A block's custom properties (`--name: value;`), the block found by its selector at the start of a line. */
 function block(selector: string): Record<string, string> {
@@ -20,7 +20,10 @@ function block(selector: string): Record<string, string> {
 }
 
 function parse(colour: string): Rgba {
-  if (colour.startsWith('#')) return [1, 3, 5].map((i) => parseInt(colour.slice(i, i + 2), 16)).concat(1) as Rgba;
+  if (colour.startsWith('#')) {
+    const [r, g, b, a = 255] = [1, 3, 5, 7].map((i) => parseInt(colour.slice(i, i + 2), 16)).filter((v) => !Number.isNaN(v));
+    return [r, g, b, a / 255];
+  }
   const [r, g, b, a] = colour.match(/[\d.]+/g)!.map(Number);
   return [r, g, b, a ?? 1];
 }
@@ -75,6 +78,10 @@ function mode(name: string, tokens: Record<string, string>) {
 const light = mode('light', block(':root'));
 const dark = mode('dark', { ...block(':root'), ...block('.dark') });
 
+test('an 8-digit hex keeps its alpha', () => {
+  expect('#11223380'.match(COLOUR)).toEqual(['#11223380']);
+  expect(parse('#11223380')).toEqual([0x11, 0x22, 0x33, 0x80 / 255]);
+});
 test('no backdrop-filter', () => expect(css).not.toMatch(/backdrop-filter/));
 test('the theme parses to the expected backdrop', () => {
   expect(dark.stops).toHaveLength(3);
