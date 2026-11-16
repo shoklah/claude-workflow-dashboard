@@ -14,12 +14,22 @@ const AT = '2026-11-12T10:00:00.000Z';
 const status: StatusResponse = { lastImportAt: AT, lastGoodImportAt: AT, error: null, importing: false };
 // The project filter's options: every project of the last 52 weeks.
 const projects = { '/api/runs?weeks=52': runsFull };
+const MARK = 'reporter, all time';
+const NO_FACTS = 'No advisor facts: the export is from before the reporter counted them.';
 
-/** A row's cells after its header, as text. */
+/** A row's cells after its header, as text (an unknown value reads its dash and its spoken label). */
 function cells(row: HTMLElement): string[] {
   return within(row)
     .getAllByRole('cell')
     .map((cell) => cell.textContent ?? '');
+}
+
+/** The rows of a table's body, from the one its row header names, as cell texts. */
+function lines(table: HTMLElement, name: string, count: number): string[][] {
+  const first = within(table).getByRole('rowheader', { name }).closest('tr')!;
+  const rows = [first];
+  while (rows.length < count) rows.push(rows[rows.length - 1].nextElementSibling as HTMLTableRowElement);
+  return rows.map(cells);
 }
 
 /** A table's column headers, as text. */
@@ -29,12 +39,22 @@ function columns(table: HTMLElement): string[] {
     .map((header) => header.textContent ?? '');
 }
 
+/** The table inside the scroll region named `name`. */
+const table = (canvas: HTMLElement, name: string) => within(within(canvas).getByRole('region', { name })).getByRole('table');
+
+/** No cell joins several values with " · ". */
+async function oneValuePerCell(canvas: HTMLElement) {
+  for (const cell of within(canvas).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
+}
+
 export const Loading: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/models?weeks=4': 'pending' });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Loading the models and advisor…')).toBeVisible();
+    const state = await canvas.findByText('Loading the models and advisor…');
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -43,7 +63,9 @@ export const Failed: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/models?weeks=4': 500 });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Couldn't load the models and advisor.")).toBeVisible();
+    const state = await canvas.findByText("Couldn't load the models and advisor.");
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -53,86 +75,145 @@ export const Empty: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/models?weeks=4': modelsEmpty });
   },
-  play: async ({ canvas }) => {
-    await expect(await canvas.findByText('No dispatches in this period.')).toBeVisible();
+  play: async ({ canvas, canvasElement }) => {
+    const empty = await canvas.findByText(
+      'No dispatches in this period. An agent shows here once a run or session dispatches it.',
+    );
+    await expect(empty).toHaveAttribute('colspan', '8');
+    await expect(canvas.getByText('No advisor calls in this period.')).toBeVisible();
+    await expect(canvas.getByText('No failed calls in this period.')).toBeVisible();
     await expect(canvas.getByText('No advisor weeks in this period.')).toBeVisible();
-    const full = canvas.getByRole('rowheader', { name: 'full' }).closest('tr')!;
-    await expect(cells(full)).toEqual(['1=opus-5-5/medium 2=opus-5-5/medium 3=opus-5-5/medium out=opus-5-5/medium', '–', '0']);
-    const notes = canvas.getByRole('rowheader', { name: 'notes' }).closest('tr')!;
-    await expect(cells(notes)).toEqual(['notes 0 · changed 0 · missing 0']);
-    const trial = canvas.getByRole('rowheader', { name: /^trial/ }).closest('tr')!;
-    await expect(cells(trial)).toEqual(['runs 8/5, weeks 0/3 CHECKPOINT']);
+    const main = table(canvasElement, 'Main sessions');
+    await expect(lines(main, 'Full', 1)).toEqual([
+      ['Opus 5.5medium', 'Opus 5.5medium', 'Opus 5.5medium', 'Opus 5.5medium', 'No sessions', '0'],
+    ]);
+    const period = within(canvas.getByRole('region', { name: 'This period' }));
+    await expect(period.getAllByRole('definition')[0]).toHaveTextContent('0');
+    await oneValuePerCell(canvasElement);
   },
 };
 
 /**
- * Full: the static page's tables, agents, main sessions, the advisor's facts and its weeks, the reporter's all-time
- * figures (mismatches, the stage table, differs, the trial and the advisor's weeks) marked "reporter, all time", the
- * advisor's facts summed over the period unmarked.
+ * Full: the agents and main sessions, one model and effort per line with the item's cells spanning its lines; the
+ * advisor's facts for the period, its calls by role and failed calls; its spend by week. The reporter's all-time
+ * figures (mismatches, the stage table, differs, the trial and the advisor's weeks) carry the reporter's mark.
  */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/models?weeks=4': modelsFull });
   },
-  play: async ({ canvas }) => {
-    const row = (name: string) => canvas.getByRole('rowheader', { name }).closest('tr')!;
-    const reviewer = (await canvas.findByRole('rowheader', { name: 'final-reviewer' })).closest('tr')!;
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('rowheader', { name: 'final-reviewer' });
+    await expect(canvas.getByRole('heading', { name: 'Models and advisor', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
-    const [agents, main, facts, weeks] = canvas.getAllByRole('table');
-    // Each table scrolls sideways in its own named, focusable region.
-    await expect(canvas.getByRole('region', { name: 'Main sessions' })).toHaveAttribute('tabindex', '0');
-    await expect(within(canvas.getByRole('region', { name: 'Advisor weeks' })).getByRole('table')).toBe(weeks);
-    await expect(columns(agents)).toEqual(['Agent', 'Requested', 'Ran on', 'Mismatchesreporter, all time']);
-    await expect(cells(reviewer)).toEqual(['-/xhigh 5', 'fable-5-1/xhigh 4 · opus-5-5/xhigh 1', '1']);
 
-    await expect(columns(main)).toEqual([
-      'Main session',
-      'Stage tablereporter, all time',
+    const agents = table(canvasElement, 'Agents');
+    await expect(canvas.getByRole('region', { name: 'Agents' })).toHaveAttribute('tabindex', '0');
+    await expect(columns(agents)).toEqual([
+      'Agent',
+      'Requested',
       'Ran on',
-      'Differsreporter, all time',
+      `Mismatches${MARK}`,
+      'Model',
+      'Effort',
+      'Dispatches',
+      'Model',
+      'Effort',
+      'Dispatches',
     ]);
-    await expect(cells(row('small'))).toEqual(['1=– 2=opus-5-5 3=opus-5-5 out=opus-5-5', '–', '0']);
-    await expect(cells(row('plan'))).toEqual([
-      '1=fable-5-1 2=fable-5-1 3=fable-5-1 out=fable-5-1',
-      'opus-5-5/high 2 · fable-5-1/high 2',
+    await expect(within(agents).getByRole('rowheader', { name: 'final-reviewer' })).toHaveAttribute('rowspan', '2');
+    await expect(lines(agents, 'final-reviewer', 2)).toEqual([
+      ['–not set', 'xhigh', '5', 'Fable 5.1', 'xhigh', '4', '1'],
+      ['', 'Opus 5.5', 'xhigh', '1'],
+    ]);
+    // A pair with no model or effort shows the dash.
+    await expect(lines(agents, 'task-reviewer', 1)).toEqual([['–not set', '–not set', '31', 'Opus 5.5', 'high', '31', '0']]);
+
+    const main = table(canvasElement, 'Main sessions');
+    await expect(columns(main)).toEqual([
+      'Path',
+      `Recommended, by stage${MARK}`,
+      'Ran on',
+      `Differs${MARK}`,
+      'Stage 1',
+      'Stage 2',
+      'Stage 3',
+      'Out',
+      'Model',
+      'Effort',
+      'Sessions',
+    ]);
+    await expect(lines(main, 'Small', 1)).toEqual([['–none', 'Opus 5.5', 'Opus 5.5', 'Opus 5.5', 'No sessions', '0']]);
+    await expect(lines(main, 'Plan', 2)).toEqual([
+      ['Fable 5.1', 'Fable 5.1', 'Fable 5.1', 'Fable 5.1', 'Opus 5.5', 'high', '2', '2'],
+      ['Fable 5.1', 'high', '2'],
+    ]);
+    // A stage's effort sits under its model in secondary ink.
+    const fullRow = within(main).getByRole('rowheader', { name: 'Full' }).closest('tr')!;
+    await expect(within(fullRow).getAllByText('medium')[0]).toHaveClass('text-muted-foreground');
+
+    const period = within(canvas.getByRole('region', { name: 'This period' }));
+    await expect(period.getAllByRole('term').map((term) => term.textContent)).toEqual([
+      'Calls',
+      'Tokens',
+      'Est. cost',
+      'Notes',
+      'Notes that changed something',
+      'Notes missing',
+      'Share of Fable spend',
+    ]);
+    await expect(period.getAllByRole('definition').map((value) => value.textContent)).toEqual([
+      '14',
+      '43.5K',
+      '$3.20',
+      '12',
+      '9',
       '2',
+      '8%',
+    ]);
+    await expect(period.getByText('Trial')).toBeVisible();
+    await expect(period.getByText(MARK)).toBeVisible();
+    await expect(period.getByText('runs 8/5, weeks 0/3 CHECKPOINT')).toBeVisible();
+
+    const roles = table(canvasElement, 'Advisor calls by role');
+    await expect(columns(roles)).toEqual(['Role', 'Calls', 'May consult']);
+    await expect(lines(roles, 'implementer', 3)).toEqual([['3', 'yes'], ['9', 'yes'], ['2', 'no']]);
+    await expect(within(roles).getByText('no')).toHaveClass('text-warning-ink');
+
+    const failed = table(canvasElement, 'Failed calls, by error');
+    await expect(columns(failed)).toEqual(['Failed calls, by error', 'Calls']);
+    await expect(lines(failed, 'overloaded error', 1)).toEqual([['1']]);
+
+    const weeks = table(canvasElement, 'Advisor spend by week');
+    await expect(columns(weeks)).toEqual([`Week${MARK}`, 'Advisor ($)', 'Fable ($)', 'Share (%)', 'Past the stop share']);
+    await expect(lines(weeks, 'Nov 1', 2)).toEqual([
+      ['9.80', '25.10', '39', 'yes'],
+      ['3.20', '41.00', '8', 'no'],
     ]);
 
-    await expect(columns(facts)).toEqual(['Advisor', 'Value']);
-    await expect(cells(row('calls by role'))).toEqual([
-      'implementer 3 · main 9 · task-reviewer 2 (should not consult)',
-    ]);
-    await expect(cells(row('failed calls'))).toEqual(['overloaded error 1']);
-    await expect(cells(row('tokens'))).toEqual(['43.5K']);
-    await expect(cells(row('est. cost'))).toEqual(['$3.20']);
-    const trial = canvas.getByRole('rowheader', { name: /^trial/ }).closest('tr')!;
-    await expect(cells(trial)).toEqual(['runs 8/5, weeks 0/3 CHECKPOINT']);
-    // Only the trial is the reporter's among the advisor's facts.
-    await expect(within(facts).getAllByText('reporter, all time')).toHaveLength(1);
-    await expect(within(trial).getByText('reporter, all time')).toBeVisible();
-
-    await expect(columns(weeks)).toEqual(['Weekreporter, all time', 'Advisor', 'Fable', 'Share', 'Stop']);
-    await expect(cells(row('Nov 1'))).toEqual(['$9.80', '$25.10', '39%', 'STOP']);
-    await expect(cells(row('Nov 8'))).toEqual(['$3.20', '$41.00', '8%', '']);
-
-    // The period's sums aren't marked.
-    await expect(within(agents).getAllByText('reporter, all time')).toHaveLength(1);
+    // Only the reporter's figures are marked: mismatches, the stage table, differs, the trial and the weeks.
+    await expect(canvas.getAllByText(MARK)).toHaveLength(5);
+    await oneValuePerCell(canvasElement);
   },
 };
 
-/** An export from the old reporter: its all-time figures and the advisor's facts show as dashes. */
+/** An export from the old reporter: its all-time figures show as dashes and the advisor's facts say why they're
+ * missing. */
 export const OldReporter: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/models?weeks=4': modelsOldReporter });
   },
-  play: async ({ canvas }) => {
-    const row = async (name: string) => (await canvas.findByRole('rowheader', { name })).closest('tr')!;
-    await expect(cells(await row('implementer'))).toEqual(['opus-5-5/medium 22', 'opus-5-5/medium 22', '–']);
-    await expect(cells(await row('full'))).toEqual(['–', 'opus-5-5/medium 5', '–']);
-    for (const name of ['calls by role', 'failed calls', 'tokens', 'est. cost', 'notes']) {
-      await expect(cells(await row(name))).toEqual(['–']);
-    }
-    await expect(cells(canvas.getByRole('rowheader', { name: /^trial/ }).closest('tr')!)).toEqual(['–']);
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('rowheader', { name: 'final-reviewer' });
+    await expect(lines(table(canvasElement, 'Agents'), 'implementer', 1)).toEqual([
+      ['Opus 5.5', 'medium', '22', 'Opus 5.5', 'medium', '22', '–not known'],
+    ]);
+    await expect(lines(table(canvasElement, 'Main sessions'), 'Full', 1)).toEqual([
+      ['–none', '–none', '–none', '–none', 'Opus 5.5', 'medium', '5', '–not known'],
+    ]);
+    await expect(canvas.getAllByText(NO_FACTS)).toHaveLength(3);
+    const period = within(canvas.getByRole('region', { name: 'This period' }));
+    await expect(period.getByText('not known')).toBeInTheDocument();
   },
 };
 
@@ -148,7 +229,7 @@ export const Filters: Story = {
     });
   },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('rowheader', { name: 'implementer' });
+    await canvas.findByRole('rowheader', { name: 'final-reviewer' });
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '12');
     await expect(fetch).toHaveBeenCalledWith('/api/models?path=full&weeks=12');
