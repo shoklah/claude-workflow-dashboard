@@ -81,14 +81,14 @@ export function FindingsPage() {
         }}
       />
       <div className="flex flex-wrap items-center gap-4 text-sm">
-        <div role="group" aria-label="Measure" className="flex gap-1">
+        <div role="group" aria-label="Measure" className="flex flex-wrap gap-1">
           {MEASURES.map((option) => (
             <Option key={option.measure} pressed={measure === option.measure} onClick={() => setMeasure(option.measure)}>
               {option.label}
             </Option>
           ))}
         </div>
-        <div role="group" aria-label="Area" className="flex gap-1">
+        <div role="group" aria-label="Area" className="flex flex-wrap gap-1">
           {AREAS.map((option) => (
             <Option
               key={option}
@@ -106,7 +106,7 @@ export function FindingsPage() {
       {findings.isPending && <p className="text-sm text-muted-foreground">Loading the findings…</p>}
       {findings.isError && <p className="text-sm">Couldn't load the findings.</p>}
       {data && (
-        <div className="flex flex-wrap items-start gap-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             {!workflowLabelled(data) && (
               <p className="text-sm text-muted-foreground">
@@ -129,7 +129,7 @@ export function FindingsPage() {
             )}
             {data.hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenLabel(data.hidden, 'finding')}</p>}
           </div>
-          <div className="w-72">
+          <div className="lg:w-72 lg:flex-none">
             <SignalsPanel signals={data.signals} labeller={data.labeller} />
           </div>
         </div>

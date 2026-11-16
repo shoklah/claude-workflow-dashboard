@@ -18,7 +18,7 @@ const ENTRIES = [
 
 export function Menu() {
   return (
-    <nav aria-label="Main" className="flex flex-col gap-1 text-sm">
+    <nav aria-label="Main" className="flex flex-wrap gap-1 text-sm md:flex-col">
       {ENTRIES.map((entry) => (
         <Link
           key={entry.to}

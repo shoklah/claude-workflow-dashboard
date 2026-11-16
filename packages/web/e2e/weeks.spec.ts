@@ -16,6 +16,6 @@ test('the weeks page shows its small multiples and weekly sums and has no axe vi
   await expect(thisWeek.getByRole('rowheader')).toHaveText('Nov 8');
   await expect(thisWeek.getByRole('cell').first()).toHaveText('small 1 · full 2 · plan 1');
   await expect(page.getByRole('img', { name: /: bars by week/ })).toHaveCount(4);
-  await expect(page.getByRole('table', { name: 'Full runs' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Full runs' }).getByRole('table')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

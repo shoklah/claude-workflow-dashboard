@@ -6,7 +6,7 @@ const runCount = (week: WeekNumbers) => week.runs.small + week.runs.full + week.
 
 function Tile({ label, value, detail, lastWeek }: { label: string; value: string; detail: string; lastWeek: string }) {
   return (
-    <div role="group" aria-label={label} className="flex-1 rounded-lg border bg-card px-3 py-2 text-sm">
+    <div role="group" aria-label={label} className="rounded-lg border bg-card px-3 py-2 text-sm">
       <div className="text-muted-foreground">{label}</div>
       <div className="text-2xl font-semibold">{value}</div>
       <div>{detail}</div>
@@ -19,7 +19,7 @@ function Tile({ label, value, detail, lastWeek }: { label: string; value: string
 export function WeekTiles({ thisWeek, lastWeek }: { thisWeek: WeekNumbers; lastWeek: WeekNumbers }) {
   const { small, full, plan } = thisWeek.runs;
   return (
-    <div className="flex gap-3">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       <Tile
         label="Runs this week"
         value={String(runCount(thisWeek))}
