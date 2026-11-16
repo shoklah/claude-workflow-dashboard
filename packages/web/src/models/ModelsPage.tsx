@@ -175,7 +175,7 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
                     const { model, effort } = splitPair(row.recommended?.[stage] ?? '-');
                     return (
                       <TableCell key={stage} rowSpan={lines} className="align-top">
-                        <Text value={model} unknown="none" />
+                        <Text value={model} unknown={row.recommended ? 'none' : undefined} />
                         {effort && <span className="block text-xs text-muted-foreground">{effort}</span>}
                       </TableCell>
                     );

@@ -209,7 +209,7 @@ export const OldReporter: Story = {
       ['Opus 5.5', 'medium', '22', 'Opus 5.5', 'medium', '22', '–not known'],
     ]);
     await expect(lines(table(canvasElement, 'Main sessions'), 'Full', 1)).toEqual([
-      ['–none', '–none', '–none', '–none', 'Opus 5.5', 'medium', '5', '–not known'],
+      ['–not known', '–not known', '–not known', '–not known', 'Opus 5.5', 'medium', '5', '–not known'],
     ]);
     await expect(canvas.getAllByText(NO_FACTS)).toHaveLength(3);
     const period = within(canvas.getByRole('region', { name: 'This period' }));
