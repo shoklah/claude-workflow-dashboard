@@ -261,8 +261,8 @@ describe('FAMILY_LABELS', () => {
 
 describe('warningsSummary', () => {
   it("sums the grid's warnings over its weeks and says how many are new", () => {
-    expect(warningsSummary(41, 8, 6)).toBe('41 warnings in 8 weeks · 6 new since you last looked');
-    expect(warningsSummary(1, 1, 0)).toBe('1 warning in 1 week · 0 new since you last looked');
+    expect(warningsSummary(41, 8, 6)).toBe('41 warnings in 8 weeks, 6 of them new since you last looked.');
+    expect(warningsSummary(1, 1, 0)).toBe('1 warning in 1 week, 0 of them new since you last looked.');
   });
 });
 

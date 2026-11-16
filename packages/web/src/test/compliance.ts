@@ -26,7 +26,7 @@ export const complianceEmpty: ComplianceResponse = {
 /**
  * Every family but skills and offers, then "other": a kind the dashboard doesn't know and the row of warnings stored
  * with no kind. "step has no agent id" holds the grid's largest count, and its Nov 8 warning is new; the Nov 8
- * startup warning is a session's. The reporter writes three information lines.
+ * startup warning is a session's. The reporter writes five information lines, one with two ": " and one with none.
  */
 export const complianceFull: ComplianceResponse = {
   weeks: WEEKS,
@@ -115,6 +115,8 @@ export const complianceFull: ComplianceResponse = {
       'atlas feat/search: the handoff came 12 calls after the cap',
       'inline sweeps: 2',
       'over the cap without a handoff: 1 transcripts',
+      'advisor roles: fable: 3 calls',
+      'every transcript was read',
     ],
     hidden: 0,
     source: 'reporter',

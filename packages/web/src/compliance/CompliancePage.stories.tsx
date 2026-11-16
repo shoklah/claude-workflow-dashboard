@@ -21,7 +21,9 @@ export const Loading: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': 'pending' });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Loading the warnings…')).toBeVisible();
+    const state = await canvas.findByText('Loading the warnings…');
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -30,7 +32,11 @@ export const Failed: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': 500 });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Couldn't load the warnings.")).toBeVisible();
+    const state = await canvas.findByText(
+      "Couldn't load the warnings. Check that the dashboard server is running, then refresh.",
+    );
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -39,16 +45,18 @@ export const Empty: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': complianceEmpty });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('No warnings in this period.')).toBeVisible();
+    await expect(
+      await canvas.findByText('No warnings in this period. A warning shows here when the reporter flags a run or session.'),
+    ).toBeVisible();
     await expect(canvas.queryByRole('button', { name: /week of/ })).toBeNull();
-    await expect(canvas.queryByRole('heading', { name: /Information from the reporter/ })).toBeNull();
+    await expect(canvas.queryByRole('region', { name: 'Information from the reporter' })).toBeNull();
   },
 };
 
 /**
  * Full: the line summing the grid, then the current warnings' kinds by family and week, in the reporter's order, each
- * family under its heading and "other" last, each kind's total last; a selected cell lists its warnings below the grid:
- * kind, run link, "new" mark and text.
+ * family under its heading and "other" last, each kind's total last; a selected cell lists its warnings below the grid
+ * as a table: run link, project, text and whether it is new.
  */
 export const Full: Story = {
   beforeEach: () => {
@@ -56,66 +64,88 @@ export const Full: Story = {
   },
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('region', { name: 'Warnings by kind and week' });
-    await expect(canvas.getByRole('button', { name: 'Current warnings' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(canvas.getByRole('button', { name: 'Including resolved' })).toHaveAttribute('aria-pressed', 'false');
+    const switcher = within(canvas.getByRole('group', { name: 'Warnings' }));
+    await expect(switcher.getByRole('button', { name: 'Current' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(switcher.getByRole('button', { name: 'Including resolved' })).toHaveAttribute('aria-pressed', 'false');
     await expect(canvas.getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
       'Review flow',
-      'final review without simplify',
-      'plan review without plan simplify',
+      'Final review without simplify',
+      'Plan review without plan simplify',
       'Steps and the record',
-      'step has no agent id',
+      'Step has no agent id',
       'Agents and models',
-      'model-less dispatch',
+      'Model-less dispatch',
       'Sessions',
-      'startup guidelines missing',
+      'Startup guidelines missing',
       'Other',
-      'brand new check',
-      'other',
+      'Brand new check',
+      'Other',
     ]);
-    await expect(canvas.getByText('9 warnings in 4 weeks · 2 new since you last looked')).toBeVisible();
+    // N is the full fixture's cells' total.
+    await expect(canvas.getByText('9 warnings in 4 weeks, 2 of them new since you last looked.')).toBeVisible();
     // Each kind's warnings over the period in the last column; a family's heading spans it too.
     await expect(canvas.getAllByRole('columnheader').at(-1)).toHaveTextContent('Total');
     const totalOf = (kind: string) =>
-      within(canvas.getByRole('rowheader', { name: kind }).closest('tr')!).getAllByRole('cell').at(-1);
-    await expect(totalOf('step has no agent id')).toHaveTextContent('3');
-    await expect(totalOf('other')).toHaveTextContent('1');
+      within(canvas.getAllByRole('rowheader', { name: kind }).at(-1)!.closest('tr')!).getAllByRole('cell').at(-1);
+    await expect(totalOf('Step has no agent id')).toHaveTextContent('3');
+    await expect(totalOf('Other')).toHaveTextContent('1');
     await expect(canvas.getByRole('rowheader', { name: 'Review flow' })).toHaveAttribute('colspan', '6');
     // The grid's largest count takes the darkest step.
-    await expect(canvas.getByRole('button', { name: 'step has no agent id, week of Nov 1: 2' })).toHaveClass(
+    await expect(canvas.getByRole('button', { name: 'Step has no agent id, week of Nov 1: 2' })).toHaveClass(
       'bg-shade-5',
     );
     await expect(canvas.getByText('Select a cell to list its warnings.')).toBeVisible();
 
-    await userEvent.click(canvas.getByRole('button', { name: 'step has no agent id, week of Nov 8: 1' }));
-    await expect(canvas.getByRole('heading', { name: 'step has no agent id · week of Nov 8 · 1 warning' })).toBeVisible();
-    const list = within(canvas.getByRole('list', { name: 'Warnings' }));
-    const items = list.getAllByRole('listitem');
-    await expect(items).toHaveLength(1);
-    await expect(items[0]).toHaveTextContent('step has no agent id');
-    await expect(items[0]).toHaveClass('border-warning-edge');
-    await expect(list.getByRole('link', { name: 'atlas · feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
-    await expect(list.getByText('new')).toBeVisible();
-    // The run's own "branch (date):" lead is gone: the link already names the run.
-    await expect(list.getByText('final_review step 0 has no agent id')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Step has no agent id, week of Nov 8: 1' }));
+    await expect(canvas.getByRole('heading', { name: '1 warning of "Step has no agent id", week of Nov 8' })).toBeVisible();
+    const table = within(canvas.getByRole('region', { name: 'Warnings' }));
+    await expect(table.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      'Run',
+      'Project',
+      'Warning',
+      'Since you last looked',
+    ]);
+    const rows = table.getAllByRole('row').slice(1);
+    await expect(rows).toHaveLength(1);
+    await expect(table.getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(within(rows[0]).getByText('atlas')).toBeVisible();
+    await expect(within(rows[0]).getByText('New')).toBeVisible();
+    // The "WARN:" prefix and the run's own "branch (date):" lead are gone: the Run column already names the run.
+    await expect(table.getByText('final_review step 0 has no agent id')).toBeVisible();
+    await expect(table.queryByText(/WARN:/)).toBeNull();
+    for (const cell of table.getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
 
     // Two warnings of one cell, neither new.
-    await userEvent.click(canvas.getByRole('button', { name: 'step has no agent id, week of Nov 1: 2' }));
-    await expect(within(canvas.getByRole('list', { name: 'Warnings' })).getAllByRole('listitem')).toHaveLength(2);
-    await expect(within(canvas.getByRole('list', { name: 'Warnings' })).queryByText('new')).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'Step has no agent id, week of Nov 1: 2' }));
+    const two = within(canvas.getByRole('region', { name: 'Warnings' }));
+    await expect(two.getAllByRole('row').slice(1)).toHaveLength(2);
+    await expect(two.queryByText('New')).toBeNull();
+    await expect(two.getAllByText('Seen')).toHaveLength(2);
 
     // A session's warning has no run to link to, and its session shows as its chip.
-    await userEvent.click(canvas.getByRole('button', { name: 'startup guidelines missing, week of Nov 8: 1' }));
-    const session = within(canvas.getByRole('list', { name: 'Warnings' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Startup guidelines missing, week of Nov 8: 1' }));
+    const session = within(canvas.getByRole('region', { name: 'Warnings' }));
     await expect(session.queryByRole('link')).toBeNull();
     await expect(session.getByText('5f0c9a1e')).toBeVisible();
+    await expect(session.getByText('no run')).toBeInTheDocument();
+    await expect(session.queryByText(/WARN:/)).toBeNull();
 
-    // The reporter's information lines below the warnings, under its mark.
-    await expect(canvas.getByRole('heading', { name: /Information from the reporter/ })).toHaveTextContent(/reporter$/);
-    const information = within(canvas.getByRole('list', { name: 'Information from the reporter' }));
-    await expect(information.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      'atlas feat/search: the handoff came 12 calls after the cap',
-      'inline sweeps: 2',
-      'over the cap without a handoff: 1 transcripts',
+    // The reporter's information lines below the warnings, under its mark, each split at its first ": ".
+    const information = within(canvas.getByRole('region', { name: 'Information from the reporter' }));
+    await expect(information.getByText('reporter')).toBeVisible();
+    await expect(information.getAllByRole('term').map((dt) => dt.textContent)).toEqual([
+      'atlas feat/search',
+      'inline sweeps',
+      'over the cap without a handoff',
+      'advisor roles',
+      'Line 5',
+    ]);
+    await expect(information.getAllByRole('definition').map((dd) => dd.textContent)).toEqual([
+      'the handoff came 12 calls after the cap',
+      '2',
+      '1 transcripts',
+      'fable: 3 calls',
+      'every transcript was read',
     ]);
   },
 };
@@ -135,6 +165,7 @@ export const Resolved: Story = {
     await canvas.findByRole('region', { name: 'Warnings by kind and week' });
     await userEvent.click(canvas.getByRole('button', { name: 'Including resolved' }));
     await expect(canvas.getByRole('button', { name: 'Including resolved' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByRole('button', { name: 'Current' })).toHaveAttribute('aria-pressed', 'false');
     await expect(fetch).toHaveBeenCalledWith('/api/compliance?weeks=4&resolved=1');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await expect(fetch).toHaveBeenCalledWith('/api/compliance?path=full&weeks=4&resolved=1');
@@ -166,10 +197,9 @@ export const Hidden: Story = {
       ),
     ).toBeVisible();
     await expect(canvas.queryByRole('rowheader', { name: 'Other' })).toBeNull();
-    const information = within(canvas.getByRole('list', { name: 'Information from the reporter' }));
-    await expect(information.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '3 information lines are hidden while showing',
-    ]);
+    const information = within(canvas.getByRole('region', { name: 'Information from the reporter' }));
+    await expect(information.getByText('3 information lines are hidden while showing')).toBeVisible();
+    await expect(information.queryByRole('term')).toBeNull();
   },
 };
 
@@ -179,8 +209,10 @@ export const AllLeftOut: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': { ...complianceEmpty, hidden: 2 } });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('No warnings to show in this period.')).toBeVisible();
-    await expect(canvas.queryByText('No warnings in this period.')).toBeNull();
+    await expect(
+      await canvas.findByText('No warnings to show in this period: showing mode leaves out other projects.'),
+    ).toBeVisible();
+    await expect(canvas.queryByText(/^No warnings in this period/)).toBeNull();
   },
 };
 
@@ -206,15 +238,15 @@ export const SelectionLeftOut: Story = {
     );
   },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'brand new check, week of Nov 8: 1' }));
-    await expect(canvas.getByRole('heading', { name: /^brand new check/ })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Brand new check, week of Nov 8: 1' }));
+    await expect(canvas.getByRole('heading', { name: /"Brand new check"/ })).toBeVisible();
     live['/api/compliance?weeks=4'] = complianceShowing;
 
     await userEvent.click(canvas.getByRole('button', { name: 'Start showing' }));
 
     await waitFor(() => expect(canvas.queryByRole('rowheader', { name: 'Other' })).toBeNull());
     await expect(await canvas.findByRole('region', { name: 'Warnings by kind and week' })).toBeVisible();
-    await expect(canvas.queryByText(/brand new check/)).toBeNull();
+    await expect(canvas.queryByText(/Brand new check/)).toBeNull();
     await expect(canvas.getByText('Select a cell to list its warnings.')).toBeVisible();
   },
 };
