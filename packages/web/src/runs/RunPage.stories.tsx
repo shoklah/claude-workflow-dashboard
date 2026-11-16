@@ -78,6 +78,8 @@ export const Full: Story = {
     const warnings = within(canvas.getByRole('region', { name: 'Warnings' }));
     await expect(warnings.getByText('0f1e2d3c')).toBeVisible();
     await expect(warnings.getByRole('button', { name: 'Copy session ID' })).toBeVisible();
+    // The run's own "branch (date):" lead is gone: the page already names the run.
+    await expect(warnings.getByText('Final review without simplify: final_review at step 4')).toBeVisible();
   },
 };
 

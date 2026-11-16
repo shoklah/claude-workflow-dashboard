@@ -35,6 +35,8 @@ export const Full: Story = {
     await expect(within(items[1]).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
     await expect(items[1]).toHaveTextContent('Typed "grill me" but grill-me never loaded');
     await expect(items[2]).toHaveTextContent('New warning · atlas · feat/search');
+    // The run's own "branch (date):" lead is gone: the headline already names the run.
+    await expect(within(items[2]).getByText('Final-reviewer ran on another model than its pin')).toBeVisible();
     await expect(items[3]).toHaveTextContent('Run finished · harbor · <img src=x onerror=alert(1)> · small');
     await expect(items[3]).toHaveTextContent('1 finding · 1 acted on · 0 open · 25 min · $1.20');
     await expect(canvasElement.querySelector('img')).toBeNull();

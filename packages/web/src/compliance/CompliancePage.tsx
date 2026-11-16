@@ -132,7 +132,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
                   {w.isNew && <span className={cn('text-xs', WARNING_INK)}>new</span>}
                 </div>
                 <div>
-                  <WarningText text={w.text} sessionId={w.sessionId} />
+                  <WarningText text={w.text} sessionId={w.sessionId} branch={w.branch} />
                 </div>
               </li>
             ))}
