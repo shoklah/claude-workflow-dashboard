@@ -1,14 +1,17 @@
+import { useId, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Handle, Position, ReactFlow, type Edge, type Node, type NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { cn } from 'cn';
 import type { DiagramStep, FixLine, HomeResponse } from '@cwd/shared';
 import { STEP_LABELS, WARNING_BORDER, WARNING_INK, plural, stepWarningsLabel } from '../lib/format.ts';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
+import { Num } from '../components/Num.tsx';
+import { Option } from '../components/Option.tsx';
+import { Pairs, Panel } from '../components/Panel.tsx';
 
 type StepNode = Node<DiagramStep, 'step'>;
 
-const BOX_WIDTH = 132;
+const BOX_WIDTH = 140;
 const GAP = 40;
 
 /**
@@ -21,23 +24,27 @@ function StepBox({ data }: NodeProps<StepNode>) {
     <div
       style={{ width: BOX_WIDTH }}
       className={cn(
-        'rounded-md bg-card px-2 py-1.5 text-center text-xs',
+        'rounded-lg bg-secondary px-2.5 py-2 text-xs',
         warned ? cn('border-2', WARNING_BORDER) : 'border',
       )}
     >
       <Handle type="target" position={Position.Left} isConnectable={false} style={{ visibility: 'hidden' }} />
-      <div className="font-semibold">{STEP_LABELS[data.step]}</div>
-      <div>ran {data.ran}</div>
-      <div>
-        {data.findings} found · {data.actedOn} acted on
-      </div>
+      <div className="mb-1 text-sm font-semibold">{STEP_LABELS[data.step]}</div>
+      <Pairs
+        className="gap-x-2 gap-y-0 text-xs"
+        pairs={[
+          ['Ran', <Num value={data.ran} />],
+          ['Found', <Num value={data.findings} />],
+          ['Acted on', <Num value={data.actedOn} />],
+        ]}
+      />
       {warned && (
         // React Flow turns pointer events off on a node no one can select, drag or click, so the link turns them on.
         <Link
           to="/compliance"
           search={{ step: data.step }}
           aria-label={stepWarningsLabel(data.warnings, data.step)}
-          className={cn('pointer-events-auto underline underline-offset-2', WARNING_INK)}
+          className={cn('pointer-events-auto mt-1 block underline underline-offset-2', WARNING_INK)}
         >
           {plural(data.warnings, 'warning')}
         </Link>
@@ -68,7 +75,7 @@ function Flow({ steps }: { steps: DiagramStep[] }) {
   // React Flow's attribution stays (it asks to be hidden only with a Pro plan), in an ink dark enough to read;
   // marked important, since its CSS is unlayered and would beat the utility.
   return (
-    <div className="h-32 [&_.react-flow\_\_attribution_a]:text-muted-foreground!">
+    <div className="h-40 [&_.react-flow\_\_attribution_a]:text-muted-foreground!">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -91,38 +98,55 @@ function Flow({ steps }: { steps: DiagramStep[] }) {
   );
 }
 
+/** The fix-check facts under the flow, a group named by its visible title. */
 function FixChecks({ line }: { line: FixLine }) {
+  const titleId = useId();
+  const pairs: [string, number][] = [
+    ['Ran', line.ran],
+    ['Still open', line.open],
+    ['Reached round 3', line.roundThree],
+  ];
   return (
-    <p className="text-center text-xs text-muted-foreground">
-      fix-checks: {line.ran} ran · {line.open} still open · {line.roundThree} reached round 3
-    </p>
+    <div role="group" aria-labelledby={titleId} className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-t pt-3 text-sm">
+      <span id={titleId} className="font-semibold">
+        Fix-checks
+      </span>
+      <dl className="flex flex-wrap gap-x-6 gap-y-1">
+        {pairs.map(([term, value]) => (
+          <div key={term} className="flex gap-2">
+            <dt className="text-muted-foreground">{term}</dt>
+            <dd className="tabular-nums">
+              <Num value={value} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
-/** The workflow over the last 7 days, a tab per path, with the fix-check line under each. */
+/** The workflow over the last 7 days on a panel, a switch per path, with the fix-check facts under the flow. */
 export function WorkflowDiagram({ diagram }: { diagram: HomeResponse['diagram'] }) {
+  const [path, setPath] = useState<'full' | 'small'>('full');
   return (
-    <section aria-label="Workflow, last 7 days" className="flex flex-col gap-2">
-      <Tabs defaultValue="full">
-        <div className="flex items-center gap-3">
-          <TabsList>
-            <TabsTrigger value="full">Full path</TabsTrigger>
-            <TabsTrigger value="small">Small path</TabsTrigger>
-          </TabsList>
-          <span className="text-sm text-muted-foreground">last 7 days</span>
+    <Panel
+      title="Workflow, last 7 days"
+      aside={
+        <div role="group" aria-label="Path" className="flex flex-wrap gap-1">
+          <Option pressed={path === 'full'} onClick={() => setPath('full')}>
+            Full path
+          </Option>
+          <Option pressed={path === 'small'} onClick={() => setPath('small')}>
+            Small path
+          </Option>
         </div>
-        <TabsContent value="full">
-          <Flow steps={diagram.full} />
-          <FixChecks line={diagram.fixChecks.full} />
-        </TabsContent>
-        <TabsContent value="small">
-          <Flow steps={diagram.small} />
-          <FixChecks line={diagram.fixChecks.small} />
-        </TabsContent>
-      </Tabs>
+      }
+    >
+      <Flow key={path} steps={diagram[path]} />
+      <FixChecks line={diagram.fixChecks[path]} />
       {diagram.beforeSteps > 0 && (
         <p className="text-sm text-muted-foreground">{plural(diagram.beforeSteps, 'run')} before steps, not counted</p>
       )}
-    </section>
+    </Panel>
   );
 }
