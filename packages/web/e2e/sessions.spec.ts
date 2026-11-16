@@ -24,5 +24,5 @@ test('a session opens its timeline, links its runs and has no axe violations', a
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await timeline.getByRole('link', { name: 'tidepool-api · feature/webhooks · full' }).click();
-  await expect(page.getByRole('heading', { name: 'tidepool-api · feature/webhooks' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
 });

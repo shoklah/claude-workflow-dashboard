@@ -57,13 +57,7 @@ export function FindingsGrid({
           rows: rows.map((row) => ({
             id: row.category ?? '',
             name: label(row.category),
-            header: (
-              <CategoryBadge
-                category={row.category}
-                judge={byWorkflow ? null : 'app'}
-                labels={response.categoryLabels}
-              />
-            ),
+            header: <CategoryBadge category={row.category} labels={response.categoryLabels} />,
             values: row.cells.map((cell) => value(cell, measure)),
             texts: byWorkflow && measure === 'raised' ? row.cells.map(byAppSplit) : undefined,
           })),

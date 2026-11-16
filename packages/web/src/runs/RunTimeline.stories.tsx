@@ -19,7 +19,8 @@ export const Empty: Story = {
   },
 };
 
-/** Full: a wave's tasks side by side, each step opening its findings. */
+/** Full: a wave's tasks side by side, each step's name, round and counts as separate words, each step opening its
+ * findings; a group of one step names it once. */
 export const Full: Story = {
   args: { timeline: runFull.timeline, beforeSteps: false },
   play: async ({ canvas, canvasElement, userEvent }) => {
@@ -33,7 +34,16 @@ export const Full: Story = {
     const finding = 'Search drops the last page on exact multiples';
     await expect(canvas.getByText(finding)).not.toBeVisible();
     const inTask1 = within(canvas.getByRole('group', { name: 'Task 1' }));
-    await userEvent.click(inTask1.getByText('Task review · 1 important · 1 minor'));
+    await expect(canvasElement.textContent).not.toContain(' · ');
+    const review = inTask1.getByText('Task review').closest('summary')!;
+    await expect([...review.querySelectorAll('span span')].map((s) => s.textContent)).toEqual([
+      'Task review',
+      'Important 1',
+      'Minor 1',
+    ]);
+    await expect(inTask1.getByText('Round 1')).toBeVisible();
+    await expect(inTask1.getByText('Fixed 1')).toBeVisible();
+    await userEvent.click(review);
     await expect(canvas.getByText(finding)).toBeVisible();
     await expect(inTask1.getByText("Test name doesn't say what it checks")).toBeVisible();
 
@@ -46,8 +56,18 @@ export const Full: Story = {
     await expect(canvas.getByText(HTML_TEXT)).toBeVisible();
     await expect(canvasElement.querySelector('img')).toBeNull();
 
-    // A step with no findings has nothing to open.
-    await expect(canvas.getByRole('group', { name: 'Task 3' }).querySelector('details')).toBeNull();
+    // A finding's severity and outcome in the reader's words.
+    await expect(inTask1.getByText('Important')).toBeVisible();
+    await expect(inTask1.getAllByText('Fixed')[0]).toBeVisible();
+
+    // A step with no findings has nothing to open, and says so.
+    const task3 = canvas.getByRole('group', { name: 'Task 3' });
+    await expect(task3.querySelector('details')).toBeNull();
+    await expect(within(task3).getByText('No findings')).toBeVisible();
+
+    // The Simplify group's one step isn't named again.
+    await expect(canvas.getAllByText('Simplify')).toHaveLength(1);
+    await expect(canvas.getByText('Applied 1')).toBeVisible();
   },
 };
 

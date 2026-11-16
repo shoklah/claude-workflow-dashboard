@@ -26,7 +26,7 @@ test('the compliance page lists a cell’s warnings with their run and has no ax
   await expect(information.getByRole('listitem').filter({ hasText: /^inline sweeps:/ })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await list.getByRole('link', { name: 'tidepool-api · feature/webhooks' }).click();
-  await expect(page.getByRole('heading', { name: 'tidepool-api · feature/webhooks' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
 });
 
 test('home’s orange final review box opens compliance filtered to that step', async ({ page }) => {

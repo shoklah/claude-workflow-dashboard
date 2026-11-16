@@ -21,7 +21,7 @@ test('the context page lists the units over the cap, links their runs and has no
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await first.click();
-  await expect(page.getByRole('heading', { name: 'lantern-notes · feature/offline-sync' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Context', exact: true })).toBeVisible();
 
   await page.goBack();

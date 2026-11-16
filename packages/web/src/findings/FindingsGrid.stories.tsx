@@ -36,8 +36,8 @@ export const Empty: Story = {
 };
 
 /**
- * Full: the area's categories by week, each cell's count written in it, each set category in the app's dashed badge,
- * then the unlabelled row. A cell is a button that selects it.
+ * Full: the area's categories by week, each cell's count written in it, each category as plain text, then the
+ * unlabelled row. A cell is a button that selects it.
  */
 export const Full: Story = {
   play: async ({ args, canvas, canvasElement, userEvent }) => {
@@ -46,10 +46,6 @@ export const Full: Story = {
     await expect(canvas.getAllByRole('rowheader').at(-1)).toHaveTextContent('unlabelled');
     // It scrolls sideways over many weeks, so its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Findings by category and week' })).toHaveAttribute('tabindex', '0');
-    await expect(within(canvas.getByRole('rowheader', { name: 'Tests' })).getByText('Tests')).toHaveAttribute(
-      'title',
-      "The app's label",
-    );
     // The darkest step for the grid's largest count, a grey for 0.
     const cell = canvas.getByRole('button', { name: 'Tests, week of Nov 8: 2' });
     await expect(cell).toHaveClass('bg-shade-5');
