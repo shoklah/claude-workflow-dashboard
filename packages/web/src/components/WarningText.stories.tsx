@@ -8,7 +8,7 @@ type Story = StoryObj<typeof meta>;
 
 /** Empty: a warning that names no session is its sentence alone, with no chip. */
 export const NoSession: Story = {
-  args: { text: 'fix/retry-backoff (2026-10-21): no session transcript found', sessionId: null },
+  args: { text: 'fix/retry-backoff (2026-10-21): no session transcript found', sessionId: null, branch: null },
   play: async ({ canvasElement, canvas }) => {
     await expect(canvasElement).toHaveTextContent('Fix/retry-backoff (2026-10-21): no session transcript found');
     await expect(canvas.queryByRole('button')).toBeNull();
@@ -28,6 +28,7 @@ export const WithSession: Story = {
   args: {
     text: 'WARN: session {session}: startup guidelines missing',
     sessionId: '7d1e4b2a-9c3f-4a8e-b5d6-1f2e3a4b5c6d',
+    branch: null,
   },
   play: async ({ canvasElement, canvas }) => {
     await expect(canvasElement).not.toHaveTextContent('WARN:');
