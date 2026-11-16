@@ -180,16 +180,20 @@ test("the Full run's timeline has two wave groups holding their tasks", async ()
   expect(timeline[4].steps.map((s) => s.step)).toEqual(['final_review', 'final_fix_check']);
 });
 
-test('a kit review with no task or wave sits in the final review group', async () => {
+test("a kit's review and fix-check with no task or wave sit in the final review group", async () => {
   db.$client.close();
   db = dbWith('report-full', (raw) =>
-    raw.runs[4].steps.push({ step: 'kit_review', round: 0, agent: 'kit-reviewer', counts: {}, findings: [] }),
+    raw.runs[4].steps.push(
+      { step: 'kit_review', round: 0, agent: 'kit-reviewer', counts: {}, findings: [] },
+      { step: 'fix_check', kit: 'ui', round: 1, agent: 'kit-reviewer', counts: {}, findings: [] },
+    ),
   );
   const { timeline } = await run(FULL);
   expect(timeline.find((g) => g.kind === 'final')!.steps.map((s) => s.step)).toEqual([
     'final_review',
     'final_fix_check',
     'kit_review',
+    'fix_check',
   ]);
 });
 
