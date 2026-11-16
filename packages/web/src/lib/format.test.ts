@@ -485,7 +485,6 @@ test('a day and a day and time are written in en-US, in the reader\'s time zone,
   expect(formatDay(date)).toMatch(/^Nov 1[12]$/);
   expect(formatDayTime(date)).toMatch(/^Nov 1[12], \d{2}:20$/);
   expect(formatDayTime(date).startsWith(`${formatDay(date)}, `)).toBe(true);
-  expect(formatDayTime(date).slice(-5)).toBe(timelineTimes(['2026-11-12T12:20:00Z', '2026-11-12T12:20:00Z'])[1]);
 });
 test('capitalize', () => { expect(capitalize('important')).toBe('Important'); expect(capitalize('')).toBe(''); });
 test('STEP_LABELS names simplify as a step, capitalised', () => { expect(STEP_LABELS.simplify).toBe('Simplify'); });

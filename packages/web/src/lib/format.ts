@@ -1,4 +1,4 @@
-import { parseTime, toStepKind, type Area, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type Path, type FindingCell, type FindingRow, type FindingSplit, type FindingsResponse, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -298,15 +298,20 @@ export const NO_NAMES = 'none';
 /** A day as "Nov 8", the time of day as "09:07" (en-US, 24-hour), the one pair of date options on every screen. */
 const DAY = { month: 'short', day: 'numeric' } as const;
 const CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const;
+// Built once: a call with options builds a new formatter each time, and a heatmap labels every cell.
+const DAY_FORMAT = new Intl.DateTimeFormat('en-US', DAY);
+const DAY_TIME_FORMAT = new Intl.DateTimeFormat('en-US', { ...DAY, ...CLOCK });
+const CLOCK_FORMAT = new Intl.DateTimeFormat('en-US', CLOCK);
+const WEEK_FORMAT = new Intl.DateTimeFormat('en-US', { ...DAY, timeZone: 'UTC' });
 
 /** A day in the reader's time zone, written in en-US: "Nov 12". */
 export function formatDay(date: Date): string {
-  return date.toLocaleDateString('en-US', DAY);
+  return DAY_FORMAT.format(date);
 }
 
 /** A day and time in the reader's time zone, written in en-US on the 24-hour clock: "Nov 12, 10:20". */
 export function formatDayTime(date: Date): string {
-  return date.toLocaleString('en-US', { ...DAY, ...CLOCK });
+  return DAY_TIME_FORMAT.format(date);
 }
 
 /** A session's timeline times, in its order and the reader's time zone, written in en-US on the 24-hour clock: the
@@ -316,7 +321,7 @@ export function timelineTimes(isos: string[]): string[] {
   const dates = isos.map((iso) => parseTime(iso));
   return dates.map((date, i) => {
     const newDay = i === 0 || date.toDateString() !== dates[i - 1].toDateString();
-    return newDay ? formatDayTime(date) : date.toLocaleTimeString('en-US', CLOCK);
+    return newDay ? formatDayTime(date) : CLOCK_FORMAT.format(date);
   });
 }
 
@@ -371,7 +376,7 @@ export function actedOnSplit(findings: FindingSplit): string {
 
 /** A week's start date, as an axis or a column names it: "Nov 8". */
 export function weekLabel(week: string): string {
-  return new Date(week).toLocaleDateString('en-US', { ...DAY, timeZone: 'UTC' });
+  return WEEK_FORMAT.format(new Date(week));
 }
 
 /** A whole percent, or a dash when it isn't known. */
@@ -442,11 +447,11 @@ export function advisorRolesLabel(byRole: Record<string, { calls: number; flagge
 }
 
 /** A path's name on screen. */
-export const PATH_LABELS: Record<string, string> = { small: 'Small', full: 'Full', plan: 'Plan' };
+export const PATH_LABELS: Record<Path, string> = { small: 'Small', full: 'Full', plan: 'Plan' };
 
 /** A path on screen: its name, a path the dashboard doesn't know as it is; null for none. */
 export function pathLabel(path: string | null): string | null {
-  return path === null ? null : (PATH_LABELS[path] ?? path);
+  return path === null ? null : ((PATH_LABELS as Record<string, string>)[path] ?? path);
 }
 
 /** A model id in the reader's words: "claude-opus-5-5" as "Opus 5.5", "claude-fable-6-preview" as "Fable 6 preview",

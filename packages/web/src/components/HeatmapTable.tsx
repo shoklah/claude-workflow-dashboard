@@ -44,15 +44,16 @@ export function HeatmapTable({
   selected: HeatmapSelection | null;
   onSelect: (cell: HeatmapSelection) => void;
 }) {
+  const labels = weeks.map(weekLabel);
   return (
     // Its container is a named tab stop for keyboard users, since it scrolls sideways.
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': label }}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <TableHead>{corner}</TableHead>
-          {weeks.map((week) => (
+          {weeks.map((week, i) => (
             <TableHead key={week} className="text-center">
-              {weekLabel(week)}
+              {labels[i]}
             </TableHead>
           ))}
           {withTotal && <TableHead className={NUM}>Total</TableHead>}
@@ -90,7 +91,7 @@ export function HeatmapTable({
                     <button
                       type="button"
                       aria-pressed={pressed}
-                      aria-label={`${row.name}, week of ${weekLabel(week)}: ${text}`}
+                      aria-label={`${row.name}, week of ${labels[i]}: ${text}`}
                       onClick={() => onSelect({ id: row.id, week })}
                       className={cn(
                         'h-8 w-full min-w-12 rounded-sm px-1 text-sm whitespace-nowrap tabular-nums',
