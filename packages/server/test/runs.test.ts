@@ -202,16 +202,24 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
 });
 
 // Every export fixture but report-shape, a deliberate shape failure, so a fixture that stops loading fails here. A
-// step is its kind, round and agent, so a dropped step and a doubled one of the same kind can't cancel out.
+// step is its kind, round, agent, task and wave, so a dropped step and a doubled one can't cancel out, even across
+// tasks: a shown step takes its task from its task row and its wave from its wave group's label ("Wave A").
 test.each(reportFixtures().filter((name) => name !== 'report-shape'))(
   "every step of %s's runs sits in exactly one timeline group",
   async (name) => {
     db.$client.close();
     db = dbWith(name);
+    const placed = (s: Parameters<typeof stepId>[0], task: number | null, wave: string | null) =>
+      `${stepId(s)} task ${task ?? '-'} wave ${wave ?? '-'}`;
     for (const entry of fixture(name).runs) {
       const { timeline } = await run(runKey(entry) as string);
-      const shown = timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]);
-      expect(shown.map(stepId).sort()).toEqual((entry.steps ?? []).map(stepId).sort());
+      const shown = timeline.flatMap((g) => [
+        ...g.steps.map((s) => placed(s, null, g.kind === 'wave' ? g.label.replace(/^Wave /, '') : null)),
+        ...g.tasks.flatMap((t) => t.steps.map((s) => placed(s, t.task, null))),
+      ]);
+      type RawStep = Parameters<typeof stepId>[0] & { task?: number | null; wave?: string | null };
+      const raw = (entry.steps ?? []).map((s: RawStep) => placed(s, s.task ?? null, s.wave ?? null));
+      expect(shown.sort()).toEqual(raw.sort());
     }
   },
 );
