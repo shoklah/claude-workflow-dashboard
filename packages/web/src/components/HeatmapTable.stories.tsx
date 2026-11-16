@@ -77,3 +77,39 @@ export const Percent: Story = {
     await expect(canvas.getAllByRole('button').map((b) => b.textContent)).toEqual(['–', '50%', '100%']);
   },
 };
+
+/**
+ * Extras: numeric columns after the weeks and the total, each row giving its own cells; a group heading spans them too,
+ * and a row of zeros has a muted total.
+ */
+export const WithExtras: Story = {
+  args: {
+    max: 4,
+    total: true,
+    extras: ['Labelled by the app'],
+    groups: [
+      {
+        heading: 'First group',
+        rows: [
+          { id: 'alpha', name: 'alpha', header: 'alpha', values: [0, 1, 4], extras: [3] },
+          { id: 'beta', name: 'beta', header: 'beta', values: [0, 0, 0], extras: [0] },
+        ],
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getAllByRole('columnheader').map((th) => th.textContent).slice(-2)).toEqual([
+      'Total',
+      'Labelled by the app',
+    ]);
+    await expect(canvas.getByText('First group')).toHaveAttribute('colspan', String(WEEKS.length + 3));
+    const alpha = canvas.getByRole('rowheader', { name: 'alpha' }).closest('tr')!;
+    const alphaCells = within(alpha).getAllByRole('cell');
+    await expect(alphaCells.at(-1)).toHaveTextContent('3');
+    await expect(alphaCells.at(-2)).toHaveTextContent('5');
+    await expect(alphaCells.at(-2)).not.toHaveClass('text-muted-foreground');
+    const beta = within(canvas.getByRole('rowheader', { name: 'beta' }).closest('tr')!).getAllByRole('cell');
+    await expect(beta.at(-1)).toHaveTextContent('0');
+    await expect(beta.at(-2)).toHaveClass('text-muted-foreground');
+  },
+};
