@@ -14,7 +14,7 @@ test('the context page lists the units over the cap, links their runs and has no
   await page.getByRole('navigation').getByRole('link', { name: 'Context' }).click();
   await expect(page.getByRole('heading', { name: 'Context', level: 1 })).toBeVisible();
   await expect(page.getByRole('img', { name: /: bars by week/ })).toHaveCount(5);
-  const units = page.getByRole('region', { name: 'Runs and sessions' }).getByRole('row');
+  const units = page.getByRole('region', { name: 'Runs and sessions', exact: true }).getByRole('row');
   const first = units.nth(1).getByRole('link', { name: 'lantern-notes · feature/offline-sync · full' });
   await expect(first).toBeVisible();
   const overCap = await units.count();
