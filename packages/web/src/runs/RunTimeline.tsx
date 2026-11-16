@@ -74,13 +74,13 @@ function Group({ group, beforeSteps }: { group: TimelineGroup; beforeSteps: bool
       </div>
     );
   }
+  // A wave's tasks, or a group's several tasks, are boxed; a group's one task shows its steps unboxed.
+  const boxed = group.kind === 'wave' || group.tasks.length > 1;
   return (
     <div className="flex flex-col gap-1.5">
       <div className="font-semibold">{group.label}</div>
-      {group.kind !== 'wave' &&
-        group.tasks.length === 1 &&
-        group.tasks[0].steps.map((step, i) => <Step key={i} step={step} within={group.label} />)}
-      {(group.kind === 'wave' || group.tasks.length > 1) && group.tasks.length > 0 && (
+      {!boxed && group.tasks[0]?.steps.map((step, i) => <Step key={i} step={step} within={group.label} />)}
+      {boxed && group.tasks.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {group.tasks.map((task) => (
             <StepBox key={task.task} name={`Task ${task.task}`} steps={task.steps} />
