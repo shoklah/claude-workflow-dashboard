@@ -330,7 +330,7 @@ describe('anthropicLabelClient', () => {
       // Another list on the next call: its ids, not the first list's.
       const other: ActiveList = {
         number: 102,
-        areas: { plan: [{ id: 'invented_plan', label: 'Invented', means: 'An invented meaning.' }], implementation: [], cleanup: [] },
+        areas: { plan: [{ id: 'invented_plan', label: 'Invented', means: 'An invented meaning.' }], implementation: [], cleanup: [], kit: [] },
         rule: 'An invented rule.',
         validity: {},
       };

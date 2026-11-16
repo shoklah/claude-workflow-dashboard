@@ -3366,6 +3366,19 @@
         },
         "cost": 0.0
       },
+      "kit_review": {
+        "ran": 0,
+        "found": 0,
+        "counts": {},
+        "outcomes": {},
+        "tokens": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_write": 0
+        },
+        "cost": 0
+      },
       "failing_test": {
         "passed": 8,
         "failed": 0,

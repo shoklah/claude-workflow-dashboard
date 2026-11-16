@@ -123,6 +123,7 @@ export const fullHome: HomeResponse = {
       simplify: [0, 0, 0, 0, 0, 0, 3, 4, 2, 5, 3, 6],
       final_review: [0, 0, 0, 0, 0, 0, 2, 3, 1, 4, 2, 5],
       final_fix_check: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+      kit_review: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     },
     cost: [null, null, null, null, null, null, 18.4, 24.1, 15.9, 31.2, 27.25, 21],
     warnings: [0, 0, 0, 0, 0, 0, 7, 11, 6, 8, 9, 12],

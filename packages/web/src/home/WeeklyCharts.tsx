@@ -8,10 +8,10 @@ type Charts = HomeResponse['charts'];
 /** The step kinds, in the order the API lists them (the reporter's). */
 const stepKinds = (charts: Charts) => Object.keys(charts.findingsByStep) as StepKind[];
 
-// The dataviz skill's reference palette, light mode, on the card's white surface: categorical slots 1 to 7 in their
+// The dataviz skill's reference palette, light mode, on the card's white surface: categorical slots 1 to 8 in their
 // fixed order (validated: adjacent pairs pass CVD and normal-vision; aqua, yellow and magenta sit under 3:1, so the
 // table view below carries every number), and the chart chrome's ink, gridline and baseline.
-const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6'];
+const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
 // A spend group's colour, in the chart and the table's swatches: the palette's first four slots in the groups' order,
 // and a neutral grey outside the palette for Unattributed, so it reads as "the rest" (the table view carries its numbers).
 export const SPEND_GROUP_COLORS: Record<SpendGroup, string> = {
@@ -155,7 +155,8 @@ function findingsOption(charts: Charts) {
   return barsOption(
     charts.weeks,
     stepKinds(charts).map((kind) => ({ name: STEP_LABELS[kind], data: charts.findingsByStep[kind] })),
-    { stack: 'findings' },
+    // Eight step kinds wrap the legend to four rows.
+    { stack: 'findings', legendRoom: 84 },
   );
 }
 

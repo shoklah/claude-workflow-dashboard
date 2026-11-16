@@ -14,7 +14,7 @@ Checked on the owner's real export on 2026-11-11, counts and field names only.
 
 - Each run and each session carries `phases`: a list, in the reporter's fixed order, of one entry per phase that counted a message.
 - An entry is `{name, models, advisor}`:
-  - `name` is one of the reporter's twelve: `design`, `plan_writing`, `plan_simplify`, `plan_review`, `implement`, `task_review`, `fix_check`, `simplify`, `final_review`, `final_fix_check`, `coordination`, `unattributed`.
+  - `name` is one of the reporter's thirteen: `design`, `plan_writing`, `plan_simplify`, `plan_review`, `implement`, `task_review`, `kit_review`, `fix_check`, `simplify`, `final_review`, `final_fix_check`, `coordination`, `unattributed`.
   - `models` has the unit's `models` shape: per model, `input`, `output`, `cache_read`, `cache_write` and `cost` (null for a model the reporter has no price for), plus `cost_by_kind`, which the page doesn't read.
   - `advisor` is `{calls, cost}`.
 - A unit's phases add up to its `models`: on all 196 units with phases (69 of 76 runs, 127 of 131 sessions), the phases' summed cost equals the unit's `models` cost.
@@ -77,7 +77,7 @@ One function, `phaseSums` in `packages/server/src/views/spend.ts`, is the only p
 - **The groups** are the app's, in one table beside `phaseSums`, as Compliance's `FAMILIES`:
   - Plan: `design`, `plan_writing`, `plan_simplify`, `plan_review`
   - Implement: `implement`
-  - Review and cleanup: `task_review`, `fix_check`, `simplify`, `final_review`, `final_fix_check`
+  - Review and cleanup: `task_review`, `fix_check`, `simplify`, `final_review`, `final_fix_check`, `kit_review`
   - Coordination: `coordination`
   - Unattributed: `unattributed`, and any phase name the table doesn't hold
 

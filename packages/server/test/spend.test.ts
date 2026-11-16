@@ -79,6 +79,7 @@ describe('phaseSums over inline units', () => {
     expect(sum.phases.a_new_phase.byModel).toEqual({ m: 2 });
     expect(groupOf('a_new_phase')).toBe('unattributed');
     expect(groupOf('simplify')).toBe('review');
+    expect(groupOf('kit_review')).toBe('review');
   });
 
   test('an empty list adds nothing and is counted; a null list is uncounted', () => {

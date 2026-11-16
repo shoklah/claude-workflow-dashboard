@@ -67,7 +67,7 @@ describe('check:real', () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v5')]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
@@ -92,7 +92,7 @@ describe('check:real', () => {
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
-        'run time: compared, 1 differ\nwith_waves\nsteps: 7 compared, 2 differ\ntask_review\nfinal_review\n' +
+        'run time: compared, 1 differ\nwith_waves\nsteps: 8 compared, 2 differ\ntask_review\nfinal_review\n' +
         'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     // A skill or agent name can come from a project, so neither is printed.
@@ -105,7 +105,7 @@ describe('check:real', () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v6')]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
@@ -125,7 +125,7 @@ describe('check:real', () => {
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
         'models: 0 differ\nunits: 3 differ\ndispatch_guard\nstartup\nadvisor\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     for (const name of ['grill-me', 'task-reviewer', 'no_model']) expect(`${stdout}${stderr}`).not.toContain(name);
@@ -150,7 +150,7 @@ describe('check:real', () => {
   test('prints the whole check of report-v7, its context line after the units', () => {
     expect(checkReal(['cat', fixturePath('report-v7')]).stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 7 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: 2 compared, 0 differ\nphases: 9 compared, 0 differ\nshowing: pass\n',
     );
   });

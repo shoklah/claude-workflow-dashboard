@@ -282,8 +282,9 @@ function group(
 
 /**
  * The untimed timeline, in the workflow's order: start, plan, a group per wave (its tasks' steps, then its wave
- * check's steps), a group per task in no wave, simplify, final review, end. A plan, simplify or final group with no
- * steps is left out, except a run from before steps, which gets an empty final group between start and end.
+ * check's steps), a group per task in no wave, simplify, final review, end. A kit review with no task or wave sits in
+ * the final group, beside the final review it runs with. A plan, simplify or final group with no steps is left out,
+ * except a run from before steps, which gets an empty final group between start and end.
  */
 function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: LabelOf): TimelineGroup[] {
   const start = group('start', 'Start', labelOf, [], facts.startedAt);
@@ -305,7 +306,17 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
       .sort((a, b) => a - b)
       .map((task) => ({ ...group('task', `Task ${task}`, labelOf), tasks: [ofTask(task)] })),
     group('simplify', 'Simplify', labelOf, kinds('simplify')),
-    group('final', 'Final review', labelOf, kinds('final_review', 'final_fix_check')),
+    group(
+      'final',
+      'Final review',
+      labelOf,
+      steps.filter(
+        (s) =>
+          s.step === 'final_review' ||
+          s.step === 'final_fix_check' ||
+          (s.step === 'kit_review' && s.task == null && s.wave == null),
+      ),
+    ),
     end,
   ].filter((g) => !['plan', 'simplify', 'final'].includes(g.kind) || g.steps.length > 0);
 }

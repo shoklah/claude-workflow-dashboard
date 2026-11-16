@@ -35,7 +35,7 @@ export const Full: Story = {
     await expect(table.getAllByRole('row')).toHaveLength(13);
     const lastWeek = table.getAllByRole('row').at(-1)!;
     await expect(within(lastWeek).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      '5', '3', '9', '0', '6', '5', '1', '$21.00', '12',
+      '5', '3', '9', '0', '6', '5', '1', '0', '$21.00', '12',
     ]);
     const firstWeek = table.getAllByRole('row')[1];
     await expect(within(firstWeek).getAllByRole('cell').at(-2)).toHaveTextContent('–');
