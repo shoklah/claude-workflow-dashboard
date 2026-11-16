@@ -140,6 +140,15 @@ describe('loadReport', () => {
     expect(result.report.runs[0]).not.toHaveProperty('extra');
   });
 
+  test("reads a kit_review step, the reporter's schema 6 kind", () => {
+    const raw = fixture('report-full');
+    raw.runs[0].steps.push({ step: 'kit_review', task: 1, round: 0 });
+    const result = loadReport(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.report.runs[0].steps!.at(-1)!.step).toBe('kit_review');
+  });
+
   test('treats a missing key as absent', () => {
     const raw = fixture('report-full');
     delete raw.runs[0].minutes;

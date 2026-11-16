@@ -88,7 +88,7 @@ export function FindingsPage() {
             </Option>
           ))}
         </div>
-        <div role="group" aria-label="Area" className="flex gap-1">
+        <div role="group" aria-label="Area" className="flex flex-wrap gap-1">
           {AREAS.map((option) => (
             <Option
               key={option}

@@ -15,7 +15,7 @@ import { maskText, type Scope } from './scope.ts';
 export const SPEND_GROUPS: Record<SpendGroup, string[]> = {
   plan: ['design', 'plan_writing', 'plan_simplify', 'plan_review'],
   implement: ['implement'],
-  review: ['task_review', 'fix_check', 'simplify', 'final_review', 'final_fix_check'],
+  review: ['task_review', 'fix_check', 'simplify', 'final_review', 'final_fix_check', 'kit_review'],
   coordination: ['coordination'],
   unattributed: ['unattributed'],
 };

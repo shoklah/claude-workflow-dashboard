@@ -12,6 +12,7 @@ export const CATEGORY_IDS: Record<Area, string[]> = {
   plan: Object.keys(categoryLabels).slice(0, 6),
   implementation: IMPLEMENTATION,
   cleanup: IMPLEMENTATION,
+  kit: [],
 };
 
 /** A finding as the page lists it, in a run of `fullRun`'s project unless given. */

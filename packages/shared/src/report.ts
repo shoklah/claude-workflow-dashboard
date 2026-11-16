@@ -13,6 +13,7 @@ export const STEP_KINDS = [
   'simplify',
   'final_review',
   'final_fix_check',
+  'kit_review',
 ] as const;
 export const OUTCOMES = ['fixed', 'applied', 'declined', 'deferred', 'ruled', 'open', 'to_owner'] as const;
 export const PATHS = ['small', 'full', 'plan'] as const;

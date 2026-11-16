@@ -12,6 +12,7 @@ export const STEP_LABELS: Record<StepKind, string> = {
   simplify: 'simplify',
   final_review: 'Final review',
   final_fix_check: 'Final fix-check',
+  kit_review: 'Kit review',
 };
 
 /** An area's name on screen. */
@@ -19,6 +20,7 @@ export const AREA_LABELS: Record<Area, string> = {
   plan: 'Plan',
   implementation: 'Implementation',
   cleanup: 'Cleanup',
+  kit: 'Kit',
 };
 
 /** The badge on a figure taken from the latest export's totals, not summed over the period's runs. */
