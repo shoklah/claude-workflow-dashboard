@@ -197,6 +197,19 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
   ]);
 });
 
+test.each(['report-full', 'report-later', 'report-projects', 'report-v5', 'report-v6', 'report-v7'])(
+  "every step of %s's runs sits in exactly one timeline group",
+  async (name) => {
+    db.$client.close();
+    db = dbWith(name);
+    for (const entry of fixture(name).runs) {
+      const { timeline } = await run(runKey(entry) as string);
+      const shown = timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]);
+      expect(shown.map((s) => s.step).sort()).toEqual((entry.steps ?? []).map((s: { step: string }) => s.step).sort());
+    }
+  },
+);
+
 test('a wave check sits in its wave', async () => {
   const { timeline } = await run(FULL);
   const [, waveA, waveB] = timeline;
