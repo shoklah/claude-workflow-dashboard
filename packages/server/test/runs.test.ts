@@ -184,7 +184,7 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
   db.$client.close();
   db = dbWith('report-full', (raw) =>
     raw.runs[4].steps.push(
-      { step: 'kit_review', kit: 'ui', round: 0, agent: 'kit-reviewer', counts: {}, findings: [] },
+      { step: 'kit_review', round: 0, agent: 'kit-reviewer', counts: {}, findings: [] },
       { step: 'fix_check', kit: 'ui', round: 1, agent: 'kit-reviewer', counts: {}, findings: [] },
     ),
   );
