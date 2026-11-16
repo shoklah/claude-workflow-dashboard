@@ -18,6 +18,20 @@ function rowCells(canvasElement: HTMLElement, name: string): string[] {
     .map((button) => button.textContent!);
 }
 
+/** The cells after the weeks in a row (its total, then the extras), by the row's header. */
+function rowExtras(canvasElement: HTMLElement, name: string): string[] {
+  const header = within(canvasElement).getByRole('rowheader', { name });
+  return within(header.closest('tr')!)
+    .getAllByRole('cell')
+    .filter((cell) => !cell.querySelector('button'))
+    .map((cell) => cell.textContent!);
+}
+
+/** No cell of the grid joins several values with " · ". */
+async function oneValuePerCell(canvasElement: HTMLElement) {
+  for (const cell of within(canvasElement).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
+}
+
 /** Empty: no findings in the period, so every category of the area shows 0 in every week. */
 export const Empty: Story = {
   args: { response: findingsEmpty },
@@ -28,6 +42,7 @@ export const Empty: Story = {
       'Oct 25',
       'Nov 1',
       'Nov 8',
+      'Total',
     ]);
     await expect(canvas.getAllByRole('rowheader')).toHaveLength(CATEGORY_IDS.implementation.length);
     await expect(rowCells(canvasElement, 'Correctness')).toEqual(['0', '0', '0', '0']);
@@ -43,6 +58,11 @@ export const Full: Story = {
   play: async ({ args, canvas, canvasElement, userEvent }) => {
     await expect(rowCells(canvasElement, 'Tests')).toEqual(['0', '0', '1', '2']);
     await expect(rowCells(canvasElement, 'unlabelled')).toEqual(['0', '0', '1', '0']);
+    // Under a count, each row ends with its total; no "Labelled by the app" column before the workflow labels.
+    await expect(canvas.getAllByRole('columnheader').at(-1)).toHaveTextContent('Total');
+    await expect(rowExtras(canvasElement, 'Tests')).toEqual(['3']);
+    await expect(canvas.queryByRole('columnheader', { name: 'Labelled by the app' })).toBeNull();
+    await oneValuePerCell(canvasElement);
     await expect(canvas.getAllByRole('rowheader').at(-1)).toHaveTextContent('unlabelled');
     // It scrolls sideways over many weeks, so its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Findings by category and week' })).toHaveAttribute('tabindex', '0');
@@ -67,8 +87,10 @@ export const Selected: Story = {
 /** A share measure: a whole percent of the findings raised, and a dash where none was. */
 export const ShareActedOn: Story = {
   args: { measure: 'actedOn' },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvas, canvasElement }) => {
     await expect(rowCells(canvasElement, 'Tests')).toEqual(['–', '–', '100%', '50%']);
+    // A share has no total.
+    await expect(canvas.queryByRole('columnheader', { name: 'Total' })).toBeNull();
   },
 };
 
@@ -83,16 +105,21 @@ export const PlanArea: Story = {
 };
 
 /**
- * After CR10, a cell whose count is partly or wholly the app's says how much: "2 · 1 by the app"; a row's category is
- * no longer in the app's dashed badge, since its findings carry both judges' labels.
+ * After CR10, each cell holds its count alone, and how many of a row's findings the app labelled is the "Labelled by
+ * the app" column after the total; a row's category is plain text.
  */
 export const WorkflowLabels: Story = {
   args: { response: findingsWorkflow },
   play: async ({ canvas, canvasElement }) => {
-    await expect(rowCells(canvasElement, 'Tests')).toEqual(['0', '0', '1 · 1 by the app', '2 · 1 by the app']);
-    await expect(rowCells(canvasElement, 'Correctness')).toEqual(['1', '0', '0', '1 · 1 by the app']);
-    await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 2 · 1 by the app' })).toBeVisible();
-    await expect(canvas.queryAllByTitle("The app's label")).toEqual([]);
+    await expect(canvas.getAllByRole('columnheader').slice(-2).map((th) => th.textContent)).toEqual([
+      'Total',
+      'Labelled by the app',
+    ]);
+    await expect(rowCells(canvasElement, 'Tests')).toEqual(['0', '0', '1', '2']);
+    await expect(rowExtras(canvasElement, 'Tests')).toEqual(['3', '2']);
+    await expect(rowExtras(canvasElement, 'Correctness')).toEqual(['2', '1']);
+    for (const cell of canvas.getAllByRole('cell')) await expect(cell.textContent).not.toContain('by the app');
+    await oneValuePerCell(canvasElement);
   },
 };
 

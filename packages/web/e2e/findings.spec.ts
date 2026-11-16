@@ -13,7 +13,9 @@ test('the findings page lists a cell’s findings, says the labeller is off and 
   await page.goto('/');
   await page.getByRole('navigation').getByRole('link', { name: 'Findings' }).click();
   await expect(page.getByRole('rowheader', { name: 'Correctness' })).toBeVisible();
-  await expect(page.getByText('Labeller off: no API key')).toBeVisible();
+  await expect(page.getByText("The labeller is off: the data folder's .env holds no API key.")).toBeVisible();
+  await expect(page.getByText('Measure', { exact: true })).toBeVisible();
+  await expect(page.getByText('Area', { exact: true })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   // The Full run's Correctness findings, in the week of Nov 8.
@@ -36,6 +38,7 @@ test('"App differs" is enabled, and the page no longer says every label is the a
   // report-v6's webhooks run carries the workflow's labels.
   await expect(page.getByRole('rowheader', { name: 'Correctness' })).toBeVisible();
   await expect(page.getByText(/Every label here is the app's/)).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: 'Labelled by the app' })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   const option = page.getByRole('button', { name: 'App differs' });
   await expect(option).toBeEnabled();
