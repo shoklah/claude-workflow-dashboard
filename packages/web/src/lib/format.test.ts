@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, test } from 'vitest';
 import type { FindingRow } from '@cwd/shared';
 import {
   advisorLabel,
@@ -39,6 +39,16 @@ import {
   timelineTimes,
   projectLabel,
   sessionName,
+  pathLabel,
+  modelLabel,
+  splitPair,
+  formatDollars,
+  formatWhole,
+  formatCompactFixed,
+  formatLength,
+  capitalize,
+  warningBody,
+  STEP_LABELS,
 } from './format.ts';
 
 describe('formatMinutes', () => {
@@ -429,3 +439,43 @@ describe('SPEND_GROUP_LABELS', () => {
     expect(Object.values(SPEND_GROUP_LABELS)).toEqual(['Plan', 'Implement', 'Review and cleanup', 'Coordination', 'Unattributed']);
   });
 });
+
+test('pathLabel names a path, keeps an unknown one, and passes null', () => {
+  expect(pathLabel('small')).toBe('Small'); expect(pathLabel('wide')).toBe('wide'); expect(pathLabel(null)).toBeNull();
+});
+test('modelLabel writes an id in the reader\'s words', () => {
+  expect(modelLabel('claude-opus-5-5')).toBe('Opus 5.5');
+  expect(modelLabel('claude-fable-6-preview')).toBe('Fable 6 preview');
+  expect(modelLabel('opus')).toBe('Opus');
+  expect(modelLabel('<synthetic>')).toBe('<synthetic>');
+  for (const none of ['-', '', null, undefined]) expect(modelLabel(none)).toBeNull();
+});
+test('splitPair gives a pair\'s two parts', () => {
+  expect(splitPair('claude-opus-5-5/medium')).toEqual({ model: 'Opus 5.5', effort: 'medium' });
+  expect(splitPair('-/xhigh')).toEqual({ model: null, effort: 'xhigh' });
+  expect(splitPair('-/-')).toEqual({ model: null, effort: null });
+});
+test('numbers under a header that names their unit', () => {
+  expect(formatDollars(12.4)).toBe('12.40'); expect(formatDollars(1234.5)).toBe('1,234.50');
+  expect(formatWhole(5759.4)).toBe('5,759'); expect(formatCompactFixed(2_000_000)).toBe('2.0M'); expect(formatCompactFixed(333_000)).toBe('333.0K');
+});
+test('formatLength uses the largest units that fit', () => {
+  expect(formatLength(0)).toBe('0 min'); expect(formatLength(45)).toBe('45 min'); expect(formatLength(466.3)).toBe('7 h 46');
+  expect(formatLength(1439.6)).toBe('1 d 0 h'); expect(formatLength(4996.6)).toBe('3 d 11 h');
+});
+test('warningBody drops the log prefix and the run\'s own lead', () => {
+  expect(warningBody('WARN: feat/sync (2026-11-08): no session transcript', 'feat/sync')).toBe('No session transcript');
+  expect(warningBody('WARN: feat/other (2026-11-08): no session transcript', 'feat/sync')).toBe('Feat/other (2026-11-08): no session transcript');
+  expect(warningBody('session {session}: startup guidelines missing')).toBe('Startup guidelines missing');
+  expect(warningBody('the handoff in {session} came late')).toBe('The handoff in the session came late');
+  expect(warningBody('already plain')).toBe('Already plain'); expect(warningBody('WARN:')).toBe('');
+});
+test('week and timeline times are written in en-US, on the 24-hour clock', () => {
+  expect(weekLabel('2026-11-09')).toBe('Nov 9');
+  // The reader's time zone decides the day and hour, so the shape is asserted, as the existing timelineTimes test does.
+  const [first, second] = timelineTimes(['2026-11-08T08:02:00Z', '2026-11-08T08:07:00Z']);
+  expect(first).toMatch(/^Nov [78], \d{2}:\d{2}$/);
+  expect(second).toMatch(/^\d{2}:\d{2}$/);
+});
+test('capitalize', () => { expect(capitalize('important')).toBe('Important'); expect(capitalize('')).toBe(''); });
+test('STEP_LABELS names simplify as a step, capitalised', () => { expect(STEP_LABELS.simplify).toBe('Simplify'); });

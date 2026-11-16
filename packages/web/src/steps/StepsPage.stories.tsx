@@ -90,7 +90,7 @@ export const Full: Story = {
       '9.8M',
       '$21.40',
     ]);
-    const simplify = canvas.getByRole('rowheader', { name: 'simplify' }).closest('tr')!;
+    const simplify = canvas.getByRole('rowheader', { name: 'Simplify' }).closest('tr')!;
     await expect(cells(simplify).slice(-2)).toEqual(['–', '–']);
 
     const row = (name: RegExp) => canvas.getByRole('rowheader', { name }).closest('tr')!;
