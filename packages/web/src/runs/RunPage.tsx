@@ -15,6 +15,7 @@ import {
   formatCost,
   formatMinutes,
   formatShare,
+  foundFindings,
   modelLabel,
   pathLabel,
   strengthWhere,
@@ -37,7 +38,7 @@ function Header({ run }: { run: RunResponse['facts'] }) {
     ['Stage', <Text value={run.stage} />],
     ['Time', <Num value={run.minutes} format={formatMinutes} />],
     ['Est. cost', <Num value={run.cost} format={formatCost} />],
-    ['Findings', <Num value={run.beforeSteps ? null : run.findings.total} />],
+    ['Findings', <Num value={foundFindings(run)} />],
     ['Closed', <Num value={closedFindings(run)} />],
     ['Warnings', <Num value={run.warnings} />],
   ];

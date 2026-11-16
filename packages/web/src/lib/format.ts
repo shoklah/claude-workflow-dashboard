@@ -231,6 +231,11 @@ export function joined(parts: (string | null)[]): string {
   return parts.filter(Boolean).join(' · ');
 }
 
+/** A run's findings, every one; null for a record from before steps, which has no findings to count. */
+export function foundFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
+  return run.beforeSteps ? null : run.findings.total;
+}
+
 /** A run's closed findings: acted on + not acted on, the findings with an outcome other than open; null for a record
  * from before steps, which has no findings to count. */
 export function closedFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {

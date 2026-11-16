@@ -5,6 +5,7 @@ import {
   strengthWhere,
   cellShade,
   closedFindings,
+  foundFindings,
   countLabel,
   countName,
   FAMILY_LABELS,
@@ -415,6 +416,16 @@ test('a day and a day and time are written in en-US, in the reader\'s time zone,
 });
 test('capitalize', () => { expect(capitalize('important')).toBe('Important'); expect(capitalize('')).toBe(''); });
 test('STEP_LABELS names simplify as a step, capitalised', () => { expect(STEP_LABELS.simplify).toBe('Simplify'); });
+
+describe('foundFindings', () => {
+  it('counts every finding of the run', () => {
+    expect(foundFindings({ beforeSteps: false, findings: { total: 6, actedOn: 3, notActedOn: 2, open: 1 } })).toBe(6);
+  });
+
+  it('is unknown for a record from before steps', () => {
+    expect(foundFindings({ beforeSteps: true, findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 } })).toBeNull();
+  });
+});
 
 describe('closedFindings', () => {
   it('counts the findings acted on and not acted on, the open ones left out', () => {

@@ -4,7 +4,7 @@ import { EmptyRow, GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx'
 import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { closedFindings, formatDollars, pathLabel } from '../lib/format.ts';
+import { closedFindings, formatDollars, foundFindings, pathLabel } from '../lib/format.ts';
 
 const COLUMN_COUNT = 12;
 
@@ -75,7 +75,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
               <Num value={run.tasks === null ? null : run.waves} />
             </TableCell>
             <TableCell className={NUM}>
-              <Num value={run.beforeSteps ? null : run.findings.total} />
+              <Num value={foundFindings(run)} />
             </TableCell>
             <TableCell className={NUM}>
               <Num value={closedFindings(run)} />
