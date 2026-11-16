@@ -17,6 +17,8 @@ const PAGES = ['/', '/runs', '/findings', '/sessions', '/context', '/compliance'
 
 for (const width of [375, 768, 1440]) {
   test(`no page scrolls sideways at ${width} px, and none has axe violations there`, async ({ page }) => {
+    // Twelve pages, each loaded and checked by axe.
+    test.slow();
     await pinClock(page);
     await page.setViewportSize({ width, height: 900 });
     const runs = (await (await page.request.get('/api/runs?weeks=52')).json()) as { runs: { key: string }[] };
@@ -24,7 +26,7 @@ for (const width of [375, 768, 1440]) {
     for (const path of [...PAGES, `/runs/${runs.runs[0].key}`]) {
       await page.goto(path, { waitUntil: 'networkidle' });
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      const extra = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (extra > 0) failures.push(`${path}: ${extra} px`);
       const { violations } = await new AxeBuilder({ page }).analyze();
       for (const v of violations) failures.push(`${path}: ${v.id}`);

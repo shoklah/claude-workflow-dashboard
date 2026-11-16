@@ -19,7 +19,7 @@ function Tile({ label, value, detail, lastWeek }: { label: string; value: string
 export function WeekTiles({ thisWeek, lastWeek }: { thisWeek: WeekNumbers; lastWeek: WeekNumbers }) {
   const { small, full, plan } = thisWeek.runs;
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Tile
         label="Runs this week"
         value={String(runCount(thisWeek))}
