@@ -18,11 +18,11 @@ test('a session opens its timeline, links its runs and has no axe violations', a
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await toggle.click();
-  const timeline = page.getByRole('list', { name: 'Timeline of Offline sync plan' });
-  await expect(timeline.getByRole('listitem')).toHaveCount(6);
-  await expect(timeline.getByText('· its skill never loaded')).toHaveCount(2);
+  const timeline = page.getByRole('table', { name: 'Timeline of Offline sync plan' });
+  await expect(timeline.locator('tbody tr')).toHaveCount(6);
+  await expect(timeline.getByText('Its skill never loaded')).toHaveCount(2);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
-  await timeline.getByRole('link', { name: 'tidepool-api · feature/webhooks · full' }).click();
+  await timeline.getByRole('link', { name: 'feature/webhooks' }).click();
   await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
 });
