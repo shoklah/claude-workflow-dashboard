@@ -22,7 +22,7 @@ test('the context page lists the units over the cap, links their runs and has no
 
   await first.click();
   await expect(page.getByRole('heading', { name: 'lantern-notes · feature/offline-sync' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Context' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Context', exact: true })).toBeVisible();
 
   await page.goBack();
   await page.getByRole('group', { name: 'Units' }).getByRole('button', { name: 'All' }).click();

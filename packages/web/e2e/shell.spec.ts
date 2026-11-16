@@ -37,18 +37,26 @@ for (const width of [375, 768, 1440]) {
 
 test('a table that scrolls sideways fades at the edge hiding columns, and one that fits does not', async ({ page }) => {
   await pinClock(page);
-  const cueEnd = (name: string) => page.getByRole('region', { name }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
-  const mask = (name: string) => page.getByRole('region', { name }).evaluate((el) => getComputedStyle(el).maskImage);
+  const cueEnd = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
+  const mask = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto('/sessions', { waitUntil: 'networkidle' });
   expect(await cueEnd('Sessions')).toBe('48px');
   expect(await mask('Sessions')).toContain('100% - 48px');
-  await page.getByRole('region', { name: 'Sessions' }).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  // The mask cuts what is drawn outside the box, so the keyboard's focus outline is drawn inside it.
+  await page.keyboard.press('Tab');
+  const focus = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => {
+    el.focus();
+    const style = getComputedStyle(el);
+    return { visible: el.matches(':focus-visible'), mask: style.maskImage, outline: style.outlineStyle, inside: parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth) <= 0 };
+  });
+  expect(focus).toEqual({ visible: true, mask: expect.stringContaining('100% - 48px'), outline: 'solid', inside: true });
+  await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
   await expect.poll(() => cueEnd('Sessions')).toBe('0px');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/skills', { waitUntil: 'networkidle' });
   expect(await cueEnd('Skills')).toBe('0px');
-  // No mask at all on a table that fits: a mask clips the panel's shadow and the region's focus outline.
+  // No mask at all on a table that fits: a mask clips the panel's shadow.
   expect(await mask('Skills')).toBe('none');
 });
 

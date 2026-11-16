@@ -78,7 +78,7 @@ test('the schema 5 run page lists its strengths under the findings table', async
   await page.getByRole('link', { name: 'tidepool-api · feature/webhooks' }).click();
   await expect(page.getByRole('heading', { name: 'tidepool-api · feature/webhooks' })).toBeVisible();
   await page.getByRole('tab', { name: 'Findings' }).click();
-  const strengths = page.getByRole('region', { name: 'Strengths' });
+  const strengths = page.getByRole('region', { name: 'Strengths', exact: true });
   await expect(strengths.getByRole('listitem')).toHaveCount(2);
   await expect(strengths.getByText('Each retry delay has its own test')).toBeVisible();
   await expect(strengths.getByText('The signing secret never reaches a log')).toBeVisible();

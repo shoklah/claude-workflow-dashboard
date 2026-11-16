@@ -16,7 +16,7 @@ test('home has no axe violations', async ({ page }) => {
 
 // report-later's new run is on the branch `<img src=x onerror=alert(1)>`: the feed shows it as text.
 test('a summary with HTML shows as text', async ({ page }) => {
-  const feed = page.getByRole('region', { name: 'Since you last looked' });
+  const feed = page.getByRole('region', { name: 'Since you last looked', exact: true });
   await expect(feed.getByText('<img src=x onerror=alert(1)>')).toBeVisible();
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
 });
