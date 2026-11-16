@@ -78,6 +78,10 @@ async function run(key: string): Promise<RunResponse> {
   return res.json();
 }
 
+/** A step as "kind round agent", "-" for a missing round or agent, the same for a timeline step and a raw one. */
+const stepId = (s: { step: string; round?: number | null; agent?: string | null }) =>
+  `${s.step} ${s.round ?? '-'} ${s.agent ?? '-'}`;
+
 /** Stores the app's label of a run's finding, for its current text, under report-v5's list (101): `conventions` and
  * `invalid` unless given. */
 function label(key: string, findingId: string, reason: string, category = 'conventions', relevance: Relevance = 'invalid'): void {
@@ -165,7 +169,7 @@ test("the Full run's timeline has two wave groups holding their tasks", async ()
     ['end', 'End'],
   ]);
   const tasks = (i: number) =>
-    timeline[i].tasks.map((t) => [t.task, t.steps.map((s) => `${s.step} ${s.round} ${s.agent}`)]);
+    timeline[i].tasks.map((t) => [t.task, t.steps.map(stepId)]);
   expect(tasks(1)).toEqual([
     [1, ['task_review 0 task-reviewer', 'fix_check 1 fix-checker']],
     [2, ['task_review 0 task-reviewer', 'fix_check 1 fix-checker']],
@@ -197,8 +201,9 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
   ]);
 });
 
-// Every export fixture that loads (report-shape is a deliberate shape failure).
-test.each(reportFixtures().filter((name) => loadReport(fixture(name)).ok))(
+// Every export fixture but report-shape, a deliberate shape failure, so a fixture that stops loading fails here. A
+// step is its kind, round and agent, so a dropped step and a doubled one of the same kind can't cancel out.
+test.each(reportFixtures().filter((name) => name !== 'report-shape'))(
   "every step of %s's runs sits in exactly one timeline group",
   async (name) => {
     db.$client.close();
@@ -206,7 +211,7 @@ test.each(reportFixtures().filter((name) => loadReport(fixture(name)).ok))(
     for (const entry of fixture(name).runs) {
       const { timeline } = await run(runKey(entry) as string);
       const shown = timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]);
-      expect(shown.map((s) => s.step).sort()).toEqual((entry.steps ?? []).map((s: { step: string }) => s.step).sort());
+      expect(shown.map(stepId).sort()).toEqual((entry.steps ?? []).map(stepId).sort());
     }
   },
 );
