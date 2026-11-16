@@ -118,7 +118,7 @@ export function ContextPage() {
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Context</h1>
       <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })}>
-        <div role="group" aria-label="Units" className="flex gap-1">
+        <div role="group" aria-label="Units" className="flex flex-wrap gap-1">
           <Option pressed={over} onClick={() => setOver(true)}>
             Over the cap
           </Option>

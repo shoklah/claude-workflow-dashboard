@@ -84,7 +84,7 @@ export function SpendPage() {
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">Spend</h1>
       <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })}>
-        <div role="group" aria-label="Units" className="flex gap-1">
+        <div role="group" aria-label="Units" className="flex flex-wrap gap-1">
           {UNITS.map((option) => (
             <Option
               key={option.units}

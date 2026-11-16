@@ -26,7 +26,7 @@ export function SkillsPage() {
       {skills.isPending && <p className="text-sm text-muted-foreground">Loading the skills…</p>}
       {skills.isError && <p className="text-sm">Couldn't load the skills.</p>}
       {skills.data && (
-        <Table>
+        <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Skills' }}>
           <TableHeader>
             <TableRow>
               {COLUMNS.map((column) => (

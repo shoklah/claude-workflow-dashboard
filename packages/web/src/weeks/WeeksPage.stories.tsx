@@ -46,7 +46,7 @@ export const Empty: Story = {
     const weeks = within(within(canvas.getByRole('region', { name: 'Weeks' })).getByRole('table'));
     await expect(weeks.getAllByRole('row')).toHaveLength(13);
     await expect(cells(weeks.getAllByRole('row')[1])).toEqual(['none', '0', 'none', '0', '0', '–', '–', '–', '–', '0']);
-    const runTime = within(canvas.getByRole('table', { name: 'Full runs' }));
+    const runTime = within(within(canvas.getByRole('region', { name: 'Full runs' })).getByRole('table'));
     await expect(cells(runTime.getAllByRole('row')[1])).toEqual(['0', '0', '–']);
     await expect(canvas.queryByText(/the reporter can no longer read them/)).toBeNull();
   },
@@ -80,7 +80,7 @@ export const Full: Story = {
     ]);
     await expect(cells(previous).at(-2)).toBe('2 h 46');
 
-    const runTime = within(canvas.getByRole('table', { name: 'Full runs' }));
+    const runTime = within(within(canvas.getByRole('region', { name: 'Full runs' })).getByRole('table'));
     await expect(runTime.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       'Full runs', 'Runs', 'With a run time', 'Median minutes',
     ]);

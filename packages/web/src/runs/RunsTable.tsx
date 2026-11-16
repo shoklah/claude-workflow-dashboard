@@ -15,7 +15,7 @@ function tasksLabel(run: RunRow): string {
 /** The Runs list: one row per run, newest first as the API gives them, each linking to its page. */
 export function RunsTable({ runs }: { runs: RunRow[] }) {
   return (
-    <Table>
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs table' }}>
       <TableHeader>
         <TableRow>
           {COLUMNS.map((column) => (

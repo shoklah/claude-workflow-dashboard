@@ -63,7 +63,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           setSelected(null);
         }}
       >
-        <div role="group" aria-label="Current or resolved" className="flex gap-1">
+        <div role="group" aria-label="Current or resolved" className="flex flex-wrap gap-1">
           {[false, true].map((option) => (
             <Option
               key={String(option)}

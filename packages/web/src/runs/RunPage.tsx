@@ -63,7 +63,7 @@ export function RunPage({ runKey }: { runKey: string }) {
   return (
     <div className="flex flex-col gap-4">
       <Header run={facts} />
-      <div className="flex flex-wrap items-start gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <Tabs defaultValue="timeline" className="min-w-0 flex-1">
           <TabsList>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
@@ -85,7 +85,7 @@ export function RunPage({ runKey }: { runKey: string }) {
             </Section>
           </TabsContent>
         </Tabs>
-        <div className="flex w-72 flex-col gap-4 text-sm">
+        <div className="flex flex-col gap-4 text-sm lg:w-72 lg:flex-none">
           <Section title="Skills">
             {skills.map((skill, i) => (
               <li key={i}>

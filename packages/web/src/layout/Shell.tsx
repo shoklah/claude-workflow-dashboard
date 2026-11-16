@@ -9,20 +9,20 @@ import { Banner, StatusBanner } from './StatusBanner.tsx';
 export function Shell({ children }: { children: ReactNode }) {
   const status = useStatus();
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-44 flex-none border-r bg-muted/40 p-3">
+    <div className="flex min-h-screen flex-col md:flex-row">
+      <aside className="flex-none border-b bg-muted/40 p-3 md:w-44 md:border-r md:border-b-0">
         <Menu />
       </aside>
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <header className="flex items-start gap-3">
-          <div className="flex-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+        <header className="flex flex-wrap items-start gap-3">
+          <div className="min-w-0 flex-1 basis-full sm:basis-0">
             {status.isError && <Banner>Can't reach the dashboard server.</Banner>}
             {status.data && <StatusBanner status={status.data} />}
           </div>
           <ShowingControl />
           <RefreshButton importing={status.data?.importing ?? false} />
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
   );
