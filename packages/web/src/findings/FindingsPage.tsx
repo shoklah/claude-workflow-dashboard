@@ -1,8 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { AREAS, type Area, type FindingsQuery, type FindingsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { Button } from '../components/ui/button.tsx';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
+import { Option } from '../components/Option.tsx';
 import { AREA_LABELS, categoryLabel, hiddenLabel, plural, weekLabel } from '../lib/format.ts';
 import { FindingsTable } from '../runs/FindingsTable.tsx';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
@@ -16,41 +15,6 @@ const MEASURES: { measure: Measure; label: string }[] = [
   { measure: 'appDiffers', label: 'App differs' },
   { measure: 'strengths', label: 'Strengths' },
 ];
-
-/** One option of a switch, pressed while it is the switch's value; with a `disabledReason`, disabled, inside a
- * focusable span whose tooltip gives the reason. */
-export function Option({
-  pressed,
-  onClick,
-  children,
-  disabledReason,
-}: {
-  pressed: boolean;
-  onClick: () => void;
-  children: ReactNode;
-  disabledReason?: string;
-}) {
-  const button = (
-    <Button
-      size="sm"
-      variant={pressed ? 'default' : 'outline'}
-      aria-pressed={pressed}
-      disabled={disabledReason !== undefined}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
-  );
-  if (disabledReason === undefined) return button;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0}>{button}</span>
-      </TooltipTrigger>
-      <TooltipContent>{disabledReason}</TooltipContent>
-    </Tooltip>
-  );
-}
 
 /**
  * The Findings page (layout B): the period's findings by category and week for one area under one measure, the

@@ -48,6 +48,8 @@ export const Full: Story = {
     await expect(await canvas.findByRole('link', { name: 'atlas · feat/search' })).toBeVisible();
     await expect(canvas.getAllByRole('row')).toHaveLength(4);
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
+    const paths = canvas.getByRole('combobox', { name: 'Path' });
+    await expect([...paths.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', 'Small', 'Full', 'Plan']);
     const projects = canvas.getByRole('combobox', { name: 'Project' });
     await expect([...projects.querySelectorAll('option')].map((o) => o.textContent)).toEqual([
       'All',

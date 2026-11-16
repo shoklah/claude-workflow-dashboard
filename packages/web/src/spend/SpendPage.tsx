@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FindingsQuery, SpendGroup, SpendResponse, SpendUnits } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { Option } from '../findings/FindingsPage.tsx';
+import { Option } from '../components/Option.tsx';
 import { Chart, SPEND_GROUP_COLORS, barsOption } from '../home/WeeklyCharts.tsx';
 import { SPEND_GROUP_LABELS, formatCost, spendUncountedLabel, total, weekLabel } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';

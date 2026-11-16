@@ -7,7 +7,7 @@ import { useLiveQuery } from '../api.ts';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
-import { Option } from '../findings/FindingsPage.tsx';
+import { Option } from '../components/Option.tsx';
 import {
   FAMILY_LABELS,
   STEP_LABELS,

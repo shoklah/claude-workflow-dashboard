@@ -1,14 +1,17 @@
+import { warningBody } from '../lib/format.ts';
 import { SessionChip } from './SessionChip.tsx';
 
-/** A warning's text, its `{session}` placeholder shown as that session's chip. */
-export function WarningText({ text, sessionId }: { text: string; sessionId: string | null }) {
-  const at = text.indexOf('{session}');
-  if (sessionId === null || at === -1) return <>{text}</>;
+/** A warning in the reader's words: its text through `warningBody` (no log prefix, no lead naming the run's own
+ * `branch`) and, when it names a session, that session's chip trailing on its own line, never mid-sentence. */
+export function WarningText({ text, sessionId, branch = null }: { text: string; sessionId: string | null; branch?: string | null }) {
   return (
     <>
-      {text.slice(0, at)}
-      <SessionChip id={sessionId} />
-      {text.slice(at + '{session}'.length)}
+      <span>{warningBody(text, branch)}</span>
+      {sessionId !== null && text.includes('{session}') && (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          Session <SessionChip id={sessionId} />
+        </span>
+      )}
     </>
   );
 }

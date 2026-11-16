@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { HomeResponse } from '@cwd/shared';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { Option } from '../findings/FindingsPage.tsx';
+import { Option } from '../components/Option.tsx';
 import { cn } from 'cn';
 import {
   WARNING_INK,
