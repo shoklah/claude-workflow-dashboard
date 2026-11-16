@@ -75,6 +75,7 @@ How it gets built (approved by the owner): **the mock is the reference source, p
 - **A table that scrolls sideways shows a cue:** its edge fades where more columns are hidden (the right edge at the start, both in the middle, the left at the end); a table that fits has none.
 - **The run page keeps its light restyle** in this slice, though its redesign follows.
 - **Two pull requests on main**, shared patterns first; the in-between state on main is accepted.
+- **Panels carry no backdrop blur** (decided at the plan's approval, after a demo on the mock). `backdrop-filter` on a panel is recomputed on every scroll frame, because the panel moves over the fixed backdrop: on Home, in the owner's Chrome, the page drew about four times more frames per second without it (37 against 9, measured with every frame forced), and a smaller radius did not help. The backdrop is already soft gradients, so the blur changed almost nothing to look at. The `glass` utility keeps its tint, sheen, edge, highlight and shadow and loses `backdrop-filter`; no overlay used it. The approved captures were taken with the blur on.
 
 ## Contrast
 
@@ -121,7 +122,7 @@ A Vitest test in `packages/web` reads `src/index.css` as text, takes the tokens 
 - Surfaces: the panel tint over each backdrop colour, with each end of the sheen; then the header band (`--secondary`) and the row hover (`--accent`) over that.
 - Asserted at 4.5:1 or more: primary ink on every backdrop colour; primary, secondary and warning ink on every surface; notice ink on the notice bar over every backdrop colour; each `--on-shade-*` ink on its `--shade-*` step (the zero step over the panel only: heatmap rows don't hover and its cells are never in the header band; over the band it would be 4.38).
 
-The blur and the 160% saturation are left out: a blur only averages towards colours already in the set, and the test says so in a comment. The test fails on today's tokens and passes on the tuned ones; that failure is the tuning task's failing test.
+Panels have no `backdrop-filter` (see the decisions), so the test computes what is drawn; it asserts that `index.css` holds no `backdrop-filter`, since a blur or a saturation boost would change the colours behind a panel. The test fails on today's tokens and passes on the tuned ones; that failure is the tuning task's failing test.
 
 The backdrop rule itself is checked by review and by a small e2e check: on each screen, no element with `text-muted-foreground` or `WARNING_INK` has the page's backdrop as its nearest painted ancestor (no ancestor that is a `glass` panel, a table container, a dialog, a popover or a notice bar).
 
@@ -273,7 +274,7 @@ Under Code conventions, new:
 - A day and time shows through `Time` ("Nov 12, 10:20").
 - A warning's text shows through `WarningText`, never raw.
 
-`DESIGN.md` changes: the tuned dark tokens; Layout's "a wrapped bar above the page under 768px" becomes the Menu button; Table gains the session-length exception; Typography's title sizes are now tokens.
+`DESIGN.md` changes: the tuned dark tokens; the glass recipe without its backdrop blur and saturation, with the reason; Layout's "a wrapped bar above the page under 768px" becomes the Menu button; Table gains the session-length exception; Typography's title sizes are now tokens.
 
 ## Tests and checks
 
