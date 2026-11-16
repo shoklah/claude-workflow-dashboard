@@ -11,7 +11,7 @@ const stepKinds = (charts: Charts) => Object.keys(charts.findingsByStep) as Step
 // The dataviz skill's reference palette, light mode, on the card's white surface: categorical slots 1 to 7 in their
 // fixed order (validated: adjacent pairs pass CVD and normal-vision; aqua, yellow and magenta sit under 3:1, so the
 // table view below carries every number), and the chart chrome's ink, gridline and baseline.
-const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6'];
+const SERIES = [1, 2, 3, 4, 5, 6, 7].map((i) => `var(--series-${i})`);
 // A spend group's colour, in the chart and the table's swatches: the palette's first four slots in the groups' order,
 // and a neutral grey outside the palette for Unattributed, so it reads as "the rest" (the table view carries its numbers).
 export const SPEND_GROUP_COLORS: Record<SpendGroup, string> = {
@@ -19,12 +19,24 @@ export const SPEND_GROUP_COLORS: Record<SpendGroup, string> = {
   implement: SERIES[1],
   review: SERIES[2],
   coordination: SERIES[3],
-  unattributed: '#b5b4ad',
+  unattributed: 'var(--series-rest)',
 };
-const SURFACE = '#ffffff';
-const INK = '#52514e';
-const GRID = '#e1e0d9';
-const BASELINE = '#c3c2b7';
+const SURFACE = 'var(--chart-surface)';
+const INK = 'var(--chart-ink)';
+const GRID = 'var(--chart-grid)';
+const BASELINE = 'var(--chart-baseline)';
+
+// Direction variants (throwaway): ECharts' SVG attributes can't hold var(), so each one is read from the page at render.
+function resolveVars(value: unknown): unknown {
+  if (typeof value === 'string' && value.startsWith('var(')) {
+    return getComputedStyle(document.documentElement).getPropertyValue(value.slice(4, -1)).trim();
+  }
+  if (Array.isArray(value)) return value.map(resolveVars);
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveVars(v)]));
+  }
+  return value;
+}
 
 /** The options every chart shares: weeks along the bottom, one value axis, an axis tooltip, no animation. */
 function baseOption(weeks: string[]) {
@@ -166,7 +178,7 @@ export function Chart({ title, option, height }: { title: string; option: object
       <ReactECharts
         role="img"
         aria-label={`${title}: bars by week; the numbers are in the table below.`}
-        option={option}
+        option={resolveVars(option) as object}
         opts={{ renderer: 'svg' }}
         style={{ height }}
       />

@@ -366,13 +366,13 @@ export function formatPercent(percent: number | null): string {
 // The dataviz blue ramp's five steps, light to dark, with black text on step 4 (white there is 4.42:1, under AA's
 // 4.5:1) and white on the darkest; and its neutral grey with secondary ink, for 0.
 const SHADES = [
-  'bg-[#cde2fb]',
-  'bg-[#9ec5f4]',
-  'bg-[#6da7ec]',
-  'bg-[#2a78d6] text-black',
-  'bg-[#184f95] text-white',
+  'bg-(--shade-1) text-(--shade-ink)',
+  'bg-(--shade-2) text-(--shade-ink)',
+  'bg-(--shade-3) text-(--shade-ink)',
+  'bg-(--shade-4) text-(--shade-4-ink)',
+  'bg-(--shade-5) text-(--shade-5-ink)',
 ];
-const ZERO_SHADE = 'bg-[#f0efec] text-[#52514e]';
+const ZERO_SHADE = 'bg-(--shade-zero) text-(--shade-zero-ink)';
 
 // The dataviz palette's reserved status orange ("serious") for a warned step box's border, and the approved mockup's
 // darker orange for the warning text beside it, readable on white (5.9:1).
