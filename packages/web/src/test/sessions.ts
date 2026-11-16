@@ -71,7 +71,49 @@ export const quietSession: SessionRow = {
   ],
 };
 
-export const sessionsFull: SessionsResponse = { sessions: [twoRunSession, otherSession, quietSession], hidden: 0 };
+/** A session left open for days, 4,997 minutes long. */
+export const longSession: SessionRow = {
+  key: 'c4d5e6f7a8b90123',
+  title: 'Release checklist draft',
+  sessionId: '3e9a6c21-7b4d-4f8e-a2c5-9d1b0e6f4a87',
+  projectKey: fullRun.projectKey,
+  project: 'atlas',
+  start: '2026-11-02T22:14:00Z',
+  end: '2026-11-06T09:31:00Z',
+  minutes: 4997,
+  models: [{ model: 'claude-opus-5-5', effort: 'medium' }],
+  cost: 0.12,
+  startup: true,
+  warnings: 0,
+  holds: [],
+  timeline: [],
+};
+
+/** A session that ran on two models, its effort for each. */
+export const twoModelSession: SessionRow = {
+  key: 'd7e8f9a0b1c23456',
+  title: 'Sketch the retry backoff',
+  sessionId: '9b2f4e18-6a3c-4d7e-b1f5-8c0a2e4d6b93',
+  projectKey: smallRun.projectKey,
+  project: 'harbor',
+  start: '2026-11-01T14:40:00Z',
+  end: '2026-11-01T16:13:00Z',
+  minutes: 93,
+  models: [
+    { model: 'claude-opus-5-5', effort: 'high' },
+    { model: 'claude-sonnet-5-5', effort: null },
+  ],
+  cost: 0.41,
+  startup: null,
+  warnings: 0,
+  holds: [],
+  timeline: [],
+};
+
+export const sessionsFull: SessionsResponse = {
+  sessions: [twoRunSession, otherSession, quietSession, longSession, twoModelSession],
+  hidden: 0,
+};
 
 /** Showing mode on: no session ID, and two sessions in other projects left out. */
 export const sessionsHidden: SessionsResponse = {

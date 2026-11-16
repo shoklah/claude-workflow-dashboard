@@ -129,7 +129,7 @@ Panels and notice bars use a 1.25rem radius; buttons, selects and pressed option
 - **Panel:** the glass recipe above. Charts, tables and the workflow diagram sit on panels; prose notes do not.
 - **Button and option switch:** pills. In a switch, the pressed option is solid primary and the others are clear glass with an edge; a disabled option is 50% opacity with its tooltip still reachable.
 - **Select:** a clear glass pill with a drawn chevron in secondary ink, inset from the right as far as the text is from the left; its open list uses the system's popup.
-- **Table:** header row a slightly lighter glass band, header text 600; hairline row borders; row hover lightens the row by one glass step. Numeric columns right-aligned with tabular figures; the unit goes in the header. A table that scrolls sideways fades at the edge where columns are hidden.
+- **Table:** header row a slightly lighter glass band, header text 600; hairline row borders; row hover lightens the row by one glass step. Numeric columns right-aligned with tabular figures; the unit goes in the header; the one cell that carries its own unit is a session's length ("45 min", "7 h 46", "3 d 11 h"). A table that scrolls sideways fades at the edge where columns are hidden.
 - **Menu rail:** glass; the current page is a lighter pill with 600 weight, the rest 400 with hover.
 - **Heatmap cell:** the ramp under Chart colours, its number written in it.
 - **Share bar:** the ramp's fourth step on its first step, the percent written beside it.
