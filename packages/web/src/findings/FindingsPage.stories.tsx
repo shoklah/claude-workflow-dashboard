@@ -20,7 +20,9 @@ export const Loading: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': 'pending' });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Loading the findings…')).toBeVisible();
+    const state = await canvas.findByText('Loading the findings…');
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -29,7 +31,11 @@ export const Failed: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': 500 });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Couldn't load the findings.")).toBeVisible();
+    const state = await canvas.findByText(
+      "Couldn't load the findings. Check that the dashboard server is running, then refresh.",
+    );
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -39,9 +45,11 @@ export const Empty: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsEmpty });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('No findings in this period.')).toBeVisible();
+    await expect(
+      await canvas.findByText('No findings in this period. A finding shows here once a run with a review is imported.'),
+    ).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Tests, week of Nov 8: 0' })).toBeVisible();
-    await expect(canvas.getByText('Labeller off: no API key')).toBeVisible();
+    await expect(canvas.getByText("The labeller is off: the data folder's .env holds no API key.")).toBeVisible();
   },
 };
 
@@ -55,7 +63,15 @@ export const Full: Story = {
   },
   play: async ({ canvas, userEvent }) => {
     const cell = await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2' });
-    await expect(canvas.getByText(/Every label here is the app's/)).toBeVisible();
+    await expect(
+      canvas.getByText("Every label here is the app's, until the workflow labels findings itself."),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('columnheader', { name: 'Labelled by the app' })).toBeNull();
+    // Each switch on the backdrop shows its label.
+    await expect(canvas.getByRole('group', { name: 'Measure' })).toHaveTextContent(/^Measure/);
+    await expect(canvas.getByRole('group', { name: 'Area' })).toHaveTextContent(/^Area/);
+    await expect(canvas.getByText('Measure', { selector: 'span' })).toBeVisible();
+    await expect(canvas.getByText('Area', { selector: 'span' })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await expect(canvas.getByRole('button', { name: 'Raised' })).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.getByRole('button', { name: 'Implementation' })).toHaveAttribute('aria-pressed', 'true');
@@ -67,7 +83,8 @@ export const Full: Story = {
     await expect(canvas.getByText('Select a cell to list its findings.')).toBeVisible();
 
     await userEvent.click(cell);
-    await expect(canvas.getByRole('heading', { name: 'Tests · week of Nov 8 · 2 findings' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: '2 findings in Tests, week of Nov 8' })).toBeVisible();
+    await expect(canvas.queryByText('Select a cell to list its findings.')).toBeNull();
     const list = within(canvas.getByRole('region', { name: 'Findings' }));
     await expect(list.getAllByRole('row')).toHaveLength(3);
     await expect(list.getByText('The retry path has no test')).toBeVisible();
@@ -89,8 +106,12 @@ export const AppDiffers: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/findings?weeks=4': findingsWorkflow });
   },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2 · 1 by the app' });
+    await canvas.findByRole('button', { name: 'Tests, week of Nov 8: 2' });
     await expect(canvas.queryByText(/Every label here is the app's/)).toBeNull();
+    await expect(canvas.getAllByRole('columnheader').slice(-2).map((th) => th.textContent)).toEqual([
+      'Total',
+      'Labelled by the app',
+    ]);
     await userEvent.click(canvas.getByRole('button', { name: 'App differs' }));
     await expect(canvas.getByRole('button', { name: 'App differs' })).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.getByRole('button', { name: 'Correctness, week of Oct 18: 1' })).toBeVisible();

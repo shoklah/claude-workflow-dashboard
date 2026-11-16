@@ -7,30 +7,44 @@ const meta = { component: SignalsPanel } satisfies Meta<typeof SignalsPanel>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// The signals' terms, in the approved capture's words.
 const SIGNALS = [
-  'fix commits within 14 days after a run',
-  'final-review findings on runs whose task reviews came back clean',
-  'fix-check verdicts of "fixed, not proportionate"',
-  'findings declined or ruled',
+  'Fix commits within 14 days after a run',
+  'Final review findings on runs whose task reviews came back clean',
+  'Fix-check verdicts of "fixed, not proportionate"',
+  'Findings declined or ruled',
+  'Findings the session judged invalid',
 ];
 
-/** Empty: no signal in the period, and no API key, so the labeller is off. */
+/** Each term of the panel's labelled pairs, with its value. */
+function pairs(canvasElement: HTMLElement): [string, string][] {
+  return [...canvasElement.querySelectorAll('dt')].map((dt) => [dt.textContent!, dt.nextElementSibling!.textContent!]);
+}
+
+/** Empty: every signal 0, and no API key, so the labeller is off. */
 export const Empty: Story = {
   args: { signals: findingsEmpty.signals, labeller: findingsEmpty.labeller },
-  play: async ({ canvas }) => {
-    for (const signal of SIGNALS) await expect(canvas.getByRole('group', { name: signal })).toHaveTextContent(`0${signal}`);
-    await expect(canvas.getByText('Labeller off: no API key')).toBeVisible();
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getByRole('region', { name: 'Relevance signals' })).toHaveClass('glass');
+    await expect(pairs(canvasElement)).toEqual(SIGNALS.map((signal) => [signal, '0']));
+    await expect(canvas.getByText("The labeller is off: the data folder's .env holds no API key.")).toBeVisible();
   },
 };
 
-/** Full: the four signals' sums, the session's invalid calls, and the labeller's counts and this week's tokens. */
+/** Full: the five signals' sums, then the labeller's counts and this week's tokens, each a labelled pair. */
 export const Full: Story = {
   args: { signals: findingsFull.signals, labeller: findingsFull.labeller },
-  play: async ({ canvas }) => {
-    const values = SIGNALS.map((signal) => canvas.getByRole('group', { name: signal }).textContent);
-    await expect(values.slice(0, 3)).toEqual(SIGNALS.slice(0, 3).map((signal, i) => `${[3, 5, 4][i]}${signal}`));
-    // Beside "declined or ruled", the findings the session judged invalid.
-    await expect(values[3]).toBe('18findings declined or ruled · 6 judged invalid by the session');
-    await expect(canvas.getByText('8 labelled · 1 waiting · 43,350 tokens this week')).toBeVisible();
+  play: async ({ canvas, canvasElement }) => {
+    await expect(pairs(canvasElement)).toEqual([
+      [SIGNALS[0], '3'],
+      [SIGNALS[1], '5'],
+      [SIGNALS[2], '4'],
+      [SIGNALS[3], '18'],
+      [SIGNALS[4], '6'],
+      ['Labelled by the app', '8'],
+      ['Waiting', '1'],
+      ['Labeller tokens this week', '43,350'],
+    ]);
+    await expect(canvas.queryByText(/The labeller is off/)).toBeNull();
   },
 };
