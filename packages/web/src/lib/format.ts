@@ -80,11 +80,11 @@ export function kindLabel(kind: string | null): string {
   return kind === null ? 'other' : (KIND_LABELS[kind] ?? countLabel(kind));
 }
 
-/** A reporter's phase on screen, in lower case as the Spend page writes phases: a step kind by its step's label
- * ("fix-check"), another name with spaces ("plan writing"). */
+/** A reporter's phase on screen, capitalised as the Spend page writes phases: a step kind by its step's label
+ * ("Fix-check"), another name with spaces ("Plan writing"). */
 export function phaseLabel(name: string): string {
   const kind = toStepKind(name);
-  return (kind ? STEP_LABELS[kind] : countLabel(name)).toLowerCase();
+  return capitalize((kind ? STEP_LABELS[kind] : countLabel(name)).toLowerCase());
 }
 
 /** A spend group's name on screen. */
