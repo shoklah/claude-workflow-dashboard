@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
 import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
 import { LINK } from '../components/Panel.tsx';
+import { RowToggle } from '../components/RowToggle.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -94,20 +94,17 @@ function SessionRows({ session }: { session: SessionRow }) {
   const name = sessionName(session.title);
   const count = (kind: string) => new Set(session.timeline.filter((t) => t.kind === kind).map((t) => t.name)).size;
   const neverLoaded = new Set(session.timeline.filter((t) => t.neverLoaded).map((t) => t.name)).size;
-  const Chevron = open ? ChevronDown : ChevronRight;
   return (
     <>
       <TableRow className={open ? 'border-b-0' : undefined}>
         <TableCell className="max-w-72 align-top font-medium whitespace-normal">
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-            className="flex items-center gap-1.5 rounded-sm text-left"
+          <RowToggle
+            open={open}
+            onToggle={() => setOpen(!open)}
+            className={cn(!session.title && 'font-normal text-muted-foreground')}
           >
-            <Chevron aria-hidden className="size-4 flex-none text-muted-foreground" />
-            <span className={cn(LINK, !session.title && 'font-normal text-muted-foreground')}>{name}</span>
-          </button>
+            {name}
+          </RowToggle>
         </TableCell>
         <TableCell className="align-top text-muted-foreground">
           {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} />}

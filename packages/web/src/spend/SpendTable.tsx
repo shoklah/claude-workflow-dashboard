@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from 'cn';
 import type { SpendGroupRow, SpendResponse, SpendRow } from '@cwd/shared';
 import { GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
-import { LINK, SectionTitle } from '../components/Panel.tsx';
+import { SectionTitle } from '../components/Panel.tsx';
+import { RowToggle } from '../components/RowToggle.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { SPEND_GROUP_COLORS } from '../home/WeeklyCharts.tsx';
@@ -39,7 +39,6 @@ function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
   const [open, setOpen] = useState(false);
   const name = SPEND_GROUP_LABELS[row.group];
   const opens = row.phases.some((phase) => phase.name !== row.group);
-  const Chevron = open ? ChevronDown : ChevronRight;
   const swatch = (
     <i
       aria-hidden
@@ -52,16 +51,9 @@ function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
       <TableRow className={cn('font-medium', open && 'border-b-0')}>
         <TableCell>
           {opens ? (
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => setOpen(!open)}
-              className="flex items-center gap-2 rounded-sm text-left"
-            >
-              <Chevron aria-hidden className="size-4 flex-none text-muted-foreground" />
-              {swatch}
-              <span className={LINK}>{name}</span>
-            </button>
+            <RowToggle open={open} onToggle={() => setOpen(!open)} before={swatch}>
+              {name}
+            </RowToggle>
           ) : (
             <span className="flex items-center gap-2 pl-6">
               {swatch}
