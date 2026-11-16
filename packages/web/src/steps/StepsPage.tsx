@@ -1,52 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, StepsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
+import { GroupHead, Lines, NUM, Num, SUB } from '../components/Num.tsx';
 import { PageTitle, SectionTitle, State } from '../components/Panel.tsx';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { RULE_LABELS, STEP_LABELS, capitalize, countLines, formatCompactFixed, formatDollars, total } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 const OUTCOMES = ['Fixed or applied', 'Declined', 'Deferred', 'Open or to owner'];
-
-type Count = [string, number | null];
-
-/**
- * A step's or rule's rows, one per count: its name and the cells before and after the counts span them; "No counts"
- * when it has none, the dash when they aren't known.
- */
-function Lines({ name, before, counts, after }: { name: string; before: ReactNode[]; counts: Count[] | null; after: ReactNode[] }) {
-  const lines = Math.max(1, counts?.length ?? 0);
-  const span = (cell: ReactNode, i: number) => (
-    <TableCell key={i} rowSpan={lines} className={cn(NUM, 'align-top')}>
-      {cell}
-    </TableCell>
-  );
-  return Array.from({ length: lines }, (_, i) => (
-    <TableRow key={i} className={cn(i < lines - 1 && 'border-b-0')}>
-      {i === 0 && (
-        <TableHead scope="row" rowSpan={lines} className="h-auto py-2 align-top">
-          {name}
-        </TableHead>
-      )}
-      {i === 0 && before.map(span)}
-      {counts?.[i] ? (
-        <>
-          <TableCell className="text-muted-foreground">{counts[i][0]}</TableCell>
-          <TableCell className={NUM}>
-            <Num value={counts[i][1]} />
-          </TableCell>
-        </>
-      ) : (
-        <TableCell colSpan={2} className="text-muted-foreground">
-          {counts ? 'No counts' : <Unknown />}
-        </TableCell>
-      )}
-      {i === 0 && after.map(span)}
-    </TableRow>
-  ));
-}
 
 /** Each step kind over the period, then each rule, in two tables: one value per cell, a count per line. */
 function StepsTables({ response }: { response: StepsResponse }) {
@@ -89,6 +51,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
         <TableBody>
           {steps.map((row) => (
             <Lines
+              none="No counts"
               key={row.step}
               name={STEP_LABELS[row.step]}
               before={[n(row.ran), n(row.found)]}
@@ -128,18 +91,21 @@ function StepsTables({ response }: { response: StepsResponse }) {
         </TableHeader>
         <TableBody>
           <Lines
+            none="No counts"
             name={capitalize(RULE_LABELS.failingTest)}
             before={[n(total(rules.failingTest)), n(null)]}
             counts={countLines(rules.failingTest)}
             after={[n(null)]}
           />
           <Lines
+            none="No counts"
             name={capitalize(RULE_LABELS.dispatchGuard)}
             before={[n(null), n(rules.dispatchGuard && total(rules.dispatchGuard))]}
             counts={countLines(rules.dispatchGuard)}
             after={[n(null)]}
           />
           <Lines
+            none="No counts"
             name={capitalize(RULE_LABELS.advisor)}
             before={[n(advisor?.calls), n(null)]}
             counts={
@@ -152,6 +118,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
             after={[dollars(advisor?.cost)]}
           />
           <Lines
+            none="No counts"
             name={capitalize(RULE_LABELS.startup)}
             before={[n(startup && startup.with + startup.without), n(null)]}
             counts={
@@ -163,6 +130,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
             after={[n(null)]}
           />
           <Lines
+            none="No counts"
             name={capitalize(RULE_LABELS.fixRoundCap)}
             before={[n(null), n(null)]}
             counts={[
@@ -172,6 +140,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
             after={[n(null)]}
           />
           <Lines
+            none="No counts"
             name={capitalize(RULE_LABELS.stopRule)}
             before={[n(null), n(null)]}
             counts={[['Stops', rules.stopRule]]}
@@ -179,6 +148,7 @@ function StepsTables({ response }: { response: StepsResponse }) {
           />
           {Object.entries(rules.offers).map(([skill, { offered, ...outcomes }]) => (
             <Lines
+              none="No counts"
               key={skill}
               name={`${capitalize(RULE_LABELS.offer)} of ${skill}`}
               before={[n(offered), n(null)]}

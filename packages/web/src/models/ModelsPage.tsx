@@ -1,8 +1,8 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useState } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, ModelsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, Lines, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
 import { PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -54,20 +54,6 @@ function PairCells({ pairs, line, unset, none }: { pairs: Pair[]; line: number; 
   );
 }
 
-/** A table's one row saying it has none, across its columns. */
-function EmptyRow({ columns, children }: { columns: number; children: ReactNode }) {
-  return (
-    <TableRow>
-      <TableCell colSpan={columns} className="text-muted-foreground">
-        {children}
-      </TableCell>
-    </TableRow>
-  );
-}
-
-/** A line's classes: no border before the item's next line. */
-const lineClass = (line: number, lines: number) => cn(line < lines - 1 && 'border-b-0');
-
 /** The Models and advisor tables: agents, main sessions, the advisor's facts and its weeks; one value per cell. */
 function ModelsTables({ response }: { response: ModelsResponse }) {
   const { agents, byPath, advisor } = response;
@@ -104,26 +90,23 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
               No dispatches in this period. An agent shows here once a run or session dispatches it.
             </EmptyRow>
           )}
-          {agents.flatMap((row) => {
+          {agents.map((row) => {
             const requested = pairsOf(row.requested);
             const actual = pairsOf(row.actual);
-            const lines = Math.max(1, requested.length, actual.length);
-            return Array.from({ length: lines }, (_, i) => (
-              <TableRow key={`${row.name} ${i}`} className={lineClass(i, lines)}>
-                {i === 0 && (
-                  <TableHead scope="row" rowSpan={lines} className="h-auto py-2 align-top">
-                    {row.name}
-                  </TableHead>
+            return (
+              <Lines
+                key={row.name}
+                name={row.name}
+                lines={Math.max(1, requested.length, actual.length)}
+                line={(i) => (
+                  <>
+                    <PairCells pairs={requested} line={i} unset="not set" none="No dispatches" />
+                    <PairCells pairs={actual} line={i} unset="not known" none="No dispatches" />
+                  </>
                 )}
-                <PairCells pairs={requested} line={i} unset="not set" none="No dispatches" />
-                <PairCells pairs={actual} line={i} unset="not known" none="No dispatches" />
-                {i === 0 && (
-                  <TableCell rowSpan={lines} className={cn(NUM, 'align-top')}>
-                    <Num value={row.mismatches} />
-                  </TableCell>
-                )}
-              </TableRow>
-            ));
+                after={[<Num value={row.mismatches} />]}
+              />
+            );
           })}
         </TableBody>
       </Table>
@@ -155,34 +138,26 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {byPath.flatMap((row) => {
+          {byPath.map((row) => {
             const actual = pairsOf(row.actual);
-            const lines = Math.max(1, actual.length);
-            return Array.from({ length: lines }, (_, i) => (
-              <TableRow key={`${row.path} ${i}`} className={lineClass(i, lines)}>
-                {i === 0 && (
-                  <TableHead scope="row" rowSpan={lines} className="h-auto py-2 align-top">
-                    {pathLabel(row.path)}
-                  </TableHead>
-                )}
-                {i === 0 &&
-                  STAGES.map((stage) => {
-                    const { model, effort } = splitPair(row.recommended?.[stage] ?? '-');
-                    return (
-                      <TableCell key={stage} rowSpan={lines} className="align-top">
-                        <Text value={model} unknown={row.recommended ? 'none' : undefined} />
-                        {effort && <span className="block text-xs text-muted-foreground">{effort}</span>}
-                      </TableCell>
-                    );
-                  })}
-                <PairCells pairs={actual} line={i} unset="not known" none="No sessions" />
-                {i === 0 && (
-                  <TableCell rowSpan={lines} className={cn(NUM, 'align-top')}>
-                    <Num value={row.differs} />
-                  </TableCell>
-                )}
-              </TableRow>
-            ));
+            return (
+              <Lines
+                key={row.path}
+                name={pathLabel(row.path)}
+                before={STAGES.map((stage) => {
+                  const { model, effort } = splitPair(row.recommended?.[stage] ?? '-');
+                  return (
+                    <TableCell key={stage} className="align-top">
+                      <Text value={model} unknown={row.recommended ? 'none' : undefined} />
+                      {effort && <span className="block text-xs text-muted-foreground">{effort}</span>}
+                    </TableCell>
+                  );
+                })}
+                lines={Math.max(1, actual.length)}
+                line={(i) => <PairCells pairs={actual} line={i} unset="not known" none="No sessions" />}
+                after={[<Num value={row.differs} />]}
+              />
+            );
           })}
         </TableBody>
       </Table>

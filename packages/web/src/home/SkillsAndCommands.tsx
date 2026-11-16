@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import type { HomeResponse } from '@cwd/shared';
-import { NUM, Num } from '../components/Num.tsx';
+import { EmptyRow, NUM, Num } from '../components/Num.tsx';
 import { SectionTitle } from '../components/Panel.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -55,11 +55,9 @@ export function SkillsAndCommands({ usage }: { usage: Usage }) {
         </TableHeader>
         <TableBody>
           {shown.rows.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={COLUMNS.length} className="text-muted-foreground">
-                No skill loaded and no command typed in this period.
-              </TableCell>
-            </TableRow>
+            <EmptyRow columns={COLUMNS.length}>
+              No skill loaded and no command typed in this period.
+            </EmptyRow>
           )}
           {shown.rows.map((row) => {
             const share = shown.sessions === 0 ? 0 : Math.round((100 * row.sessions) / shown.sessions);

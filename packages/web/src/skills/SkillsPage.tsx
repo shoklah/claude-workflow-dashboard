@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, SkillsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, Lines, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
 import { Details, PageTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -46,34 +46,25 @@ export function SkillsPage() {
           </TableHeader>
           <TableBody>
             {skills.data.skills.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={COLUMN_COUNT} className="text-muted-foreground">
-                  No skill loads in this period. A skill shows here once a run or session loads it.
-                </TableCell>
-              </TableRow>
+              <EmptyRow columns={COLUMN_COUNT}>
+                No skill loads in this period. A skill shows here once a run or session loads it.
+              </EmptyRow>
             )}
-            {skills.data.skills.flatMap((skill) => {
+            {skills.data.skills.map((skill) => {
               const outcomes = Object.entries(skill.outcomes);
-              const lines = Math.max(1, outcomes.length);
-              return Array.from({ length: lines }, (_, i) => (
-                <TableRow key={`${skill.name} ${i}`} className={cn(i < lines - 1 && 'border-b-0')}>
-                  {i === 0 && (
-                    <>
-                      <TableHead scope="row" rowSpan={lines} className="h-auto py-2 align-top">
-                        {skill.name}
-                      </TableHead>
-                      <TableCell rowSpan={lines} className={cn(NUM, 'align-top')}>
-                        <Num value={skill.runs} />
-                      </TableCell>
-                      <TableCell rowSpan={lines} className={cn(NUM, 'align-top')}>
-                        <Num value={skill.missing} />
-                      </TableCell>
-                      <TableCell rowSpan={lines} className="align-top text-muted-foreground tabular-nums">
-                        {skill.last === null ? <Unknown label="never loaded" /> : <Time iso={skill.last} />}
-                      </TableCell>
-                    </>
-                  )}
-                  {outcomes[i] ? (
+              return (
+                <Lines
+                  key={skill.name}
+                  name={skill.name}
+                  before={[
+                    <Num value={skill.runs} />,
+                    <Num value={skill.missing} />,
+                    <TableCell className="align-top text-muted-foreground tabular-nums">
+                      {skill.last === null ? <Unknown label="never loaded" /> : <Time iso={skill.last} />}
+                    </TableCell>,
+                  ]}
+                  lines={outcomes.length}
+                  line={(i) => (
                     <>
                       <TableCell>
                         {outcomes[i][0] === NONE ? <Unknown label="no outcome recorded" /> : capitalize(outcomes[i][0])}
@@ -82,13 +73,10 @@ export function SkillsPage() {
                         <Num value={outcomes[i][1]} />
                       </TableCell>
                     </>
-                  ) : (
-                    <TableCell colSpan={2} className="text-muted-foreground">
-                      No loads
-                    </TableCell>
                   )}
-                </TableRow>
-              ));
+                  none="No loads"
+                />
+              );
             })}
           </TableBody>
         </Table>

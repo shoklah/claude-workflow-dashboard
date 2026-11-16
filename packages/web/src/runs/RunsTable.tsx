@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { RunRow } from '@cwd/shared';
-import { GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
 import { LINK } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -47,11 +47,9 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
       </TableHeader>
       <TableBody>
         {runs.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={COLUMN_COUNT} className="text-muted-foreground">
-              No runs in this period. A run shows here once its record is written and imported.
-            </TableCell>
-          </TableRow>
+          <EmptyRow columns={COLUMN_COUNT}>
+            No runs in this period. A run shows here once its record is written and imported.
+          </EmptyRow>
         )}
         {runs.map((run) => (
           <TableRow key={run.key}>

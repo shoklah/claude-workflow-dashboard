@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
-import { GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
 import { LINK } from '../components/Panel.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -205,11 +205,9 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
       </TableHeader>
       <TableBody>
         {sessions.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={COLUMN_COUNT} className="text-muted-foreground">
-              No sessions in this period. A session shows here once the reporter reads its transcript.
-            </TableCell>
-          </TableRow>
+          <EmptyRow columns={COLUMN_COUNT}>
+            No sessions in this period. A session shows here once the reporter reads its transcript.
+          </EmptyRow>
         )}
         {sessions.map((session) => (
           <SessionRows key={session.key} session={session} />

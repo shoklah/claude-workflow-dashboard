@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { ContextUnit } from '@cwd/shared';
-import { GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
 import { LINK, Line, SectionTitle } from '../components/Panel.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
@@ -84,13 +84,11 @@ export function ContextUnits({
         </TableHeader>
         <TableBody>
           {units.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={COLUMN_COUNT} className="text-muted-foreground">
-                {over
-                  ? 'No runs or sessions past the cap in this period.'
-                  : 'No runs or sessions with context in this period.'}
-              </TableCell>
-            </TableRow>
+            <EmptyRow columns={COLUMN_COUNT}>
+              {over
+                ? 'No runs or sessions past the cap in this period.'
+                : 'No runs or sessions with context in this period.'}
+            </EmptyRow>
           )}
           {units.map((unit) => (
             <TableRow key={unit.key}>

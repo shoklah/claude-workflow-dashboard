@@ -10,7 +10,7 @@ import {
 } from '@tanstack/react-table';
 import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { cn } from 'cn';
-import { Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, Text, Unknown } from '../components/Num.tsx';
 import { LINK, TERM } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
@@ -176,13 +176,11 @@ export function FindingsTable({
         </TableHeader>
         <TableBody>
           {rows.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={table.getAllLeafColumns().length} className="text-muted-foreground">
-                {findings.length === 0
-                  ? 'No findings.'
-                  : 'No findings match these filters. Set a filter back to All to see more.'}
-              </TableCell>
-            </TableRow>
+            <EmptyRow columns={table.getAllLeafColumns().length}>
+              {findings.length === 0
+                ? 'No findings.'
+                : 'No findings match these filters. Set a filter back to All to see more.'}
+            </EmptyRow>
           )}
           {rows.map((row) => (
             <TableRow key={row.id}>
