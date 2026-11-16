@@ -2,52 +2,38 @@ import { useState } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, RunTime, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { GROUP, NUM, Num, SUB } from '../components/Num.tsx';
+import { Line, PageTitle, SectionTitle, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
-import { formatCost, formatCount, formatMinutes, nonZeroCountsLabel, total, weekLabel } from '../lib/format.ts';
+import { formatDollars, total, weekLabel } from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 type Week = WeeksResponse['weeks'][number];
 
-const COUNT = 'text-right tabular-nums';
-
-// The static page's "Whole workflow" columns, its counts right-aligned in tabular figures.
-const COLUMNS = [
-  { label: 'Week', count: false },
-  { label: 'Runs', count: false },
-  { label: 'Tasks', count: true },
-  { label: 'Findings', count: false },
-  { label: 'Fix rounds', count: true },
-  { label: 'Stops', count: true },
-  { label: 'Fable points', count: true },
-  { label: 'All points', count: true },
-  { label: 'Estimated dollars', count: true },
-  { label: 'Minutes per run', count: true },
-  { label: 'Later fix commits', count: true },
-];
+const SUBS = ['Small', 'Full', 'Plan', 'Critical', 'Important', 'Minor', 'Not required', 'Fable', 'All models'];
 
 const RUN_TIMES: { key: keyof RunTime; label: string }[] = [
-  { key: 'withWaves', label: 'with waves' },
-  { key: 'withoutWaves', label: 'without waves' },
+  { key: 'withWaves', label: 'With waves' },
+  { key: 'withoutWaves', label: 'Without waves' },
 ];
 
-
-/** The four small multiples, one measure each on its own axis, the weeks oldest first as the API gives them; the week
- * table is their table view. */
+/** The four small multiples, one measure each on its own axis, its unit in its title, the weeks oldest first as the
+ * API gives them; the week table is their table view. */
 function SmallMultiples({ weeks }: { weeks: Week[] }) {
   const names = weeks.map((w) => w.week);
   const charts = [
     { title: 'Runs', data: weeks.map((w) => total(w.runs)) },
     { title: 'Final review findings', data: weeks.map((w) => total(w.findings)) },
-    { title: 'Estimated dollars', data: weeks.map((w) => w.cost), cost: true },
+    { title: 'Estimated cost ($)', data: weeks.map((w) => w.cost), cost: true },
     // A duration is rounded to whole minutes first.
     {
-      title: 'Minutes per run',
+      title: 'Time per run (min)',
       data: weeks.map((w) => (w.minutesPerRun === null ? null : Math.round(w.minutesPerRun))),
     },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
       {charts.map((chart) => (
         <Chart
           key={chart.title}
@@ -60,15 +46,45 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
   );
 }
 
-/** The week table, newest first for display. */
+/** The week table, newest first for display, one value per cell under its group. */
 function WeeksTable({ weeks }: { weeks: Week[] }) {
   return (
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Weeks' }}>
       <TableHeader>
         <TableRow>
-          {COLUMNS.map((column) => (
-            <TableHead key={column.label} className={cn(column.count && COUNT)}>
-              {column.label}
+          <TableHead rowSpan={2}>Week</TableHead>
+          <TableHead colSpan={3} scope="colgroup" className={GROUP}>
+            Runs
+          </TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Tasks
+          </TableHead>
+          <TableHead colSpan={4} scope="colgroup" className={GROUP}>
+            Final review findings
+          </TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Fix rounds
+          </TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Stops
+          </TableHead>
+          <TableHead colSpan={2} scope="colgroup" className={GROUP}>
+            Usage (points)
+          </TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Est. cost ($)
+          </TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Time per run (min)
+          </TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Later fix commits
+          </TableHead>
+        </TableRow>
+        <TableRow>
+          {SUBS.map((column) => (
+            <TableHead key={column} className={cn(SUB, NUM)}>
+              {column}
             </TableHead>
           ))}
         </TableRow>
@@ -77,16 +93,33 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
         {weeks.toReversed().map((w) => (
           <TableRow key={w.week}>
             <TableHead scope="row">{weekLabel(w.week)}</TableHead>
-            <TableCell>{nonZeroCountsLabel(w.runs)}</TableCell>
-            <TableCell className={COUNT}>{w.tasks}</TableCell>
-            <TableCell>{nonZeroCountsLabel(w.findings)}</TableCell>
-            <TableCell className={COUNT}>{w.fixRounds}</TableCell>
-            <TableCell className={COUNT}>{w.stops}</TableCell>
-            <TableCell className={COUNT}>{formatCount(w.fablePoints)}</TableCell>
-            <TableCell className={COUNT}>{formatCount(w.allPoints)}</TableCell>
-            <TableCell className={COUNT}>{formatCost(w.cost)}</TableCell>
-            <TableCell className={COUNT}>{formatMinutes(w.minutesPerRun)}</TableCell>
-            <TableCell className={COUNT}>{w.laterFixes}</TableCell>
+            {[
+              w.runs.small,
+              w.runs.full,
+              w.runs.plan,
+              w.tasks,
+              w.findings.critical,
+              w.findings.important,
+              w.findings.minor,
+              w.findings.unneeded,
+              w.fixRounds,
+              w.stops,
+              w.fablePoints,
+              w.allPoints,
+            ].map((value, i) => (
+              <TableCell key={i} className={NUM}>
+                <Num value={value} />
+              </TableCell>
+            ))}
+            <TableCell className={NUM}>
+              <Num value={w.cost} format={formatDollars} />
+            </TableCell>
+            <TableCell className={NUM}>
+              <Num value={w.minutesPerRun} />
+            </TableCell>
+            <TableCell className={NUM}>
+              <Num value={w.laterFixes} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -96,12 +129,12 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
 
 function RunTimeTable({ runTime }: { runTime: RunTime }) {
   return (
-    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Full runs' }} className="w-auto">
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Full runs' }}>
       <TableHeader>
         <TableRow>
-          <TableHead>Full runs</TableHead>
-          {['Runs', 'With a run time', 'Median minutes'].map((column) => (
-            <TableHead key={column} className={COUNT}>
+          <TableHead>Kind</TableHead>
+          {['Runs', 'With a run time', 'Median time (min)'].map((column) => (
+            <TableHead key={column} className={NUM}>
               {column}
             </TableHead>
           ))}
@@ -111,9 +144,15 @@ function RunTimeTable({ runTime }: { runTime: RunTime }) {
         {RUN_TIMES.map(({ key, label }) => (
           <TableRow key={key}>
             <TableHead scope="row">{label}</TableHead>
-            <TableCell className={COUNT}>{runTime[key].runs}</TableCell>
-            <TableCell className={COUNT}>{runTime[key].timed}</TableCell>
-            <TableCell className={COUNT}>{formatMinutes(runTime[key].medianMinutes)}</TableCell>
+            <TableCell className={NUM}>
+              <Num value={runTime[key].runs} />
+            </TableCell>
+            <TableCell className={NUM}>
+              <Num value={runTime[key].timed} />
+            </TableCell>
+            <TableCell className={NUM}>
+              <Num value={runTime[key].medianMinutes} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -122,8 +161,8 @@ function RunTimeTable({ runTime }: { runTime: RunTime }) {
 }
 
 /**
- * The Weeks page (the static page's "Whole workflow"): the period's four small multiples, its weeks newest first in
- * the static page's columns, and its Full runs' run time, with and without waves.
+ * The Weeks page: the period's four small multiples, its weeks newest first, and its Full runs' run time, with and
+ * without waves.
  */
 export function WeeksPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 12 });
@@ -131,24 +170,21 @@ export function WeeksPage() {
   const projects = useProjects();
   const data = weeks.data;
   return (
-    <div className="flex flex-col gap-3">
-      <h1 className="text-xl font-semibold">Weeks</h1>
-      <ListFilters
-        query={query}
-        projects={projects}
-        onChange={(change) => setQuery({ ...query, ...change })}
-      />
-      {weeks.isPending && <p className="text-sm text-muted-foreground">Loading the weeks…</p>}
-      {weeks.isError && <p className="text-sm">Couldn't load the weeks.</p>}
+    <div className="flex flex-col gap-4">
+      <PageTitle>Weeks</PageTitle>
+      <ListFilters query={query} projects={projects} onChange={(change) => setQuery({ ...query, ...change })} />
+      {weeks.isPending && <State>Loading the weeks…</State>}
+      {weeks.isError && <State error>Couldn't load the weeks.</State>}
       {data && (
         <>
           <SmallMultiples weeks={data.weeks} />
-          <p className="text-sm text-muted-foreground">
-            Findings here are the final review's, as the reporter counts them per week.
-          </p>
-          {data.weeks.every((w) => total(w.runs) === 0) && <p className="text-sm">No runs in this period.</p>}
+          {data.weeks.every((w) => total(w.runs) === 0) && (
+            <Line>No runs in this period. A week fills once a run that finished in it is imported.</Line>
+          )}
           <CoverageNote coverageFrom={data.coverageFrom} firstWeek={data.weeks[0].week} />
+          <SectionTitle>By week</SectionTitle>
           <WeeksTable weeks={data.weeks} />
+          <SectionTitle>Full runs, with and without waves</SectionTitle>
           <RunTimeTable runTime={data.runTime} />
         </>
       )}
