@@ -40,8 +40,8 @@ export function Panel({ title, aside, className, children }: { title?: string; a
 export function Pairs({ pairs, className }: { pairs: [string, ReactNode][]; className?: string }) {
   return (
     <dl className={cn('grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-sm', className)}>
-      {pairs.map(([term, value]) => (
-        <div key={term} className="contents">
+      {pairs.map(([term, value], i) => (
+        <div key={i} className="contents">
           <dt className="text-muted-foreground">{term}</dt>
           <dd className={NUM}>{value}</dd>
         </div>
