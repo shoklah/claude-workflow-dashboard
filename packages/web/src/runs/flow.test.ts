@@ -113,8 +113,8 @@ describe('leftOf and stuck', () => {
 
 describe('boxNeed', () => {
   it("is the widest of a box's name, reviewer and exit chips, by the text estimate", () => {
-    // "task-reviewer" (13 chars) is wider than "Wave A check" (12) and the chip "Ruled 1".
-    expect(boxNeed(unitOf(runFull.timeline, 'wA'))).toBe(13 * 6 + 22);
+    // "task-reviewer" (13 chars at the reviewer's 5.8 px) is wider than "Wave A check" (12) and the chip "Ruled 1".
+    expect(boxNeed(unitOf(runFull.timeline, 'wA'))).toBeCloseTo(13 * 5.8 + 22);
     // The chip "Deferred 1" and its room beside the box: 10 chars, its padding, and its insets.
     const deferred = { ...unitOf(runFull.timeline, 't3'), findings: [{ ...runFull.findings[1] }] };
     expect(boxNeed(deferred)).toBe(10 * 6 + 12 + 36);
@@ -177,14 +177,15 @@ describe('layout', () => {
   });
 
   it.each(
-    (['runPlan', 'runSmall', 'runFull', 'runLong'] as const).flatMap((name) => [504, 720, 343].map((at) => [name, at] as const)),
+    (['runPlan', 'runSmall', 'runFull', 'runLong'] as const).flatMap((name) => [502, 720, 343].map((at) => [name, at] as const)),
   )('gives every box of %s at %i the width its text needs', (name, at) => {
     const { placed } = layout(stagesOf(STORIES[name].timeline), at);
     for (const p of placed) if (p.kind === 'unit') expect(p.w, p.unit.name).toBeGreaterThanOrEqual(boxNeed(p.unit));
   });
 
   describe('flat', () => {
-    it.each([['runSmall', 504], ['runSmall', 720], ['runSmall', 1392], ['runPlan', 720], ['runPlan', 1392]] as const)('lies %s flat at %i', (name, at) => {
+    // 502 is the graph's width in a 768 px window.
+    it.each([['runSmall', 502], ['runSmall', 720], ['runSmall', 1392], ['runPlan', 502], ['runPlan', 720], ['runPlan', 1392]] as const)('lies %s flat at %i', (name, at) => {
       const result = layout(stagesOf(STORIES[name].timeline), at);
       expect(result.shape).toBe('flat');
       expect(result.rows).toBe(1);
@@ -257,8 +258,8 @@ describe('layout', () => {
   });
 
   describe('upright', () => {
-    it("stands the plan run up at 504, where lying flat would cut its reviewer's name", () => {
-      const result = layout(stagesOf(runPlan.timeline), 504);
+    it("stands the plan run up on a phone, where lying flat would cut its boxes' text", () => {
+      const result = layout(stagesOf(runPlan.timeline), 343);
       expect(result.shape).toBe('upright');
       expect(clear(result)).toBe(true);
     });
