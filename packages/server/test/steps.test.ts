@@ -57,6 +57,7 @@ async function steps(query = ''): Promise<StepsResponse> {
 }
 
 const board = fixture('report-v5').totals.scoreboard;
+const NO_TOKENS = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
 
 /** A step row as the reporter's scoreboard row for its kind reads, with the static page's outcome columns. */
 function scoreRow(kind: string) {
@@ -71,19 +72,24 @@ function scoreRow(kind: string) {
     declined: out('declined'),
     deferred: out('deferred'),
     openOrToOwner: out('open') + out('to_owner'),
-    tokens: row.tokens,
   };
 }
 
 function expectScoreboard(rows: StepsResponse['steps']): void {
   expect(rows.map((r) => r.step)).toEqual([...STEP_KINDS]);
   for (const row of rows) {
-    const { cost, ...rest } = row;
+    const { cost, tokens, ...rest } = row;
     expect(rest).toEqual(scoreRow(row.step));
     // Costs to the cent: the reporter's are float sums.
-    // The reporter writes 0.0 where no dispatched model has a price, and the dashboard null.
-    if (row.step === 'simplify') expect(cost).toBeNull();
-    else expect(cost ?? 0).toBeCloseTo(board[row.step].cost, 2);
+    // The reporter writes 0.0 and zeros where no dispatched model has a price or no dispatch carries models, and the
+    // dashboard null.
+    if (row.step === 'simplify') {
+      expect(cost).toBeNull();
+      expect(tokens).toBeNull();
+    } else {
+      expect(cost ?? 0).toBeCloseTo(board[row.step].cost, 2);
+      expect(tokens ?? NO_TOKENS).toEqual(board[row.step].tokens);
+    }
   }
 }
 
@@ -98,16 +104,26 @@ test("stepSums over every stored run equals the reporter's scoreboard, per step 
   expectScoreboard(stepSums(listUnits(db, 'run').map((unit) => unit.merged)));
 });
 
-test("a step kind's cost is null until one of its dispatched models has a price, then the priced ones' sum", () => {
+test("a step kind's tokens are null until a dispatch carries models, and its cost until one has a price", () => {
   const unpriced = { kind: 'plan_simplify', models: { a: { input: 10, cost: null } } };
   const priced = { kind: 'plan_simplify', models: { b: { input: 5, cost: 1.25 } } };
   const planSimplify = (rows: StepRow[]) => rows.find((r) => r.step === 'plan_simplify')!;
-  expect(planSimplify(stepSums([{ schema: 2, dispatches: [unpriced] }]))).toMatchObject({ cost: null, tokens: { input: 10 } });
+  expect(planSimplify(stepSums([{ schema: 2, dispatches: [unpriced] }]))).toMatchObject({
+    cost: null,
+    tokens: { ...NO_TOKENS, input: 10 },
+  });
   const rows = stepSums([{ schema: 2, dispatches: [unpriced, priced] }]);
   expect(planSimplify(rows)).toMatchObject({ cost: 1.25, tokens: { input: 15 } });
   for (const r of rows) {
-    if (r.step !== 'plan_simplify' && r.step !== 'simplify') expect(r.cost).toBeNull();
+    if (r.step === 'plan_simplify') continue;
+    expect(r).toMatchObject({ cost: null, tokens: null });
   }
+  const simplify = stepSums([{ schema: 2, dispatches: [{ kind: 'simplify', models: { a: { input: 3, cost: 1 } } }] }]);
+  expect(simplify.find((r) => r.step === 'simplify')).toMatchObject({ tokens: null, cost: null });
+  // A dispatch without models leaves its kind's tokens unknown; an empty models map makes them known zeros.
+  const bare = stepSums([{ schema: 2, dispatches: [{ kind: 'plan_review' }, { kind: 'task_review', models: {} }] }]);
+  expect(bare.find((r) => r.step === 'plan_review')!.tokens).toBeNull();
+  expect(bare.find((r) => r.step === 'task_review')!.tokens).toEqual(NO_TOKENS);
 });
 
 test("ruleSums over every stored run equals the scoreboard's rules and the offers' totals", () => {

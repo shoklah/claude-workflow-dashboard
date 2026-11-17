@@ -84,6 +84,8 @@ describe('check:real', () => {
       totals.run_time.with_waves.timed += 1;
       totals.scoreboard.task_review.outcomes.fixed += 1;
       totals.scoreboard.final_review.cost += 0.01;
+      // The dashboard's tokens for a kind with no dispatch carrying models are null, read as zeros: still differs.
+      totals.scoreboard.final_fix_check.tokens.input += 1;
       totals.scoreboard.stop_rule.stops += 1;
       totals.offers.graphify.accepted += 1;
       totals.skills['test-driven-development'].runs += 1;
@@ -95,7 +97,7 @@ describe('check:real', () => {
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
-        'run time: compared, 1 differ\nwith_waves\nsteps: 8 compared, 2 differ\ntask_review\nfinal_review\n' +
+        'run time: compared, 1 differ\nwith_waves\nsteps: 8 compared, 3 differ\ntask_review\nfinal_review\nfinal_fix_check\n' +
         'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\nshowing: pass\n',
     );
     // A skill or agent name can come from a project, so neither is printed.

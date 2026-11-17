@@ -4,8 +4,8 @@ import type { AdvisorFacts } from './models.ts';
 /**
  * A step kind's row over a period, as the reporter's scoreboard: the steps that ran, those whose counts found
  * something, their summed counts, their findings by the static page's outcome columns, and the tokens and cost of the
- * window's dispatches of that kind, the cost null until one of its dispatched models has a price; simplify's tokens
- * and cost are null.
+ * window's dispatches of that kind, the tokens null until one of its dispatches carries `models` and the cost until one
+ * of its dispatched models has a price; simplify's tokens and cost are null.
  */
 export type StepRow = {
   step: StepKind;
