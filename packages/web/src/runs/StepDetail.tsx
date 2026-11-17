@@ -148,7 +148,9 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
                       <Finding finding={f} />
                     </th>
                     <td className="py-2 align-top">
-                      <span className="flex items-center gap-1.5">
+                      {/* Each mark's line is as tall as the Ended chip (22 px), so rules, dots and chip share a middle,
+                          a skipped round's lone rule too. */}
+                      <span className="flex min-h-5.5 items-center gap-1.5">
                         <Dot />
                         <span>Found</span>
                         <Rule dashed={f.verdicts.length === 0} />
@@ -158,7 +160,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
                       const verdict = f.verdicts[r];
                       return (
                         <td key={r} className="py-2 align-top">
-                          <span className="flex items-center gap-1.5">
+                          <span className="flex min-h-5.5 items-center gap-1.5">
                             {verdict === undefined ? (
                               <Rule dashed />
                             ) : (
