@@ -2951,11 +2951,11 @@
           "cost": 6.28
         },
         "claude-fable-5-1": {
-          "input": 28000,
-          "output": 17000,
-          "cache_read": 1300000,
-          "cache_write": 80000,
-          "cost": 2.455
+          "input": 43000,
+          "output": 27000,
+          "cache_read": 2100000,
+          "cache_write": 130000,
+          "cost": 3.955
         }
       },
       "efforts": {
@@ -3518,7 +3518,7 @@
         "stops": 0,
         "fable_points": 12,
         "all_points": 8,
-        "cost": 23.240000000000002,
+        "cost": 24.74,
         "minutes_per_run": 200.0,
         "later_fixes": 1
       }
