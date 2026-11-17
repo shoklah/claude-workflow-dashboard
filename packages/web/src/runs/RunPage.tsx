@@ -63,7 +63,7 @@ function NoneLine({ title, side, children }: { title: ReactNode; side: string; c
 /** A box of the header's chain; `dashed` for what isn't a run (a handoff, later fixes). */
 function ChainBox({ dashed = false, current = false, children }: { dashed?: boolean; current?: boolean; children: ReactNode }) {
   return (
-    <div aria-current={current ? 'page' : undefined} className={cn('flex min-w-0 flex-col rounded-control border px-3 py-1.5', dashed && 'border-dashed')}>
+    <div aria-current={current ? 'page' : undefined} className={cn('flex min-w-0 flex-col rounded-lg border px-3 py-1.5', dashed && 'border-dashed')}>
       {children}
     </div>
   );
@@ -248,7 +248,7 @@ export function RunPage({ runKey }: { runKey: string }) {
           <LeftForLater
             // The units' own findings, so each names the unit holding it.
             findings={unit ? unit.findings : units.flatMap((u) => u.findings)}
-            from={(f) => units.find((u) => u.findings.includes(f))?.name ?? ''}
+            from={(f) => units.find((u) => u.findings.includes(f))?.name ?? null}
             laterFixes={run.data.laterFixes}
             step={unit?.name ?? null}
             beforeSteps={facts.beforeSteps}

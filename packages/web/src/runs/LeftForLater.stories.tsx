@@ -7,7 +7,7 @@ import { leftFindings, runFull } from '../test/runs.ts';
 import { LeftForLater } from './LeftForLater.tsx';
 
 /** The step a finding came from, as the run page names its unit. */
-const from = (f: FindingRow) => (f.task ? `Task ${f.task}` : STEP_LABELS[f.step]);
+const from = (f: FindingRow): string | null => (f.task ? `Task ${f.task}` : STEP_LABELS[f.step]);
 
 const meta = {
   component: LeftForLater,
@@ -83,5 +83,36 @@ export const BeforeSteps: Story = {
     const panel = canvas.getByRole('region', { name: 'Left for later' });
     await expect(within(panel).getByText('Recorded before findings were logged: this run has none to list.')).toBeVisible();
     await expect(within(panel).queryByText('Nothing left: every finding was closed in this run.')).toBeNull();
+  },
+};
+
+const LONG = 'packages/server/src/views/a-very-long-folder-name-with-no-break/and-another-one/run-page-view.ts';
+
+/** On a phone, a long unbroken summary scrolls in the table's own region, and a long fix subject wraps: nothing spills
+ * past the panel. */
+export const Phone: Story = {
+  parameters: { viewport: { options: { phone: { name: 'Phone', styles: { width: '375px', height: '812px' } } } } },
+  globals: { viewport: { value: 'phone' } },
+  args: {
+    findings: [{ ...leftFindings[1], summary: `Rename ${LONG}` }],
+    laterFixes: [{ date: '2026-11-10T10:14:00Z', subject: `fix:${LONG}` }],
+  },
+  play: async ({ canvas }) => {
+    const panel = canvas.getByRole('region', { name: 'Left for later' });
+    const region = canvas.getByRole('region', { name: 'Left for later table' });
+    await expect(region).toHaveAttribute('tabindex', '0');
+    await expect(region).toHaveAttribute('data-scroll-cue');
+    await expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth);
+    const subject = canvas.getByText(`fix:${LONG}`);
+    await expect(subject.getBoundingClientRect().right).toBeLessThanOrEqual(panel.getBoundingClientRect().right);
+  },
+};
+
+/** A finding no unit holds shows its From as the dash, read out as "not known". */
+export const Unheld: Story = {
+  args: { findings: [leftFindings[1]], from: () => null },
+  play: async ({ canvas }) => {
+    const row = canvas.getAllByRole('row')[1];
+    await expect(cells(row)[2]).toBe('–not known');
   },
 };
