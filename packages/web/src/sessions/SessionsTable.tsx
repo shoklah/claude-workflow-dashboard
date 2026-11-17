@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
-import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, TITLE, Text, Unknown } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { RowToggle } from '../components/RowToggle.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
@@ -95,7 +95,7 @@ function SessionRows({ session, initial }: { session: SessionRow; initial: boole
   return (
     <>
       <TableRow className={open ? 'border-b-0' : undefined}>
-        <TableCell className="max-w-72 align-top font-medium whitespace-normal">
+        <TableCell className={cn(TITLE, 'align-top font-medium')}>
           <RowToggle
             open={open}
             onToggle={() => setOpen(!open)}

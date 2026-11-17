@@ -1,8 +1,7 @@
-import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { RunRow } from '@cwd/shared';
-import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
-import { LINK } from '../components/Panel.tsx';
+import { ChangeLink } from '../components/ChangeLink.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, TITLE, Text, Unknown } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -23,16 +22,9 @@ export function ChangeCells({
 }) {
   return (
     <>
-      <TableCell className={className}>
+      <TableCell className={cn(TITLE, className)}>
         {change ? (
-          // As wide as its title up to the column's maximum, as in the Changes table.
-          <Link
-            to="/work/changes/$key"
-            params={{ key: change.key }}
-            className={cn(LINK, 'inline-block w-max max-w-80 whitespace-normal')}
-          >
-            {change.title}
-          </Link>
+          <ChangeLink changeKey={change.key} title={change.title} />
         ) : (
           <Unknown label="no design" />
         )}
@@ -91,7 +83,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
         )}
         {runs.map((run) => (
           <TableRow key={run.key}>
-            <TableCell className="font-medium">
+            <TableCell className={cn(TITLE, 'font-medium')}>
               <RunLink runKey={run.key} branch={run.branch} title={run.headline} />
               {run.beforeSteps && <span className="ml-2 text-xs font-normal text-muted-foreground">before steps</span>}
             </TableCell>

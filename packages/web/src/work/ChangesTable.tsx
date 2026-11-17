@@ -1,8 +1,7 @@
-import { Link } from '@tanstack/react-router';
-import { cn } from 'cn';
 import type { ChangeRow } from '@cwd/shared';
+import { ChangeLink } from '../components/ChangeLink.tsx';
 import { EmptyRow, NUM, Num, Unknown } from '../components/Num.tsx';
-import { LINK, Term } from '../components/Panel.tsx';
+import { Term } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
@@ -43,13 +42,7 @@ export function ChangesTable({ rows, project, label }: { rows: ChangeRow[]; proj
           <TableRow key={row.key}>
             <TableCell className="font-medium">
               {/* As wide as its title up to the column's maximum, so it wraps only past it, never down to a word. */}
-              <Link
-                to="/work/changes/$key"
-                params={{ key: row.key }}
-                className={cn(LINK, 'inline-block w-max max-w-80 whitespace-normal')}
-              >
-                {row.title}
-              </Link>
+              <ChangeLink changeKey={row.key} title={row.title} className="inline-block w-max max-w-80 whitespace-normal" />
             </TableCell>
             {project && (
               <TableCell className="text-muted-foreground">

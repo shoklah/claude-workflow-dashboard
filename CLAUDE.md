@@ -122,7 +122,9 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - `runPageView`'s `related` runs come in the order they finished (unknown last), none for a run with no branch; the header's chain puts those finished before the run ahead of it and the rest after its handoff.
 - The later fixes' term (`laterFixesLabel` and `LATER_FIXES_TERM` in `format.ts`) shows only through `LaterFixesTerm` in `runs/LeftForLater.tsx`, in the header's chain and Left for later alike.
 - A run's link is `RunLink` in `components/RunLink.tsx`, named by its `title` (the run's headline), else its branch ("no branch" read out without either).
-- A unit's Change and Goal cells (the change linking to its page, the dash read "no design"; the goal's name, the dash read "no goal") are `ChangeCells` in `runs/RunsTable.tsx`, for the Runs and Sessions views alike.
+- A unit's Change and Goal cells (the change's `ChangeLink`, the dash read "no design"; the goal's name, the dash read "no goal") are `ChangeCells` in `runs/RunsTable.tsx`, for the Runs and Sessions views alike.
+- A change's link is `ChangeLink` in `components/ChangeLink.tsx`, named by its title, for the Changes table and `ChangeCells` alike; a call site passes only its width classes.
+- A title column's cells (Runs' Run and Change, Sessions' Session and Change) take `TITLE` in `components/Num.tsx`: the title wraps between its minimum and maximum width, so a wide table neither squeezes it to a word nor gives it its longest title's width.
 - A filter set from a link (Compliance's step, the Sessions view's session) shows as `FilterChip` in `components/FilterChip.tsx`, beside the list's filters: a pill naming it and a link that clears it.
 - A story reads a row's cell texts with `cells`, checks one value per cell with `expectNoJoined` and group headers with `expectColgroups`, all in `src/test/table.ts`; an e2e chart's latest-week label check is `expectLatestWeekWhole` in `e2e/charts.ts`.
 - A warning listed in a table shows its run as the branch link (a session's warning: the dash read "no run") and its project through `Text`, or `projectLabel` for a session's warning, as Context's units do.

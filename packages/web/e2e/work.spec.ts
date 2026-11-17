@@ -66,3 +66,24 @@ test('a link to one session lists it open under a chip that clears it, and passe
   await expect(page).toHaveURL(/\/work\?view=sessions$/);
   await expect(page.getByText(/^Session: /)).toHaveCount(0);
 });
+
+// The title columns (Run, Change, Session) share one wrap rule: each wraps between its minimum and maximum width,
+// never down to a word and never as wide as its longest title.
+test('at 1440 px the Runs and Sessions title columns wrap within one width range', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const widths = (name: string, heads: string[]) =>
+    page.getByRole('region', { name, exact: true }).evaluate(
+      (el, heads) =>
+        Object.fromEntries(
+          [...el.querySelectorAll('thead th')]
+            .filter((th) => heads.includes(th.textContent ?? ''))
+            .map((th) => [th.textContent, Math.round(th.getBoundingClientRect().width)]),
+        ),
+      heads,
+    );
+  const inRange = { asymmetricMatch: (w: number) => w >= 160 && w <= 288, toString: () => '160 to 288 px' };
+  await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
+  expect(await widths('Runs table', ['Run', 'Change'])).toEqual({ Run: inRange, Change: inRange });
+  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
+  expect(await widths('Sessions', ['Session', 'Change'])).toEqual({ Session: inRange, Change: inRange });
+});
