@@ -27,7 +27,7 @@ pnpm agent:install
 
 ## The data folder
 
-Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/`, created with mode `0700`. The folder and the launchd agent keep the project's first name, `claude-workflow-dashboard`:
+Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` (the project's first name, which the launchd agent keeps too), created with mode `0700`:
 
 - `dashboard.sqlite`: the imports and what was read from them.
 - `logs/`: the agent's `out.log` and `err.log`.
