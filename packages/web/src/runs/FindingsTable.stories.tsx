@@ -2,9 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { NONE, PROBLEMS_SIDE } from '../lib/format.ts';
 import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
+import { visibleTerms, visibleValues, width } from '../test/table.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
-const meta = { component: FindingsTable } satisfies Meta<typeof FindingsTable>;
+const meta = { component: FindingsTable, decorators: [width(1000)] } satisfies Meta<typeof FindingsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -16,11 +17,33 @@ async function plain(canvasElement: HTMLElement): Promise<void> {
   }
 }
 
+/** The body rows, opened rows left out. */
+const closedRows = (canvasElement: HTMLElement) =>
+  [...canvasElement.querySelectorAll<HTMLElement>('tbody tr')].filter((tr) => !tr.querySelector('dl'));
+
 /** The text of each body row's cell under the header `name`. */
 function column(canvasElement: HTMLElement, name: string): (string | null)[] {
   const index = [...canvasElement.querySelectorAll('th')].findIndex((th) => th.textContent === name);
-  return [...canvasElement.querySelectorAll('tbody tr')].map((tr) => tr.children[index].textContent);
+  return closedRows(canvasElement).map((tr) => tr.children[index].textContent);
 }
+
+/** Opens every closed row, then gives each row's visible value for the fact `term`, null where it is left out. */
+async function fact(
+  canvasElement: HTMLElement,
+  userEvent: { click: (el: Element) => Promise<void> },
+  term: string,
+): Promise<(string | null)[]> {
+  for (const toggle of canvasElement.querySelectorAll('tbody button[aria-expanded="false"]')) await userEvent.click(toggle);
+  return [...canvasElement.querySelectorAll<HTMLElement>('tbody tr')]
+    .filter((tr) => tr.querySelector('dl'))
+    .map((tr) => {
+      const i = visibleTerms(tr).indexOf(term);
+      return i < 0 ? null : visibleValues(tr)[i];
+    });
+}
+
+/** The opened row under a toggle. */
+const openedRow = (toggle: HTMLElement) => toggle.closest('tr')!.nextElementSibling as HTMLElement;
 
 export const Empty: Story = {
   args: { findings: [], categoryLabels: {} },
@@ -42,45 +65,22 @@ export const NoMatch: Story = {
 };
 
 /**
- * Full: every finding of the run, one row each, its free text shown as text. The app's labels: each category as plain
- * text, named by the response's `categoryLabels`, "App" under Labelled by, the relevance call with its reason in a
- * tooltip; Valid is "–" on a run the workflow didn't label.
+ * Full: every finding of the run, one row each: its id, summary, the app's call and the validity at first glance, its
+ * free text shown as text. A row opens to its other facts, an empty one left out: the app's labels (each category as
+ * plain text, named by the response's `categoryLabels`, "App" under Labelled by), its outcome, reason and one line per
+ * fix round. The relevance call carries its reason in a tooltip; Valid is "–" on a run the workflow didn't label.
  */
 export const Full: Story = {
   args: { findings: runFull.findings, categoryLabels: runFull.categoryLabels },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
-    await expect(headers).toEqual([
-      '#',
-      'Step',
-      'Task',
-      'Severity',
-      'Category',
-      'Labelled by',
-      'Summary',
-      'Outcome',
-      'Reason',
-      'Fix-check verdicts',
-      'Valid',
-      'App',
-    ]);
+    const headers = canvas.getAllByRole('columnheader');
+    await expect(headers.map((th) => th.textContent)).toEqual(['#', 'Summary', 'App', 'Valid']);
+    for (const th of headers) await expect(th).toBeVisible();
     await expect(canvas.getAllByRole('row')).toHaveLength(7);
     await plain(canvasElement);
-    // It scrolls sideways: its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Findings' })).toHaveAttribute('tabindex', '0');
     await expect(canvas.getAllByText(HTML_TEXT)).toHaveLength(1);
     await expect(canvas.getByText(HTML_TEXT)).toBeVisible();
-    await expect(column(canvasElement, 'Category')).toEqual([
-      'Correctness',
-      'Naming and clarity',
-      'Security and privacy',
-      'Data safety',
-      'Simplicity',
-      'unlabelled',
-    ]);
-    await expect(column(canvasElement, 'Labelled by')).toEqual([...Array(5).fill('App'), `${NONE}not labelled`]);
-    await expect(column(canvasElement, 'Severity')).toEqual(['Important', 'Minor', 'Critical', 'Important', `${NONE}not known`, 'Minor']);
-    await expect(column(canvasElement, 'Fix-check verdicts')).toEqual(['Fixed', `${NONE}none`, 'Fixed', 'OpenOpenOpen', `${NONE}none`, `${NONE}none`]);
     await expect(column(canvasElement, 'Valid')).toEqual(Array(6).fill(`${NONE}not known`));
     await expect(column(canvasElement, 'App')).toEqual(['Valid', 'Unclear', 'Valid', 'Invalid', 'Valid', `${NONE}no app label`]);
     await userEvent.hover(canvas.getByText('Invalid'));
@@ -88,6 +88,42 @@ export const Full: Story = {
       'The run means both tasks to share the index',
     );
     await expect(canvasElement.querySelector('img')).toBeNull();
+
+    // F1 opens to its other facts; it has no reason, so none shows.
+    const f1 = canvas.getByRole('button', { name: 'F1' });
+    await userEvent.click(f1);
+    await expect(f1).toHaveAttribute('aria-expanded', 'true');
+    await expect(visibleTerms(openedRow(f1))).toEqual([
+      'Step',
+      'Task',
+      'Severity',
+      'Category',
+      'Labelled by',
+      'Outcome',
+      'Fix round 1',
+    ]);
+    await expect(visibleValues(openedRow(f1))).toEqual(['Task review', '1', 'Important', 'Correctness', 'App', 'Fixed', 'Fixed']);
+    // F4's reason, and one line per fix round.
+    const f4 = canvas.getByRole('button', { name: 'F4' });
+    await userEvent.click(f4);
+    await expect(visibleTerms(openedRow(f4)).slice(-4)).toEqual(['Reason', 'Fix round 1', 'Fix round 2', 'Fix round 3']);
+    await expect(visibleValues(openedRow(f4)).slice(-4)).toEqual([
+      'One index per run is intended',
+      'Still open',
+      'Still open',
+      'Still open',
+    ]);
+
+    await expect(await fact(canvasElement, userEvent, 'Category')).toEqual([
+      'Correctness',
+      'Naming and clarity',
+      'Security and privacy',
+      'Data safety',
+      'Simplicity',
+      'unlabelled',
+    ]);
+    await expect(await fact(canvasElement, userEvent, 'Labelled by')).toEqual([...Array(5).fill('App'), null]);
+    await expect(await fact(canvasElement, userEvent, 'Severity')).toEqual(['Important', 'Minor', 'Critical', 'Important', null, 'Minor']);
     const outcomes = canvas.getByRole('combobox', { name: 'Outcome' });
     await expect([...outcomes.querySelectorAll('option')].map((o) => o.textContent)).toEqual([
       'All',
@@ -107,10 +143,10 @@ export const FilterRuled: Story = {
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Outcome' }), 'ruled');
     const rows = canvas.getAllByRole('row').slice(1);
     await expect(rows).toHaveLength(1);
-    const row = within(rows[0]);
-    await expect(row.getByText('F4')).toBeVisible();
-    await expect(row.getByText('One index per run is intended')).toBeVisible();
-    await expect(row.getAllByText('Open')).toHaveLength(3);
+    const toggle = within(rows[0]).getByRole('button', { name: 'F4' });
+    await userEvent.click(toggle);
+    await expect(visibleValues(openedRow(toggle))).toEqual(expect.arrayContaining(['One index per run is intended']));
+    await expect(visibleValues(openedRow(toggle)).filter((v) => v === 'Still open')).toHaveLength(3);
   },
 };
 
@@ -126,18 +162,16 @@ export const FilterStepAndSeverity: Story = {
   },
 };
 
-/** No finding labelled yet: every category is "unlabelled", Labelled by and the App column "–". */
+/** No finding labelled yet: every category is "unlabelled", Labelled by left out and the App column "–". */
 export const Unlabelled: Story = {
   args: {
     findings: runFull.findings.map((f) => ({ ...f, category: null, relevance: null, labelReason: null })),
     categoryLabels: runFull.categoryLabels,
   },
-  play: async ({ canvas, canvasElement }) => {
-    const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
-    await expect(headers).toEqual(expect.arrayContaining(['Category', 'Labelled by', 'Valid', 'App']));
-    await expect(column(canvasElement, 'Category')).toEqual(Array(6).fill('unlabelled'));
-    await expect(column(canvasElement, 'Labelled by')).toEqual(Array(6).fill(`${NONE}not labelled`));
+  play: async ({ canvasElement, userEvent }) => {
     await expect(column(canvasElement, 'App')).toEqual(Array(6).fill(`${NONE}no app label`));
+    await expect(await fact(canvasElement, userEvent, 'Category')).toEqual(Array(6).fill('unlabelled'));
+    await expect(await fact(canvasElement, userEvent, 'Labelled by')).toEqual(Array(6).fill(null));
   },
 };
 
@@ -148,15 +182,6 @@ export const Unlabelled: Story = {
 export const WorkflowLabels: Story = {
   args: { findings: workflowFindings, categoryLabels: runFull.categoryLabels },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await expect(column(canvasElement, 'Category')).toEqual([
-      'Reuse and duplication',
-      'Tests',
-      'Conventions',
-      'Simplicity',
-      'Correctness',
-      'Correctness',
-    ]);
-    await expect(column(canvasElement, 'Labelled by')).toEqual(['Workflow', 'Workflow', 'App', 'Workflow', 'Workflow', 'Workflow']);
     await expect(canvas.getAllByRole('row')).toHaveLength(7);
     await plain(canvasElement);
     await expect(column(canvasElement, 'Valid')).toEqual(['Valid', 'Invalid', `${NONE}not known`, 'Unclear', `${NONE}not known`, `${NONE}not known`]);
@@ -171,6 +196,15 @@ export const WorkflowLabels: Story = {
     ]);
     await userEvent.hover(canvas.getByText('Correctness · Valid'));
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('An empty export is a real case');
+    await expect(await fact(canvasElement, userEvent, 'Category')).toEqual([
+      'Reuse and duplication',
+      'Tests',
+      'Conventions',
+      'Simplicity',
+      'Correctness',
+      'Correctness',
+    ]);
+    await expect(await fact(canvasElement, userEvent, 'Labelled by')).toEqual(['Workflow', 'Workflow', 'App', 'Workflow', 'Workflow', 'Workflow']);
   },
 };
 
@@ -181,10 +215,10 @@ export const NotRequired: Story = {
     findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'to_owner', verdicts: ['couldnt_run'] }],
     categoryLabels: runFull.categoryLabels,
   },
-  play: async ({ canvas, canvasElement }) => {
-    await expect(column(canvasElement, 'Severity')).toEqual(['Not required']);
-    await expect(column(canvasElement, 'Outcome')).toEqual(['To owner']);
-    await expect(column(canvasElement, 'Fix-check verdicts')).toEqual(["Couldn't run"]);
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await expect(await fact(canvasElement, userEvent, 'Severity')).toEqual(['Not required']);
+    await expect(await fact(canvasElement, userEvent, 'Outcome')).toEqual(['To owner']);
+    await expect(await fact(canvasElement, userEvent, 'Fix round 1')).toEqual(["Couldn't run"]);
     const severities = canvas.getByRole('combobox', { name: 'Severity' });
     await expect([...severities.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', 'Not required']);
   },
@@ -193,13 +227,13 @@ export const NotRequired: Story = {
 /** A category the labels don't name shows as its id. */
 export const UnnamedCategory: Story = {
   args: { findings: runFull.findings.slice(0, 1), categoryLabels: {} },
-  play: async ({ canvasElement }) => {
-    await expect(column(canvasElement, 'Category')).toEqual(['correctness']);
+  play: async ({ canvasElement, userEvent }) => {
+    await expect(await fact(canvasElement, userEvent, 'Category')).toEqual(['correctness']);
   },
 };
 
-/** With `run`, the first column links each finding to its run's page by its branch, its project beside it, as the
- * Findings page lists them. */
+/** With `run`, the first column links each finding to its run's page by its branch, as the Findings page lists them;
+ * its project ends the opened row. */
 export const WithRun: Story = {
   args: {
     findings: runFull.findings.map((f) => ({
@@ -211,16 +245,44 @@ export const WithRun: Story = {
     categoryLabels: runFull.categoryLabels,
     run: true,
   },
-  play: async ({ canvas, canvasElement }) => {
-    const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
-    await expect(headers.slice(0, 3)).toEqual(['Run', 'Project', '#']);
-    await expect(headers).toEqual(expect.arrayContaining(['Category', 'Labelled by', 'Valid', 'App']));
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const headers = canvas.getAllByRole('columnheader');
+    await expect(headers.map((th) => th.textContent)).toEqual(['Run', '#', 'Summary', 'App', 'Valid']);
+    for (const th of headers) await expect(th).toBeVisible();
     const links = canvas.getAllByRole('link', { name: 'feat/search' });
     await expect(links).toHaveLength(6);
     await expect(links[0]).toHaveAttribute('href', `/runs/${fullRun.key}`);
     await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill('feat/search'));
-    await expect(column(canvasElement, 'Project')).toEqual(Array(6).fill('atlas'));
     await plain(canvasElement);
+    const f1 = canvas.getByRole('button', { name: 'F1' });
+    await userEvent.click(f1);
+    await expect(visibleTerms(openedRow(f1)).at(-1)).toBe('Project');
+    await expect(visibleValues(openedRow(f1)).at(-1)).toBe('atlas');
+  },
+};
+
+/** Narrow: under 768 px the Run column folds into the top of the opened row, its link still there. */
+export const NarrowWithRun: Story = {
+  args: {
+    findings: runFull.findings.map((f) => ({
+      ...f,
+      runKey: fullRun.key,
+      project: fullRun.project,
+      branch: fullRun.branch,
+    })),
+    categoryLabels: runFull.categoryLabels,
+    run: true,
+  },
+  decorators: [width(375)],
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.getByRole('columnheader', { name: '#' })).toBeVisible();
+    await expect(canvas.getByText('Run').closest('th')).not.toBeVisible();
+    const f1 = canvas.getByRole('button', { name: 'F1' });
+    await userEvent.click(f1);
+    const opened = openedRow(f1);
+    await expect(visibleTerms(opened)[0]).toBe('Run');
+    await expect(visibleTerms(opened).at(-1)).toBe('Project');
+    await expect(within(opened).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
   },
 };
 
@@ -235,7 +297,7 @@ export const RunPageProblems: Story = {
     skip: ['step'],
     containerClassName: PROBLEMS_SIDE,
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await expect(canvas.queryByRole('combobox', { name: 'Step' })).toBeNull();
     // A region named by its heading, which starts the filter row.
     await expect(canvas.getByRole('region', { name: 'Problems (6)' })).toBeVisible();
@@ -245,7 +307,9 @@ export const RunPageProblems: Story = {
     const region = canvas.getByRole('region', { name: 'Problems table' });
     await expect(region).toHaveAttribute('tabindex', '0');
     await expect(region).toHaveClass('border-l-4', 'border-l-notice-edge', 'overflow-x-auto');
-    // The Step column stays: only its select goes.
-    await expect(canvas.getByRole('columnheader', { name: 'Step' })).toBeVisible();
+    // The Step fact stays: only its select goes.
+    const f1 = canvas.getByRole('button', { name: 'F1' });
+    await userEvent.click(f1);
+    await expect(visibleTerms(openedRow(f1))[0]).toBe('Step');
   },
 };

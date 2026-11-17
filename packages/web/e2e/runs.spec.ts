@@ -141,7 +141,7 @@ test("at 1440 px the Strengths table's short columns take their content's width,
   await openFullRun(page);
   const table = page.getByRole('region', { name: 'Strengths table' });
   const width = async (name: string) => (await table.getByRole('columnheader', { name, exact: true }).boundingBox())!.width;
-  const short = (await Promise.all(['#', 'Step', 'Task', 'Category'].map(width))).reduce((sum, w) => sum + w, 0);
+  const short = (await Promise.all(['#', 'Category'].map(width))).reduce((sum, w) => sum + w, 0);
   expect(await width('Summary')).toBeGreaterThan(short);
 });
 
