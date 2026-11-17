@@ -28,6 +28,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - Every component has Storybook stories on invented fixtures for its empty and full states, and a component that fetches data also for loading and error; a story with an interaction test is the UI's failing test.
 - Screens are checked on fixtures with Playwright screenshot comparisons and axe accessibility checks.
 - Charts are written with the `dataviz` skill loaded.
+- Show, don't tell: a screen's explanatory text passes the test in `DESIGN.md`'s Do's and Don'ts (necessary, not redundant with what is drawn, not covering for a design gap), and a spec says why each one stays.
 
 ## Kits
 
