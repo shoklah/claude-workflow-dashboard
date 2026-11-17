@@ -14,11 +14,11 @@ test('the shell has no axe violations', async ({ page }) => {
 
 // Every page fits the viewport at a phone's, a tablet's and a desktop's width: what is wider (a table, a chart grid)
 // scrolls inside its own region, never the page, and a region that scrolls can take the keyboard's focus (axe).
-const PAGES = ['/', '/runs', '/findings', '/sessions', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks'];
+const PAGES = ['/', '/runs', '/findings', '/sessions', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks', '/nope'];
 
 for (const width of [375, 768, 1440]) {
   test(`no page scrolls sideways at ${width} px, and none has axe violations there`, async ({ page }) => {
-    // Twelve pages, each loaded and checked by axe.
+    // Every page and one run's page, each loaded and checked by axe.
     test.slow();
     await pinClock(page);
     await page.setViewportSize({ width, height: 900 });
@@ -42,6 +42,15 @@ for (const width of [375, 768, 1440]) {
     expect(failures).toEqual([]);
   });
 }
+
+test('an unknown address shows the not-found page inside the shell, with a way home', async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/nope');
+  await expect(page.getByRole('heading', { level: 1, name: 'Not found' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main' }).first()).toBeAttached();
+  await page.getByRole('main').getByRole('link', { name: 'Home' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+});
 
 test('a table that scrolls sideways fades at the edge hiding columns, and one that fits does not', async ({ page }) => {
   await pinClock(page);
@@ -125,10 +134,10 @@ test('on a short phone the Menu dialog scrolls to its last link', async ({ page 
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
-test('the tab is named edward and has its mark as icon', async ({ page }) => {
+test("the tab is named by the page's title and edward, and has its mark as icon", async ({ page }) => {
   await pinClock(page);
   await page.goto('/');
-  await expect(page).toHaveTitle('edward');
+  await expect(page).toHaveTitle('Home - edward');
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg');
   const icon = await page.request.get('/favicon.svg');
   expect(icon.headers()['content-type']).toContain('image/svg+xml');
