@@ -35,7 +35,7 @@ function baseOption(weeks: string[]) {
   return {
     animation: false,
     textStyle: { fontFamily: 'inherit' },
-    grid: { left: 8, right: 8, top: 8, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 8, top: 8, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
