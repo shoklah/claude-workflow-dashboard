@@ -28,10 +28,11 @@ export function StrengthsTable({
     >
       <TableHeader>
         <TableRow>
-          <TableHead>#</TableHead>
-          <TableHead>Step</TableHead>
-          <TableHead>Task</TableHead>
-          <TableHead>Category</TableHead>
+          {/* The short columns take their content's width (cells don't wrap), so Summary takes the room. */}
+          <TableHead className="w-0">#</TableHead>
+          <TableHead className="w-0">Step</TableHead>
+          <TableHead className="w-0">Task</TableHead>
+          <TableHead className="w-0">Category</TableHead>
           <TableHead>Summary</TableHead>
         </TableRow>
       </TableHeader>

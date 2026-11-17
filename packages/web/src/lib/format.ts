@@ -443,6 +443,13 @@ export function splitPair(pair: string): { model: string | null; effort: string 
   return { model: modelLabel(model), effort: !effort || effort === '-' ? null : effort };
 }
 
+/** A model and effort and how many ran so. */
+export type Pair = { model: string | null; effort: string | null; count: number };
+
+/** Counts by "model/effort" pair, each split by `splitPair`, in the counts' order. */
+export const pairsOf = (counts: Record<string, number>): Pair[] =>
+  Object.entries(counts).map(([pair, count]) => ({ ...splitPair(pair), count }));
+
 const DOLLARS = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Dollars for a cell under a "($)" header: "12.40", "1,234.50". */

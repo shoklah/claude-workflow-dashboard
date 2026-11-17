@@ -1,7 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
-import { settled } from './settled.ts';
 
 // dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML, then report-v6
 // and report-v7, which adds each unit's context.
@@ -58,7 +57,6 @@ test("at 1440 px the fold's panels sit in two columns once opened, and pass axe"
   expect(context.x).toBe(cost.x);
   expect(skills.x).toBe(models.x);
   expect(context.y).toBeGreaterThan(cost.y);
-  await settled(fold);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
@@ -136,6 +134,14 @@ test("the Full run's Strengths table lists its three strengths", async ({ page }
   const table = page.getByRole('region', { name: 'Strengths table' });
   await expect(table.locator('tbody tr')).toHaveCount(3);
   await expect(table.getByText('No sync payload reaches a log')).toBeVisible();
+});
+
+test("at 1440 px the Strengths table's short columns take their content's width, so Summary takes the room", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openFullRun(page);
+  const table = page.getByRole('region', { name: 'Strengths table' });
+  // Summary starts where the capture has it, about x = 535.
+  expect((await table.getByRole('columnheader', { name: 'Summary' }).boundingBox())!.x).toBeLessThan(600);
 });
 
 test('the schema 5 run page lists its strengths in the Strengths table', async ({ page }) => {

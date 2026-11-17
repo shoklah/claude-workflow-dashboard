@@ -4,9 +4,10 @@ import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { parseTime, type RunPageResponse } from '@cwd/shared';
 import { ApiError, useLiveQuery } from '../api.ts';
-import { Lines, NUM, Num, Text } from '../components/Num.tsx';
+import { Lines, NUM, Num, PairCells, Text } from '../components/Num.tsx';
 import { Details, LINK, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
+import { TableCell } from '../components/ui/table.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
@@ -16,6 +17,7 @@ import { RunFlow } from './RunFlow.tsx';
 import { StepDetail } from './StepDetail.tsx';
 import { StrengthsTable } from './StrengthsTable.tsx';
 import {
+  capitalize,
   closedFindings,
   countName,
   formatCompact,
@@ -25,12 +27,12 @@ import {
   foundFindings,
   laterFixesLabel,
   modelLabel,
+  pairsOf,
   pathLabel,
   phaseLabel,
   PROBLEMS_INK,
   PROBLEMS_SIDE,
   STRENGTHS_INK,
-  splitPair,
   STRENGTHS_SIDE,
   WARNING_INK,
 } from '../lib/format.ts';
@@ -66,41 +68,31 @@ function ModelsAndAdvisor({ run }: { run: RunPageResponse }) {
       )}
       {models.length > 0 && <Pairs names pairs={models.map((model) => [<Text value={modelLabel(model.model)} />, formatCost(model.cost)])} />}
       {agents.length > 0 && (
-        <table aria-label="Agents" className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <Head>Agent</Head>
-              <Head>Model</Head>
-              <Head>Effort</Head>
-              <Head num>Dispatches</Head>
-            </tr>
-          </thead>
-          <tbody>
-            {agents.map((agent) => {
-              const pairs = Object.entries(agent.actual).map(([pair, count]) => ({ ...splitPair(pair), count }));
-              return (
-                <Lines
-                  key={agent.name}
-                  name={agent.name}
-                  lines={pairs.length}
-                  line={(i) => (
-                    <>
-                      <td className="px-2 py-1.5">
-                        <Text value={pairs[i].model} unknown="not known" />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Text value={pairs[i].effort} unknown="not known" />
-                      </td>
-                      <td className={cn('px-2 py-1.5', NUM)}>
-                        <Num value={pairs[i].count} />
-                      </td>
-                    </>
-                  )}
-                />
-              );
-            })}
-          </tbody>
-        </table>
+        <div data-scroll-cue className="overflow-x-auto" tabIndex={0} role="region" aria-label="Agents table">
+          <table aria-label="Agents" className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <Head>Agent</Head>
+                <Head>Model</Head>
+                <Head>Effort</Head>
+                <Head num>Dispatches</Head>
+              </tr>
+            </thead>
+            <tbody>
+              {agents.map((agent) => {
+                const actual = pairsOf(agent.actual);
+                return (
+                  <Lines
+                    key={agent.name}
+                    name={agent.name}
+                    lines={Math.max(1, actual.length)}
+                    line={(i) => <PairCells pairs={actual} line={i} unset="not known" none="No dispatches" />}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       {advisor ? (
         <Pairs
@@ -121,7 +113,7 @@ function Fold({ run }: { run: RunPageResponse }) {
   const { phases, context, skills, offers } = run;
   return (
     <Details summary="Cost, context and skills">
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel title="Est. cost by phase">
           {phases.length > 0 ? (
             <Pairs pairs={phases.map((phase) => [phaseLabel(phase.name), <Num value={phase.cost} format={formatCost} />])} />
@@ -151,29 +143,35 @@ function Fold({ run }: { run: RunPageResponse }) {
         </Panel>
         <Panel title="Skills">
           {skills.length + offers.length > 0 ? (
-            <table aria-label="Skills" className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <Head>Skill</Head>
-                  <Head>Loaded or offered</Head>
-                  <Head>Outcome</Head>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ...skills.map((skill) => [skill.name, 'Loaded', skill.outcome]),
-                  ...offers.map((offer) => [offer.skill, 'Offered', countName(offer.outcome)]),
-                ].map(([name, use, outcome], i) => (
-                  <tr key={i} className="border-t align-top">
-                    <th scope="row" className="px-2 py-1.5 text-left font-normal break-words">
-                      {name}
-                    </th>
-                    <td className="px-2 py-1.5 text-muted-foreground">{use}</td>
-                    <td className="px-2 py-1.5 text-muted-foreground">{outcome}</td>
+            <div data-scroll-cue className="overflow-x-auto" tabIndex={0} role="region" aria-label="Skills table">
+              <table aria-label="Skills" className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <Head>Skill</Head>
+                    <Head>Loaded or offered</Head>
+                    <Head>Outcome</Head>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {[
+                    ...skills.map((skill) => [skill.name, 'Loaded', capitalize(skill.outcome)]),
+                    ...offers.map((offer) => [offer.skill, 'Offered', countName(offer.outcome)]),
+                  ].map(([name, use, outcome], i) => (
+                    <Lines
+                      key={i}
+                      name={name}
+                      lines={1}
+                      line={() => (
+                        <>
+                          <TableCell className="text-muted-foreground">{use}</TableCell>
+                          <TableCell className="text-muted-foreground">{outcome}</TableCell>
+                        </>
+                      )}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <NoneText>No skill loaded or offered.</NoneText>
           )}

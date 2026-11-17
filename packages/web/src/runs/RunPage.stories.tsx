@@ -4,7 +4,7 @@ import { expect, spyOn, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
 import { formatDayTime, LATER_FIXES_TERM, WARNING_INK } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
-import { cells } from '../test/table.ts';
+import { cells, expectNoJoined } from '../test/table.ts';
 import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runSmall, runStopped, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
@@ -114,9 +114,12 @@ export const Empty: Story = {
   },
 };
 
-/** The rows of the plain table named `name` inside `region`, each its cells' texts, its row header first. */
+/** The rows of the plain table named `name` inside `region`, each its row header's text, then its cells'. */
 function tableRows(region: HTMLElement, name: string): (string | null)[][] {
-  return [...within(region).getByRole('table', { name }).querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent));
+  return within(within(region).getByRole('table', { name }))
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => [within(row).queryByRole('rowheader')?.textContent ?? null, ...cells(row)]);
 }
 
 /** Full: the branch as title, the header's facts as terms, the run's flow, no side panel, its warnings in a panel, and
@@ -175,6 +178,7 @@ export const Full: Story = {
       ['implementer', 'Opus 5.5', 'medium', '4'],
       ['task-reviewer', 'Opus 5.5', 'high', '5'],
     ]);
+    await expectNoJoined(agents);
     await expect(pairs(advice)).toEqual([
       ['Advisor calls', '3'],
       ['Advisor notes', '3'],
@@ -191,11 +195,12 @@ export const Full: Story = {
       ['Sweeps delegated', '4'],
     ]);
     await expect(tableRows(canvas.getByRole('region', { name: 'Skills' }), 'Skills')).toEqual([
-      ['subagent-driven-development', 'Loaded', 'ran'],
-      ['simplify', 'Loaded', 'applied 1, skipped 0'],
+      ['subagent-driven-development', 'Loaded', 'Ran'],
+      ['simplify', 'Loaded', 'Applied 1, skipped 0'],
       ['graphify', 'Offered', 'Accepted'],
       ['session-summary', 'Offered', 'Skipped'],
     ]);
+    await expectNoJoined(within(canvas.getByRole('region', { name: 'Skills' })).getByRole('table', { name: 'Skills' }));
     const warnings = within(canvas.getByRole('region', { name: 'Warnings' }));
     await expect(warnings.getByText('0f1e2d3c')).toBeVisible();
     await expect(warnings.getByRole('button', { name: 'Copy session ID' })).toBeVisible();
