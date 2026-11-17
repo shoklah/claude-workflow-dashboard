@@ -439,6 +439,37 @@ describe('a shown unit of an unlisted change', () => {
   });
 });
 
+describe("a listed change's title in showing mode", () => {
+  // The webhooks run, in tidepool-api, becomes the offline-sync change's newest plan record.
+  const moved = (raw: any) => {
+    runOf(raw, WEBHOOKS_RUN).spec = OFFLINE_SPEC;
+    runOf(raw, WEBHOOKS_RUN).record.path = 'plan';
+  };
+  const SHOWN = 'Plan the offline queue and replay';
+
+  test("comes from the shown projects' units only", async () => {
+    expect(levelsOf('report-work', moved).changeOf.get(OFFLINE_RUN)!.title).toBe('Send webhooks for note changes');
+    expect(rowOf(await work('?weeks=4', [LANTERN], 'report-work', moved), OFFLINE_CHANGE).title).toBe(SHOWN);
+    const page = (await changePage(OFFLINE_CHANGE, [LANTERN], 'report-work', moved)).body as ChangeResponse;
+    expect(page.title).toBe(SHOWN);
+    expect(page.graph.lanes[0]!.title).toBe(SHOWN);
+    expect(page.sessions.find((s) => s.key === S_7D1E)!.change!.title).toBe(SHOWN);
+    const runs = (await api('/api/runs?weeks=4', [LANTERN], 'report-work', moved)).body;
+    expect(runs.runs.find((r: { key: string }) => r.key === OFFLINE_RUN).change.title).toBe(SHOWN);
+  });
+
+  test("falls back to its spec file's name when no shown unit has a headline", async () => {
+    const page = (
+      await changePage(OFFLINE_CHANGE, [LANTERN], 'report-work', (raw) => {
+        moved(raw);
+        runOf(raw, PLAN_RECORD).headline = null;
+        runOf(raw, OFFLINE_RUN).headline = null;
+      })
+    ).body as ChangeResponse;
+    expect(page.title).toBe('offline-sync');
+  });
+});
+
 describe('goalHomes', () => {
   test("each goal's changes' home roots and its loose sessions' roots", () => {
     const homes = goalHomes(levelsOf('report-work'));

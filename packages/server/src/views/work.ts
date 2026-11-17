@@ -91,10 +91,28 @@ type Group = {
   sessions: StoredUnit<SessionEntry>[];
 };
 
-function changeOfGroup(group: Group): Change {
-  const { runs, sessions, spec } = group;
+/** A change's title from `runs`: the newest plan record's headline, else the newest run's, else its spec file's name,
+ * else the newest run's branch, else ''. */
+function titleOf(runs: StoredUnit<RunEntry>[], spec: SpecRef | null): string {
   const plans = newestFirst(runs.filter(isPlan), runTime);
   const built = newestFirst(runs.filter((run) => !isPlan(run)), runTime);
+  return (
+    plans[0]?.merged.headline ??
+    built[0]?.merged.headline ??
+    (spec ? specName(spec.path) : null) ??
+    newestFirst(runs, runTime)[0]?.merged.record?.branch ??
+    ''
+  );
+}
+
+/** A change's title as a view shows it: with a scope, titleOf its runs in shown projects only, masked (maskText). */
+function changeTitle(change: Change, scope: Scope | null): string {
+  const runs = scope ? change.runs.filter((run) => showSession(scope, rootOf(run))) : change.runs;
+  return maskText(scope, titleOf(runs, change.spec));
+}
+
+function changeOfGroup(group: Group): Change {
+  const { runs, sessions, spec } = group;
   const units = newestFirst(
     [
       ...runs.map((run) => ({ at: runTime(run), goal: run.merged.goal })),
@@ -106,12 +124,7 @@ function changeOfGroup(group: Group): Change {
   const sessionStart = earliest(sessions.map((s) => s.merged.start));
   return {
     key: group.key,
-    title:
-      plans[0]?.merged.headline ??
-      built[0]?.merged.headline ??
-      (spec ? specName(spec.path) : null) ??
-      newestFirst(runs, runTime)[0]?.merged.record?.branch ??
-      '',
+    title: titleOf(runs, spec),
     goal: units.find((unit) => unit.goal)?.goal ?? null,
     spec,
     home: group.home,
@@ -208,7 +221,7 @@ function changeRow(change: Change, scope: Scope | null, names: Map<string, strin
   const others = change.roots.filter((root) => root !== change.home);
   return {
     key: change.key,
-    title: maskText(scope, change.title),
+    title: changeTitle(change, scope),
     project: rootName(scope, names, change.home),
     otherProjects: others
       .filter((root) => showSession(scope, root))
@@ -231,7 +244,7 @@ export function listedChange(
   unitKey: string,
 ): { key: string; title: string } | null {
   const change = levels.changeOf.get(unitKey);
-  return change && showSession(scope, change.home) ? { key: change.key, title: maskText(scope, change.title) } : null;
+  return change && showSession(scope, change.home) ? { key: change.key, title: changeTitle(change, scope) } : null;
 }
 
 /** A unit's goal as Work lists it: its change's goal while that change is listed (its home shown), else a loose
@@ -396,7 +409,7 @@ function graphOf(
   const laneOf = (key: string): { key: string | null; title: string; kind: 'change' | 'none' | 'other' } => {
     const change = pages.levels.changeOf.get(key);
     if (members.has(key) && change && changes.includes(change)) {
-      return { key: change.key, title: maskText(pages.scope, change.title), kind: 'change' };
+      return { key: change.key, title: changeTitle(change, pages.scope), kind: 'change' };
     }
     if (members.has(key) && !change) return { key: null, title: 'No change', kind: 'none' };
     return { key: null, title: other, kind: 'other' };
