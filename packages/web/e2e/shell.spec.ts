@@ -52,6 +52,59 @@ test('an unknown address shows the not-found page inside the shell, with a way h
   await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
 });
 
+test('Back returns to where the list was scrolled', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 300 });
+  await page.goto('/runs', { waitUntil: 'networkidle' });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const last = page.getByRole('main').getByRole('link').last();
+  await last.scrollIntoViewIfNeeded();
+  const scrolled = await page.evaluate(() => window.scrollY);
+  expect(scrolled).toBeGreaterThan(0);
+  await last.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeHidden();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolled);
+});
+
+test('under reduced motion nothing animates, and a wide table still fades at its edge', async ({ page }) => {
+  await pinClock(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/sessions', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  // Every animation and transition on the page, the open dialog's included, ends at once (computed durations are in s).
+  const moving = await page.evaluate(() =>
+    [...document.querySelectorAll('*')].flatMap((el) => {
+      const style = getComputedStyle(el);
+      const longest = Math.max(...`${style.animationDuration},${style.transitionDuration}`.split(',').map(parseFloat));
+      return longest > 0.00001 ? [`${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}: ${longest} s`.slice(0, 80)] : [];
+    }));
+  expect(moving).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  // The edge cue is a scroll-driven animation: it follows the table's scroll, not the clock, so it stays.
+  const cueEnd = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
+  expect(cueEnd).toBe('48px');
+});
+
+test("the browser's bar takes the backdrop's colour, and follows the system's light and dark", async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/');
+  const colours: string[] = [];
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme });
+    await expect(page.locator('html')).toHaveClass(colorScheme === 'dark' ? /\bdark\b/ : /^(?!.*\bdark\b)/);
+    const background = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--background').trim());
+    expect(background).toMatch(/^#[0-9a-f]{6}$/i);
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', background);
+    colours.push(background);
+  }
+  expect(colours[0]).not.toBe(colours[1]);
+});
+
 test('a table that scrolls sideways fades at the edge hiding columns, and one that fits does not', async ({ page }) => {
   await pinClock(page);
   const cueEnd = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());

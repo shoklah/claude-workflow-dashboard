@@ -11,9 +11,15 @@ const subscribe = (onChange: () => void) => {
   return () => query.removeEventListener('change', onChange);
 };
 
-/** Sets the root's `dark` class from the system's colour scheme and keeps it in step; returns the function that stops. */
+/**
+ * Sets the root's `dark` class from the system's colour scheme and keeps it in step, with the browser's own bar (the
+ * `theme-color` meta) in the backdrop's `--background`; returns the function that stops.
+ */
 export function applySystemTheme(): () => void {
-  const apply = () => document.documentElement.classList.toggle('dark', darkScheme().matches);
+  const apply = () => {
+    document.documentElement.classList.toggle('dark', darkScheme().matches);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolveVars('var(--background)'));
+  };
   apply();
   return subscribe(apply);
 }
