@@ -11,6 +11,8 @@ import {
   outcomeLabel,
   outcomeWarns,
   roundsLabel,
+  laterFixesLabel,
+  LATER_FIXES_TERM,
   stepBy,
   byLabel,
   roundVerdictLabel,
@@ -92,6 +94,14 @@ describe('countName', () => {
     expect(countName('important')).toBe('Important');
     expect(countName('unneeded')).toBe('Not required');
     expect(countName('couldnt_run')).toBe("Couldn't run");
+  });
+});
+
+describe('laterFixesLabel', () => {
+  test('counts later fixes, the term its tooltip explains', () => {
+    expect(laterFixesLabel(1)).toBe('1 later fix');
+    expect(laterFixesLabel(2)).toBe('2 later fixes');
+    expect(LATER_FIXES_TERM).toBe('Commits starting with "fix" that touched this run\'s files in the 14 days after it.');
   });
 });
 

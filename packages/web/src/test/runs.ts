@@ -231,6 +231,15 @@ export const runFull: RunPageResponse = {
   ],
 };
 
+/** Findings for Left for later: the full run's (one deferred, one ruled, one applied, one open, two fixed), with one
+ * declined, one to the owner with its reason and one with no outcome. */
+export const leftFindings: FindingRow[] = [
+  ...runFull.findings,
+  finding({ id: 'F7', step: 'final_review', severity: 'minor', summary: 'Search box has no placeholder', outcome: 'declined', reason: 'The label says it already' }),
+  finding({ id: 'F8', step: 'final_review', severity: 'important', summary: 'Ranking weights are not in the spec', outcome: 'to_owner', reason: 'The owner sets the weights' }),
+  finding({ id: 'F9', step: 'task_review', task: 2, severity: 'minor', summary: 'Index rebuild logs every file' }),
+];
+
 /** The before-steps run: its timeline is start, an empty final review, end, as the API gives it. */
 export const runBeforeSteps: RunPageResponse = {
   facts: oldRun,
@@ -259,6 +268,20 @@ export const runBeforeSteps: RunPageResponse = {
 
 /** The full run with a stop. */
 export const runStopped: RunPageResponse = { ...runFull, facts: { ...fullRun, stops: 1 } };
+
+/** The full run handed off to a stored session. */
+export const runHandedOff: RunPageResponse = { ...runFull, handoffTo: { title: 'Search page polish', sessionId: '7a6b5c4d-3e2f-4a1b-9c8d-7e6f5a4b3c2d' } };
+
+/** The full run alone: no time, cost, session, context, related run or later fix. */
+export const runAlone: RunPageResponse = {
+  ...runFull,
+  facts: { ...fullRun, startedAt: null, finishedAt: null, minutes: null, cost: null },
+  timeline: runFull.timeline.map((g) => (g.kind === 'start' || g.kind === 'end' ? { ...g, at: null } : g)),
+  session: null,
+  context: null,
+  related: [],
+  laterFixes: [],
+};
 
 /** A Small run: Simplify and a final review that found nothing. */
 export const runSmall: RunPageResponse = {

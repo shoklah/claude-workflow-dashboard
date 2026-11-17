@@ -539,6 +539,29 @@ describe("the run's surroundings", () => {
     expect((await run(WEBHOOKS_V7)).related).toEqual([]);
   });
 
+  test('related comes in the order the runs finished', async () => {
+    let keys: string[] = [];
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => {
+      // The first three runs and the webhooks run join feature/offline-sync on lantern-notes.
+      for (const i of [0, 1, 2, 5]) Object.assign(raw.runs[i].record, { project: LANTERN, branch: 'feature/offline-sync' });
+      keys = raw.runs.map(runKey) as string[];
+    });
+    expect((await run(keys[4])).related.map((r) => r.key)).toEqual([keys[0], keys[1], keys[2], keys[3], keys[5]]);
+  });
+
+  test('a run with no branch has no related run, though another run of its project has none either', async () => {
+    let keys: string[] = [];
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => {
+      // The small chore run and the last small run, both lantern-notes', lose their branches.
+      raw.runs[2].record.branch = null;
+      raw.runs[6].record.branch = null;
+      keys = raw.runs.map(runKey) as string[];
+    });
+    expect((await run(keys[2])).related).toEqual([]);
+  });
+
   test("lists the run's offers", async () => {
     expect((await run(WEBHOOKS_V7)).offers).toEqual([
       { skill: 'graphify', outcome: 'accepted' },

@@ -45,6 +45,16 @@ test("at 375 px, selecting a step brings its detail's title into view", async ({
   await expect(detail.getByRole('heading', { name: 'Final review' })).toBeInViewport();
 });
 
+test("the Full run's chain opens its plan run and counts its later fix", async ({ page }) => {
+  await openFullRun(page);
+  const chain = page.getByRole('list', { name: 'Before and after this run' });
+  await expect(chain.getByText('1 later fix')).toBeVisible();
+  await chain.getByRole('link', { name: 'Plan run' }).click();
+  await expect(page).toHaveURL(/\/runs\/51120289e82db399$/);
+  await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Before and after this run' }).getByText('This run, plan')).toBeVisible();
+});
+
 test("each run's row names its branch as the link to its page", async ({ page }) => {
   await page.goto('/runs');
   const row = page.getByRole('row').filter({ hasText: 'feature/webhooks' });

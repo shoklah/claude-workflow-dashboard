@@ -1,13 +1,16 @@
 import { useState, type ReactNode } from 'react';
-import { ThumbsUp, TriangleAlert } from 'lucide-react';
+import { ArrowRight, ThumbsUp, TriangleAlert } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
-import type { RunPageResponse } from '@cwd/shared';
+import { parseTime, type RunPageResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
-import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
+import { LINK, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
+import { SessionChip } from '../components/SessionChip.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
+import { LaterFixesTerm, LeftForLater } from './LeftForLater.tsx';
 import { stagesOf, strengthsOf, unitsOf } from './flow.ts';
 import { RunFlow } from './RunFlow.tsx';
 import { StepDetail } from './StepDetail.tsx';
@@ -19,12 +22,14 @@ import {
   formatMinutes,
   formatShare,
   foundFindings,
+  laterFixesLabel,
   modelLabel,
   pathLabel,
   PROBLEMS_INK,
   PROBLEMS_SIDE,
   STRENGTHS_INK,
   STRENGTHS_SIDE,
+  WARNING_INK,
 } from '../lib/format.ts';
 
 /** A titled section of the side panel, its `none` line when it has nothing to show. */
@@ -55,21 +60,104 @@ function NoneLine({ title, side, children }: { title: ReactNode; side: string; c
   );
 }
 
-/** The run's facts, each a term over its value. */
-function Header({ run }: { run: RunPageResponse['facts'] }) {
-  const facts: [string, ReactNode][] = [
-    ['Project', <Text value={run.project} />],
-    ['Path', <Text value={pathLabel(run.path)} />],
-    ['Stage', <Text value={run.stage} />],
-    ['Time', <Num value={run.minutes} format={formatMinutes} />],
-    ['Est. cost', <Num value={run.cost} format={formatCost} />],
-    ['Findings', <Num value={foundFindings(run)} />],
-    ['Closed', <Num value={closedFindings(run)} />],
-    ['Warnings', <Num value={run.warnings} />],
+/** A box of the header's chain; `dashed` for what isn't a run (a handoff, later fixes). */
+function ChainBox({ dashed = false, current = false, children }: { dashed?: boolean; current?: boolean; children: ReactNode }) {
+  return (
+    <div aria-current={current ? 'page' : undefined} className={cn('flex min-w-0 flex-col rounded-control border px-3 py-1.5', dashed && 'border-dashed')}>
+      {children}
+    </div>
+  );
+}
+
+/** A chain box's second line, muted. */
+function Under({ children }: { children: ReactNode }) {
+  return <span className="text-xs text-muted-foreground">{children}</span>;
+}
+
+/** A related run finished before this run's `at`: false when either time isn't known, so it goes after. */
+function before(run: RunPageResponse['related'][number], at: string | null): boolean {
+  return at !== null && run.finishedAt !== null && parseTime(run.finishedAt).getTime() <= parseTime(at).getTime();
+}
+
+/**
+ * The run's chain, boxes joined by arrows that wrap, one per row on a phone: the branch's runs that finished before it,
+ * this run with its session, its handoff, the runs after it, then its later fixes.
+ */
+function Chain({ run }: { run: RunPageResponse }) {
+  const { facts, session, handoffTo, related, context, laterFixes } = run;
+  const other = (r: RunPageResponse['related'][number]) => (
+    <ChainBox key={r.key}>
+      <Link to="/runs/$key" params={{ key: r.key }} className={cn('font-semibold', LINK)}>
+        {r.path ? `${pathLabel(r.path)} run` : 'Another run'}
+      </Link>
+      {r.finishedAt && (
+        <Under>
+          <Time iso={r.finishedAt} />
+        </Under>
+      )}
+    </ChainBox>
+  );
+  const boxes = [
+    ...related.filter((r) => before(r, facts.finishedAt)).map(other),
+    <ChainBox key="this" current>
+      <span className="font-semibold">{facts.path ? `This run, ${pathLabel(facts.path)!.toLowerCase()}` : 'This run'}</span>
+      {session && (
+        <Under>
+          {`in session ${session.title} `}
+          {session.sessionId && <SessionChip id={session.sessionId} />}
+        </Under>
+      )}
+    </ChainBox>,
+    (context?.handoff || handoffTo) && (
+      <ChainBox key="handoff" dashed>
+        <span className="font-semibold">{`Handed off to ${handoffTo?.title ?? 'a new session'}`}</span>
+        {context?.handoff && (
+          <Under>
+            <Time iso={context.handoff} />
+          </Under>
+        )}
+      </ChainBox>
+    ),
+    ...related.filter((r) => !before(r, facts.finishedAt)).map(other),
+    laterFixes.length > 0 && (
+      <ChainBox key="fixes" dashed>
+        <span className="font-semibold">
+          <LaterFixesTerm>{laterFixesLabel(laterFixes.length)}</LaterFixesTerm>
+        </span>
+      </ChainBox>
+    ),
+  ].filter(Boolean);
+  return (
+    <ol aria-label="Before and after this run" className="flex flex-col items-start gap-2 border-t pt-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+      {boxes.map((box, i) => (
+        <li key={i} className="flex min-w-0 items-center gap-2">
+          {i > 0 && <ArrowRight aria-hidden className="size-4 flex-none text-muted-foreground" />}
+          {box}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** The run's facts, each a term over its value, then its chain. */
+function Header({ run }: { run: RunPageResponse }) {
+  const { facts } = run;
+  const pairs: [string, ReactNode][] = [
+    ['Project', <Text value={facts.project} />],
+    ['Path', <Text value={pathLabel(facts.path)} />],
+    ['Stage', <Text value={facts.stage} />],
+    ['Time', <Num value={facts.minutes} format={formatMinutes} />],
+    ['Est. cost', <Num value={facts.cost} format={formatCost} />],
+    ['Tasks', <Num value={facts.tasks} />],
+    ['Findings', <Num value={foundFindings(facts)} />],
+    ['Closed', <Num value={closedFindings(facts)} />],
+    ['Stops', <span className={cn(!!facts.stops && WARNING_INK)}><Num value={facts.stops} /></span>],
+    ['Warnings', <Num value={facts.warnings} />],
   ];
   return (
-    <Panel className="py-3">
-      <Pairs inline="over" className="gap-x-10 gap-y-3" pairs={facts} />
+    <Panel className="gap-3 py-3">
+      <Pairs inline="over" className="gap-x-10 gap-y-3" pairs={pairs} />
+      <Chain run={run} />
     </Panel>
   );
 }
@@ -88,7 +176,8 @@ export function RunPage({ runKey }: { runKey: string }) {
   if (run.isError) return <State error>Couldn't load this run.</State>;
   const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
   const stages = stagesOf(timeline);
-  const unit = unitsOf(stages).find((u) => u.id === selected);
+  const units = unitsOf(stages);
+  const unit = units.find((u) => u.id === selected);
   // The run's strengths are numbered in order, so a strength keeps its number when a step filters them.
   const numbered = strengths.map((strength, i) => ({ ...strength, id: `S${i + 1}` }));
   const problems = unit ? unit.findings : findings;
@@ -104,7 +193,7 @@ export function RunPage({ runKey }: { runKey: string }) {
   return (
     <div className="flex flex-col gap-4">
       <PageTitle>{facts.branch ?? 'Run'}</PageTitle>
-      <Header run={facts} />
+      <Header run={run.data} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <Panel title="Flow">
@@ -156,6 +245,14 @@ export function RunPage({ runKey }: { runKey: string }) {
                   : 'The reviewers named no strength in this run.'}
             </NoneLine>
           )}
+          <LeftForLater
+            // The units' own findings, so each names the unit holding it.
+            findings={unit ? unit.findings : units.flatMap((u) => u.findings)}
+            from={(f) => units.find((u) => u.findings.includes(f))?.name ?? ''}
+            laterFixes={run.data.laterFixes}
+            step={unit?.name ?? null}
+            beforeSteps={facts.beforeSteps}
+          />
         </div>
         <Panel className="gap-4 lg:w-80 lg:flex-none">
           <SideSection title="Skills" none="No skill loaded.">

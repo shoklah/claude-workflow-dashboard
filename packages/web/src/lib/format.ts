@@ -335,6 +335,14 @@ export function roundsLabel(count: number, open: boolean): string {
   return open ? `${plural(count, 'round')}, the last left findings open` : plural(count, 'round');
 }
 
+/** The later fix commits' count on screen: "1 later fix", "2 later fixes". */
+export function laterFixesLabel(count: number): string {
+  return `${count} later ${count === 1 ? 'fix' : 'fixes'}`;
+}
+
+/** What the reporter counts as a later fix, the tooltip of its term. */
+export const LATER_FIXES_TERM = 'Commits starting with "fix" that touched this run\'s files in the 14 days after it.';
+
 /** A step box's warnings link's name, since a list of links reads it alone: "1 warning on Final review". */
 export function stepWarningsLabel(count: number, step: StepKind): string {
   return `${plural(count, 'warning')} on ${STEP_LABELS[step]}`;
