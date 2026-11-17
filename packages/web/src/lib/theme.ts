@@ -41,7 +41,7 @@ export function resolveVars<T>(value: T): T {
 }
 
 /** The theme's font (`--font-sans`) at the charts' 12px. */
-const chartFont = () => `12px ${getComputedStyle(document.documentElement).getPropertyValue('--font-sans')}`;
+const chartFont = () => `12px ${resolveVars('var(--font-sans)')}`;
 
 /**
  * Whether the theme's font has loaded (or failed to), re-rendering its caller when it does: ECharts measures text on a

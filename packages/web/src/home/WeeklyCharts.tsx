@@ -111,8 +111,8 @@ export function singleBars(
 /**
  * Bars of several series by week, each series a palette slot in order unless it names its `color`, a 1px surface border
  * between bars, with a legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the
- * room under the plot for the legend: 64px by default, for a legend that wraps, 28px for one that
- * fits on one line. A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
+ * room under the plot for the legend, which each caller sizes to its legend's lines (a `media` rule raising it where
+ * the legend wraps). A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
  * none over a week with no bar, and hides a total that would overlap another.
  */
 export function barsOption(
@@ -162,7 +162,7 @@ export function barsOption(
   };
 }
 
-/** The findings of each step kind, stacked per week. Each `maxWidth` is the chart width below which ECharts wraps the
+/** The findings of each step kind, stacked per week. Each `maxWidth` is the widest chart in which ECharts wraps the
  * eight step kinds' legend to one more line (measured in the theme's font), which gets 20px more room; the narrowest
  * chart, at 375px, takes three lines. */
 function findingsOption(charts: Charts) {

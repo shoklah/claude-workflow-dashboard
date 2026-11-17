@@ -128,7 +128,7 @@ export function SpendPage() {
                 })),
                 { stack: 'spend', cost: true, totals: true, legendRoom: 28 },
               ),
-              // Below this width ECharts wraps the five groups' legend to two lines (measured in the theme's font), so
+              // At this width and below, ECharts wraps the five groups' legend to two lines (measured in the theme's font), so
               // it gets their room, clear of the week labels.
               media: [{ query: { maxWidth: 445 }, option: { grid: { bottom: 56 } } }],
             }}
