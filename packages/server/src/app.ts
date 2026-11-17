@@ -57,5 +57,5 @@ export function builtWebDist(): string | null {
 /** Serves the app on 127.0.0.1 only, never on another interface. */
 export function serveApp(deps: AppDeps): void {
   serve({ fetch: createApp(deps).fetch, hostname: '127.0.0.1', port: deps.port });
-  console.log(`dashboard on http://localhost:${deps.port}`);
+  console.log(`edward on http://localhost:${deps.port}`);
 }
