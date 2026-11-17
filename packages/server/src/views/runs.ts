@@ -316,12 +316,10 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
         },
       };
     }),
-    ...loose
-      .sort((a, b) => a - b)
-      .map((task) => ({
-        first: steps.findIndex((s) => s.task === task),
-        group: { ...group('task', `Task ${task}`, labelOf), tasks: [ofTask(task)] },
-      })),
+    ...loose.map((task) => ({
+      first: steps.findIndex((s) => s.task === task),
+      group: { ...group('task', `Task ${task}`, labelOf), tasks: [ofTask(task)] },
+    })),
   ].sort((a, b) => rank(a.first) - rank(b.first));
   return [
     start,

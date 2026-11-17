@@ -56,6 +56,18 @@ export function maskModels(scope: Scope | null, run: RunEntry): RunEntry {
   };
 }
 
+/** A run's offers with each skill masked (maskText), for the Steps page's sums and the run page alike. */
+export function maskOffers(scope: Scope | null, offers: RunEntry['offers']): RunEntry['offers'] {
+  return offers?.map((o) => ({ ...o, skill: maskText(scope, o.skill) }));
+}
+
+/** modelSums' agents as rows, by name. */
+export function agentRows(sums: ModelSums) {
+  return Object.entries(sums.agents)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, row]) => ({ name, ...row }));
+}
+
 /**
  * The Models and advisor page: modelSums over the stored runs in the query's period (period), the advisor's facts
  * over its runs and sessions (periodUnits, unitSums), with the reporter's all-time figures from `totals`, the last good
@@ -94,9 +106,7 @@ export function modelsView(input: {
     (label) => maskText(input.scope, label),
   ).advisor;
   return {
-    agents: Object.entries(sums.agents)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, row]) => ({ name, ...row, mismatches: mismatches[name] ?? null })),
+    agents: agentRows(sums).map((row) => ({ ...row, mismatches: mismatches[row.name] ?? null })),
     mismatchesSource: 'reporter',
     byPath: PATHS.map((path) => {
       const row = totals?.models?.main?.[path];

@@ -11,6 +11,7 @@ import {
   type StepsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
+import { maskOffers } from './models.ts';
 import { addCount, periodUnits } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
@@ -208,7 +209,7 @@ export function stepsView(input: {
   const units = periodUnits(input.runs, input.sessions, input.query, input.now);
   const runs = units.runs.map((run) => ({
     ...run,
-    offers: run.offers?.map((o) => ({ ...o, skill: maskText(input.scope, o.skill) })),
+    offers: maskOffers(input.scope, run.offers),
   }));
   const cr6 = cr6Of(
     input.runs.map((unit) => unit.merged),
