@@ -4,6 +4,7 @@ import { DataList, type ListColumn, type ListFact } from '../components/DataList
 import { Text, Unknown } from '../components/Num.tsx';
 import { Section, Term } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
+import { Verdict } from './StepDetail.tsx';
 import {
   NONE,
   STEP_LABELS,
@@ -63,7 +64,7 @@ const factsOf = (labels: Record<string, string>, rounds: number, run: boolean): 
   ['Reason', (f) => f.reason],
   ...Array.from({ length: rounds }, (_, i): ListFact<Row> => [
     `Fix round ${i + 1}`,
-    (f) => (i < f.verdicts.length ? verdictLabel(f.verdicts[i]) : null),
+    (f) => (i < f.verdicts.length ? <Verdict verdict={f.verdicts[i]}>{verdictLabel(f.verdicts[i])}</Verdict> : null),
   ]),
   ...(run ? [['Project', (f: Row) => f.project ?? null] satisfies ListFact<Row>] : []),
 ];

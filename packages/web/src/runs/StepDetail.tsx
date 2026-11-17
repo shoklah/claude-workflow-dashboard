@@ -42,8 +42,9 @@ function Dot({ verdict }: { verdict?: string }) {
   );
 }
 
-/** A verdict's words: in the warning ink unless it is a fix, since the workflow counts every other verdict as open. */
-function Verdict({ verdict, children }: { verdict: string; children: ReactNode }) {
+/** A verdict's words: in the warning ink unless it is a fix, since the workflow counts every other verdict as open; the
+ * step detail's and the findings' opened rows alike. */
+export function Verdict({ verdict, children }: { verdict: string; children: ReactNode }) {
   return <span className={cn('whitespace-nowrap', verdict !== 'fixed' && WARNING_INK)}>{children}</span>;
 }
 

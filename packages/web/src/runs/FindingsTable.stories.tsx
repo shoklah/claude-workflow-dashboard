@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { NONE, PROBLEMS_SIDE } from '../lib/format.ts';
 import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
-import { visibleTerms, visibleValues, width } from '../test/table.ts';
+import { visibleFact, visibleTerms, visibleValues, width } from '../test/table.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
 const meta = { component: FindingsTable, decorators: [width(1000)] } satisfies Meta<typeof FindingsTable>;
@@ -113,6 +113,9 @@ export const Full: Story = {
       'Still open',
       'Still open',
     ]);
+    // Every verdict but a fix is in the warning ink.
+    await expect(visibleFact(openedRow(f4), 'Fix round 1').firstElementChild).toHaveClass('text-warning-ink');
+    await expect(visibleFact(openedRow(f1), 'Fix round 1').firstElementChild).not.toHaveClass('text-warning-ink');
 
     await expect(await fact(canvasElement, userEvent, 'Category')).toEqual([
       'Correctness',
