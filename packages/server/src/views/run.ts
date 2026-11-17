@@ -2,9 +2,9 @@ import { modelsCost, parseTime, runFacts, type RunEntry, type RunPageResponse, t
 import type { ActiveList } from '../categories.ts';
 import type { StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { agentRows, maskModels, maskOffers, modelSums } from './models.ts';
+import { agentRows, maskModels, modelSums } from './models.ts';
 import { rootOf, runView } from './runs.ts';
-import { maskText, type Scope } from './scope.ts';
+import { maskOffers, maskText, type Scope } from './scope.ts';
 import { shownSession } from './sessions.ts';
 import { maskPhase } from './spend.ts';
 

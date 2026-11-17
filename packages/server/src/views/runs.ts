@@ -345,8 +345,8 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
  * (currentLabels), its review steps' strengths, its skills, models, advisor notes and context, its current warnings, and the
  * display labels of `list`'s (the active list's) categories; its project's name from `names`, every stored run's
  * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
- * named by the scope and its findings' texts, label reasons, strengths' summaries and steps' agents, models, efforts and
- * kits masked (maskText). A step's model and effort are its tied dispatch's (the one whose `step` is its index), else
+ * named by the scope and its findings' texts, label reasons, strengths' summaries, steps' agents, models, efforts and
+ * kits, loaded skills' names and models' ids masked (maskText). A step's model and effort are its tied dispatch's (the one whose `step` is its index), else
  * its own, field by field. */
 export function runView(
   run: StoredUnit<RunEntry>,
@@ -412,8 +412,8 @@ export function runView(
         summary: strength.summary ?? null,
       })),
     ),
-    skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
-    models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
+    skills: (entry.skills ?? []).map((s) => ({ name: maskText(scope, s.name ?? ''), outcome: skillOutcomeLabel(s.outcome) })),
+    models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model: maskText(scope, model), cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
     context: context && { ...context, toolCharacters: toolCharacters(entry.tool_results) },
     warnings: currentWarnings([run], [], warnings).map((w) => showWarning(scope, w.text)),

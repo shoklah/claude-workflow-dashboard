@@ -56,11 +56,6 @@ export function maskModels(scope: Scope | null, run: RunEntry): RunEntry {
   };
 }
 
-/** A run's offers with each skill masked (maskText), for the Steps page's sums and the run page alike. */
-export function maskOffers(scope: Scope | null, offers: RunEntry['offers']): RunEntry['offers'] {
-  return offers?.map((o) => ({ ...o, skill: maskText(scope, o.skill) }));
-}
-
 /** modelSums' agents as rows, by name. */
 export function agentRows(sums: ModelSums) {
   return Object.entries(sums.agents)

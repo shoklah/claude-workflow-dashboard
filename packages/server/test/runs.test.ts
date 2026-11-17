@@ -20,6 +20,7 @@ import { listUnits, setShowing } from '../src/db/read.ts';
 import { labelInputs, saveBatch } from '../src/db/labels.ts';
 import { runView, skillOutcomeLabel, storedSessionRoots } from '../src/views/runs.ts';
 import { modelSums } from '../src/views/models.ts';
+import { runPageView } from '../src/views/run.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
@@ -539,15 +540,38 @@ describe("the run's surroundings", () => {
     expect((await run(WEBHOOKS_V7)).related).toEqual([]);
   });
 
-  test('related comes in the order the runs finished', async () => {
+  test('related comes in the order the runs finished, a run with no finish time last', async () => {
     let keys: string[] = [];
     db.$client.close();
     db = dbWith('report-v7', (raw) => {
-      // The first three runs and the webhooks run join feature/offline-sync on lantern-notes.
+      // The first three runs and the webhooks run join feature/offline-sync on lantern-notes, finishing out of their
+      // fixture order.
       for (const i of [0, 1, 2, 5]) Object.assign(raw.runs[i].record, { project: LANTERN, branch: 'feature/offline-sync' });
+      raw.runs[0].record.date = '2026-11-11T00:00:00Z';
+      raw.runs[1].record.date = '2026-11-13T00:00:00Z';
+      raw.runs[2].record.date = '2026-11-09T00:00:00Z';
       keys = raw.runs.map(runKey) as string[];
     });
-    expect((await run(keys[4])).related.map((r) => r.key)).toEqual([keys[0], keys[1], keys[2], keys[3], keys[5]]);
+    const expected = [keys[3], keys[2], keys[0], keys[5], keys[1]];
+    // Neither the fixture's order nor the keys' gives this one.
+    expect(expected).not.toEqual([keys[0], keys[1], keys[2], keys[3], keys[5]]);
+    expect(expected).not.toEqual([...expected].sort());
+    expect((await run(keys[4])).related.map((r) => r.key)).toEqual(expected);
+    // A stored run always has its record's date (no key without one), so the view is given one that lost it: it goes last.
+    const stored = listUnits(db, 'run');
+    const undated = stored.find((u) => u.key === keys[2])!;
+    undated.merged.record!.date = null;
+    const view = runPageView({
+      run: stored.find((u) => u.key === keys[4])!,
+      runs: stored,
+      sessions: [],
+      warnings: [],
+      names: new Map(),
+      scope: null,
+      labels: new Map(),
+      list: null,
+    });
+    expect(view!.related.map((r) => r.key)).toEqual([keys[3], keys[0], keys[5], keys[1], keys[2]]);
   });
 
   test('a run with no branch has no related run, though another run of its project has none either', async () => {
@@ -602,6 +626,9 @@ describe("the run's surroundings", () => {
       r.dispatches[2].agent = 'LANTERN-NOTES';
       r.main.model = 'lantern-notes';
       r.offers[0].skill = 'lantern-notes';
+      // A loaded skill and a model id naming the hidden lantern-notes.
+      r.skills[0].name = 'lantern-notes';
+      r.models['lantern-notes'] = { cost: 0.2 };
       r.later_fixes = [{ sha: '1a2b3c4', date: '2026-11-13T10:00:00Z', subject: 'fix: as lantern-notes does on feature/offline-sync' }];
       r.phases.push({ name: 'lantern-notes', models: { 'claude-opus-5-5': { cost: 0.1 } } });
       // The run's session is tidepool-api's, titled after lantern-notes, and it hands off to another such session.
@@ -624,6 +651,8 @@ describe("the run's surroundings", () => {
     ]);
     expect(body.main).toEqual({ model: 'another project', effort: 'high' });
     expect(body.offers[0]).toEqual({ skill: 'another project', outcome: 'accepted' });
+    expect(body.skills[0].name).toBe('another project');
+    expect(body.models.at(-1)).toEqual({ model: 'another project', cost: 0.2 });
     expect(body.laterFixes[0].subject).toBe('fix: as another project does on another branch');
     expect(body.session).toEqual({ title: "Port another project' sync to tidepool-api", sessionId: null });
     expect(body.handoffTo).toEqual({ title: 'Handed on from another project', sessionId: null });

@@ -11,9 +11,8 @@ import {
   type StepsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { maskOffers } from './models.ts';
 import { addCount, periodUnits } from './runs.ts';
-import { maskText, type Scope } from './scope.ts';
+import { maskOffers, maskText, type Scope } from './scope.ts';
 
 // The reporter's token labels, its failing-test results (TEST_RESULTS) and its offer outcomes (OFFER_OUTCOMES).
 const TOKENS = ['input', 'output', 'cache_read', 'cache_write'] as const;
