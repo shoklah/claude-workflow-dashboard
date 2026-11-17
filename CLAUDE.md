@@ -1,6 +1,6 @@
 # claude-workflow-dashboard
 
-A live dashboard for the Claude Code agentic workflow (`shoklah/claude-workflow`, exported as `shoklah/claude-workflow-template`). It shows what the workflow's reporter, `scripts/workflow-report.py --json`, says about runs, steps, findings and spend.
+A live dashboard for the Claude Code agentic workflow (`shoklah/gilead`, exported as `shoklah/roland`). It shows what the workflow's reporter, `scripts/workflow-report.py --json`, says about runs, steps, findings and spend.
 
 This is a personal project, used as a playground for trying things and as a portfolio piece to show. The repo is public: it holds code and invented data only, and reads the real data at run time on the owner's machine. Design decisions are recorded in `docs/superpowers/specs/2026-11-09-live-dashboard-design.md`.
 
