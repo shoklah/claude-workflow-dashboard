@@ -29,7 +29,7 @@
 **Files:**
 - Modify: `packages/server/src/views/steps.ts` (`stepSums`: the row's initial `tokens`, the dispatch loop's guard, the doc comment)
 - Modify: `packages/server/src/check-real.ts:168` (drop the null-on-one-side condition)
-- Modify: `packages/shared/src/api/steps.ts:4-8` (`StepRow`'s comment)
+- Modify: `packages/shared/src/api/steps.ts:4-9` (`StepRow`'s comment)
 - Modify (invented): `packages/web/src/test/steps.ts` (`idle()`'s tokens null; drop `NO_TOKENS` if unused), `packages/web/src/steps/StepsPage.stories.tsx:67` (`'0.0'` becomes `DASH`)
 - Modify: the Steps screen baselines, light and dark (`packages/web/e2e/steps.screens.ts-snapshots/`)
 - Test: `packages/server/test/steps.test.ts`
@@ -42,7 +42,7 @@
 
 - [ ] **Step 1: Write the failing tests** in `packages/server/test/steps.test.ts`:
 
-  Extend the existing test "a step kind's cost is null until one of its dispatched models has a price, then the priced ones' sum" and rename it "a step kind's tokens are null until a dispatch carries models, and its cost until one has a price": the unpriced-only case expects `tokens` toEqual `{ input: 10, output: 0, cache_read: 0, cache_write: 0 }`; the loop over the other kinds also expects `r.tokens` toBeNull (simplify's included, so drop the simplify skip for tokens only); add `stepSums([{ schema: 2, dispatches: [{ kind: 'simplify', models: { a: { input: 3, cost: 1 } } }] }])` → simplify's row has `tokens` null and `cost` null.
+  Extend the existing test "a step kind's cost is null until one of its dispatched models has a price, then the priced ones' sum" and rename it "a step kind's tokens are null until a dispatch carries models, and its cost until one has a price": the unpriced-only case expects `tokens` toEqual `{ input: 10, output: 0, cache_read: 0, cache_write: 0 }`; the loop over the other kinds also expects `r.tokens` toBeNull (simplify's included, so drop the simplify skip for tokens only); add `stepSums([{ schema: 2, dispatches: [{ kind: 'simplify', models: { a: { input: 3, cost: 1 } } }] }])` → simplify's row has `tokens` null and `cost` null; add `stepSums([{ schema: 2, dispatches: [{ kind: 'plan_review' }, { kind: 'task_review', models: {} }] }])` → `plan_review`'s `tokens` null (a dispatch without `models`) and `task_review`'s `tokens` toEqual four zeros (an empty `models` counts).
 
   In `scoreRow`/`expectScoreboard`, compare tokens as the reporter's with null read as zeros: `scoreRow` leaves `tokens` out of its object, and `expectScoreboard` destructures `tokens` beside `cost` and checks, for every kind but simplify, `expect(tokens ?? { input: 0, output: 0, cache_read: 0, cache_write: 0 }).toEqual(board[row.step].tokens)`; simplify's stays `toBeNull()`.
 
