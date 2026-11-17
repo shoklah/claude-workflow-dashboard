@@ -624,12 +624,14 @@ describe('changeView', () => {
     expect(body.graph.edges.filter((e: GraphEdge) => e.to === S_2E8D)).toHaveLength(1);
   });
 
-  test('a started_by naming no stored session gives no edge', async () => {
-    const { body } = await changePage(OFFLINE_CHANGE, undefined, 'report-work', (raw) => {
-      sessionOf(raw, S_7D1E).started_by = { key: 'ffffffffffffffff', how: 'started' };
-    });
-    expect(body.graph.edges.filter((e: GraphEdge) => e.to === S_7D1E)).toEqual([]);
-    expect(body.sessions.find((s: WorkSessionRow) => s.key === S_7D1E).startedBy).toBeNull();
+  test('a started_by naming no stored or dated session gives no edge, and its starter reads as hidden', async () => {
+    for (const key of ['ffffffffffffffff', S_D4A7]) {
+      const { body } = await changePage(OFFLINE_CHANGE, undefined, 'report-work', (raw) => {
+        sessionOf(raw, S_7D1E).started_by = { key, how: 'started' };
+      });
+      expect(body.graph.edges.filter((e: GraphEdge) => e.to === S_7D1E)).toEqual([]);
+      expect(body.sessions.find((s: WorkSessionRow) => s.key === S_7D1E).startedBy).toEqual({ key: null, title: null });
+    }
   });
 
   test('a session with no start is in no list or graph', async () => {

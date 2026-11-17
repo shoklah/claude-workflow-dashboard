@@ -11,7 +11,7 @@ import { STAGE_LABELS, formatDollars, formatLength, modelLabel, sessionName } fr
 /** The table's columns, with the Change column. */
 const COLUMN_COUNT = 9;
 
-/** Who started a session: the starter's title, "Another session" when showing mode hides it, else the dash read
+/** Who started a session: the starter's title, "Another session" when showing mode hides it or it isn't stored, else the dash read
  * "started by you". */
 function StartedBy({ by }: { by: WorkSessionRow['startedBy'] }) {
   if (!by) return <Unknown label="started by you" />;

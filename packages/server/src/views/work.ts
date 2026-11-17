@@ -347,7 +347,8 @@ const shownSessions = (pages: Pages, keys: Set<string>) =>
   pages.dated.filter((s) => keys.has(s.key) && showSession(pages.scope, s.merged.project));
 
 /** A shown session's row: sessionRow's facts, its step, its starter (the edge into it; key and title null when
- * shownSession hides it), its newest shown held run and its listed change. */
+ * shownSession hides it or when its `started_by` names no stored, dated session), its newest shown held run and its
+ * listed change. */
 function workRow(pages: Pages, unit: StoredUnit<SessionEntry>): WorkSessionRow {
   const { key, title, start, end, minutes, models, cost } = sessionRow(unit, pages.runRoots, pages.names, pages.scope);
   const starter = pages.edges.find((edge) => edge.to === unit.key);
@@ -362,7 +363,12 @@ function workRow(pages: Pages, unit: StoredUnit<SessionEntry>): WorkSessionRow {
     models,
     cost,
     step: stepOf(pages.held.get(unit.merged.file) ?? []),
-    startedBy: starter ? (shown ? { key: starter.from, title: shown.title } : { key: null, title: null }) : null,
+    startedBy:
+      starter && shown
+        ? { key: starter.from, title: shown.title }
+        : starter || unit.merged.started_by
+          ? { key: null, title: null }
+          : null,
     run: shownRun(pages, unit),
     change: listedChange(pages.levels, pages.scope, key),
   };
