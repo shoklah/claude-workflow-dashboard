@@ -9,6 +9,10 @@ import './index.css';
 
 applySystemTheme();
 
+// The charts measure their text on a canvas in the theme's font, and ECharts keeps every width it measures for the
+// page's life: the app renders once that font has loaded, so no chart lays out its labels in a fallback's widths.
+await document.fonts.load("12px 'Outfit Variable'").catch(() => undefined);
+
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')!).render(

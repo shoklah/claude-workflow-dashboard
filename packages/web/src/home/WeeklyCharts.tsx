@@ -34,7 +34,9 @@ const BASELINE = 'var(--chart-baseline)';
 function baseOption(weeks: string[]) {
   return {
     animation: false,
-    textStyle: { fontFamily: 'inherit' },
+    // The theme's font by name: ECharts measures text on a canvas, which can't read `inherit` and would measure in its
+    // default font, narrower than the SVG's, so labels laid out side by side (the legend's) would run into each other.
+    textStyle: { fontFamily: 'var(--font-sans)' },
     grid: { left: 8, right: 8, top: 8, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     tooltip: {
       trigger: 'axis',
@@ -109,7 +111,7 @@ export function singleBars(
 /**
  * Bars of several series by week, each series a palette slot in order unless it names its `color`, a 1px surface border
  * between bars, with a legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the
- * room under the plot for the legend: 64px by default, for a legend that wraps (Home's step kinds), 28px for one that
+ * room under the plot for the legend: 64px by default, for a legend that wraps, 28px for one that
  * fits on one line. A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
  * none over a week with no bar, and hides a total that would overlap another.
  */
@@ -160,15 +162,22 @@ export function barsOption(
   };
 }
 
-/** The findings of each step kind, stacked per week. On its own row the eight step kinds fit one legend line; a
- * narrow chart wraps the legend, so it gets the room for four rows. */
+/** The findings of each step kind, stacked per week. The eight step kinds' legend (12px Outfit, as ECharts lays it out)
+ * fits one line in a chart 672px wide or more, two lines from 340px and three below, down to the narrowest chart (309px
+ * at 375px); each line below the first gets 20px more room. */
 function findingsOption(charts: Charts) {
   const option = barsOption(
     charts.weeks,
     stepKinds(charts).map((kind) => ({ name: STEP_LABELS[kind], data: charts.findingsByStep[kind] })),
     { stack: 'findings', legendRoom: 32 },
   );
-  return { baseOption: option, media: [{ query: { maxWidth: 700 }, option: { grid: { bottom: 84 } } }] };
+  return {
+    baseOption: option,
+    media: [
+      { query: { maxWidth: 671 }, option: { grid: { bottom: 52 } } },
+      { query: { maxWidth: 339 }, option: { grid: { bottom: 72 } } },
+    ],
+  };
 }
 
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
