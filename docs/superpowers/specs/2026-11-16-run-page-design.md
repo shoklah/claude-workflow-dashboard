@@ -163,8 +163,8 @@ A plan run draws its two steps (plan simplify, plan review) as a short graph; a 
 |---|---|---|---|
 | Header facts | wrap to rows | wrap | one row |
 | Header chain | wraps, one box per row | wraps | one row |
-| Graph, fixture run (4 tasks) | upright | upright or wrapped, by the panel's width | wrapped, 2 rows (flat without its conflict count's edge) |
-| Graph, long run (12 tasks) | upright | upright or wrapped | wrapped, 2 rows |
+| Graph, fixture run (4 tasks) | upright | upright, beside the rail | wrapped, 2 rows (flat without its conflict count's edge) |
+| Graph, long run (12 tasks) | upright | upright, beside the rail | wrapped, 2 rows |
 | Step detail | stacked list | table | table |
 | Problems, Strengths | scroll sideways in their own region, with the fading edge | same | Problems scrolls, Strengths fits |
 | Severity, Outcome | wrap under the title | on the title row | on the title row |

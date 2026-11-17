@@ -264,6 +264,10 @@ describe('layout', () => {
       expect(clear(result)).toBe(true);
     });
 
+    it('stands the small run up at 454, as at 768 beside the rail', () => {
+      expect(layout(stagesOf(runSmall.timeline), 454).shape).toBe('upright');
+    });
+
     it.each([WRAP_MIN - 1, 343])('stands the long run up at %i', (at) => {
       const result = layout(stagesOf(runLong.timeline), at);
       expect(result.shape).toBe('upright');
