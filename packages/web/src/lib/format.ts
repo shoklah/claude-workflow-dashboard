@@ -126,6 +126,29 @@ export function outcomeLabel(outcome: Outcome | 'none' | null): string {
   return outcome == null || outcome === 'none' ? 'No outcome' : countName(outcome);
 }
 
+/** Who ran a step: its agent, then its model (`modelLabel`) and effort, "task-reviewer · Opus 5.5, high"; "in the
+ * session" without an agent. */
+export function stepBy(step: { agent: string | null; model: string | null; effort: string | null } | null): string {
+  if (!step?.agent) return 'in the session';
+  const model = modelLabel(step.model);
+  return joined([step.agent, model && (step.effort ? `${model}, ${step.effort}` : model)]);
+}
+
+/** Who ran a step, after a verb: "by task-reviewer · Opus 5.5, high", or "in the session" without an agent. */
+export function byLabel(step: Parameters<typeof stepBy>[0]): string {
+  return step?.agent ? `by ${stepBy(step)}` : stepBy(step);
+}
+
+/** A fix-check verdict on screen: `open` as "Still open", any other by its count name ("Not proportionate"). */
+export function verdictLabel(verdict: string): string {
+  return verdict === 'open' ? 'Still open' : countName(verdict);
+}
+
+/** A round's verdict on the step detail's stacked list: "Round 2: still open". */
+export function roundVerdictLabel(round: number, verdict: string): string {
+  return `Round ${round}: ${verdictLabel(verdict).toLowerCase()}`;
+}
+
 /** A count line's counts as lines, each its name (`countName`) and its number; null when the counts aren't known. */
 export function countLines(counts: Record<string, number | null> | null): [string, number | null][] | null {
   return counts && Object.entries(counts).map(([key, n]) => [countName(key), n]);

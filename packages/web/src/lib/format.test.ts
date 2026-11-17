@@ -10,6 +10,10 @@ import {
   countName,
   outcomeLabel,
   roundsLabel,
+  stepBy,
+  byLabel,
+  roundVerdictLabel,
+  verdictLabel,
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
@@ -102,6 +106,40 @@ describe('outcomeLabel', () => {
     expect(outcomeLabel('to_owner')).toBe('To owner');
     expect(outcomeLabel('none')).toBe('No outcome');
     expect(outcomeLabel(null)).toBe('No outcome');
+  });
+});
+
+describe('stepBy', () => {
+  it("names who ran a step: the agent, then its model and effort, 'in the session' without an agent", () => {
+    expect(stepBy({ agent: 'task-reviewer', model: 'claude-opus-5-5', effort: 'high' })).toBe('task-reviewer · Opus 5.5, high');
+    expect(stepBy({ agent: 'fix-checker', model: 'opus', effort: null })).toBe('fix-checker · Opus');
+    expect(stepBy({ agent: 'simplify', model: null, effort: null })).toBe('simplify');
+    expect(stepBy(null)).toBe('in the session');
+    expect(stepBy({ agent: null, model: 'claude-opus-5-5', effort: 'high' })).toBe('in the session');
+  });
+});
+
+describe('byLabel', () => {
+  it("says who ran a step after a verb: 'by' its agent, or 'in the session'", () => {
+    expect(byLabel({ agent: 'fix-checker', model: 'opus', effort: null })).toBe('by fix-checker · Opus');
+    expect(byLabel({ agent: null, model: null, effort: null })).toBe('in the session');
+    expect(byLabel(null)).toBe('in the session');
+  });
+});
+
+describe('roundVerdictLabel', () => {
+  it("names a round's verdict on the stacked list: 'Round 2: still open'", () => {
+    expect(roundVerdictLabel(2, 'open')).toBe('Round 2: still open');
+    expect(roundVerdictLabel(1, 'not_proportionate')).toBe('Round 1: not proportionate');
+  });
+});
+
+describe('verdictLabel', () => {
+  it("names a fix-check verdict, open as 'Still open'", () => {
+    expect(verdictLabel('open')).toBe('Still open');
+    expect(verdictLabel('fixed')).toBe('Fixed');
+    expect(verdictLabel('not_proportionate')).toBe('Not proportionate');
+    expect(verdictLabel('later')).toBe('Later');
   });
 });
 

@@ -37,6 +37,14 @@ test("the Full run's page has no sideways scroll at 375 px", async ({ page }) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
+test("at 375 px, selecting a step brings its detail's title into view", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await openFullRun(page);
+  await page.getByRole('group', { name: "The run's flow" }).getByRole('button', { name: /^Final review/ }).click();
+  const detail = page.getByRole('region', { name: 'Final review', exact: true });
+  await expect(detail.getByRole('heading', { name: 'Final review' })).toBeInViewport();
+});
+
 test("each run's row names its branch as the link to its page", async ({ page }) => {
   await page.goto('/runs');
   const row = page.getByRole('row').filter({ hasText: 'feature/webhooks' });
@@ -67,6 +75,11 @@ test('a branch with HTML shows as text', async ({ page }) => {
   // A finding's summary on the Full run, in the findings table.
   await openFullRun(page);
   await expect(page.getByRole('cell', { name: HTML_TEXT })).toBeVisible();
+  await expect(page.locator('img[src="x"]')).toHaveCount(0);
+
+  // The same summary in Task 2's detail.
+  await page.getByRole('group', { name: "The run's flow" }).getByRole('button', { name: /^Task 2(?!\d)/ }).click();
+  await expect(page.getByRole('table', { name: 'Task 2', exact: true }).getByText(HTML_TEXT)).toBeVisible();
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   expect(dialogs).toEqual([]);
 });

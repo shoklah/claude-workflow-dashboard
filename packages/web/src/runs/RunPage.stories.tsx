@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
@@ -73,6 +74,7 @@ export const Empty: Story = {
     const flow = canvas.getByRole('region', { name: 'Flow' });
     await expect(within(flow).getByText('Recorded before steps were logged: there is no flow to draw.')).toBeVisible();
     await expect(canvas.queryByRole('group', { name: "The run's flow" })).toBeNull();
+    await expect(canvas.queryByText(HINT)).toBeNull();
     const none = {
       Skills: 'No skill loaded.',
       Models: 'No model recorded.',
@@ -147,6 +149,61 @@ export const Full: Story = {
     // replaces it.
     const strengths = canvas.getByRole('region', { name: 'Strengths' }).textContent!;
     await expect(canvasElement.textContent!.replace(strengths, '')).not.toContain(' · ');
+  },
+};
+
+const HINT = 'Select a task or a review to see its rounds, and its findings below.';
+
+/** Selecting a box opens its detail under the graph in place of the hint; Close brings the hint back. */
+export const SelectStep: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
+    await expect(flow.getByText(HINT)).toBeVisible();
+    const task1 = flow.getByRole('button', { name: /^Task 1(?!\d)/ });
+    await userEvent.click(task1);
+    await expect(flow.queryByText(HINT)).toBeNull();
+    const detail = flow.getByRole('region', { name: 'Task 1' });
+    await expect(within(detail).getByRole('heading', { name: 'Task 1' })).toBeVisible();
+    await userEvent.click(within(detail).getByRole('button', { name: 'Close Task 1' }));
+    await expect(flow.getByText(HINT)).toBeVisible();
+    await expect(flow.queryByRole('region', { name: 'Task 1' })).toBeNull();
+    await expect(task1).toHaveAttribute('aria-pressed', 'false');
+  },
+};
+
+const otherKey = 'f60718293a4b5c6d';
+
+/** The page for one key, then another, as the route keeps it mounted when only its key changes. */
+function Switching() {
+  const [runKey, setRunKey] = useState(fullRun.key);
+  return (
+    <>
+      <button type="button" onClick={() => setRunKey(otherKey)}>
+        Other run
+      </button>
+      <RunPage runKey={runKey} />
+    </>
+  );
+}
+
+/** A selection belongs to its run: unit ids repeat across runs, so the other run shows no box pressed and the hint. */
+export const OtherRun: Story = {
+  render: () => <Switching />,
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull, [`/api/runs/${otherKey}`]: runFull });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const flow = await canvas.findByRole('region', { name: 'Flow' });
+    await userEvent.click(within(flow).getByRole('button', { name: /^Task 1(?!\d)/ }));
+    await expect(within(flow).getByRole('region', { name: 'Task 1' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Other run' }));
+    await expect(fetch).toHaveBeenCalledWith(`/api/runs/${otherKey}`);
+    const other = within(await canvas.findByRole('region', { name: 'Flow' }));
+    await expect(await other.findByText(HINT)).toBeVisible();
+    for (const box of other.getAllByRole('button')) await expect(box).toHaveAttribute('aria-pressed', 'false');
   },
 };
 

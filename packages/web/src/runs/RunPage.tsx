@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { RunPageResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
@@ -6,8 +6,9 @@ import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
-import { stagesOf } from './flow.ts';
+import { stagesOf, unitsOf } from './flow.ts';
 import { RunFlow } from './RunFlow.tsx';
+import { StepDetail } from './StepDetail.tsx';
 import {
   categoryLabel,
   closedFindings,
@@ -55,10 +56,22 @@ function Header({ run }: { run: RunPageResponse['facts'] }) {
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunPageResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
-  const [selected, setSelected] = useState<string | null>(null);
+  // The selection holds its run's key: unit ids repeat across runs, and the route keeps this page when only the key changes.
+  const [selection, setSelection] = useState<{ runKey: string; unit: string } | null>(null);
+  const selected = selection?.runKey === runKey ? selection.unit : null;
+  const select = (unit: string | null) => setSelection(unit === null ? null : { runKey, unit });
+  const detail = useRef<HTMLDivElement>(null);
+  // A step's detail opening off screen scrolls into view (instant under reduced motion); closing doesn't scroll.
+  useEffect(() => {
+    if (selected === null) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    detail.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'instant' : 'smooth' });
+  }, [selected]);
   if (run.isPending) return <State>Loading the run…</State>;
   if (run.isError) return <State error>Couldn't load this run.</State>;
   const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
+  const stages = stagesOf(timeline);
+  const unit = unitsOf(stages).find((u) => u.id === selected);
   return (
     <div className="flex flex-col gap-4">
       <PageTitle>{facts.branch ?? 'Run'}</PageTitle>
@@ -69,7 +82,18 @@ export function RunPage({ runKey }: { runKey: string }) {
             {facts.beforeSteps ? (
               <p className="text-sm text-muted-foreground">Recorded before steps were logged: there is no flow to draw.</p>
             ) : (
-              <RunFlow stages={stagesOf(timeline)} selected={selected} onSelect={setSelected} />
+              <RunFlow stages={stages} selected={selected} onSelect={select} />
+            )}
+            {!facts.beforeSteps && (
+              <div className="border-t pt-3 text-sm">
+                {unit ? (
+                  <div ref={detail} className="scroll-my-4">
+                    <StepDetail unit={unit} onClose={() => select(null)} />
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Select a task or a review to see its rounds, and its findings below.</p>
+                )}
+              </div>
             )}
           </Panel>
           <FindingsTable findings={findings} categoryLabels={categoryLabels} />
