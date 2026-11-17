@@ -44,13 +44,18 @@ test("at 375 px the chart's legend doesn't overlap its week labels", async ({ pa
   const weekly = page.getByRole('region', { name: 'Weekly spend' });
   const weeks = await weekly.getByRole('rowheader').allTextContents();
   const groups = (await weekly.getByRole('columnheader').allTextContents()).slice(1, -2).map((h) => h.replace(/ \(\$\)$/, ''));
-  const boxes = async (names: string[]) => {
-    const found = [];
-    for (const text of await chart.locator('svg text').all()) {
-      if (names.includes((await text.textContent()) ?? '')) found.push((await text.boundingBox())!);
-    }
-    return found;
-  };
+  // Each named text's box, read in one pass over the chart's texts.
+  const boxes = (names: string[]) =>
+    chart.locator('svg text').evaluateAll(
+      (texts, names) =>
+        texts
+          .filter((text) => names.includes(text.textContent ?? ''))
+          .map((text) => {
+            const { x, y, width, height } = text.getBoundingClientRect();
+            return { x, y, width, height };
+          }),
+      names,
+    );
   const labels = await boxes(weeks);
   const legend = await boxes(groups);
   expect(labels.length).toBeGreaterThan(0);

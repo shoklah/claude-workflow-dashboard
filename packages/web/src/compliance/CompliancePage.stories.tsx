@@ -6,6 +6,7 @@ import { complianceEmpty, complianceFull, complianceShowing } from '../test/comp
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { CompliancePage } from './CompliancePage.tsx';
+import { expectNoJoined } from '../test/table.ts';
 
 const meta = { component: CompliancePage } satisfies Meta<typeof CompliancePage>;
 export default meta;
@@ -113,7 +114,7 @@ export const Full: Story = {
     // The "WARN:" prefix and the run's own "branch (date):" lead are gone: the Run column already names the run.
     await expect(table.getByText('final_review step 0 has no agent id')).toBeVisible();
     await expect(table.queryByText(/WARN:/)).toBeNull();
-    for (const cell of table.getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
+    await expectNoJoined(rows[0].closest('table')!);
 
     // Two warnings of one cell, neither new.
     await userEvent.click(canvas.getByRole('button', { name: 'Step has no agent id, week of Nov 1: 2' }));

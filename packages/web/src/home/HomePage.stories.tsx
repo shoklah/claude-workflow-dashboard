@@ -4,6 +4,7 @@ import type { StatusResponse } from '@cwd/shared';
 import { emptyHome, fullHome } from '../test/home.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { HomePage } from './HomePage.tsx';
+import { expectNoJoined } from '../test/table.ts';
 
 const meta = { component: HomePage } satisfies Meta<typeof HomePage>;
 export default meta;
@@ -70,6 +71,6 @@ export const Full: Story = {
     await expect(canvas.getByRole('heading', { name: 'Skills and commands' })).toBeVisible();
     await expect(canvas.getByText('23 sessions and 6 runs')).toBeVisible();
     // One value per cell, everywhere on the page.
-    for (const cell of canvasElement.querySelectorAll('td, th')) await expect(cell.textContent).not.toContain(' · ');
+    await expectNoJoined(canvasElement);
   },
 };

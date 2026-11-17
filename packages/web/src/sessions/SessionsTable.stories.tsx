@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { fullRun, smallRun } from '../test/runs.ts';
 import { sessionsFull } from '../test/sessions.ts';
-import { expectColgroups } from '../test/table.ts';
+import { expectColgroups, expectNoJoined } from '../test/table.ts';
 import { SessionsTable } from './SessionsTable.tsx';
 
 const meta = { component: SessionsTable } satisfies Meta<typeof SessionsTable>;
@@ -82,7 +82,7 @@ export const Full: Story = {
     await expect(neverLoaded).toHaveClass('text-warning-ink');
     await expect(other.getAllByRole('cell')[10]).not.toHaveClass('text-warning-ink');
     await expect(other.getByText('Missing').closest('td')).toHaveClass('text-warning-ink');
-    for (const row of cells(canvasElement.querySelector('table')!)) for (const cell of row) await expect(cell).not.toContain(' · ');
+    await expectNoJoined(canvasElement);
 
     // Closed, a row shows no timeline; its name is the toggle.
     await expect(canvas.queryByRole('table', { name: 'Timeline of Plan the search index' })).toBeNull();

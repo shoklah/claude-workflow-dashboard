@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { expectLatestWeekWhole } from './charts.ts';
 import { pinClock } from './fixed-time.ts';
 
 // dev:fixtures' data: report-full, report-later, report-v6 and report-v7; this week holds report-v6's plan, two Full
@@ -30,19 +31,9 @@ for (const width of [375, 768]) {
     const charts = page.getByRole('img', { name: /: bars by week/ });
     await expect(charts).toHaveCount(4);
     // The latest week, as the week table names it in its first body row.
-    const latest = await page
-      .getByRole('region', { name: 'Weeks', exact: true })
-      .getByRole('row')
-      .nth(2)
-      .getByRole('rowheader')
-      .textContent();
-    for (const chart of await charts.all()) {
-      const box = (await chart.boundingBox())!;
-      const label = chart.locator('svg text', { hasText: new RegExp(`^${latest}$`) });
-      await expect(label).toHaveCount(1);
-      const labelBox = (await label.boundingBox())!;
-      expect(labelBox.x).toBeGreaterThanOrEqual(box.x);
-      expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(box.x + box.width);
-    }
+    await expectLatestWeekWhole(
+      charts,
+      page.getByRole('region', { name: 'Weeks', exact: true }).getByRole('row').nth(2).getByRole('rowheader'),
+    );
   });
 }

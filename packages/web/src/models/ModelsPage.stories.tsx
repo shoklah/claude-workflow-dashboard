@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
-import { expectColgroups } from '../test/table.ts';
+import { cells, expectColgroups, expectNoJoined } from '../test/table.ts';
 import { modelsEmpty, modelsFull, modelsOldReporter } from '../test/models.ts';
 import { runsFull } from '../test/runs.ts';
 import { ModelsPage } from './ModelsPage.tsx';
@@ -17,13 +17,6 @@ const status: StatusResponse = { lastImportAt: AT, lastGoodImportAt: AT, error: 
 const projects = { '/api/runs?weeks=52': runsFull };
 const MARK = 'reporter, all time';
 const NO_FACTS = 'No advisor facts: the export is from before the reporter counted them.';
-
-/** A row's cells after its header, as text (an unknown value reads its dash and its spoken label). */
-function cells(row: HTMLElement): string[] {
-  return within(row)
-    .getAllByRole('cell')
-    .map((cell) => cell.textContent ?? '');
-}
 
 /** The rows of a table's body, from the one its row header names, as cell texts. */
 function lines(table: HTMLElement, name: string, count: number): string[][] {
@@ -42,11 +35,6 @@ function columns(table: HTMLElement): string[] {
 
 /** The table inside the scroll region named `name`. */
 const table = (canvas: HTMLElement, name: string) => within(within(canvas).getByRole('region', { name })).getByRole('table');
-
-/** No cell joins several values with " · ". */
-async function oneValuePerCell(canvas: HTMLElement) {
-  for (const cell of within(canvas).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
-}
 
 export const Loading: Story = {
   beforeEach: () => {
@@ -94,7 +82,7 @@ export const Empty: Story = {
     for (const zero of ['0', '$0.00', '0%']) {
       for (const value of period.getAllByText(zero, { selector: 'span' })) await expect(value).toHaveClass('text-muted-foreground');
     }
-    await oneValuePerCell(canvasElement);
+    await expectNoJoined(canvasElement);
   },
 };
 
@@ -199,7 +187,7 @@ export const Full: Story = {
 
     // Only the reporter's figures are marked: mismatches, the stage table, differs, the trial and the weeks.
     await expect(canvas.getAllByText(MARK)).toHaveLength(5);
-    await oneValuePerCell(canvasElement);
+    await expectNoJoined(canvasElement);
   },
 };
 

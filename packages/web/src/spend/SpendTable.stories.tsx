@@ -2,14 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { spendEmpty, spendFull, spendUnknownPhase } from '../test/spend.ts';
 import { SpendTable } from './SpendTable.tsx';
+import { cells, expectNoJoined } from '../test/table.ts';
 
 const meta = { component: SpendTable } satisfies Meta<typeof SpendTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const table = (canvas: HTMLElement) => within(within(canvas).getByRole('region', { name: 'Spend by phase' }));
-const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((cell) => cell.textContent);
-
 /**
  * Full: "All phases" first, then the five groups, a group of several phases opening to its phases' rows (its toggle a
  * button with a chevron), one column per model under "By model ($)" (the unpriced one a dash), then the advisor's,
@@ -50,9 +49,7 @@ export const Full: Story = {
       '66',
       '38.00',
     ]);
-    for (const row of rows) {
-      for (const cell of within(row).queryAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
-    }
+    await expectNoJoined(rows[0].closest('table')!);
 
     const review = spend.getByRole('button', { name: 'Review and cleanup' });
     await expect(review).toHaveAttribute('aria-expanded', 'false');

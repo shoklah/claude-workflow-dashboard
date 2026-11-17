@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { expectLatestWeekWhole } from './charts.ts';
 import { pinClock } from './fixed-time.ts';
 import { settled } from './settled.ts';
 
@@ -40,18 +41,8 @@ test('at 375 px each chart keeps its latest week label whole', async ({ page }) 
   await expect(charts).toHaveCount(5);
   // The latest week, as the charts' table view names it in its first row.
   await page.getByText('The charts as a table').click();
-  const latest = await page
-    .getByRole('region', { name: 'Weekly context' })
-    .getByRole('row')
-    .nth(2)
-    .getByRole('rowheader')
-    .textContent();
-  for (const chart of await charts.all()) {
-    const box = (await chart.boundingBox())!;
-    const label = chart.locator('svg text', { hasText: new RegExp(`^${latest}$`) });
-    await expect(label).toHaveCount(1);
-    const labelBox = (await label.boundingBox())!;
-    expect(labelBox.x).toBeGreaterThanOrEqual(box.x);
-    expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(box.x + box.width);
-  }
+  await expectLatestWeekWhole(
+    charts,
+    page.getByRole('region', { name: 'Weekly context' }).getByRole('row').nth(2).getByRole('rowheader'),
+  );
 });

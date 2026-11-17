@@ -5,6 +5,7 @@ import { contextAll, contextEmpty, contextFull, contextHidden } from '../test/co
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { ContextPage } from './ContextPage.tsx';
+import { cells, expectNoJoined } from '../test/table.ts';
 
 const meta = { component: ContextPage } satisfies Meta<typeof ContextPage>;
 export default meta;
@@ -17,7 +18,6 @@ const projects = { '/api/runs?weeks=52': runsFull };
 const OVER = '/api/context?weeks=12&over=1';
 const ALL = '/api/context?weeks=12';
 
-const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((cell) => cell.textContent);
 const weekly = (canvas: HTMLElement) => within(within(canvas).getByRole('region', { name: 'Weekly context' }));
 const TITLES = [
   'Mean context per call (tokens)',
@@ -124,9 +124,7 @@ export const Full: Story = {
     await expect(cells(rows[2])).toEqual([
       '19', '1,580', '247.0K', '744.0K', '11', '706.0K', '497.0K', '221.0K', '166.0K', '88.0K', '99.0K', '33.0K', '39', '18', '9',
     ]);
-    for (const row of rows) {
-      for (const cell of within(row).queryAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
-    }
+    await expectNoJoined(rows[0].closest('table')!);
 
     const units = within(canvas.getByRole('region', { name: 'Runs and sessions' })).getAllByRole('row');
     await expect(units[2]).toHaveTextContent('Refactor the sync queue');

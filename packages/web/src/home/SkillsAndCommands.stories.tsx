@@ -2,13 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { emptyUsage, fullUsage } from '../test/home.ts';
 import { SkillsAndCommands } from './SkillsAndCommands.tsx';
+import { cells, expectNoJoined } from '../test/table.ts';
 
 const meta = { component: SkillsAndCommands } satisfies Meta<typeof SkillsAndCommands>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-/** A row's cells' text. */
-const cells = (row: HTMLElement) => [...row.children].map((cell) => cell.textContent);
 
 /** Empty: no sessions or runs in either period; the table says so. */
 export const Empty: Story = {
@@ -43,7 +41,7 @@ export const Full: Story = {
       '–not known',
     ]);
     await expect(cells(canvas.getByRole('row', { name: /^grill-me/ })).at(-1)).toBe('2');
-    for (const td of canvasElement.querySelectorAll('td')) await expect(td.textContent).not.toContain(' · ');
+    await expectNoJoined(canvasElement);
 
     await userEvent.click(period.getByRole('button', { name: 'Last 4 weeks' }));
     await expect(period.getByRole('button', { name: 'Last 4 weeks' })).toHaveAttribute('aria-pressed', 'true');

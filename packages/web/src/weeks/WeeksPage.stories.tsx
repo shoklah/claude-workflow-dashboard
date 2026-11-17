@@ -5,6 +5,7 @@ import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { weeksEmpty, weeksFull } from '../test/weeks.ts';
 import { WeeksPage } from './WeeksPage.tsx';
+import { cells, expectNoJoined } from '../test/table.ts';
 
 const meta = { component: WeeksPage } satisfies Meta<typeof WeeksPage>;
 export default meta;
@@ -22,14 +23,8 @@ const HEADERS = [
   'Small', 'Full', 'Plan', 'Critical', 'Important', 'Minor', 'Not required', 'Fable', 'All models',
 ];
 
-const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((cell) => cell.textContent);
 const table = (canvas: HTMLElement, name: string) =>
   within(within(within(canvas).getByRole('region', { name })).getByRole('table'));
-/** No cell joins several values with " · ". */
-const noJoined = async (canvas: HTMLElement) => {
-  for (const cell of within(canvas).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
-};
-
 export const Loading: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/weeks?weeks=12': 'pending' });
@@ -71,7 +66,7 @@ export const Empty: Story = {
     }
     await expect(cells(table(canvasElement, 'Full runs').getAllByRole('row')[1])).toEqual(['0', '0', unknown]);
     await expect(canvas.queryByText(/the reporter can no longer read them/)).toBeNull();
-    await noJoined(canvasElement);
+    await expectNoJoined(canvasElement);
   },
 };
 
@@ -130,7 +125,7 @@ export const Full: Story = {
       'Weeks before Oct 13 show what was stored; the reporter can no longer read them.',
     );
     await expect(canvas.queryByText(EMPTY)).toBeNull();
-    await noJoined(canvasElement);
+    await expectNoJoined(canvasElement);
   },
 };
 

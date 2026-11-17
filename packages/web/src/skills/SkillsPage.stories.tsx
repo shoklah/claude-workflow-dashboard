@@ -5,7 +5,7 @@ import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { skillsEmpty, skillsFull } from '../test/skills.ts';
-import { expectColgroups } from '../test/table.ts';
+import { expectColgroups, expectNoJoined } from '../test/table.ts';
 import { SkillsPage } from './SkillsPage.tsx';
 
 const meta = { component: SkillsPage } satisfies Meta<typeof SkillsPage>;
@@ -90,7 +90,7 @@ export const Full: Story = {
     await expect(never).toHaveAttribute('rowspan', '1');
     await expect(within(never.closest('tr')!).getByRole('cell', { name: 'No loads' })).toBeVisible();
     // One value per cell.
-    for (const cell of canvas.getAllByRole('cell')) expect(cell.textContent).not.toContain(' · ');
+    await expectNoJoined(canvasElement);
     const notes = canvas.getByText('How skills are counted').closest('details')!;
     await expect(notes).not.toHaveAttribute('open');
     await expect(canvas.getByRole('region', { name: 'Skills' }).compareDocumentPosition(notes)).toBe(

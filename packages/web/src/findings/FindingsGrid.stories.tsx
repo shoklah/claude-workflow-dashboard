@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { CATEGORY_IDS, findingsEmpty, findingsFull, findingsWorkflow } from '../test/findings.ts';
 import { FindingsGrid } from './FindingsGrid.tsx';
+import { expectNoJoined } from '../test/table.ts';
 
 const meta = {
   component: FindingsGrid,
@@ -25,11 +26,6 @@ function rowExtras(canvasElement: HTMLElement, name: string): string[] {
     .getAllByRole('cell')
     .filter((cell) => !cell.querySelector('button'))
     .map((cell) => cell.textContent!);
-}
-
-/** No cell of the grid joins several values with " · ". */
-async function oneValuePerCell(canvasElement: HTMLElement) {
-  for (const cell of within(canvasElement).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
 }
 
 /** Empty: no findings in the period, so every category of the area shows 0 in every week. */
@@ -62,7 +58,7 @@ export const Full: Story = {
     await expect(canvas.getAllByRole('columnheader').at(-1)).toHaveTextContent('Total');
     await expect(rowExtras(canvasElement, 'Tests')).toEqual(['3']);
     await expect(canvas.queryByRole('columnheader', { name: 'Labelled by the app' })).toBeNull();
-    await oneValuePerCell(canvasElement);
+    await expectNoJoined(canvasElement);
     await expect(canvas.getAllByRole('rowheader').at(-1)).toHaveTextContent('unlabelled');
     // It scrolls sideways over many weeks, so its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Findings by category and week' })).toHaveAttribute('tabindex', '0');
@@ -119,7 +115,7 @@ export const WorkflowLabels: Story = {
     await expect(rowExtras(canvasElement, 'Tests')).toEqual(['3', '2']);
     await expect(rowExtras(canvasElement, 'Correctness')).toEqual(['2', '1']);
     for (const cell of canvas.getAllByRole('cell')) await expect(cell.textContent).not.toContain('by the app');
-    await oneValuePerCell(canvasElement);
+    await expectNoJoined(canvasElement);
   },
 };
 

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { HTML_TEXT, fullRun, oldRun, smallRun } from '../test/runs.ts';
-import { expectColgroups } from '../test/table.ts';
+import { cells, expectColgroups, expectNoJoined } from '../test/table.ts';
 import { RunsTable } from './RunsTable.tsx';
 
 const meta = { component: RunsTable } satisfies Meta<typeof RunsTable>;
@@ -17,11 +17,6 @@ export const Empty: Story = {
     await expect(canvas.getByText(EMPTY)).toBeVisible();
   },
 };
-
-/** The cells of a body row, by column. */
-function cells(row: HTMLElement): string[] {
-  return [...row.querySelectorAll('td')].map((td) => td.textContent ?? '');
-}
 
 /** Full: one row per run, its branch linking to its page, one value per cell with the unit in the header; a record
  * from before steps says so in muted text and shows the dash for what it can't give. */
@@ -70,7 +65,7 @@ export const Full: Story = {
     await expect(within(cost).getByText('not known')).toBeInTheDocument();
 
     // One value per cell.
-    for (const row of rows) for (const text of cells(row)) await expect(text).not.toContain(' · ');
+    await expectNoJoined(canvasElement);
 
     // Free text with HTML in it shows as text.
     await expect(canvas.getByRole('link', { name: HTML_TEXT })).toBeVisible();

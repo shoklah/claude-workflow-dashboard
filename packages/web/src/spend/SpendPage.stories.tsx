@@ -5,6 +5,7 @@ import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { spendEmpty, spendFull, spendUncounted, spendUnpriced } from '../test/spend.ts';
 import { SpendPage } from './SpendPage.tsx';
+import { cells, expectNoJoined } from '../test/table.ts';
 
 const meta = { component: SpendPage } satisfies Meta<typeof SpendPage>;
 export default meta;
@@ -18,8 +19,6 @@ const ALL = '/api/spend?weeks=12';
 const SESSIONS = '/api/spend?weeks=12&units=sessions';
 const FULL_PATH = '/api/spend?path=full&weeks=12&units=runs';
 const TITLE = 'Estimated cost by week, by phase group ($)';
-const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((cell) => cell.textContent);
-
 export const Loading: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, [ALL]: 'pending' });
@@ -111,9 +110,7 @@ export const Full: Story = {
     await expect(headers.slice(-2)).toEqual(['Total ($)', 'Runs and sessions not counted']);
     const first = weekly.getAllByRole('row')[1];
     await expect(cells(first)).toEqual(['14.00', '31.00', '12.00', '9.00', '6.00', '72.00', '3']);
-    for (const row of weekly.getAllByRole('row')) {
-      for (const cell of within(row).queryAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
-    }
+    await expectNoJoined(first.closest('table')!);
 
     const table = canvas.getByRole('region', { name: 'Spend by phase' });
     await expect(table).toBeVisible();

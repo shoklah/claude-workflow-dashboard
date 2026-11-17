@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { contextFull, contextHidden } from '../test/context.ts';
 import { ContextUnits } from './ContextUnits.tsx';
+import { expectNoJoined } from '../test/table.ts';
 
 const meta = {
   component: ContextUnits,
@@ -85,9 +86,7 @@ export const Full: Story = {
     await expect(handedOff[9]).toHaveTextContent(/^Plan the offline sync, part 2$/);
     await expect(within(handedOff[10]).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
 
-    for (const row of body) {
-      for (const cell of within(row).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
-    }
+    await expectNoJoined(canvasElement);
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
   },
 };

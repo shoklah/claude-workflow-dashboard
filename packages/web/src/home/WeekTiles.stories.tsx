@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { emptyWeek, fullHome } from '../test/home.ts';
 import { WeekTiles } from './WeekTiles.tsx';
+import { expectNoJoined } from '../test/table.ts';
 
 const meta = { component: WeekTiles } satisfies Meta<typeof WeekTiles>;
 export default meta;
@@ -66,7 +67,7 @@ export const FullWeek: Story = {
       ['New', '3', '0'],
     ]);
     for (const table of [runs, findings, cost, warnings]) {
-      for (const row of rows(table)) for (const cell of row) await expect(cell).not.toContain(' · ');
+      await expectNoJoined(table);
       // The numbers line up: their headers and cells right-aligned in tabular figures.
       for (const cell of table.querySelectorAll('td')) await expect(cell).toHaveClass('text-right', 'tabular-nums');
     }

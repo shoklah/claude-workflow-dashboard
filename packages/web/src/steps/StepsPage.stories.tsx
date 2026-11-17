@@ -5,6 +5,7 @@ import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { stepsEmpty, stepsFull, stepsOldReporter } from '../test/steps.ts';
 import { StepsPage } from './StepsPage.tsx';
+import { cells, expectNoJoined } from '../test/table.ts';
 
 const meta = { component: StepsPage } satisfies Meta<typeof StepsPage>;
 export default meta;
@@ -17,13 +18,6 @@ const projects = { '/api/runs?weeks=52': runsFull };
 const ERROR = "Couldn't load the steps and rules. Check that the dashboard server is running, then refresh.";
 // An unknown value's text: the muted dash and its spoken words.
 const DASH = '–not known';
-
-/** A row's cells after its header, as text. */
-function cells(row: HTMLElement): string[] {
-  return within(row)
-    .getAllByRole('cell')
-    .map((cell) => cell.textContent ?? '');
-}
 
 /** The table named `name`, inside its scrolling region. */
 const table = async (canvasElement: HTMLElement, name: string) =>
@@ -39,11 +33,6 @@ function rowsOf(header: HTMLElement): HTMLElement[] {
 
 /** A step's or rule's count lines, each its name and number: the first line's after Ran and Found something. */
 const linesOf = (header: HTMLElement) => rowsOf(header).map((row, i) => (i === 0 ? cells(row).slice(2, 4) : cells(row)));
-
-/** No cell joins several values with " · ". */
-async function noJoinedCells(canvasElement: HTMLElement) {
-  for (const cell of within(canvasElement).getAllByRole('cell')) await expect(cell.textContent).not.toContain(' · ');
-}
 
 export const Loading: Story = {
   beforeEach: () => {
@@ -87,7 +76,7 @@ export const Empty: Story = {
     ]);
     const guard = rules.getByRole('rowheader', { name: 'Dispatch guard' });
     await expect(cells(guard.closest('tr')!)).toEqual([DASH, '0', 'No counts', DASH]);
-    await noJoinedCells(canvasElement);
+    await expectNoJoined(canvasElement);
     await expect(canvas.queryByText('reporter, all time')).toBeNull();
   },
 };
@@ -174,7 +163,7 @@ export const Full: Story = {
 
     // No blank cell, nothing joined, and every figure is the period's sum.
     for (const cell of within(canvasElement).getAllByRole('cell')) await expect(cell.textContent).not.toBe('');
-    await noJoinedCells(canvasElement);
+    await expectNoJoined(canvasElement);
     await expect(canvas.queryByText('reporter, all time')).toBeNull();
   },
 };
