@@ -84,3 +84,16 @@ export const NoProject: Story = {
     await expect(within(head).getAllByRole('columnheader')).toHaveLength(8);
   },
 };
+
+/** At a phone's width the table scrolls in its own region, and a title keeps its one line up to the column's
+ * maximum. */
+export const Narrow: Story = {
+  args: { rows: [syncChange, designChange] },
+  parameters: { viewport: { options: { phone: { name: 'Phone', styles: { width: '375px', height: '812px' } } } } },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvas }) => {
+    const link = canvas.getByRole('link', { name: syncChange.title });
+    const line = parseFloat(getComputedStyle(link).lineHeight);
+    await expect(link.getBoundingClientRect().height).toBeLessThan(line * 1.5);
+  },
+};

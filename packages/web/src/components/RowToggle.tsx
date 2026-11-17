@@ -5,7 +5,8 @@ import { LINK } from './Panel.tsx';
 
 /** A table row's toggle for its detail rows: a button with `aria-expanded`, its chevron, an optional mark `before`
  * the name (a swatch), and the name underlined as a link, with `className` on it. With a `link` (a goal's section), the
- * chevron alone is the button, named by the link, which sits beside it with `className`. */
+ * chevron alone is the button, in primary ink (on the backdrop), named by the link, which sits beside it with
+ * `className`. */
 export function RowToggle({
   open,
   onToggle,
@@ -23,7 +24,8 @@ export function RowToggle({
 }) {
   const linkId = useId();
   const Chevron = open ? ChevronDown : ChevronRight;
-  const chevron = <Chevron aria-hidden className="size-4 flex-none text-muted-foreground" />;
+  // Beside a link the toggle heads a section on the backdrop, so its chevron takes primary ink.
+  const chevron = <Chevron aria-hidden className={cn('size-4 flex-none', !link && 'text-muted-foreground')} />;
   if (link) {
     return (
       <span className="flex items-center gap-2">

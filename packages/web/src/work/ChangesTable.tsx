@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { cn } from 'cn';
 import type { ChangeRow } from '@cwd/shared';
 import { EmptyRow, NUM, Num, Unknown } from '../components/Num.tsx';
 import { LINK, Term } from '../components/Panel.tsx';
@@ -40,8 +41,13 @@ export function ChangesTable({ rows, project, label }: { rows: ChangeRow[]; proj
         )}
         {rows.map((row) => (
           <TableRow key={row.key}>
-            <TableCell className="max-w-80 font-medium whitespace-normal">
-              <Link to="/work/changes/$key" params={{ key: row.key }} className={LINK}>
+            <TableCell className="font-medium">
+              {/* As wide as its title up to the column's maximum, so it wraps only past it, never down to a word. */}
+              <Link
+                to="/work/changes/$key"
+                params={{ key: row.key }}
+                className={cn(LINK, 'inline-block w-max max-w-80 whitespace-normal')}
+              >
                 {row.title}
               </Link>
             </TableCell>

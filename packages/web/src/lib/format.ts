@@ -253,7 +253,7 @@ export function taskLabel(f: { task: number | null; wave: string | null }): stri
 
 /** A cost in dollars, or a dash when it isn't known. */
 export function formatCost(cost: number | null): string {
-  return cost === null ? NONE : `$${cost.toFixed(2)}`;
+  return cost === null ? NONE : `$${formatDollars(cost)}`;
 }
 
 /** A duration, rounded to whole minutes: "25 min", "2 h 10", "2 h 05"; a dash when it isn't known. */

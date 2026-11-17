@@ -36,6 +36,8 @@ export const WithLink: Story = {
     const link = canvas.getByRole('link', { name: 'Offline sync' });
     await expect(button).toHaveAttribute('aria-expanded', 'false');
     await expect(button).not.toContainElement(link);
+    // On the backdrop (a goal's section), the chevron is in primary ink.
+    await expect(button.querySelector('svg')).not.toHaveClass('text-muted-foreground');
     await userEvent.click(button);
     await expect(args.onToggle).toHaveBeenCalledOnce();
   },
