@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
+import { settled } from './settled.ts';
 
 test('the shell has no axe violations', async ({ page }) => {
   await pinClock(page);
@@ -75,6 +76,7 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   const menu = page.getByRole('button', { name: 'Menu' });
   const pages = page.getByRole('dialog', { name: 'Pages' });
   await menu.click();
+  await expect(pages.getByText('edward', { exact: true })).toBeVisible();
   await expect(pages.getByRole('link')).toHaveCount(11);
   await page.keyboard.press('Escape');
   await expect(pages).toBeHidden();
@@ -86,6 +88,21 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   await expect(page).toHaveURL(/\/runs$/);
   await expect(pages).toBeHidden();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeInViewport();
+});
+
+test('on a short phone the Menu dialog scrolls to its last link', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 375, height: 480 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Menu' }).click();
+  const pages = page.getByRole('dialog', { name: 'Pages' });
+  const box = (await pages.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(480);
+  const last = pages.getByRole('link', { name: 'Models and advisor' });
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
+  await settled(pages);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test('the tab is named edward and has its mark as icon', async ({ page }) => {

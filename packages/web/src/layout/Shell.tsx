@@ -13,7 +13,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const status = useStatus();
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="glass m-3 hidden w-44 flex-none self-start p-3 md:block">
+      <aside className="glass m-3 hidden w-56 flex-none self-start p-3 md:block">
         <Menu />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">

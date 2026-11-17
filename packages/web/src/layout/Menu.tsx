@@ -1,41 +1,69 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Menu as MenuIcon } from 'lucide-react';
+import {
+  Bot, CalendarDays, CircleDollarSign, Gauge, House, ListChecks, Menu as MenuIcon, Play, Puzzle, SearchCheck,
+  ShieldCheck, Terminal,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
+import { Brand } from './Brand.tsx';
 
-// The built pages only; the menu's later entries (decision 22) appear as their pages are built. An entry is current on
-// its pages below it too (Runs on a run's page), except Home, which every path is below.
-const ENTRIES = [
-  { to: '/', label: 'Home', exact: true },
-  { to: '/runs', label: 'Runs', exact: false },
-  { to: '/findings', label: 'Findings', exact: false },
-  { to: '/sessions', label: 'Sessions', exact: false },
-  { to: '/context', label: 'Context', exact: false },
-  { to: '/compliance', label: 'Compliance', exact: false },
-  { to: '/steps', label: 'Steps and rules', exact: false },
-  { to: '/skills', label: 'Skills', exact: false },
-  { to: '/models', label: 'Models and advisor', exact: false },
-  { to: '/spend', label: 'Spend', exact: false },
-  { to: '/weeks', label: 'Weeks', exact: false },
-] as const;
+type Entry = { to: string; label: string; icon: LucideIcon; exact?: boolean };
 
-/** The pages' links, one under the other; `onNavigate` runs when one is followed. */
+// The one list of pages, in sections: Home and Weeks first, unnamed, then a named section per kind of page. An entry
+// is current on its pages below it too (Runs on a run's page), except Home, which every path is below. An icon is a
+// picture of its page's subject and never changes with state.
+const SECTIONS: { name: string | null; entries: Entry[] }[] = [
+  { name: null, entries: [
+    { to: '/', label: 'Home', icon: House, exact: true },
+    { to: '/weeks', label: 'Weeks', icon: CalendarDays },
+  ] },
+  { name: 'Activity', entries: [
+    { to: '/runs', label: 'Runs', icon: Play },
+    { to: '/sessions', label: 'Sessions', icon: Terminal },
+    { to: '/findings', label: 'Findings', icon: SearchCheck },
+  ] },
+  { name: 'Usage and cost', entries: [
+    { to: '/context', label: 'Context', icon: Gauge },
+    { to: '/spend', label: 'Spend', icon: CircleDollarSign },
+  ] },
+  { name: 'Workflow', entries: [
+    { to: '/compliance', label: 'Compliance', icon: ShieldCheck },
+    { to: '/steps', label: 'Steps and rules', icon: ListChecks },
+    { to: '/skills', label: 'Skills', icon: Puzzle },
+    { to: '/models', label: 'Models and advisor', icon: Bot },
+  ] },
+];
+
+/** The pages' links in their sections; `onNavigate` runs when one is followed. */
 export function Menu({ onNavigate }: { onNavigate?: () => void }) {
+  // The rail and the dialog both render the menu, so a section's name gets its id per render.
+  const id = useId();
   return (
-    <nav aria-label="Main" className="flex flex-col gap-1 text-sm">
-      {ENTRIES.map((entry) => (
-        <Link
-          key={entry.to}
-          to={entry.to}
-          onClick={onNavigate}
-          activeOptions={{ exact: entry.exact }}
-          className="rounded-control px-3 py-1 hover:bg-accent"
-          activeProps={{ className: 'bg-accent font-semibold' }}
-        >
-          {entry.label}
-        </Link>
-      ))}
+    <nav aria-label="Main" className="flex flex-col gap-6 text-sm">
+      {SECTIONS.map((section, i) => {
+        const nameId = `${id}-${i}`;
+        const named = section.name ? { role: 'group', 'aria-labelledby': nameId } : {};
+        return (
+          <div key={section.name ?? ''} {...named} className="flex flex-col gap-1">
+            {section.name && <div id={nameId} className="px-3 pb-1 text-xs font-medium text-muted-foreground">{section.name}</div>}
+            {section.entries.map((entry) => (
+              <Link
+                key={entry.to}
+                to={entry.to}
+                onClick={onNavigate}
+                activeOptions={{ exact: entry.exact ?? false }}
+                className="flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent"
+                activeProps={{ className: 'bg-accent font-semibold' }}
+              >
+                <entry.icon className="size-4 flex-none" aria-hidden />
+                {entry.label}
+              </Link>
+            ))}
+          </div>
+        );
+      })}
     </nav>
   );
 }
@@ -51,9 +79,10 @@ export function MenuButton() {
           Menu
         </Button>
       </DialogTrigger>
-      <DialogContent className="top-2 left-2 max-w-64 translate-x-0 translate-y-0 rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
-        <DialogHeader>
-          <DialogTitle className="text-section-title">Pages</DialogTitle>
+      <DialogContent className="top-2 left-2 max-h-[calc(100dvh-1rem)] max-w-64 translate-x-0 translate-y-0 overflow-y-auto rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
+        <DialogHeader className="text-left">
+          <DialogTitle className="sr-only">Pages</DialogTitle>
+          <Brand />
           <DialogDescription className="sr-only">Go to a page of the dashboard.</DialogDescription>
         </DialogHeader>
         <Menu onNavigate={() => setOpen(false)} />
