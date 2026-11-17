@@ -23,6 +23,7 @@ The question the rail answers: where am I, where can I go, and is what I see fre
 - Renaming the repository, the README, the package names, the data folder (`~/Library/Application Support/claude-workflow-dashboard`), the launchd label or any local folder. That is its own task; the folder renames split run history, since the reporter keys runs by project path.
 - Anything in the workflow repo. Its new name, **roland**, is recorded here only because the two names were chosen as a pair.
 - An icons-only rail, collapsible sections, shorter page labels.
+- Settling the name of the Workflow page planned for slice 3 (decision 22 of `2026-11-09-live-dashboard-design.md`), which the section named "Workflow" will clash with. That is slice 3's to settle, most likely by naming the page something else.
 - Designing the phone layout beyond what is said here.
 
 ## Anti-goals
@@ -60,6 +61,16 @@ How the rail stays put: `position: sticky` inside the shell's existing flex row,
 - **Page merging is a separate, later design.**
 - **Under 768 px the top row is not pinned:** showing mode's bar scrolls with the page there, as today.
 
+Confirmed in the grilling before approval:
+
+- **The section stays "Workflow";** its clash with slice 3's Workflow page is slice 3's to settle.
+- **"Imported <time>" always shows in the rail** once there is a good import, also while the banner gives the same time after a failed import: the line keeps one place in every state.
+- **The eye stands as mocked,** and `DESIGN.md` gains the one line that lets the mark, and only the mark, use the orb colours.
+- **Two names for a while:** the rail, the tab and the favicon say edward while the repo and README keep their name until the rename task, which follows as its own proposal. Nothing in the README changes here.
+- **Landing order against the run page work:** no fixed order. Baseline images are never hand-merged: whichever branch merges second rebases onto `main` and regenerates its baselines in the container.
+- **Refresh stays at the foot:** imports run on their own, so it is the rare case, and a failed import still shows in the banner above the page.
+- **The full rail starts at 768 px,** at 224 px, as captured; one shell breakpoint as today.
+
 ## The design
 
 ### The rail, from 768 px (`menu-1440-*`, `menu-scrolled-1440-dark`, `menu-768-dark`)
@@ -91,7 +102,7 @@ What an icon earns: with sections, entries no longer sit in one scannable column
 - **Showing mode on** (`menu-showing-1440-*`): the amber bar inside the rail, "Showing: <names>" wrapping as it needs, "Stop showing" under it at the bar's width.
 - **Showing mode unreadable:** "Couldn't read showing mode." in place of the switch, as today.
 - **Importing:** the button reads "Importing…" and is disabled, as today.
-- **"Imported <time>"** shows `lastGoodImportAt` through `Time`, and is absent until there is one (`menu-never-1440-light`).
+- **"Imported <time>"** shows `lastGoodImportAt` through `Time` in every state that has one, a failed import's included, and is absent until there is one (`menu-never-1440-light`).
 
 ### The banner, from 768 px (`menu-failed-1440-dark`, `menu-never-1440-light`)
 
@@ -143,7 +154,7 @@ Every page shares the shell. The paths the checks should look at: `/` and `/runs
 - **`CLAUDE.md`'s conventions:** the "every page fits the viewport" entry (the rail is sticky and full height; the top row exists only under 768 px); a new entry for the menu's sections as the one list of pages, and for `Brand` as the one place the name and mark are drawn.
 - **Stories:** `Menu` (sections, the current page, a page below an entry), `Brand`, `Shell` (loading, server unreachable, never imported, failed import, imported, showing on), the Menu button's dialog.
 - **`e2e/shell.spec.ts`:** keeps its checks at 375, 768 and 1440 px and the 11 links; gains that after scrolling a long page at 1440 px the rail's brand and Refresh are still in the viewport, that in a short window (1440 by 600 px, showing mode on) the brand, the "Showing" bar and Refresh are in the viewport while the menu scrolls, and that the rail's groups carry their names.
-- **Screens baselines:** `shell.screens.ts` captures the whole rail, not only the `nav`. Every page's baseline changes, since `main` is 48 px narrower from 768 px and starts higher; they are regenerated in the container, in both modes.
+- **Screens baselines:** `shell.screens.ts` captures the whole rail, not only the `nav`. Every page's baseline changes, since `main` is 48 px narrower from 768 px and starts higher; they are regenerated in the container, in both modes, as the build's last step on a fresh rebase onto `main` (see the landing order above).
 
 ## Left to the builder
 
@@ -155,10 +166,9 @@ Every page shares the shell. The paths the checks should look at: `/` and `/runs
 
 These were not asked one by one; each was shown in the mockup or the playback:
 
-- The rail is 224 px wide; in a short window its menu scrolls between the brand and the foot, which stay in place.
+- In a short window the rail's menu scrolls between the brand and the foot, which stay in place.
 - The 11 icons above.
-- The "Imported <time>" line, and that it is not shown under 768 px.
+- The "Imported <time>" line is not shown under 768 px.
 - The brand is not a link, and replaces the dialog's visible title.
 - The tab title and a favicon are in; every other rename is out.
 - Section names in sentence case, 12 px, secondary ink; 24 px between sections, as `DESIGN.md`'s spacing says.
-- `DESIGN.md` gets a line allowing the mark to use the orb colours.
