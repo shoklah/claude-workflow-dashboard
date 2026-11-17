@@ -126,9 +126,15 @@ export const WithSwitch: Story = {
 /** Showing: no session ID, and the units of other projects only counted, under the list. */
 export const Showing: Story = {
   args: { units: contextHidden.units, hidden: contextHidden.hidden },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await expect(canvas.getByText('Refactor the sync queue')).toBeVisible();
+    // Opened, the handoff's row leaves its hidden ID out: no chip, no "Its ID" term.
+    const toggle = canvas.getByRole('button', { name: 'Plan the offline sync' });
+    await userEvent.click(toggle);
+    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    await expect(within(opened).getAllByText('To session')[0]).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
+    await expect(within(opened).queryAllByText('Its ID')).toEqual([]);
     await expect(canvas.getByText('+ 2 rows in other projects, counted in totals and charts only')).toBeVisible();
   },
 };

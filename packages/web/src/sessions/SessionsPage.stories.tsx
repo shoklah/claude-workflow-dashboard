@@ -95,9 +95,14 @@ export const HiddenSessions: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [PROJECTS]: runsFull, '/api/sessions?weeks=4': sessionsHidden });
   },
-  play: async ({ canvas }) => {
-    await canvas.findByRole('button', { name: twoRunSession.title! });
+  play: async ({ canvas, userEvent }) => {
+    // Opened, the row leaves the hidden ID out: no chip, no ID term.
+    const toggle = await canvas.findByRole('button', { name: twoRunSession.title! });
+    await userEvent.click(toggle);
+    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    await expect(within(opened).getAllByText('Runs')[0]).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
+    await expect(within(opened).queryAllByText('ID')).toEqual([]);
     await expect(canvas.getByText('+ 2 sessions in other projects, counted in totals and charts only')).toBeVisible();
   },
 };
