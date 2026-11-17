@@ -38,7 +38,8 @@ type LabelOf = (
   finding: Finding,
 ) => Pick<FindingRow, 'category' | 'validity' | 'judge' | 'relevance' | 'labelReason' | 'appCategory' | 'appRelevance'>;
 
-/** What a skill's outcome says, never the outcome itself: a string other than 'ran' is a file path. */
+/** What a skill's outcome says, never the outcome itself: a string other than 'ran' is a file path, and a counted
+ * outcome (an object of numbers) is 'found something' when any count isn't 0, else 'found nothing'. */
 export function skillOutcomeLabel(outcome: unknown): string {
   if (outcome === 'ran') return 'ran';
   if (typeof outcome === 'string') return 'wrote a file';

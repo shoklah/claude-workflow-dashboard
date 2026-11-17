@@ -6,8 +6,18 @@ const NO_TOKENS = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
 
 /** A step kind's row with nothing run. */
 function idle(step: StepRow['step']): StepRow {
-  const tokens = step === 'simplify' ? null : NO_TOKENS;
-  return { step, ran: 0, found: 0, counts: {}, fixedOrApplied: 0, declined: 0, deferred: 0, openOrToOwner: 0, tokens, cost: null };
+  return {
+    step,
+    ran: 0,
+    found: 0,
+    counts: {},
+    fixedOrApplied: 0,
+    declined: 0,
+    deferred: 0,
+    openOrToOwner: 0,
+    tokens: step === 'simplify' ? null : NO_TOKENS,
+    cost: null,
+  };
 }
 
 const tokens = (input: number, output: number, cache_read: number, cache_write: number) => ({
