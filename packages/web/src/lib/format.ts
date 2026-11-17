@@ -241,9 +241,9 @@ export function appCallLabel(f: FindingRow, labels: Record<string, string>): str
   return differs || (f.judge === 'workflow' ? 'agrees' : countName(f.relevance));
 }
 
-/** Where a reviewer's strength comes from: its step, and its task when it has one: "Task review · task 3". */
-export function strengthWhere(strength: { step: StepKind; task: number | null }): string {
-  return joined([STEP_LABELS[strength.step], strength.task !== null ? `task ${strength.task}` : null]);
+/** A finding's or a strength's task as its Task cell shows it: the task's number, else its wave ("Wave A"), else null. */
+export function taskLabel(f: { task: number | null; wave: string | null }): string | null {
+  return f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : null;
 }
 
 /** A cost in dollars, or a dash when it isn't known. */
@@ -390,6 +390,12 @@ export const WARNING_BORDER = 'border-warning-edge';
 export const WARNING_INK = 'text-warning-ink';
 // The import notice's and showing mode's amber glass bar (DESIGN.md's Notice bars).
 export const NOTICE = 'rounded-panel border border-notice-edge bg-notice text-sm text-notice-ink';
+// The run page's two findings tables: each one's 4 px left side (its container's own border, so it follows the rounded
+// corners), amber for problems and green for strengths, and its title icon's ink.
+export const PROBLEMS_SIDE = 'border-l-4 border-l-notice-edge';
+export const STRENGTHS_SIDE = 'border-l-4 border-l-success-edge';
+export const PROBLEMS_INK = 'text-notice-edge';
+export const STRENGTHS_INK = 'text-success-edge';
 
 // A share bar (a meter): the ramp's dataviz blue for its fill (an empty bar, so the step's text colour does nothing),
 // on the ramp's lightest step for its track.

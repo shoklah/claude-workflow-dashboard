@@ -1,16 +1,18 @@
 import { useState, type ReactNode } from 'react';
+import { ThumbsUp, TriangleAlert } from 'lucide-react';
+import { cn } from 'cn';
 import type { RunPageResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
-import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
+import { PageTitle, Pairs, Panel, Section, SectionTitle, State } from '../components/Panel.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
-import { stagesOf, unitsOf } from './flow.ts';
+import { stagesOf, strengthsOf, unitsOf } from './flow.ts';
 import { RunFlow } from './RunFlow.tsx';
 import { StepDetail } from './StepDetail.tsx';
+import { StrengthsTable } from './StrengthsTable.tsx';
 import {
-  categoryLabel,
   closedFindings,
   formatCompact,
   formatCost,
@@ -19,7 +21,10 @@ import {
   foundFindings,
   modelLabel,
   pathLabel,
-  strengthWhere,
+  PROBLEMS_INK,
+  PROBLEMS_SIDE,
+  STRENGTHS_INK,
+  STRENGTHS_SIDE,
 } from '../lib/format.ts';
 
 /** A titled section of the side panel, its `none` line when it has nothing to show. */
@@ -27,6 +32,25 @@ function SideSection({ title, none, children }: { title: string; none: string; c
   return (
     <Section title={title} className="gap-1.5 border-b pb-4 last:border-0 last:pb-0">
       {children || <p className="text-sm text-muted-foreground">{none}</p>}
+    </Section>
+  );
+}
+
+/** A findings table's title: its icon, then its words. */
+function TableTitle({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      {icon}
+      {text}
+    </span>
+  );
+}
+
+/** A findings section with nothing to list: its title, then one line in a panel with the section's side. */
+function NoneLine({ title, side, children }: { title: ReactNode; side: string; children: string }) {
+  return (
+    <Section title={title}>
+      <p className={cn('glass p-4 text-sm text-muted-foreground', side)}>{children}</p>
     </Section>
   );
 }
@@ -51,8 +75,8 @@ function Header({ run }: { run: RunPageResponse['facts'] }) {
 }
 
 /**
- * One run: its branch and facts, the run drawn as a graph with every finding in one table and the reviewers' strengths
- * under it, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
+ * One run: its branch and facts, the run drawn as a graph with its problems and the reviewers' strengths in two tables
+ * that follow the selected step, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunPageResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
@@ -65,12 +89,23 @@ export function RunPage({ runKey }: { runKey: string }) {
   const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
   const stages = stagesOf(timeline);
   const unit = unitsOf(stages).find((u) => u.id === selected);
+  // The run's strengths are numbered in order, so a strength keeps its number when a step filters them.
+  const numbered = strengths.map((strength, i) => ({ ...strength, id: `S${i + 1}` }));
+  const problems = unit ? unit.findings : findings;
+  const praised = unit ? strengthsOf(unit, numbered) : numbered;
+  const where = unit ? ` in ${unit.name}` : '';
+  const problemsTitle = (
+    <TableTitle icon={<TriangleAlert aria-hidden className={cn('size-5', PROBLEMS_INK)} />} text={`Problems${where} (${problems.length})`} />
+  );
+  const strengthsTitle = (
+    <TableTitle icon={<ThumbsUp aria-hidden className={cn('size-5', STRENGTHS_INK)} />} text={`Strengths${where} (${praised.length})`} />
+  );
   return (
     <div className="flex flex-col gap-4">
       <PageTitle>{facts.branch ?? 'Run'}</PageTitle>
       <Header run={facts} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
           <Panel title="Flow">
             {facts.beforeSteps ? (
               <p className="text-sm text-muted-foreground">Recorded before steps were logged: there is no flow to draw.</p>
@@ -87,24 +122,37 @@ export function RunPage({ runKey }: { runKey: string }) {
               </div>
             )}
           </Panel>
-          <FindingsTable findings={findings} categoryLabels={categoryLabels} />
-          <Panel title="Strengths" className="text-sm">
-            {strengths.length === 0 ? (
-              <p className="text-muted-foreground">No strengths recorded.</p>
-            ) : (
-              <ul className="flex flex-col gap-1">
-                {strengths.map((strength, i) => (
-                  <li key={i} className="flex flex-wrap items-baseline gap-x-2">
-                    {categoryLabel(strength.category, categoryLabels)}
-                    <span>
-                      <Text value={strength.summary} />
-                    </span>
-                    <span className="text-muted-foreground">{strengthWhere(strength)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
+          {problems.length > 0 ? (
+            <FindingsTable
+              findings={problems}
+              categoryLabels={categoryLabels}
+              heading={<SectionTitle>{problemsTitle}</SectionTitle>}
+              label="Problems table"
+              skip={['step']}
+              containerClassName={PROBLEMS_SIDE}
+            />
+          ) : (
+            <NoneLine title={problemsTitle} side={PROBLEMS_SIDE}>
+              {facts.beforeSteps
+                ? 'Recorded before findings were logged: this run has none to list.'
+                : unit
+                  ? `${unit.name} found no problem.`
+                  : 'The reviews found no problem in this run.'}
+            </NoneLine>
+          )}
+          {praised.length > 0 ? (
+            <Section title={strengthsTitle}>
+              <StrengthsTable strengths={praised} categoryLabels={categoryLabels} />
+            </Section>
+          ) : (
+            <NoneLine title={strengthsTitle} side={STRENGTHS_SIDE}>
+              {facts.beforeSteps
+                ? 'Recorded before strengths were logged: this run has none to list.'
+                : unit
+                  ? `The reviewers named no strength in ${unit.name}.`
+                  : 'The reviewers named no strength in this run.'}
+            </NoneLine>
+          )}
         </div>
         <Panel className="gap-4 lg:w-80 lg:flex-none">
           <SideSection title="Skills" none="No skill loaded.">

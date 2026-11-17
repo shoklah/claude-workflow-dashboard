@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -11,9 +11,10 @@ import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { EmptyRow, Text, Unknown } from '../components/Num.tsx';
 import { TERM } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
+import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
-import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName } from '../lib/format.ts';
+import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName, taskLabel } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -28,7 +29,7 @@ const helper = createColumnHelper<typeof features, Row>();
 const columnsOf = (labels: Record<string, string>) => helper.columns([
   helper.accessor('id', { header: '#', cell: (c) => <Text value={c.getValue()} /> }),
   helper.accessor('step', { header: 'Step', filterFn: 'equalsString', cell: (c) => STEP_LABELS[c.getValue()] }),
-  helper.accessor((f) => (f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : null), {
+  helper.accessor(taskLabel, {
     id: 'task',
     header: 'Task',
     cell: (c) => <Text value={c.getValue()} unknown="no task" />,
@@ -114,16 +115,25 @@ const FILTERS = [
 /**
  * Every finding of the run in one table, filtered by step, severity and outcome, with its labels: the workflow's, which
  * win, and the app's; each category named by `categoryLabels` (the response's). With `run`, a first column links each
- * finding to its run.
+ * finding to its run. On the run page, `heading` starts the filter row, `label` names the scrolling container, `skip`
+ * leaves out filters and `containerClassName` adds to the container's classes (its coloured side).
  */
 export function FindingsTable({
   findings,
   categoryLabels,
   run,
+  heading,
+  label = 'Findings',
+  skip = [],
+  containerClassName,
 }: {
   findings: Row[];
   categoryLabels: Record<string, string>;
   run?: boolean;
+  heading?: ReactNode;
+  label?: string;
+  skip?: (typeof FILTERS)[number]['id'][];
+  containerClassName?: string;
 }) {
   const columns = useMemo(() => [...(run ? runColumn : []), ...columnsOf(categoryLabels)], [run, categoryLabels]);
   const table = useTable({ features, columns, data: findings });
@@ -131,7 +141,8 @@ export function FindingsTable({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-4 text-sm">
-        {FILTERS.map((filter) => {
+        {heading}
+        {FILTERS.filter((filter) => !skip.includes(filter.id)).map((filter) => {
           const column = table.getColumn(filter.id)!;
           const values = [...new Set(findings.map((f) => f[filter.id]).filter((v) => v !== null))].sort();
           return (
@@ -152,8 +163,16 @@ export function FindingsTable({
           );
         })}
       </div>
-      {/* It scrolls sideways, so its container is a named tab stop for keyboard users. */}
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Findings' }}>
+      {/* It scrolls sideways, so its container is a named tab stop for keyboard users. Its class replaces the
+          container's own, so it repeats the container's base classes. */}
+      <Table
+        containerProps={{
+          tabIndex: 0,
+          role: 'region',
+          'aria-label': label,
+          className: cn('relative w-full overflow-x-auto', containerClassName),
+        }}
+      >
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>

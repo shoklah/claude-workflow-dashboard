@@ -84,12 +84,20 @@ test('a branch with HTML shows as text', async ({ page }) => {
   expect(dialogs).toEqual([]);
 });
 
-test('the schema 5 run page lists its strengths under the findings table', async ({ page }) => {
+test("the Full run's Strengths table lists its three strengths", async ({ page }) => {
+  await openFullRun(page);
+  await expect(page.getByRole('heading', { name: 'Strengths (3)' })).toBeVisible();
+  const table = page.getByRole('region', { name: 'Strengths table' });
+  await expect(table.locator('tbody tr')).toHaveCount(3);
+  await expect(table.getByText('No sync payload reaches a log')).toBeVisible();
+});
+
+test('the schema 5 run page lists its strengths in the Strengths table', async ({ page }) => {
   await page.goto('/runs');
   await page.getByRole('link', { name: 'feature/webhooks' }).click();
   await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
-  const strengths = page.getByRole('region', { name: 'Strengths', exact: true });
-  await expect(strengths.getByRole('listitem')).toHaveCount(2);
+  const strengths = page.getByRole('region', { name: 'Strengths table' });
+  await expect(strengths.locator('tbody tr')).toHaveCount(2);
   await expect(strengths.getByText('Each retry delay has its own test')).toBeVisible();
   await expect(strengths.getByText('The signing secret never reaches a log')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

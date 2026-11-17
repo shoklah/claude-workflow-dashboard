@@ -1,0 +1,55 @@
+import type { StrengthRow } from '@cwd/shared';
+import { cn } from 'cn';
+import { Text } from '../components/Num.tsx';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
+import { STEP_LABELS, STRENGTHS_SIDE, categoryLabel, taskLabel } from '../lib/format.ts';
+
+/**
+ * The reviewers' strengths, numbered by the run page: each one's step, task, category (named by `categoryLabels`) and
+ * summary, the reporter's only facts about a strength. The container carries the strengths' green side.
+ */
+export function StrengthsTable({
+  strengths,
+  categoryLabels,
+}: {
+  strengths: (StrengthRow & { id: string })[];
+  categoryLabels: Record<string, string>;
+}) {
+  return (
+    // It scrolls sideways on a narrow screen, so its container is a named tab stop. Its class replaces the container's
+    // own, so it repeats the container's base classes.
+    <Table
+      containerProps={{
+        tabIndex: 0,
+        role: 'region',
+        'aria-label': 'Strengths table',
+        className: cn('relative w-full overflow-x-auto', STRENGTHS_SIDE),
+      }}
+    >
+      <TableHeader>
+        <TableRow>
+          <TableHead>#</TableHead>
+          <TableHead>Step</TableHead>
+          <TableHead>Task</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead>Summary</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {strengths.map((strength) => (
+          <TableRow key={strength.id}>
+            <TableCell className="align-top">{strength.id}</TableCell>
+            <TableCell className="align-top">{STEP_LABELS[strength.step]}</TableCell>
+            <TableCell className="align-top">
+              <Text value={taskLabel(strength)} unknown="no task" />
+            </TableCell>
+            <TableCell className="align-top">{categoryLabel(strength.category, categoryLabels)}</TableCell>
+            <TableCell className="min-w-64 align-top whitespace-normal">
+              <Text value={strength.summary} />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}

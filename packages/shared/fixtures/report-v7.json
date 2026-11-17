@@ -1279,6 +1279,12 @@
               "important": 1,
               "minor": 1
             },
+            "strengths": [
+              {
+                "category": "tests",
+                "summary": "Each retry delay has its own test"
+              }
+            ],
             "findings": [
               {
                 "id": "F1",
@@ -1465,6 +1471,12 @@
               "important": 0,
               "minor": 2
             },
+            "strengths": [
+              {
+                "category": "simplicity",
+                "summary": "The conflict rule is one pure function"
+              }
+            ],
             "findings": [
               {
                 "id": "F5",
@@ -1562,6 +1574,12 @@
               "minor": 1,
               "unneeded": 1
             },
+            "strengths": [
+              {
+                "category": "security_privacy",
+                "summary": "No sync payload reaches a log"
+              }
+            ],
             "findings": [
               {
                 "id": "F10",
@@ -1647,6 +1665,12 @@
             "important": 1,
             "minor": 1
           },
+          "strengths": [
+            {
+              "category": "tests",
+              "summary": "Each retry delay has its own test"
+            }
+          ],
           "findings": [
             {
               "id": "F1",
@@ -1833,6 +1857,12 @@
             "important": 0,
             "minor": 2
           },
+          "strengths": [
+            {
+              "category": "simplicity",
+              "summary": "The conflict rule is one pure function"
+            }
+          ],
           "findings": [
             {
               "id": "F5",
@@ -1930,6 +1960,12 @@
             "minor": 1,
             "unneeded": 1
           },
+          "strengths": [
+            {
+              "category": "security_privacy",
+              "summary": "No sync payload reaches a log"
+            }
+          ],
           "findings": [
             {
               "id": "F10",

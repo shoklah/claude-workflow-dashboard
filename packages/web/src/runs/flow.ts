@@ -93,7 +93,7 @@ export function stuck(unit: Unit): boolean {
 
 /** A unit's strengths: its review's kind, task and wave (a task's by its task, a wave check's by its wave); a kit
  * review has none. */
-export function strengthsOf(unit: Unit, strengths: StrengthRow[]): StrengthRow[] {
+export function strengthsOf<S extends StrengthRow>(unit: Unit, strengths: S[]): S[] {
   const review = unit.review;
   if (!review || unit.kit) return [];
   return strengths.filter(

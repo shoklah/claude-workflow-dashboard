@@ -2,7 +2,7 @@ import { describe, expect, it, test } from 'vitest';
 import { parseTime, type FindingRow } from '@cwd/shared';
 import {
   appCallLabel,
-  strengthWhere,
+  taskLabel,
   cellShade,
   closedFindings,
   foundFindings,
@@ -331,10 +331,11 @@ describe('appCallLabel', () => {
   });
 });
 
-describe('strengthWhere', () => {
-  it("names a strength's step, and its task when it has one", () => {
-    expect(strengthWhere({ step: 'task_review', task: 3 })).toBe('Task review · task 3');
-    expect(strengthWhere({ step: 'final_review', task: null })).toBe('Final review');
+describe('taskLabel', () => {
+  it("names a finding's or strength's task, else its wave, else nothing", () => {
+    expect(taskLabel({ task: 3, wave: null })).toBe('3');
+    expect(taskLabel({ task: null, wave: 'A' })).toBe('Wave A');
+    expect(taskLabel({ task: null, wave: null })).toBeNull();
   });
 });
 

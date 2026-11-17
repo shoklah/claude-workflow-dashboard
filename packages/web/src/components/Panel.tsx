@@ -23,7 +23,7 @@ export function SectionTitle({ id, children }: { id?: string; children: ReactNod
   );
 }
 
-type SectionProps = { title?: string; aside?: ReactNode; titleRef?: Ref<HTMLDivElement>; className?: string; children: ReactNode };
+type SectionProps = { title?: ReactNode; aside?: ReactNode; titleRef?: Ref<HTMLDivElement>; className?: string; children: ReactNode };
 
 /** A section without glass, a region labelled by its title when it has one, the title and `aside` (a switch, a count)
  * in a row above its content (`titleRef` reaches that row). */

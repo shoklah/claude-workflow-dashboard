@@ -4,7 +4,7 @@ import { expect, spyOn, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
-import { fullRun, oldRun, runBeforeSteps, runFull } from '../test/runs.ts';
+import { fullRun, oldRun, runBeforeSteps, runFull, runSmall, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
 const meta = { component: RunPage, args: { runKey: fullRun.key } } satisfies Meta<typeof RunPage>;
@@ -145,10 +145,17 @@ export const Full: Story = {
     await expect(warnings.getByRole('button', { name: 'Copy session ID' })).toBeVisible();
     // The run's own "branch (date):" lead is gone: the page already names the run.
     await expect(warnings.getByText('Final review without simplify: final_review at step 4')).toBeVisible();
-    // The strengths list, now on the page without a switch, still joins a strength's step and task until its table
-    // replaces it.
-    const strengths = canvas.getByRole('region', { name: 'Strengths' }).textContent!;
-    await expect(canvasElement.textContent!.replace(strengths, '')).not.toContain(' · ');
+    await expect(canvasElement.textContent).not.toContain(' · ');
+    // The findings as two tables, each under its titled icon; no "Findings" heading, no Step select.
+    for (const [name, ink] of [['Problems (6)', 'text-notice-edge'], ['Strengths (2)', 'text-success-edge']]) {
+      const heading = canvas.getByRole('heading', { name });
+      await expect(heading.querySelector('svg')).toHaveClass(ink);
+      await expect(heading.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    }
+    await expect(canvas.queryByRole('heading', { name: /^Findings/ })).toBeNull();
+    await expect(canvas.queryByRole('combobox', { name: 'Step' })).toBeNull();
+    await expect(canvas.getByRole('region', { name: 'Problems table' })).toHaveClass('border-l-notice-edge');
+    await expect(canvas.getByRole('region', { name: 'Strengths table' })).toHaveClass('border-l-success-edge');
   },
 };
 
@@ -214,41 +221,77 @@ export const OtherRun: Story = {
   },
 };
 
-/** Under the findings table, the reviewers' strengths: each one's category, summary and step. */
-export const Strengths: Story = {
+/** The data rows of the table region named `name`, by their first cell. */
+function ids(canvasElement: HTMLElement, name: string): (string | null)[] {
+  const region = within(canvasElement).getByRole('region', { name });
+  return [...region.querySelectorAll('tbody tr')].map((tr) => tr.firstElementChild!.textContent);
+}
+
+/** A selected step filters Problems and Strengths, and their titles name it; closing restores the whole run. */
+export const SelectedStepTables: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
   },
-  play: async ({ canvas }) => {
-    const strengths = await canvas.findByRole('region', { name: 'Strengths' });
-    await expect([...strengths.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
-      'Reuse and duplicationNew page reuses the shared table and format helpersTask review · task 3',
-      'TestsEach view tested on both fixtures, null facts includedFinal review',
-    ]);
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
+    await userEvent.click(flow.getByRole('button', { name: /^Task 1(?!\d)/ }));
+    await expect(canvas.getByRole('heading', { name: 'Problems in Task 1 (2)' })).toBeVisible();
+    await expect(ids(canvasElement, 'Problems table')).toEqual(['F1', 'F2']);
+    const strengths = canvas.getByRole('region', { name: 'Strengths in Task 1 (0)' });
+    await expect(within(strengths).getByText('The reviewers named no strength in Task 1.')).toBeVisible();
+    await expect(within(strengths).getByText('The reviewers named no strength in Task 1.')).toHaveClass('glass', 'border-l-success-edge');
+    await expect(canvas.queryByRole('region', { name: 'Strengths table' })).toBeNull();
+
+    await userEvent.click(within(flow.getByRole('region', { name: 'Task 1' })).getByRole('button', { name: 'Close Task 1' }));
+    await expect(canvas.getByRole('heading', { name: 'Problems (6)' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Strengths (2)' })).toBeVisible();
+
+    await userEvent.click(flow.getByRole('button', { name: /^Task 3(?!\d)/ }));
+    const problems = canvas.getByRole('region', { name: 'Problems in Task 3 (0)' });
+    const line = within(problems).getByText('Task 3 found no problem.');
+    await expect(line).toHaveClass('glass', 'border-l-notice-edge');
+    await expect(within(problems).queryByRole('table')).toBeNull();
+    await expect(within(problems).queryByRole('combobox')).toBeNull();
+    await expect(canvas.getByRole('heading', { name: 'Strengths in Task 3 (1)' })).toBeVisible();
+    await expect(ids(canvasElement, 'Strengths table')).toEqual(['S1']);
   },
 };
 
-/** A strength with no summary shows the muted dash, read out as "not known". */
-export const StrengthWithoutSummary: Story = {
+/** A severity filter that matches nothing keeps the filters' own message. */
+export const ProblemsNoMatch: Story = {
   beforeEach: () => {
-    mockApi({
-      '/api/status': status,
-      [`/api/runs/${fullRun.key}`]: { ...runFull, strengths: [{ ...runFull.strengths[0], summary: null }] },
-    });
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
   },
-  play: async ({ canvas }) => {
-    const strengths = await canvas.findByRole('region', { name: 'Strengths' });
-    await expect(within(strengths).getByText('not known')).toHaveClass('sr-only');
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(within(await canvas.findByRole('region', { name: 'Flow' })).getByRole('button', { name: /^Task 1(?!\d)/ }));
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Severity' }), 'important');
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Outcome' }), 'deferred');
+    await expect(canvas.getByText('No findings match these filters. Set a filter back to All to see more.')).toBeVisible();
   },
 };
 
-/** A run with no strengths and no findings says so under its findings table. */
-export const NoStrengths: Story = {
+/** A run with no finding and no strength says so in each section's line. */
+export const Small: Story = {
+  args: { runKey: smallRun.key },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${smallRun.key}`]: runSmall });
+  },
+  play: async ({ canvas }) => {
+    const problems = await canvas.findByRole('region', { name: 'Problems (0)' });
+    await expect(within(problems).getByText('The reviews found no problem in this run.')).toBeVisible();
+    const strengths = canvas.getByRole('region', { name: 'Strengths (0)' });
+    await expect(within(strengths).getByText('The reviewers named no strength in this run.')).toBeVisible();
+  },
+};
+
+/** A run recorded before steps has no findings or strengths to list, and says why. */
+export const EmptyTables: Story = {
   args: { runKey: oldRun.key },
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${oldRun.key}`]: runBeforeSteps });
   },
   play: async ({ canvas }) => {
-    await expect(within(await canvas.findByRole('region', { name: 'Strengths' })).getByText('No strengths recorded.')).toBeVisible();
+    await expect(await canvas.findByText('Recorded before findings were logged: this run has none to list.')).toBeVisible();
+    await expect(canvas.getByText('Recorded before strengths were logged: this run has none to list.')).toBeVisible();
   },
 };
