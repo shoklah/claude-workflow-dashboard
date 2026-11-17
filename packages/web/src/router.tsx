@@ -1,4 +1,4 @@
-import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
 import { toStepKind, type StepKind } from '@cwd/shared';
 import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { ContextPage } from './context/ContextPage.tsx';
@@ -7,8 +7,6 @@ import { HomePage } from './home/HomePage.tsx';
 import { Shell } from './layout/Shell.tsx';
 import { ModelsPage } from './models/ModelsPage.tsx';
 import { RunPage } from './runs/RunPage.tsx';
-import { RunsPage } from './runs/RunsPage.tsx';
-import { SessionsPage } from './sessions/SessionsPage.tsx';
 import { SkillsPage } from './skills/SkillsPage.tsx';
 import { SpendPage } from './spend/SpendPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
@@ -30,10 +28,13 @@ const homeRoute = createRoute({
   component: HomePage,
 });
 
+// Runs and Sessions are views of the Work page: their old paths land there.
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/runs',
-  component: RunsPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/work', search: { view: 'runs' } });
+  },
 });
 
 const runRoute = createRoute({
@@ -53,7 +54,9 @@ const findingsRoute = createRoute({
 const sessionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sessions',
-  component: SessionsPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/work', search: { view: 'sessions' } });
+  },
 });
 
 const contextRoute = createRoute({
@@ -111,7 +114,8 @@ const workRoute = createRoute({
     session: typeof search.session === 'string' && search.session !== '' ? search.session : undefined,
   }),
   component: function Work() {
-    return <WorkPage view={workRoute.useSearch().view} />;
+    const { view, session } = workRoute.useSearch();
+    return <WorkPage view={view} session={session} />;
   },
 });
 

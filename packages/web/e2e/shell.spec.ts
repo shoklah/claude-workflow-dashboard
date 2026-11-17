@@ -14,11 +14,11 @@ test('the shell has no axe violations', async ({ page }) => {
 
 // Every page fits the viewport at a phone's, a tablet's and a desktop's width: what is wider (a table, a chart grid)
 // scrolls inside its own region, never the page, and a region that scrolls can take the keyboard's focus (axe).
-const PAGES = ['/', '/work', '/runs', '/findings', '/sessions', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks'];
+const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks'];
 
 for (const width of [375, 768, 1440]) {
   test(`no page scrolls sideways at ${width} px, and none has axe violations there`, async ({ page }) => {
-    // Thirteen pages, each loaded and checked by axe.
+    // Fourteen pages, each loaded and checked by axe.
     test.slow();
     await pinClock(page);
     await page.setViewportSize({ width, height: 900 });
@@ -48,7 +48,7 @@ test('a table that scrolls sideways fades at the edge hiding columns, and one th
   const cueEnd = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
   const mask = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto('/sessions', { waitUntil: 'networkidle' });
+  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
   expect(await cueEnd('Sessions')).toBe('48px');
   expect(await mask('Sessions')).toContain('100% - 48px');
   // The mask cuts what is drawn outside the box, so the keyboard's focus outline is drawn inside it.
@@ -78,15 +78,15 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   const pages = page.getByRole('dialog', { name: 'Pages' });
   await menu.click();
   await expect(pages.getByText('edward', { exact: true })).toBeVisible();
-  await expect(pages.getByRole('link')).toHaveCount(11);
+  await expect(pages.getByRole('link')).toHaveCount(10);
   await page.keyboard.press('Escape');
   await expect(pages).toBeHidden();
   await menu.click();
   await pages.getByRole('button', { name: 'Close' }).click();
   await expect(pages).toBeHidden();
   await menu.click();
-  await pages.getByRole('link', { name: 'Runs' }).click();
-  await expect(page).toHaveURL(/\/runs$/);
+  await pages.getByRole('link', { name: 'Work' }).click();
+  await expect(page).toHaveURL(/\/work$/);
   await expect(pages).toBeHidden();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeInViewport();
 });

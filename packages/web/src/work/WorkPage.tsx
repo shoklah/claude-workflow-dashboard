@@ -117,8 +117,9 @@ function ChangesView({ switcher }: { switcher: ReactNode }) {
   );
 }
 
-/** The Work page: its view switch (Changes, Runs, Sessions, from the URL's `view`), then that view. */
-export function WorkPage({ view }: { view?: WorkView }) {
+/** The Work page: its view switch (Changes, Runs, Sessions, from the URL's `view`), then that view; `session` (the URL's
+ * session key) lists that one session in the Sessions view. */
+export function WorkPage({ view, session }: { view?: WorkView; session?: string }) {
   const navigate = useNavigate();
   const switcher = (
     <Options label="View" shown>
@@ -137,9 +138,8 @@ export function WorkPage({ view }: { view?: WorkView }) {
     <div className="flex flex-col gap-4">
       <PageTitle>Work</PageTitle>
       {view === undefined && <ChangesView switcher={switcher} />}
-      {view !== undefined && switcher}
-      {view === 'runs' && <RunsPage />}
-      {view === 'sessions' && <SessionsPage />}
+      {view === 'runs' && <RunsPage switcher={switcher} />}
+      {view === 'sessions' && <SessionsPage switcher={switcher} session={session} />}
     </div>
   );
 }

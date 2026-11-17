@@ -18,14 +18,18 @@ export const Empty: Story = {
   },
 };
 
-/** Full: one row per run, its branch linking to its page, one value per cell with the unit in the header; a record
- * from before steps says so in muted text and shows the dash for what it can't give. */
+/** Full: one row per run, its title (else its branch) linking to its page, then its change linking to the change's
+ * page and its goal, one value per cell with the unit in the header; a record from before steps says so in muted text
+ * and shows the dash for what it can't give. */
 export const Full: Story = {
   args: { runs: [{ ...smallRun, minutes: 25.4 }, fullRun, oldRun] },
   play: async ({ canvas, canvasElement }) => {
     const [top, sub] = canvas.getAllByRole('row').slice(0, 2);
     await expectColgroups(canvasElement);
     await expect(within(top).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      'Run',
+      'Change',
+      'Goal',
       'Branch',
       'Project',
       'Path',
@@ -46,21 +50,37 @@ export const Full: Story = {
     // It scrolls sideways at a phone's width: its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Runs table' })).toHaveAttribute('tabindex', '0');
 
-    // Branch, Project, Path, Finished, Time, Tasks, Waves, Found, Closed, Stops, Cost, Warnings.
+    // Run, Change, Goal, Branch, Project, Path, Finished, Time, Tasks, Waves, Found, Closed, Stops, Cost, Warnings.
     const full = cells(rows[1]);
-    await expect(within(rows[1]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
-    await expect(full[1]).toBe('atlas');
-    await expect(full[2]).toBe('Full');
-    await expect(full.slice(4)).toEqual(['130', '4', '2', '6', '5', '0', '7.10', '1']);
+    const inFull = within(rows[1]);
+    await expect(inFull.getByRole('link', { name: fullRun.headline! })).toHaveAttribute('href', `/runs/${fullRun.key}`);
+    await expect(inFull.getByRole('link', { name: fullRun.change!.title })).toHaveAttribute(
+      'href',
+      `/work/changes/${fullRun.change!.key}`,
+    );
+    await expect(full[2]).toBe(fullRun.goal!.name);
+    await expect(full[3]).toBe('feat/search');
+    await expect(inFull.queryByRole('link', { name: 'feat/search' })).toBeNull();
+    await expect(full[4]).toBe('atlas');
+    await expect(full[5]).toBe('Full');
+    await expect(full.slice(7)).toEqual(['130', '4', '2', '6', '5', '0', '7.10', '1']);
+
+    // A run with no title is named by its branch; no change or goal is the dash, read out as what it means.
+    const small = within(rows[0]);
+    await expect(small.getByRole('link', { name: HTML_TEXT })).toHaveAttribute('href', `/runs/${smallRun.key}`);
+    const [, change, goal] = rows[0].querySelectorAll('td');
+    await expect(change).toHaveTextContent('–');
+    await expect(within(change).getByText('no design')).toBeInTheDocument();
+    await expect(within(goal).getByText('no goal')).toBeInTheDocument();
 
     // The time is whole minutes.
-    await expect(cells(rows[0])[4]).toBe('25');
+    await expect(cells(rows[0])[7]).toBe('25');
 
     // Before steps: muted text, not a badge; what it can't give is the dash, read as "not known".
     const old = within(rows[2]);
     const mark = old.getByText('before steps');
     await expect(mark).toHaveClass('text-muted-foreground');
-    const cost = rows[2].querySelectorAll('td')[10];
+    const cost = rows[2].querySelectorAll('td')[13];
     await expect(cost).toHaveTextContent('–');
     await expect(within(cost).getByText('not known')).toBeInTheDocument();
 
@@ -73,9 +93,9 @@ export const Full: Story = {
   },
 };
 
-/** A run with no branch: its link shows the muted dash, read out as "no branch". */
+/** A run with no title and no branch: its link shows the muted dash, read out as "no branch". */
 export const NoBranch: Story = {
-  args: { runs: [{ ...fullRun, branch: null }] },
+  args: { runs: [{ ...fullRun, headline: null, branch: null }] },
   play: async ({ canvas }) => {
     const link = canvas.getByRole('link', { name: 'no branch' });
     await expect(link).toHaveTextContent('–');

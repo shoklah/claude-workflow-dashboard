@@ -10,7 +10,7 @@ import {
 } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { hiddenLabel, pathLabel } from '../lib/format.ts';
-import { Line, PageTitle, State } from '../components/Panel.tsx';
+import { Line, State } from '../components/Panel.tsx';
 import { RunsTable } from './RunsTable.tsx';
 
 const PERIODS = [
@@ -126,20 +126,23 @@ export function ListFilters({
   );
 }
 
-/** The Runs list with its filters: path, project, period (the last 4 weeks by default) and "has warnings". */
-export function RunsPage() {
+/** The Work page's Runs view: its `switcher` beside its filters (path, project, goal, period, the last 4 weeks by
+ * default, and "has warnings"), then the runs. */
+export function RunsPage({ switcher }: { switcher?: ReactNode }) {
   const [query, setQuery] = useState<RunsQuery>({ weeks: 4, warnings: false });
   const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', query));
   const set = (change: Partial<RunsQuery>) => setQuery({ ...query, ...change });
   return (
     <div className="flex flex-col gap-4">
-      <PageTitle>Runs</PageTitle>
-      <ListFilters query={query} projects={runs.data?.projects} onChange={set}>
-        <label className="flex items-center gap-1.5">
-          <input type="checkbox" checked={query.warnings} onChange={(e) => set({ warnings: e.target.checked })} />
-          Has warnings
-        </label>
-      </ListFilters>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        {switcher}
+        <ListFilters query={query} projects={runs.data?.projects} goals={runs.data?.goalOptions ?? []} onChange={set}>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={query.warnings} onChange={(e) => set({ warnings: e.target.checked })} />
+            Has warnings
+          </label>
+        </ListFilters>
+      </div>
       {runs.isPending && <State>Loading the runs…</State>}
       {runs.isError && <State error>Couldn't load the runs.</State>}
       {runs.data && <RunsTable runs={runs.data.runs} />}

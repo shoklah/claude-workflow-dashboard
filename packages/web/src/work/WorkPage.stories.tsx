@@ -3,6 +3,7 @@ import { expect, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
 import { HTML_TEXT, runsFull } from '../test/runs.ts';
+import { sessionsFull, twoRunSession } from '../test/sessions.ts';
 import { noGoal, searchGoal, syncGoal, workEmpty, workFilteredEmpty, workFull, workHidden, workNoGoals } from '../test/work.ts';
 import { WorkPage } from './WorkPage.tsx';
 
@@ -179,5 +180,25 @@ export const RunsView: Story = {
     await expect(canvas.getByRole('button', { name: 'Runs' })).toHaveAttribute('aria-pressed', 'true');
     await expect(await canvas.findByRole('region', { name: 'Runs table' })).toBeVisible();
     await expect(fetch).not.toHaveBeenCalledWith(WORK);
+    // One page title: the view has none of its own.
+    await expect(canvas.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['Work']);
+  },
+};
+
+/** The Sessions view from a link to one session: the URL's session goes to the API, and the list shows it open. */
+export const OneSession: Story = {
+  args: { view: 'sessions', session: twoRunSession.key },
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      [PROJECTS]: runsFull,
+      [`/api/sessions?weeks=4&session=${twoRunSession.key}`]: { ...sessionsFull, sessions: [twoRunSession] },
+    });
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('button', { name: 'Sessions' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(await canvas.findByText(`Session: ${twoRunSession.title}`)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: twoRunSession.title! })).toHaveAttribute('aria-expanded', 'true');
+    await expect(canvas.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['Work']);
   },
 };

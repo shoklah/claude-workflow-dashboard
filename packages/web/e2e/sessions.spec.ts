@@ -11,8 +11,9 @@ test.beforeEach(async ({ page }) => {
 
 test('a session opens its timeline, links its runs and has no axe violations', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('navigation').getByRole('link', { name: 'Sessions' }).click();
-  await expect(page.getByRole('heading', { name: 'Sessions' })).toBeVisible();
+  await page.getByRole('navigation').getByRole('link', { name: 'Work' }).click();
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Sessions' }).click();
+  await expect(page).toHaveURL(/\/work\?view=sessions$/);
   const toggle = page.getByRole('button', { name: 'Offline sync plan' });
   await expect(toggle).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

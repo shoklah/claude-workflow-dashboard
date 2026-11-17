@@ -1,28 +1,29 @@
 import { useId, useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import type { LinkProps } from '@tanstack/react-router';
 import {
-  Bot, CalendarDays, CircleDollarSign, Gauge, House, ListChecks, Menu as MenuIcon, Play, Puzzle, SearchCheck,
-  ShieldCheck, Terminal,
+  Bot, CalendarDays, CircleDollarSign, Gauge, House, Layers, ListChecks, Menu as MenuIcon, Puzzle, SearchCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { cn } from 'cn';
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
 import { Brand } from './Brand.tsx';
 
-type Entry = { to: LinkProps['to']; label: string; icon: LucideIcon; exact?: boolean };
+type Entry = { to: LinkProps['to']; label: string; icon: LucideIcon; exact?: boolean; also?: string[] };
 
 // The one list of pages, in sections: Home and Weeks first, unnamed, then a named section per kind of page. An entry
-// is current on its pages below it too (Runs on a run's page), except Home, which every path is below. An icon is a
-// picture of its page's subject and never changes with state.
+// is current on its pages below it too (Work on a goal's page), except Home, which every path is below, and on the
+// paths starting with one of its `also` prefixes (Work on a run's page). An icon is a picture of its page's subject and
+// never changes with state.
 const SECTIONS: { name: string | null; entries: Entry[] }[] = [
   { name: null, entries: [
     { to: '/', label: 'Home', icon: House, exact: true },
     { to: '/weeks', label: 'Weeks', icon: CalendarDays },
   ] },
   { name: 'Activity', entries: [
-    { to: '/runs', label: 'Runs', icon: Play },
-    { to: '/sessions', label: 'Sessions', icon: Terminal },
+    { to: '/work', label: 'Work', icon: Layers, also: ['/runs/'] },
     { to: '/findings', label: 'Findings', icon: SearchCheck },
   ] },
   { name: 'Usage and cost', entries: [
@@ -37,10 +38,14 @@ const SECTIONS: { name: string | null; entries: Entry[] }[] = [
   ] },
 ];
 
+/** The current entry's look. */
+const CURRENT = 'bg-accent font-semibold';
+
 /** The pages' links in their sections; `onNavigate` runs when one is followed. */
 export function Menu({ onNavigate }: { onNavigate?: () => void }) {
   // The rail and the dialog both render the menu, so a section's name gets its id per instance.
   const id = useId();
+  const pathname = useLocation({ select: (location) => location.pathname });
   return (
     <nav aria-label="Main" className="flex flex-col gap-6 text-sm">
       {SECTIONS.map((section, i) => {
@@ -49,19 +54,23 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
         return (
           <div key={section.name ?? ''} {...named} className="flex flex-col gap-1">
             {section.name && <div id={nameId} className="px-3 pb-1 text-xs font-medium text-muted-foreground">{section.name}</div>}
-            {section.entries.map((entry) => (
-              <Link
-                key={entry.to}
-                to={entry.to}
-                onClick={onNavigate}
-                activeOptions={{ exact: entry.exact }}
-                className="flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent"
-                activeProps={{ className: 'bg-accent font-semibold' }}
-              >
-                <entry.icon className="size-4 flex-none" aria-hidden />
-                {entry.label}
-              </Link>
-            ))}
+            {section.entries.map((entry) => {
+              const also = entry.also?.some((prefix) => pathname.startsWith(prefix));
+              return (
+                <Link
+                  key={entry.to}
+                  to={entry.to}
+                  onClick={onNavigate}
+                  activeOptions={{ exact: entry.exact }}
+                  className={cn('flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent', also && CURRENT)}
+                  activeProps={{ className: CURRENT }}
+                  aria-current={also ? 'page' : undefined}
+                >
+                  <entry.icon className="size-4 flex-none" aria-hidden />
+                  {entry.label}
+                </Link>
+              );
+            })}
           </div>
         );
       })}

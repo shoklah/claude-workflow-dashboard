@@ -1,20 +1,59 @@
+import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { RunRow } from '@cwd/shared';
-import { EmptyRow, GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { LINK } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { closedFindings, formatDollars, foundFindings, pathLabel } from '../lib/format.ts';
 
-const COLUMN_COUNT = 12;
+const COLUMN_COUNT = 15;
 
-/** The Runs list: one row per run, newest first as the API gives them, its branch linking to its page; one value per
- * cell, the unit in the header. */
+/** A unit's Change and Goal cells, the Runs and Sessions lists' alike: its change linking to the change's page (the
+ * dash, read "no design", without one) and its goal's name (the dash, read "no goal"). */
+export function ChangeCells({
+  change,
+  goal,
+  className,
+}: {
+  change: RunRow['change'];
+  goal: RunRow['goal'];
+  className?: string;
+}) {
+  return (
+    <>
+      <TableCell className={className}>
+        {change ? (
+          // As wide as its title up to the column's maximum, as in the Changes table.
+          <Link
+            to="/work/changes/$key"
+            params={{ key: change.key }}
+            className={cn(LINK, 'inline-block w-max max-w-80 whitespace-normal')}
+          >
+            {change.title}
+          </Link>
+        ) : (
+          <Unknown label="no design" />
+        )}
+      </TableCell>
+      <TableCell className={cn('text-muted-foreground', className)}>
+        <Text value={goal?.name} unknown="no goal" />
+      </TableCell>
+    </>
+  );
+}
+
+/** The Runs list: one row per run, newest first as the API gives them, its title (else its branch) linking to its
+ * page, then its change and goal; one value per cell, the unit in the header. */
 export function RunsTable({ runs }: { runs: RunRow[] }) {
   return (
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs table' }}>
       <TableHeader>
         <TableRow>
+          <TableHead rowSpan={2}>Run</TableHead>
+          <TableHead rowSpan={2}>Change</TableHead>
+          <TableHead rowSpan={2}>Goal</TableHead>
           <TableHead rowSpan={2}>Branch</TableHead>
           <TableHead rowSpan={2}>Project</TableHead>
           <TableHead rowSpan={2}>Path</TableHead>
@@ -53,8 +92,12 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
         {runs.map((run) => (
           <TableRow key={run.key}>
             <TableCell className="font-medium">
-              <RunLink runKey={run.key} branch={run.branch} />
+              <RunLink runKey={run.key} branch={run.branch} title={run.headline} />
               {run.beforeSteps && <span className="ml-2 text-xs font-normal text-muted-foreground">before steps</span>}
+            </TableCell>
+            <ChangeCells change={run.change} goal={run.goal} />
+            <TableCell className="text-muted-foreground">
+              <Text value={run.branch} unknown="no branch" />
             </TableCell>
             <TableCell className="text-muted-foreground">
               <Text value={run.project} />

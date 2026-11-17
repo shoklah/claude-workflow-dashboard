@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { fullRun, smallRun } from '../test/runs.ts';
-import { sessionsFull } from '../test/sessions.ts';
+import { sessionsFull, twoRunSession } from '../test/sessions.ts';
 import { expectColgroups, expectNoJoined } from '../test/table.ts';
 import { SessionsTable } from './SessionsTable.tsx';
 
@@ -36,6 +36,8 @@ export const Full: Story = {
       'Session',
       'ID',
       'Project',
+      'Change',
+      'Goal',
       'Started',
       'Length',
       'Model',
@@ -69,18 +71,31 @@ export const Full: Story = {
     await expect(two.getByText('1.05')).toBeVisible();
     await expect(other.getByText('Other project')).toBeVisible();
 
+    // Its change links to the change's page and its goal is named; none is the dash, read out as what it means.
+    await expect(two.getByRole('link', { name: twoRunSession.change!.title })).toHaveAttribute(
+      'href',
+      `/work/changes/${twoRunSession.change!.key}`,
+    );
+    const [, , , change, goal] = other.getAllByRole('cell');
+    await expect(cells(canvasElement.querySelector('table')!).at(0)!.slice(3, 5)).toEqual([
+      twoRunSession.change!.title,
+      twoRunSession.goal!.name,
+    ]);
+    await expect(within(change).getByText('no design')).toBeInTheDocument();
+    await expect(within(goal).getByText('no goal')).toBeInTheDocument();
+
     // Two models: one per line in Model, their efforts beside them in Effort.
-    const [, , , , , model, effort] = twoModels.getAllByRole('cell');
+    const [, , , , , , , model, effort] = twoModels.getAllByRole('cell');
     await expect([...model.children].map((line) => line.textContent)).toEqual(['Opus 5.5', 'Sonnet 5.5']);
     await expect([...effort.children].map((line) => line.textContent)).toEqual(['high', '–not known']);
 
     // Counts: skills, commands typed, never loaded, runs; Startup in words, Missing and a non-zero Never loaded orange.
     const twoCells = cells(canvasElement.querySelector('table')!).at(0)!;
-    await expect(twoCells.slice(8)).toEqual(['1', '3', '1', '2', 'Loaded', '1']);
+    await expect(twoCells.slice(10)).toEqual(['1', '3', '1', '2', 'Loaded', '1']);
     await expect(two.getByText('Loaded')).not.toHaveClass('text-warning-ink');
-    const neverLoaded = two.getAllByRole('cell')[10];
+    const neverLoaded = two.getAllByRole('cell')[12];
     await expect(neverLoaded).toHaveClass('text-warning-ink');
-    await expect(other.getAllByRole('cell')[10]).not.toHaveClass('text-warning-ink');
+    await expect(other.getAllByRole('cell')[12]).not.toHaveClass('text-warning-ink');
     await expect(other.getByText('Missing').closest('td')).toHaveClass('text-warning-ink');
     await expectNoJoined(canvasElement);
 
@@ -118,5 +133,14 @@ export const EmptyTimeline: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Release checklist draft' }));
     await expect(canvas.getByText('No skill loads, commands or runs in this session.')).toBeVisible();
+  },
+};
+
+/** Open: its rows start open, as the Sessions view lists one session from a link. */
+export const Open: Story = {
+  args: { sessions: [twoRunSession], open: true },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('button', { name: twoRunSession.title! })).toHaveAttribute('aria-expanded', 'true');
+    await expect(canvas.getByRole('table', { name: `Timeline of ${twoRunSession.title}` })).toBeVisible();
   },
 };

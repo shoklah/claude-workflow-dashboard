@@ -5,6 +5,7 @@ import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components
 import { RunLink } from '../components/RunLink.tsx';
 import { RowToggle } from '../components/RowToggle.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
+import { ChangeCells } from '../runs/RunsTable.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
@@ -19,7 +20,7 @@ import {
   usageName,
 } from '../lib/format.ts';
 
-const COLUMN_COUNT = 14;
+const COLUMN_COUNT = 16;
 const KINDS: Record<SessionRow['timeline'][number]['kind'], string> = {
   skill: 'Skill loaded',
   command: 'Command typed',
@@ -85,9 +86,9 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
   );
 }
 
-/** A session's row of counts and, when open, its timeline's row below it. */
-function SessionRows({ session }: { session: SessionRow }) {
-  const [open, setOpen] = useState(false);
+/** A session's row of counts and, when open (at first with `initial`), its timeline's row below it. */
+function SessionRows({ session, initial }: { session: SessionRow; initial: boolean }) {
+  const [open, setOpen] = useState(initial);
   const name = sessionName(session.title);
   const count = (kind: string) => new Set(session.timeline.filter((t) => t.kind === kind).map((t) => t.name)).size;
   const neverLoaded = new Set(session.timeline.filter((t) => t.neverLoaded).map((t) => t.name)).size;
@@ -107,6 +108,7 @@ function SessionRows({ session }: { session: SessionRow }) {
           {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} />}
         </TableCell>
         <TableCell className="align-top text-muted-foreground">{projectLabel(session.project)}</TableCell>
+        <ChangeCells change={session.change} goal={session.goal} className="align-top" />
         <TableCell className="align-top text-muted-foreground tabular-nums">
           <Time iso={session.start} />
         </TableCell>
@@ -162,8 +164,9 @@ function SessionRows({ session }: { session: SessionRow }) {
   );
 }
 
-/** The Sessions list: a row per session, newest start first as the API gives them; a row's name opens its timeline. */
-export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
+/** The Sessions list: a row per session, newest start first as the API gives them; a row's name opens its timeline,
+ * and with `open` every row starts open. */
+export function SessionsTable({ sessions, open = false }: { sessions: SessionRow[]; open?: boolean }) {
   return (
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Sessions' }}>
       <TableHeader>
@@ -171,6 +174,8 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
           <TableHead rowSpan={2}>Session</TableHead>
           <TableHead rowSpan={2}>ID</TableHead>
           <TableHead rowSpan={2}>Project</TableHead>
+          <TableHead rowSpan={2}>Change</TableHead>
+          <TableHead rowSpan={2}>Goal</TableHead>
           <TableHead rowSpan={2}>Started</TableHead>
           <TableHead rowSpan={2} className={NUM}>
             Length
@@ -204,7 +209,7 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
           </EmptyRow>
         )}
         {sessions.map((session) => (
-          <SessionRows key={session.key} session={session} />
+          <SessionRows key={session.key} session={session} initial={open} />
         ))}
       </TableBody>
     </Table>

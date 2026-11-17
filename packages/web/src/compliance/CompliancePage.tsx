@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { X } from 'lucide-react';
 import { cn } from 'cn';
 import type { ComplianceResponse, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { FilterChip } from '../components/FilterChip.tsx';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
 import { Line, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
@@ -88,12 +87,9 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           ))}
         </Options>
         {step && (
-          <span className="inline-flex items-center gap-1 rounded-control border border-input px-3 py-1">
+          <FilterChip to="/compliance" label="Clear the step filter">
             Step: {STEP_LABELS[step]}
-            <Link to="/compliance" aria-label="Clear the step filter" className="rounded-full hover:bg-accent">
-              <X className="size-3.5" aria-hidden />
-            </Link>
-          </span>
+          </FilterChip>
         )}
       </ListFilters>
       {compliance.isPending && <State>Loading the warnings…</State>}
