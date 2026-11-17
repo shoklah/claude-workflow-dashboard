@@ -2,11 +2,13 @@ import { useId, useMemo, type CSSProperties } from 'react';
 import { cn } from 'cn';
 import type { GraphNode, SessionGraphData } from '@cwd/shared';
 import { ChangeLink } from '../components/ChangeLink.tsx';
+import { Text } from '../components/Num.tsx';
 import { Line, Panel } from '../components/Panel.tsx';
+import { runName } from '../components/RunLink.tsx';
 import { SessionLink } from '../components/SessionLink.tsx';
 import { STAGE_LABELS, hiddenLabel } from '../lib/format.ts';
 import { BOX, pathOf } from '../runs/RunFlow.tsx';
-import { graphLayout, labelled, type GraphBox } from './graph.ts';
+import { graphLayout, type GraphBox } from './graph.ts';
 
 /** A handoff's dashes, on its edges and in the legend. */
 const HANDOFF = '4 4';
@@ -31,15 +33,16 @@ function elsewhereLabel(elsewhere: NonNullable<GraphNode['elsewhere']>, label: s
  * session of the other lane belongs. Each line truncates, its whole text in its tooltip. */
 function Box({ box, label }: { box: GraphBox; label: string }) {
   const { node } = box;
-  const run = node.run && `Run: ${node.run.title || node.run.branch || 'no branch'}`;
+  const run = node.run && runName(node.run.title, node.run.branch);
   const where = node.elsewhere && elsewhereLabel(node.elsewhere, label);
   return (
     <div className={cn(BOX, where && 'border-dashed bg-transparent')} style={at(box)}>
       <SessionLink sessionKey={node.key} title={node.title} className="truncate text-sm font-semibold" />
       <span className="truncate text-xs text-muted-foreground">{STAGE_LABELS[node.step]}</span>
-      {run && (
-        <span title={run} className="truncate text-xs">
-          {run}
+      {node.run && (
+        <span title={run ?? undefined} className="truncate text-xs">
+          {'Run: '}
+          <Text value={run} unknown="no branch" />
         </span>
       )}
       {where && (
@@ -77,15 +80,16 @@ function Legend({ label }: { label: string }) {
 }
 
 /**
- * "How the work spread": the sessions of a change or goal (`label`) as a graph, laid out by `graphLayout` at its own
+ * "How the work spread": the sessions of a change or goal (`label`) as a graph, its lanes labelled on a goal's page, laid out by `graphLayout` at its own
  * size and never shrunk, in a focusable region that scrolls sideways; the edges an SVG hidden from assistive tech, the
  * lanes' labels and the boxes HTML at their places, in reading order. The legend shows with an edge to explain, and a
  * line says how many sessions showing mode left out.
  */
 export function SessionGraph({ graph, label }: { graph: SessionGraphData; label: string }) {
   const id = useId();
-  const { width, height, lanes, boxes, edges } = useMemo(() => graphLayout(graph), [graph]);
-  const named = labelled(graph);
+  // A goal's page labels its lanes; a change's page, one lane and the sessions it linked to, needs none.
+  const named = label === 'goal';
+  const { width, height, lanes, boxes, edges } = useMemo(() => graphLayout(graph, named), [graph, named]);
   return (
     <Panel title="How the work spread" aside={edges.length > 0 && <Legend label={label} />}>
       {boxes.length === 0 ? (
@@ -102,7 +106,7 @@ export function SessionGraph({ graph, label }: { graph: SessionGraphData; label:
               {edges.map((edge, i) => (
                 <path
                   key={i}
-                  d={pathOf(edge, edge.down ? 'upright' : 'flat')}
+                  d={pathOf(edge, edge.across ? 'elbow' : 'flat')}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={1.5}

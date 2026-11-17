@@ -87,8 +87,8 @@ export const Full: Story = {
     const runs = canvas.getByRole('region', { name: 'Runs table' });
     await expect(within(runs).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
       'Run',
-      'Project',
       'Branch',
+      'Project',
       'Path',
       'Finished',
       'Time (min)',
@@ -104,8 +104,8 @@ export const Full: Story = {
       `/runs/${changeFull.runs[0].key}`,
     );
     await expect(cells(rows[0]).slice(1)).toEqual([
-      'lantern-notes',
       'claude/offline-sync-replay',
+      'lantern-notes',
       'Full',
       formatDayTime(parseTime(changeFull.runs[0].finishedAt!)),
       '231',
@@ -114,7 +114,7 @@ export const Full: Story = {
       '11',
       '26.90',
     ]);
-    await expect(cells(rows[2]).slice(1, 4)).toEqual(['tidepool-api', 'claude/offline-sync-plan', 'Plan']);
+    await expect(cells(rows[2]).slice(1, 4)).toEqual(['claude/offline-sync-plan', 'tidepool-api', 'Plan']);
     await expectColgroups(runs);
     await expectNoJoined(runs);
 

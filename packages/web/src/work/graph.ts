@@ -16,14 +16,8 @@ export type GraphLayout = {
   height: number;
   lanes: GraphLane[];
   boxes: GraphBox[];
-  edges: (Edge & { how: GraphEdge['how']; down: boolean })[];
+  edges: (Edge & { how: GraphEdge['how']; across: boolean })[];
 };
-
-/** Whether the lanes carry their labels: only when the graph has more than one lane besides the other lane, so a
- * change's own lane and the sessions it linked to read without them. */
-export function labelled(graph: SessionGraphData): boolean {
-  return graph.lanes.filter((lane) => lane.kind !== 'other').length > 1;
-}
 
 /** Each node's column: its distance from its chain's first session (a node no edge starts), breadth first; a loop
  * with no such node starts from its first node in the graph's order, so every node gets one and the walk ends. */
@@ -47,12 +41,21 @@ function columnsOf({ nodes, edges }: SessionGraphData): Map<string, number> {
   return column;
 }
 
-/** The session graph laid out at its own size: lanes top to bottom, each its label (when `labelled`) over its boxes,
- * a box in its column with the boxes sharing its lane and column stacked; boxes in reading order (lane, column, row);
- * an edge from a box's right side to one in its lane or a higher one, and from its bottom down to the top of one in a
- * lower lane (`down`, drawn standing up). */
-export function graphLayout(graph: SessionGraphData): GraphLayout {
-  const label = labelled(graph) ? LABEL : 0;
+/** Where an edge leaves its box: the right side for a box in its lane, else the bottom for a lower lane's box and the
+ * top for a higher one's, or the right side again, crossing the column gap first, when a box of its own column stands
+ * between it and its target's height. */
+type Side = 'right' | 'bottom' | 'top';
+
+/** Positions `n` starts spread evenly along a side of `length`. */
+const fan = (length: number, i: number, n: number) => (length * (i + 1)) / (n + 1);
+
+/** The session graph laid out at its own size: lanes top to bottom, each its label (with `labelled`, as the page says)
+ * over its boxes, a box in its column with the boxes sharing its lane and column stacked; boxes in reading order (lane,
+ * column, row). An edge in a lane runs from a box's right side to the next box's left; an edge between lanes
+ * (`across`) runs as straight runs with rounded corners, up or down to its target's middle and into its left side. A
+ * box's edges leaving one side start at points spread along it, so no two share a run. */
+export function graphLayout(graph: SessionGraphData, labelled = false): GraphLayout {
+  const label = labelled ? LABEL : 0;
   const column = columnsOf(graph);
   const row = new Map<string, number>();
   const stacks = new Map<string, number>();
@@ -78,16 +81,35 @@ export function graphLayout(graph: SessionGraphData): GraphLayout {
     }))
     .sort((a, b) => a.node.lane - b.node.lane || a.x - b.x || a.y - b.y);
   const box = new Map(boxes.map((b) => [b.node.key, b]));
-  const edges = graph.edges.map(({ from, to, how }) => {
-    const [a, b] = [box.get(from)!, box.get(to)!];
-    if (b.node.lane > a.node.lane) {
-      // Down to the gap above the lower lane, across it, then down through the lane's label to the box's top.
-      const lane = lanes[b.node.lane].y;
-      const start = { x: a.x + a.w / 2, y: a.y + a.h };
-      const end = { x: b.x + b.w / 2, y: b.y, lead: b.y - lane };
-      return { from: { ...start, lead: lane - GAP - start.y }, to: end, head: true, how, down: true };
+  const mid = (b: GraphBox) => b.y + b.h / 2;
+  const ends = graph.edges.map(({ from, to }) => [box.get(from)!, box.get(to)!] as const);
+  const sides = ends.map(([a, b]): Side => {
+    if (a.node.lane === b.node.lane) return 'right';
+    const down = b.node.lane > a.node.lane;
+    const [top, bottom] = down ? [a.y + a.h, mid(b)] : [mid(b), a.y];
+    const blocked = boxes.some((c) => c !== a && c !== b && c.x === a.x && c.y < bottom && c.y + c.h > top);
+    return blocked ? 'right' : down ? 'bottom' : 'top';
+  });
+  // Each edge's place among its box's edges leaving the same side: by its target's height, the lowest first along a
+  // bottom, so an edge's run across never meets another's run down.
+  const order = ends.map(([a], i) => {
+    const peers = ends.map((_, j) => j).filter((j) => ends[j][0] === a && sides[j] === sides[i]);
+    peers.sort((p, q) => (mid(ends[p][1]) - mid(ends[q][1])) * (sides[i] === 'bottom' ? -1 : 1));
+    return { at: peers.indexOf(i), of: peers.length };
+  });
+  const edges = graph.edges.map(({ how }, i) => {
+    const [a, b] = ends[i];
+    const { at, of } = order[i];
+    const to = { x: b.x, y: mid(b) };
+    const across = a.node.lane !== b.node.lane;
+    switch (sides[i]) {
+      case 'right':
+        return { from: { x: a.x + a.w, y: a.y + fan(a.h, at, of), ...(across && { lead: GX / 2 }) }, to, head: true, how, across };
+      case 'bottom':
+        return { from: { x: a.x + fan(a.w, at, of), y: a.y + a.h }, to, head: true, how, across };
+      case 'top':
+        return { from: { x: a.x + fan(a.w, at, of), y: a.y }, to, head: true, how, across };
     }
-    return { from: { x: a.x + a.w, y: a.y + a.h / 2 }, to: { x: b.x, y: b.y + b.h / 2 }, head: true, how, down: false };
   });
   return {
     width: Math.max(0, ...boxes.map((b) => b.x + b.w)),

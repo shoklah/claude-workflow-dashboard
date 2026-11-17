@@ -34,6 +34,10 @@ export const Full: Story = {
     await expect(edges).toHaveLength(syncGraph.edges.length);
     await expect(edges.filter((path) => path.getAttribute('stroke-dasharray'))).toHaveLength(1);
 
+    // A change's page labels no lane.
+    await expect(within(region).queryByText(syncGraph.lanes[1].title)).toBeNull();
+    // Edges between lanes run straight with rounded corners into the target's left side.
+    await expect(edges.filter((path) => path.getAttribute('d')!.includes('Q'))).toHaveLength(2);
     for (const name of LEGEND) await expect(within(panel).getByText(name)).toBeVisible();
     await expect(within(panel).queryByText(/left out/)).toBeNull();
   },
@@ -45,11 +49,17 @@ export const OnAGoalPage: Story = {
   play: async ({ canvas }) => {
     const region = canvas.getByRole('region', { name: 'Sessions of this goal, as a graph' });
     await expect(within(region).getByText('Another goal')).toBeVisible();
+    // A goal's page labels every lane, the other lane's too; a change lane's label links to the change.
+    await expect(within(region).getByRole('link', { name: hiddenGraph.lanes[0].title })).toHaveAttribute(
+      'href',
+      `/work/changes/${hiddenGraph.lanes[0].key}`,
+    );
+    await expect(within(region).getByText(hiddenGraph.lanes[1].title)).toBeVisible();
     await expect(canvas.getByText('Belongs to another goal')).toBeVisible();
   },
 };
 
-/** Showing mode on: a title with markup shown as text, sessions in no change and in a change Work doesn't list, and a
+/** Showing mode on: a title with markup shown as text, a run with no title named by its branch, sessions in no change and in a change Work doesn't list, and a
  * line saying how many sessions it left out. */
 export const Hidden: Story = {
   args: { graph: hiddenGraph },
@@ -57,6 +67,8 @@ export const Hidden: Story = {
     const region = canvas.getByRole('region', { name: 'Sessions of this change, as a graph' });
     await expect(within(region).getByRole('link', { name: HTML_TEXT })).toBeVisible();
     await expect(canvasElement.querySelector('img')).toBeNull();
+    // A run with no title is named by its branch, as RunLink names it.
+    await expect(within(region).getByText('Run: claude/offline-sync-queue')).toBeVisible();
     await expect(within(region).getByText('No change')).toBeVisible();
     await expect(within(region).getByText('Another change')).toBeVisible();
     await expect(canvas.getByText('+ 2 sessions in other projects, counted in totals and charts only')).toBeVisible();

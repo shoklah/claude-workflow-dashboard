@@ -212,12 +212,12 @@ export const oneGraph: SessionGraphData = {
 /** A graph of no session. */
 export const emptyGraph: SessionGraphData = { lanes: [], nodes: [], edges: [], hidden: 0 };
 
-/** Showing mode on: a box titled with markup, the other lane's sessions in no change and in a change Work doesn't
+/** Showing mode on: a box titled with markup holding a run with no title, the other lane's sessions in no change and in a change Work doesn't
  * list, and two sessions left out. */
 export const hiddenGraph: SessionGraphData = {
   lanes: syncGraph.lanes,
   nodes: [
-    { ...syncGraph.nodes[0], title: HTML_TEXT },
+    { ...syncGraph.nodes[0], title: HTML_TEXT, run: { ...queueRun, title: null } },
     { ...syncGraph.nodes[5], elsewhere: { kind: 'none' } },
     { ...syncGraph.nodes[6], elsewhere: { kind: 'unlisted' } },
   ],

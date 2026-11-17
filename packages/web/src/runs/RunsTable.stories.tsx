@@ -102,3 +102,39 @@ export const NoBranch: Story = {
     await expect(link.querySelector('.text-muted-foreground')).not.toBeNull();
   },
 };
+
+/** The runs of one change (a change's page): no Change, Goal, Waves, Stops or Warnings column; Project and Path only
+ * when the change asks for them (several projects, a plan record). */
+export const OfAChange: Story = {
+  args: { runs: [fullRun, { ...smallRun, path: 'plan' }], of: { project: true, path: true } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getAllByRole('row')[0].querySelectorAll('th').length).toBe(9);
+    await expect(within(canvas.getAllByRole('row')[0]).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      'Run',
+      'Branch',
+      'Project',
+      'Path',
+      'Finished',
+      'Time (min)',
+      'Tasks',
+      'Findings',
+      'Est. cost ($)',
+    ]);
+    const rows = canvas.getAllByRole('row').slice(2);
+    await expect(cells(rows[0]).slice(1, 4)).toEqual(['feat/search', 'atlas', 'Full']);
+    await expect(cells(rows[1])[3]).toBe('Plan');
+    await expect(cells(rows[0]).slice(5)).toEqual(['130', '4', '6', '5', '7.10']);
+  },
+};
+
+/** One change's runs with neither column asked for, and none to list: its own empty line. */
+export const OfAChangeEmpty: Story = {
+  args: { runs: [], of: { project: false, path: false } },
+  play: async ({ canvas }) => {
+    const heads = within(canvas.getAllByRole('row')[0]).getAllByRole('columnheader').map((th) => th.textContent);
+    await expect(heads).not.toContain('Project');
+    await expect(heads).not.toContain('Path');
+    const empty = canvas.getByText('No runs yet. A run shows here once its record is written and imported.');
+    await expect(empty).toHaveAttribute('colspan', '8');
+  },
+};
