@@ -116,8 +116,7 @@ test("a step kind's tokens are null until a dispatch carries models, and its cos
   expect(planSimplify(rows)).toMatchObject({ cost: 1.25, tokens: { input: 15 } });
   for (const r of rows) {
     if (r.step === 'plan_simplify') continue;
-    if (r.step !== 'simplify') expect(r.cost).toBeNull();
-    expect(r.tokens).toBeNull();
+    expect(r).toMatchObject({ cost: null, tokens: null });
   }
   const simplify = stepSums([{ schema: 2, dispatches: [{ kind: 'simplify', models: { a: { input: 3, cost: 1 } } }] }]);
   expect(simplify.find((r) => r.step === 'simplify')).toMatchObject({ tokens: null, cost: null });
