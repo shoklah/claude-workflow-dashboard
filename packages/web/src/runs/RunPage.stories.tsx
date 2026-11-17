@@ -45,7 +45,7 @@ export const Failed: Story = {
   },
 };
 
-/** A key no stored run has (or one showing mode hides) gets its own message, with the way back to Runs. */
+/** A key no stored run has (or one showing mode hides) gets its own message, with the way back to Work's Runs view. */
 export const Unknown: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: 404 });
@@ -53,7 +53,7 @@ export const Unknown: Story = {
   play: async ({ canvas }) => {
     const state = await canvas.findByText('No run with this key.', { exact: false });
     await expect(state.closest('.glass')).not.toBeNull();
-    await expect(within(state).getByRole('link', { name: 'Runs' })).toHaveAttribute('href', '/runs');
+    await expect(within(state).getByRole('link', { name: 'Runs in Work' })).toHaveAttribute('href', '/work?view=runs');
     await expect(canvas.queryByText("Couldn't load this run.")).toBeNull();
   },
 };

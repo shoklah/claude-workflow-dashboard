@@ -318,8 +318,8 @@ export function RunPage({ runKey }: { runKey: string }) {
     return (
       <State error>
         {'No run with this key. '}
-        <Link to="/runs" className={LINK}>
-          Runs
+        <Link to="/work" search={{ view: 'runs' }} className={LINK}>
+          Runs in Work
         </Link>
       </State>
     );

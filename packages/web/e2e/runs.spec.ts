@@ -44,7 +44,7 @@ test('an unknown run key says so at once', async ({ page }) => {
   await page.goto('/runs/0000000000000000');
   // A 404 isn't retried, so the message shows within the default timeout.
   await expect(page.getByText('No run with this key.')).toBeVisible();
-  await expect(page.getByRole('main').getByRole('link', { name: 'Runs', exact: true })).toHaveAttribute('href', '/runs');
+  await expect(page.getByRole('main').getByRole('link', { name: 'Runs in Work', exact: true })).toHaveAttribute('href', '/work?view=runs');
 });
 
 test("at 1440 px the fold's panels sit in two columns once opened, and pass axe", async ({ page }) => {
