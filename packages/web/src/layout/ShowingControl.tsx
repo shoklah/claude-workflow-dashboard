@@ -39,7 +39,7 @@ export function ShowingControl({ stacked }: { stacked?: boolean }) {
     return (
       <div className={cn('flex px-3', stacked ? 'flex-col gap-2 py-2' : 'items-center gap-3 py-1', NOTICE)}>
         <b className={cn(stacked && 'break-words')}>Showing: {showing.data.projects.map((project) => project.name).join(', ')}</b>
-        <Button variant="outline" size="sm" className={cn(stacked && 'w-full')} onClick={() => show([])}>
+        <Button variant="outline" size="sm" onClick={() => show([])}>
           Stop showing
         </Button>
       </div>

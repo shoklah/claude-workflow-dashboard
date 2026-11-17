@@ -53,7 +53,7 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
                 key={entry.to}
                 to={entry.to}
                 onClick={onNavigate}
-                activeOptions={{ exact: entry.exact ?? false }}
+                activeOptions={{ exact: entry.exact }}
                 className="flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent"
                 activeProps={{ className: 'bg-accent font-semibold' }}
               >

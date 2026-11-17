@@ -26,7 +26,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
         <div className="flex flex-col gap-2 border-t pt-3">
           <div className="px-3"><ShowingControl stacked /></div>
-          <RefreshButton importing={importing} className="w-full" />
+          <RefreshButton importing={importing} />
           {lastGood && (
             <p className="px-3 text-xs text-muted-foreground">
               Imported <Time iso={lastGood} />
