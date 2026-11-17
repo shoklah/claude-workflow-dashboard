@@ -14,7 +14,7 @@ test('the shell has no axe violations', async ({ page }) => {
 
 // Every page fits the viewport at a phone's, a tablet's and a desktop's width: what is wider (a table, a chart grid)
 // scrolls inside its own region, never the page, and a region that scrolls can take the keyboard's focus (axe).
-const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks'];
+const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/work/changes/6acb252ca65f81f8', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks'];
 
 for (const width of [375, 768, 1440]) {
   test(`no page scrolls sideways at ${width} px, and none has axe violations there`, async ({ page }) => {

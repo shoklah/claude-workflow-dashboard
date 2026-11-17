@@ -105,6 +105,16 @@ export const PairsInline: Story = {
   },
 };
 
+/** Facts over their values on the backdrop (a change's header): the terms in primary ink, since they sit on the
+ * backdrop. */
+export const PairsOverOnBackdrop: Story = {
+  render: () => <Pairs inline="over" backdrop pairs={[['Project', 'atlas'], ['Findings', 4]]} />,
+  play: async ({ canvas, canvasElement }) => {
+    await expect(getComputedStyle(canvas.getByText('Project')).fontSize).toBe('12px');
+    for (const dt of canvasElement.querySelectorAll('dt')) await expect(dt).not.toHaveClass('text-muted-foreground');
+  },
+};
+
 /** Columns on the backdrop (a goal section's totals): each pair as wide as its column from `sm`, its value at the
  * column's end, so rows of different values line up; the terms in primary ink, since they sit on the backdrop. */
 export const PairsColumns: Story = {

@@ -1,4 +1,4 @@
-import type { ChangeRow, GoalSection, WorkResponse } from '@cwd/shared';
+import type { ChangeResponse, ChangeRow, GoalSection, RunFacts, SessionGraphData, WorkResponse, WorkSessionRow } from '@cwd/shared';
 import { HTML_TEXT } from './runs.ts';
 
 // Invented answers of GET /api/work for the Work page's stories.
@@ -144,3 +144,255 @@ export const workFilteredEmpty: WorkResponse = { goals: [], looseSessions: 0, an
 
 /** Showing mode on: two changes in other projects left out. */
 export const workHidden: WorkResponse = { goals: [searchGoal], looseSessions: 0, anyGoal: true, goalOptions, hidden: 2 };
+
+// Invented answers of GET /api/work/changes/:key for a change's page and its session graph.
+
+const S = {
+  design: 's1a2b3c4d5e6f701',
+  handoff: 's1a2b3c4d5e6f702',
+  plan: 's1a2b3c4d5e6f703',
+  queue: 's1a2b3c4d5e6f704',
+  replay: 's1a2b3c4d5e6f705',
+  terms: 's1a2b3c4d5e6f706',
+  banner: 's1a2b3c4d5e6f707',
+};
+
+const queueRun = { key: 'r1a2b3c4d5e6f701', title: 'Queue edits while offline', branch: 'claude/offline-sync-queue' };
+const replayRun = { key: 'r1a2b3c4d5e6f702', title: 'Replay the queue on reconnect', branch: 'claude/offline-sync-replay' };
+
+/** The offline sync change's graph: five sessions in its lane, joined by a handoff and started edges, and two sessions
+ * of another goal and another change that its sessions started. */
+export const syncGraph: SessionGraphData = {
+  lanes: [
+    { key: syncChange.key, title: syncChange.title, kind: 'change' },
+    { key: null, title: 'Other changes', kind: 'other' },
+  ],
+  nodes: [
+    { key: S.design, title: 'Design offline sync', step: 'design', run: null, lane: 0, elsewhere: null },
+    { key: S.handoff, title: 'Design offline sync, after handoff', step: 'design', run: null, lane: 0, elsewhere: null },
+    { key: S.plan, title: 'Plan the offline queue', step: 'plan', run: null, lane: 0, elsewhere: null },
+    { key: S.queue, title: 'Implement the queue', step: 'implementation', run: queueRun, lane: 0, elsewhere: null },
+    { key: S.replay, title: 'Implement replay', step: 'implementation', run: replayRun, lane: 0, elsewhere: null },
+    {
+      key: S.terms,
+      title: 'Start on the terms of use page',
+      step: 'design',
+      run: null,
+      lane: 1,
+      elsewhere: { kind: 'goal', name: 'Legal pages' },
+    },
+    {
+      key: S.banner,
+      title: 'Design the conflict banner',
+      step: 'design',
+      run: null,
+      lane: 1,
+      elsewhere: { kind: 'change', title: 'Conflict banner' },
+    },
+  ],
+  edges: [
+    { from: S.design, to: S.handoff, how: 'handoff' },
+    { from: S.handoff, to: S.plan, how: 'started' },
+    { from: S.plan, to: S.queue, how: 'started' },
+    { from: S.queue, to: S.replay, how: 'started' },
+    { from: S.handoff, to: S.terms, how: 'started' },
+    { from: S.queue, to: S.banner, how: 'started' },
+  ],
+  hidden: 0,
+};
+
+/** A graph of one session: its box, no edge. */
+export const oneGraph: SessionGraphData = {
+  lanes: [syncGraph.lanes[0]],
+  nodes: [syncGraph.nodes[0]],
+  edges: [],
+  hidden: 0,
+};
+
+/** A graph of no session. */
+export const emptyGraph: SessionGraphData = { lanes: [], nodes: [], edges: [], hidden: 0 };
+
+/** Showing mode on: a box titled with markup, the other lane's sessions in no change and in a change Work doesn't
+ * list, and two sessions left out. */
+export const hiddenGraph: SessionGraphData = {
+  lanes: syncGraph.lanes,
+  nodes: [
+    { ...syncGraph.nodes[0], title: HTML_TEXT },
+    { ...syncGraph.nodes[5], elsewhere: { kind: 'none' } },
+    { ...syncGraph.nodes[6], elsewhere: { kind: 'unlisted' } },
+  ],
+  edges: [
+    { from: S.design, to: S.terms, how: 'started' },
+    { from: S.design, to: S.banner, how: 'handoff' },
+  ],
+  hidden: 2,
+};
+
+const plannedRun = {
+  key: 'r1a2b3c4d5e6f703',
+  projectKey: '1a2b3c4d5e6f7082',
+  project: 'tidepool-api',
+  branch: 'claude/offline-sync-plan',
+  headline: 'Plan the offline queue',
+  path: 'plan',
+  stage: null,
+  startedAt: '2026-11-04T11:00:00Z',
+  finishedAt: '2026-11-04T13:00:00Z',
+  minutes: 120,
+  cost: null,
+  findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 },
+  warnings: 0,
+  stops: null,
+  tasks: null,
+  waves: 0,
+  beforeSteps: false,
+} satisfies RunFacts;
+
+const syncRuns: RunFacts[] = [
+  {
+    ...plannedRun,
+    key: replayRun.key,
+    projectKey: '1a2b3c4d5e6f7081',
+    project: 'lantern-notes',
+    branch: replayRun.branch,
+    headline: replayRun.title,
+    path: 'full',
+    stage: '6',
+    startedAt: '2026-11-11T13:49:00Z',
+    finishedAt: '2026-11-11T17:40:00Z',
+    minutes: 231,
+    cost: 26.9,
+    findings: { total: 12, actedOn: 10, notActedOn: 1, open: 1 },
+    tasks: 6,
+    stops: 0,
+  },
+  {
+    ...plannedRun,
+    key: queueRun.key,
+    projectKey: '1a2b3c4d5e6f7081',
+    project: 'lantern-notes',
+    branch: queueRun.branch,
+    headline: queueRun.title,
+    path: 'full',
+    stage: '6',
+    startedAt: '2026-11-08T15:03:00Z',
+    finishedAt: '2026-11-08T18:10:00Z',
+    minutes: 187,
+    cost: 22.15,
+    findings: { total: 11, actedOn: 11, notActedOn: 0, open: 0 },
+    tasks: 5,
+    stops: 0,
+  },
+];
+
+const OPUS = [{ model: 'claude-opus-5-5', effort: 'medium' }];
+const FABLE = [{ model: 'claude-fable-5-2', effort: 'high' }];
+
+const syncSessions: WorkSessionRow[] = [
+  {
+    key: S.design,
+    title: 'Design offline sync',
+    start: '2026-11-03T10:10:00Z',
+    end: '2026-11-03T12:54:00Z',
+    minutes: 164,
+    models: FABLE,
+    cost: 5.9,
+    step: 'design',
+    startedBy: null,
+    run: null,
+    change: { key: syncChange.key, title: syncChange.title },
+  },
+  {
+    key: S.handoff,
+    title: 'Design offline sync, after handoff',
+    start: '2026-11-03T14:20:00Z',
+    end: '2026-11-03T15:55:00Z',
+    minutes: 95,
+    models: FABLE,
+    cost: 3.25,
+    step: 'design',
+    startedBy: { key: S.design, title: 'Design offline sync' },
+    run: null,
+    change: { key: syncChange.key, title: syncChange.title },
+  },
+  {
+    key: S.plan,
+    title: 'Plan the offline queue',
+    start: '2026-11-04T11:00:00Z',
+    end: '2026-11-04T13:00:00Z',
+    minutes: 120,
+    models: FABLE,
+    cost: 3.2,
+    step: 'plan',
+    startedBy: { key: null, title: null },
+    run: null,
+    change: { key: syncChange.key, title: syncChange.title },
+  },
+  {
+    key: S.queue,
+    title: 'Implement the queue',
+    start: '2026-11-08T14:50:00Z',
+    end: '2026-11-08T18:22:00Z',
+    minutes: 212,
+    models: OPUS,
+    cost: 22.15,
+    step: 'implementation',
+    startedBy: { key: S.plan, title: 'Plan the offline queue' },
+    run: queueRun,
+    change: { key: syncChange.key, title: syncChange.title },
+  },
+  {
+    key: S.replay,
+    title: HTML_TEXT,
+    start: '2026-11-11T13:40:00Z',
+    end: '2026-11-11T17:48:00Z',
+    minutes: 248,
+    models: OPUS,
+    cost: 26.9,
+    step: 'implementation',
+    startedBy: { key: S.queue, title: 'Implement the queue' },
+    run: replayRun,
+    change: { key: syncChange.key, title: syncChange.title },
+  },
+];
+
+/** The offline sync change: in two projects, with a goal, a spec, a plan record among its runs and its graph. */
+export const changeFull: ChangeResponse = {
+  key: syncChange.key,
+  title: syncChange.title,
+  goal: { key: 'g1a2b3c4d5e6f708', name: 'Offline sync' },
+  project: 'lantern-notes',
+  otherProjects: ['tidepool-api'],
+  otherCount: 1,
+  path: 'full',
+  stage: 'implementation',
+  spec: '2026-11-05-offline-sync-design.md',
+  startedAt: '2026-11-03T10:10:00Z',
+  lastActivity: '2026-11-11T17:40:00Z',
+  sessionCount: 5,
+  runCount: 3,
+  cost: 61.4,
+  graph: syncGraph,
+  runs: [...syncRuns, plannedRun],
+  sessions: syncSessions,
+};
+
+/** A change of one project and one run with no spec, no goal and no known cost: no Project, Other projects, Path
+ * or Spec. */
+export const changeSmall: ChangeResponse = {
+  ...changeFull,
+  key: markupChange.key,
+  title: 'fix/retry',
+  goal: null,
+  otherProjects: [],
+  otherCount: 0,
+  path: 'small',
+  spec: null,
+  startedAt: null,
+  sessionCount: 1,
+  runCount: 1,
+  cost: null,
+  graph: oneGraph,
+  runs: [{ ...syncRuns[1], path: 'small' }],
+  sessions: [syncSessions[0]],
+};

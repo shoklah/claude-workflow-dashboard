@@ -90,3 +90,25 @@ test('at 1440 px the title columns wrap within one width range, and the Runs tab
   await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
   expect(await widths('Sessions', ['Session', 'Change'])).toEqual({ Session: inRange, Change: inRange });
 });
+
+// The offline sync change of report-work: `changeKey` of its spec (server/test/work.test.ts).
+const CHANGE = '/work/changes/6acb252ca65f81f8';
+
+test("a change's page has no axe violations, and its graph scrolls sideways at 375 px with no page scroll", async ({ page }) => {
+  await page.goto(CHANGE);
+  const graph = page.getByRole('region', { name: 'Sessions of this change, as a graph' });
+  await expect(graph).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Sessions table' })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  await page.setViewportSize({ width: 375, height: 900 });
+  await expect(graph).toHaveAttribute('tabindex', '0');
+  expect(await graph.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+});
+
+test("an unknown change's key says it isn't in the data any more", async ({ page }) => {
+  await page.goto('/work/changes/0000000000000000');
+  await expect(page.getByText("This change isn't in the data any more.")).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Work' })).toHaveAttribute('href', '/work');
+});

@@ -12,7 +12,7 @@ const at = ({ x, y, w, h }: Placed): CSSProperties => ({ left: x, top: y, width:
 
 /** An edge: lying down, a curve between its two ends; standing up, straight runs (`lead`) beside a loop's label or the
  * exit chips, and a curve between them; a fade, a straight run to or from the panel's side. */
-function pathOf({ from, to, fade }: Edge, shape: Shape): string {
+export function pathOf({ from, to, fade }: Edge, shape: Shape): string {
   if (fade) return `M${from.x} ${from.y} H${to.x}`;
   if (shape === 'upright') {
     const a = from.y + (from.lead ?? 0);
@@ -58,6 +58,9 @@ function LoopLabel({ arc }: { arc: Of<'arc'> }) {
   );
 }
 
+/** A graph box's look, the session graph's too: a rectangle at its place, its lines stacked and centred. */
+export const BOX = 'absolute flex flex-col justify-center rounded-lg border bg-secondary px-2.5 text-left leading-tight';
+
 /** A box: its name, its reviewer and what it found; pressing it selects it, pressing it again clears it. */
 function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
   const { unit } = box;
@@ -69,7 +72,8 @@ function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
       aria-pressed={on}
       onClick={() => onSelect(on ? null : unit.id)}
       className={cn(
-        'absolute flex flex-col justify-center rounded-lg border bg-secondary px-2.5 text-left leading-tight hover:bg-accent',
+        BOX,
+        'hover:bg-accent',
         stuck(unit) && WARNING_BORDER,
         on && 'outline-2 outline-offset-2 outline-ring',
       )}
