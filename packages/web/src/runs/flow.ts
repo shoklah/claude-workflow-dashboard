@@ -133,8 +133,8 @@ const LOOP = 42;
 const EXIT = 24;
 const PILL = 118;
 const PILL_H = 44;
-/** The narrowest a pill gets: "Record written" at the small size (80 px), its padding and its border. */
-const PILL_NARROW = 106;
+/** The narrowest a pill gets: "Record written" at the small size, and its padding. */
+const PILL_NARROW = 110;
 /** The conflicts' rank, and its label's height. */
 const MERGE = 84;
 const MERGE_H = 24;
@@ -150,10 +150,8 @@ const MARGIN = 16;
 const ARC_IN = 16;
 const CHIP_IN = 22;
 const SIDE_IN = 10;
-/** Text's estimated width a character: 6 px for a box's name and a chip, 5.8 px for a reviewer's lower-case 12 px
- * name (the widest measured); then a chip's padding, and a box's padding with its border. */
+/** Text's estimated width: 6 px a character, a chip's padding, and a box's padding with its border. */
 const CHAR = 6;
-const REVIEWER_CHAR = 5.8;
 const CHIP_PAD = 12;
 const BOX_PAD = 22;
 /** Most boxes on one upright line. */
@@ -187,7 +185,7 @@ const chipWidth = (outcome: Outcome | 'none', count: number) => `${outcomeLabel(
 
 /** The narrowest a box can be with its name, its reviewer and its exit chips whole, by the text estimate. */
 export function boxNeed(unit: Unit): number {
-  const text = [unit.name.length * CHAR, reviewerLabel(unit.review).length * REVIEWER_CHAR].map((t) => t + BOX_PAD);
+  const text = [unit.name, reviewerLabel(unit.review)].map((t) => t.length * CHAR + BOX_PAD);
   const chips = leftOf(unit).map(([outcome, count]) => chipWidth(outcome, count) + CHIP_IN + SIDE_IN + 4);
   return Math.max(...text, ...chips);
 }

@@ -155,7 +155,7 @@ These are the session's, not the owner's.
 | Left for later | "Nothing left: every finding was closed in this run." / "<Step> left nothing for later." | with the page | with the page |
 | Fold panels | "Advisor not consulted.", "No context facts for this run.", "No skill loaded or offered." | – | – |
 
-A plan run draws its two steps (plan simplify, plan review) as a short graph; a Small run draws Simplify and the final review. Both lie flat wherever their boxes fit whole, and stand upright otherwise: on a phone, and at 768 px beside the full-height rail (a 454 px graph).
+A plan run draws its two steps (plan simplify, plan review) as a short graph; a Small run draws Simplify and the final review. Both lie flat wherever their boxes fit whole, and stand upright otherwise: on a phone, and at 768 px beside the full-height rail.
 
 ## Behaviour by width
 
