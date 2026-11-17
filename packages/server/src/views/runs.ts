@@ -265,6 +265,9 @@ function timelineSteps(steps: KnownStep[], labelOf: LabelOf): TimelineStep[] {
     step: step.step,
     round: step.round ?? null,
     agent: step.agent ?? null,
+    model: step.model ?? null,
+    effort: step.effort ?? null,
+    kit: step.kit ?? null,
     counts: step.counts ?? {},
     findings: findingRows(step, labelOf),
   }));
@@ -278,14 +281,16 @@ function group(
   steps: KnownStep[] = [],
   at: string | null = null,
 ) {
-  return { kind, label, at, tasks: [], steps: timelineSteps(steps, labelOf) };
+  return { kind, label, at, conflicts: null, tasks: [], steps: timelineSteps(steps, labelOf) };
 }
 
 /**
  * The untimed timeline, in the workflow's order: start, plan, a group per wave (its tasks' steps, then its wave
- * check's steps), a group per task in no wave, simplify, final review, end. A kit's review and fix-checks with no task
- * or wave sit in the final group, beside the final review they run with. A plan, simplify or final group with no steps
- * is left out, except a run from before steps, which gets an empty final group between start and end.
+ * check's steps, and its conflicts), a wave's also for each wave a step names that `waves` doesn't list, and a group per
+ * task in no wave, these in the run's order (by their first step in `steps`, a group with no step after the others),
+ * then simplify, final review, end. A kit's review and fix-checks with no task or wave sit in the final group, beside
+ * the final review they run with. A plan, simplify or final group with no steps is left out, except a run from before
+ * steps, which gets an empty final group between start and end.
  */
 function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: LabelOf): TimelineGroup[] {
   const start = group('start', 'Start', labelOf, [], facts.startedAt);
@@ -296,16 +301,31 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
   const waves = run.waves ?? [];
   const inWave = new Set(waves.flatMap((w) => w.tasks ?? []));
   const loose = [...new Set(steps.map((s) => s.task).filter((t) => t != null && !inWave.has(t)))] as number[];
+  const listed = new Set(waves.map((w) => w.wave));
+  const unlisted = [...new Set(steps.map((s) => s.wave).filter((w) => w != null && !listed.has(w)))] as string[];
+  const rank = (i: number) => (i < 0 ? steps.length : i);
+  const ordered = [
+    ...[...waves, ...unlisted.map((wave) => ({ wave, tasks: [], conflicts: null }))].map((w) => {
+      const tasks = w.tasks ?? [];
+      const ofWave = (s: KnownStep) => s.wave != null && s.wave === w.wave;
+      return {
+        first: steps.findIndex((s) => ofWave(s) || (s.task != null && tasks.includes(s.task))),
+        group: {
+          ...group('wave', `Wave ${w.wave ?? ''}`, labelOf, steps.filter(ofWave)),
+          conflicts: w.conflicts ?? null,
+          tasks: tasks.map(ofTask),
+        },
+      };
+    }),
+    ...loose.map((task) => ({
+      first: steps.findIndex((s) => s.task === task),
+      group: { ...group('task', `Task ${task}`, labelOf), tasks: [ofTask(task)] },
+    })),
+  ].sort((a, b) => rank(a.first) - rank(b.first));
   return [
     start,
     group('plan', 'Plan', labelOf, kinds('plan_simplify', 'plan_review')),
-    ...waves.map((w) => ({
-      ...group('wave', `Wave ${w.wave ?? ''}`, labelOf, steps.filter((s) => s.wave != null && s.wave === w.wave)),
-      tasks: (w.tasks ?? []).map(ofTask),
-    })),
-    ...loose
-      .sort((a, b) => a - b)
-      .map((task) => ({ ...group('task', `Task ${task}`, labelOf), tasks: [ofTask(task)] })),
+    ...ordered.map((o) => o.group),
     group('simplify', 'Simplify', labelOf, kinds('simplify')),
     group(
       'final',
@@ -326,7 +346,9 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
  * (currentLabels), its review steps' strengths, its skills, models, advisor notes and context, its current warnings, and the
  * display labels of `list`'s (the active list's) categories; its project's name from `names`, every stored run's
  * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
- * named by the scope and its findings' texts, label reasons and strengths' summaries masked (maskText). */
+ * named by the scope and its findings' texts, label reasons, strengths' summaries, steps' agents, models, efforts and
+ * kits, loaded skills' names and models' ids masked (maskText). A step's model and effort are its tied dispatch's (the one whose `step` is its index), else
+ * its own, field by field. */
 export function runView(
   run: StoredUnit<RunEntry>,
   warnings: StoredWarning[],
@@ -338,19 +360,28 @@ export function runView(
   const entry = run.merged;
   const facts = showFacts(scope, storedFacts(run, names));
   if (!facts) return null;
+  const dispatches = entry.dispatches ?? [];
+  // A step's dispatch is read before the filter, since its `step` is an index into the exported steps.
   const steps = (entry.steps ?? [])
-    .filter((s): s is KnownStep => s.step != null)
-    .map((s) => ({
-      ...s,
-      findings: s.findings?.map((f) => ({
-        ...f,
-        kind: maskText(scope, f.kind),
-        summary: maskText(scope, f.summary),
-        reason: maskText(scope, f.reason),
-        verdicts: f.verdicts?.map((v) => maskText(scope, v)),
-      })),
-      strengths: s.strengths?.map((strength) => ({ ...strength, summary: maskText(scope, strength.summary) })),
-    }));
+    .map((s, i): Step => {
+      const dispatch = dispatches.find((d) => d.step === i);
+      return {
+        ...s,
+        agent: maskText(scope, s.agent),
+        model: maskText(scope, dispatch?.model ?? s.model),
+        effort: maskText(scope, dispatch?.effort ?? s.effort),
+        kit: maskText(scope, s.kit),
+        findings: s.findings?.map((f) => ({
+          ...f,
+          kind: maskText(scope, f.kind),
+          summary: maskText(scope, f.summary),
+          reason: maskText(scope, f.reason),
+          verdicts: f.verdicts?.map((v) => maskText(scope, v)),
+        })),
+        strengths: s.strengths?.map((strength) => ({ ...strength, summary: maskText(scope, strength.summary) })),
+      };
+    })
+    .filter((s): s is KnownStep => s.step != null);
   const labelOf: LabelOf = (f) => {
     const label = f.id ? labels.get(findingKey(run.key, f.id)) : undefined;
     const workflow = f.category ?? null;
@@ -376,13 +407,14 @@ export function runView(
       (s.strengths ?? []).map((strength) => ({
         step: s.step,
         task: s.task ?? null,
+        wave: s.wave ?? null,
         round: s.round ?? null,
         category: strength.category ?? null,
         summary: strength.summary ?? null,
       })),
     ),
-    skills: (entry.skills ?? []).map((s) => ({ name: s.name ?? '', outcome: skillOutcomeLabel(s.outcome) })),
-    models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model, cost: m.cost ?? null })),
+    skills: (entry.skills ?? []).map((s) => ({ name: maskText(scope, s.name ?? ''), outcome: skillOutcomeLabel(s.outcome) })),
+    models: Object.entries(entry.models ?? {}).map(([model, m]) => ({ model: maskText(scope, model), cost: m.cost ?? null })),
     advisor: calls != null && notes != null ? { calls, notes } : null,
     context: context && { ...context, toolCharacters: toolCharacters(entry.tool_results) },
     warnings: currentWarnings([run], [], warnings).map((w) => showWarning(scope, w.text)),

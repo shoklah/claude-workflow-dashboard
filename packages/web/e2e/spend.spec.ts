@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { expectLegendClear } from './charts.ts';
 import { pinClock } from './fixed-time.ts';
 import { settled } from './settled.ts';
 
@@ -33,7 +34,7 @@ test('the spend page shows the groups, opens one to its phases and has no axe vi
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
-test("at 375 px the chart's legend doesn't overlap its week labels", async ({ page }) => {
+test("at 375 px the chart's legend labels are whole, clear of its week labels", async ({ page }) => {
   // Sized before loading, as the shell's check does: a chart resizes a moment after the window does.
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto('/spend');
@@ -44,23 +45,5 @@ test("at 375 px the chart's legend doesn't overlap its week labels", async ({ pa
   const weekly = page.getByRole('region', { name: 'Weekly spend' });
   const weeks = await weekly.getByRole('rowheader').allTextContents();
   const groups = (await weekly.getByRole('columnheader').allTextContents()).slice(1, -2).map((h) => h.replace(/ \(\$\)$/, ''));
-  // Each named text's box, read in one pass over the chart's texts.
-  const boxes = (names: string[]) =>
-    chart.locator('svg text').evaluateAll(
-      (texts, names) =>
-        texts
-          .filter((text) => names.includes(text.textContent ?? ''))
-          .map((text) => {
-            const { x, y, width, height } = text.getBoundingClientRect();
-            return { x, y, width, height };
-          }),
-      names,
-    );
-  const labels = await boxes(weeks);
-  const legend = await boxes(groups);
-  expect(labels.length).toBeGreaterThan(0);
-  expect(legend).toHaveLength(groups.length);
-  const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
-    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-  for (const item of legend) for (const label of labels) expect(overlaps(item, label)).toBe(false);
+  await expectLegendClear(chart, weeks, groups);
 });

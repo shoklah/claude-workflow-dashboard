@@ -16,8 +16,11 @@ import {
 import { Switch } from '../components/ui/switch.tsx';
 import { NOTICE } from '../lib/format.ts';
 
-/** Showing mode: while off, a switch that opens the project picker; while on, an orange bar naming what it shows. */
-export function ShowingControl() {
+/**
+ * Showing mode: while off, a switch that opens the project picker; while on, an orange bar naming what it shows. With
+ * `stacked` (the rail's foot), the bar is a column: the names wrapping over a full-width "Stop showing".
+ */
+export function ShowingControl({ stacked }: { stacked?: boolean }) {
   const showing = useLiveQuery<ShowingResponse>('/api/showing');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -34,8 +37,8 @@ export function ShowingControl() {
   if (showing.isError) return <p className="text-sm">Couldn't read showing mode.</p>;
   if (showing.data?.on) {
     return (
-      <div className={cn('flex items-center gap-3 px-3 py-1', NOTICE)}>
-        <b>Showing: {showing.data.projects.map((project) => project.name).join(', ')}</b>
+      <div className={cn('flex px-3', stacked ? 'flex-col gap-2 py-2' : 'items-center gap-3 py-1', NOTICE)}>
+        <b className={cn(stacked && 'break-words')}>Showing: {showing.data.projects.map((project) => project.name).join(', ')}</b>
         <Button variant="outline" size="sm" onClick={() => show([])}>
           Stop showing
         </Button>

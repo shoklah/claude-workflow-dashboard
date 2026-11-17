@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { expectLegendClear } from './charts.ts';
 import { pinClock } from './fixed-time.ts';
 import { settled } from './settled.ts';
 
@@ -59,6 +60,20 @@ for (const width of [375, 768, 1440]) {
       }
       const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(extra).toBe(0);
+    });
+
+    // The findings chart's legend: every label whole, none over a week label, and no empty band above it.
+    test("the findings chart's legend labels are whole and fit their room", async ({ page }) => {
+      const chart = page.getByRole('img', { name: /^Findings by week, by step:/ });
+      await expect(chart).toBeVisible();
+      // The weeks and the step kinds, as the charts' table view names them.
+      await page.getByText('The charts as a table').click();
+      const table = page.getByRole('region', { name: 'The charts as a table' });
+      const weeks = await table.getByRole('rowheader').allTextContents();
+      const kinds = (await table.getByRole('columnheader').allTextContents())
+        .filter((h) => h.endsWith(' findings'))
+        .map((h) => h.replace(/ findings$/, ''));
+      await expectLegendClear(chart, weeks, kinds);
     });
   });
 }

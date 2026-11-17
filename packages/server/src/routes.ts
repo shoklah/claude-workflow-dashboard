@@ -34,7 +34,8 @@ import { contextView } from './views/context.ts';
 import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
 import { modelsView } from './views/models.ts';
-import { rootOf, runView, runsList, storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
+import { runPageView } from './views/run.ts';
+import { rootOf, runsList, storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
 import { scopeOf, type Scope } from './views/scope.ts';
 import { sessionsView } from './views/sessions.ts';
 import { showingView } from './views/showing.ts';
@@ -119,7 +120,16 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const runs = listUnits(deps.db, 'run');
     const list = activeList(deps.db);
     const labels = list ? currentLabels(deps.db, labelInputs([run]), list.number) : new Map();
-    const view = runView(run, listWarnings(deps.db), storedNames(runs), scopeFor(runs), labels, list);
+    const view = runPageView({
+      run,
+      runs,
+      sessions: listUnits(deps.db, 'session'),
+      warnings: listWarnings(deps.db),
+      names: storedNames(runs),
+      scope: scopeFor(runs),
+      labels,
+      list,
+    });
     // A hidden project's run is a 404, as if it weren't stored.
     return view ? c.json(view) : c.notFound();
   });

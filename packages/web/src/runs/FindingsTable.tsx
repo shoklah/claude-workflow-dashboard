@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -9,11 +9,10 @@ import {
 } from '@tanstack/react-table';
 import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { EmptyRow, Text, Unknown } from '../components/Num.tsx';
-import { TERM } from '../components/Panel.tsx';
+import { Section, Term } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
-import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName } from '../lib/format.ts';
+import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName, taskLabel } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -28,7 +27,7 @@ const helper = createColumnHelper<typeof features, Row>();
 const columnsOf = (labels: Record<string, string>) => helper.columns([
   helper.accessor('id', { header: '#', cell: (c) => <Text value={c.getValue()} /> }),
   helper.accessor('step', { header: 'Step', filterFn: 'equalsString', cell: (c) => STEP_LABELS[c.getValue()] }),
-  helper.accessor((f) => (f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : null), {
+  helper.accessor(taskLabel, {
     id: 'task',
     header: 'Task',
     cell: (c) => <Text value={c.getValue()} unknown="no task" />,
@@ -81,14 +80,7 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
     cell: (c) => {
       if (c.getValue() === null) return <Unknown label="no app label" />;
       return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0} className={TERM}>
-              {capitalize(appCallLabel(c.row.original, labels))}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{c.row.original.labelReason}</TooltipContent>
-        </Tooltip>
+        <Term tip={c.row.original.labelReason}>{capitalize(appCallLabel(c.row.original, labels))}</Term>
       );
     },
   }),
@@ -114,46 +106,64 @@ const FILTERS = [
 /**
  * Every finding of the run in one table, filtered by step, severity and outcome, with its labels: the workflow's, which
  * win, and the app's; each category named by `categoryLabels` (the response's). With `run`, a first column links each
- * finding to its run.
+ * finding to its run. On the run page, `heading` is its title, starting the filter row and naming its `Section` as a region, `label` names the scrolling container, `skip`
+ * leaves out filters and `containerClassName` adds to the container's classes (its coloured side).
  */
 export function FindingsTable({
   findings,
   categoryLabels,
   run,
+  heading,
+  label = 'Findings',
+  skip = [],
+  containerClassName,
 }: {
   findings: Row[];
   categoryLabels: Record<string, string>;
   run?: boolean;
+  heading?: ReactNode;
+  label?: string;
+  skip?: (typeof FILTERS)[number]['id'][];
+  containerClassName?: string;
 }) {
   const columns = useMemo(() => [...(run ? runColumn : []), ...columnsOf(categoryLabels)], [run, categoryLabels]);
   const table = useTable({ features, columns, data: findings });
   const rows = table.getRowModel().rows;
+  const filters = (
+    <div className="flex flex-wrap items-center gap-4 text-sm">
+      {FILTERS.filter((filter) => !skip.includes(filter.id)).map((filter) => {
+        const column = table.getColumn(filter.id)!;
+        const values = [...new Set(findings.map((f) => f[filter.id]).filter((v) => v !== null))].sort();
+        return (
+          <label key={filter.id} className="flex items-center gap-1.5">
+            {filter.label}
+            <select
+              value={String(column.getFilterValue() ?? '')}
+              onChange={(e) => column.setFilterValue(e.target.value)}
+            >
+              <option value="">All</option>
+              {values.map((value) => (
+                <option key={value} value={value}>
+                  {filter.show(value)}
+                </option>
+              ))}
+            </select>
+          </label>
+        );
+      })}
+    </div>
+  );
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        {FILTERS.map((filter) => {
-          const column = table.getColumn(filter.id)!;
-          const values = [...new Set(findings.map((f) => f[filter.id]).filter((v) => v !== null))].sort();
-          return (
-            <label key={filter.id} className="flex items-center gap-1.5">
-              {filter.label}
-              <select
-                value={String(column.getFilterValue() ?? '')}
-                onChange={(e) => column.setFilterValue(e.target.value)}
-              >
-                <option value="">All</option>
-                {values.map((value) => (
-                  <option key={value} value={value}>
-                    {filter.show(value)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          );
-        })}
-      </div>
+    <Section title={heading} aside={filters}>
       {/* It scrolls sideways, so its container is a named tab stop for keyboard users. */}
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Findings' }}>
+      <Table
+        containerProps={{
+          tabIndex: 0,
+          role: 'region',
+          'aria-label': label,
+          className: containerClassName,
+        }}
+      >
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>
@@ -184,6 +194,6 @@ export function FindingsTable({
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Section>
   );
 }

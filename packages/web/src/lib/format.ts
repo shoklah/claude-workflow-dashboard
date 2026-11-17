@@ -1,4 +1,4 @@
-import { parseTime, toStepKind, type Area, type Path, type FindingRow, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type Path, type FindingRow, type Outcome, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -121,6 +121,44 @@ export function countName(key: string): string {
   return COUNT_LABELS[key] ?? capitalize(countLabel(key));
 }
 
+/** A finding's outcome on screen: its count name, "No outcome" when it has none. */
+export function outcomeLabel(outcome: Outcome | 'none' | null): string {
+  return outcome == null || outcome === 'none' ? 'No outcome' : countName(outcome);
+}
+
+/** Who ran a step, by name only: its agent, or "in the session" without one (a flow box's reviewer). */
+export function reviewerLabel(step: { agent: string | null } | null): string {
+  return step?.agent || 'in the session';
+}
+
+/** Who ran a step: its agent, then its model (`modelLabel`) and effort, "task-reviewer · Opus 5.5, high"; "in the
+ * session" without an agent. */
+export function stepBy(step: { agent: string | null; model: string | null; effort: string | null } | null): string {
+  if (!step?.agent) return reviewerLabel(step);
+  const model = modelLabel(step.model);
+  return joined([step.agent, model && (step.effort ? `${model}, ${step.effort}` : model)]);
+}
+
+/** Who ran a step, after a verb: "by task-reviewer · Opus 5.5, high", or "in the session" without an agent. */
+export function byLabel(step: Parameters<typeof stepBy>[0]): string {
+  return step?.agent ? `by ${stepBy(step)}` : stepBy(step);
+}
+
+/** A fix-check verdict on screen: `open` as "Still open", any other by its count name ("Not proportionate"). */
+export function verdictLabel(verdict: string): string {
+  return verdict === 'open' ? 'Still open' : countName(verdict);
+}
+
+/** A round's verdict on the step detail's stacked list: "Round 2: still open". */
+export function roundVerdictLabel(round: number, verdict: string): string {
+  return `Round ${round}: ${verdictLabel(verdict).toLowerCase()}`;
+}
+
+/** A finding's outcome takes the warning ink: Open and No outcome, on the graph's chips and the step detail's alike. */
+export function outcomeWarns(outcome: Outcome | 'none' | null): boolean {
+  return outcome == null || outcome === 'none' || outcome === 'open';
+}
+
 /** A count line's counts as lines, each its name (`countName`) and its number; null when the counts aren't known. */
 export function countLines(counts: Record<string, number | null> | null): [string, number | null][] | null {
   return counts && Object.entries(counts).map(([key, n]) => [countName(key), n]);
@@ -208,9 +246,9 @@ export function appCallLabel(f: FindingRow, labels: Record<string, string>): str
   return differs || (f.judge === 'workflow' ? 'agrees' : countName(f.relevance));
 }
 
-/** Where a reviewer's strength comes from: its step, and its task when it has one: "Task review · task 3". */
-export function strengthWhere(strength: { step: StepKind; task: number | null }): string {
-  return joined([STEP_LABELS[strength.step], strength.task !== null ? `task ${strength.task}` : null]);
+/** A finding's or a strength's task as its Task cell shows it: the task's number, else its wave ("Wave A"), else null. */
+export function taskLabel(f: { task: number | null; wave: string | null }): string | null {
+  return f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : null;
 }
 
 /** A cost in dollars, or a dash when it isn't known. */
@@ -297,6 +335,19 @@ export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
+/** A fix loop's rounds as a screen reader hears them, saying when the last left findings open. */
+export function roundsLabel(count: number, open: boolean): string {
+  return open ? `${plural(count, 'round')}, the last left findings open` : plural(count, 'round');
+}
+
+/** The later fix commits' count on screen: "1 later fix", "2 later fixes". */
+export function laterFixesLabel(count: number): string {
+  return `${count} later ${count === 1 ? 'fix' : 'fixes'}`;
+}
+
+/** What the reporter counts as a later fix, the tooltip of its term. */
+export const LATER_FIXES_TERM = 'Commits starting with "fix" that touched this run\'s files in the 14 days after it.';
+
 /** A step box's warnings link's name, since a list of links reads it alone: "1 warning on Final review". */
 export function stepWarningsLabel(count: number, step: StepKind): string {
   return `${plural(count, 'warning')} on ${STEP_LABELS[step]}`;
@@ -352,6 +403,12 @@ export const WARNING_BORDER = 'border-warning-edge';
 export const WARNING_INK = 'text-warning-ink';
 // The import notice's and showing mode's amber glass bar (DESIGN.md's Notice bars).
 export const NOTICE = 'rounded-panel border border-notice-edge bg-notice text-sm text-notice-ink';
+// The run page's two findings tables: each one's 4 px left side (its container's own border, so it follows the rounded
+// corners), amber for problems and green for strengths, and its title icon's ink.
+export const PROBLEMS_SIDE = 'border-l-4 border-l-notice-edge';
+export const STRENGTHS_SIDE = 'border-l-4 border-l-success-edge';
+export const PROBLEMS_INK = 'text-notice-edge';
+export const STRENGTHS_INK = 'text-success-edge';
 
 // A share bar (a meter): the ramp's dataviz blue for its fill (an empty bar, so the step's text colour does nothing),
 // on the ramp's lightest step for its track.
@@ -390,6 +447,13 @@ export function splitPair(pair: string): { model: string | null; effort: string 
   const [model, effort] = pair.split('/');
   return { model: modelLabel(model), effort: !effort || effort === '-' ? null : effort };
 }
+
+/** A model and effort and how many ran so. */
+export type Pair = { model: string | null; effort: string | null; count: number };
+
+/** Counts by "model/effort" pair, each split by `splitPair`, in the counts' order. */
+export const pairsOf = (counts: Record<string, number>): Pair[] =>
+  Object.entries(counts).map(([pair, count]) => ({ ...splitPair(pair), count }));
 
 const DOLLARS = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

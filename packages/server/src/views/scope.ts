@@ -1,4 +1,4 @@
-import { folderName, projectNames, SESSION_ID, sessionRootOf, splitSessionId, type RunFacts } from '@cwd/shared';
+import { folderName, projectNames, SESSION_ID, sessionRootOf, splitSessionId, type RunEntry, type RunFacts } from '@cwd/shared';
 import { projectKey } from '../keys.ts';
 import { trimPaths } from '../text.ts';
 
@@ -77,6 +77,11 @@ export function maskText<T extends string | null | undefined>(scope: Scope | nul
   if (masks.size === 0) return masked as T;
   const words = new RegExp(asWords([...masks.keys()]), 'gi');
   return masked.replace(words, (word) => masks.get(word.toLowerCase()) ?? word) as T;
+}
+
+/** A run's offers with each skill masked (maskText), for the Steps page's sums and the run page alike. */
+export function maskOffers(scope: Scope | null, offers: RunEntry['offers']): RunEntry['offers'] {
+  return offers?.map((o) => ({ ...o, skill: maskText(scope, o.skill) }));
 }
 
 /**

@@ -1,7 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
-import { settled } from './settled.ts';
 
 // dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML, then report-v6
 // and report-v7, which adds each unit's context.
@@ -25,13 +24,69 @@ test('runs list and run page have no axe violations', async ({ page }) => {
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await openFullRun(page);
-  await page.getByRole('group', { name: 'Task 1' }).getByText('Task review').click();
+  const task1 = page.getByRole('group', { name: "The run's flow" }).getByRole('button', { name: /^Task 1(?!\d)/ });
+  await task1.click();
+  await expect(task1).toHaveAttribute('aria-pressed', 'true');
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
 
-  await page.getByRole('button', { name: 'Findings', exact: true }).click();
-  await expect(page.getByRole('table')).toBeVisible();
-  await settled(page.getByRole('group', { name: 'View' }));
+test("the Full run's page has no sideways scroll at 375 px", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await openFullRun(page);
+  await expect(page.getByRole('group', { name: "The run's flow" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test('an unknown run key says so at once', async ({ page }) => {
+  await page.goto('/runs/0000000000000000');
+  // A 404 isn't retried, so the message shows within the default timeout.
+  await expect(page.getByText('No run with this key.')).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Runs', exact: true })).toHaveAttribute('href', '/runs');
+});
+
+test("at 1440 px the fold's panels sit in two columns once opened, and pass axe", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openFullRun(page);
+  const fold = page.locator('details').filter({ hasText: 'Cost, context and skills' });
+  await fold.locator('summary').click();
+  const names = ['Est. cost by phase', 'Models and advisor', 'Context', 'Skills'];
+  const boxes = await Promise.all(names.map((name) => page.getByRole('region', { name, exact: true }).boundingBox()));
+  const [cost, models, context, skills] = boxes.map((box) => box!);
+  expect(models.x).toBeGreaterThan(cost.x + cost.width);
+  expect(models.y).toBe(cost.y);
+  expect(context.x).toBe(cost.x);
+  expect(skills.x).toBe(models.x);
+  expect(context.y).toBeGreaterThan(cost.y);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("at 375 px the fold's panels stack in one column, with no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await openFullRun(page);
+  await page.locator('details').filter({ hasText: 'Cost, context and skills' }).locator('summary').click();
+  const cost = (await page.getByRole('region', { name: 'Est. cost by phase', exact: true }).boundingBox())!;
+  const models = (await page.getByRole('region', { name: 'Models and advisor', exact: true }).boundingBox())!;
+  expect(models.x).toBe(cost.x);
+  expect(models.y).toBeGreaterThan(cost.y + cost.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test("at 375 px, selecting a step brings its detail's title into view", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await openFullRun(page);
+  await page.getByRole('group', { name: "The run's flow" }).getByRole('button', { name: /^Final review/ }).click();
+  const detail = page.getByRole('region', { name: 'Final review', exact: true });
+  await expect(detail.getByRole('heading', { name: 'Final review' })).toBeInViewport();
+});
+
+test("the Full run's chain opens its plan run and counts its later fix", async ({ page }) => {
+  await openFullRun(page);
+  const chain = page.getByRole('list', { name: 'Before and after this run' });
+  await expect(chain.getByText('1 later fix')).toBeVisible();
+  await chain.getByRole('link', { name: 'Plan run' }).click();
+  await expect(page).toHaveURL(/\/runs\/51120289e82db399$/);
+  await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Before and after this run' }).getByText('This run, plan')).toBeVisible();
 });
 
 test("each run's row names its branch as the link to its page", async ({ page }) => {
@@ -61,39 +116,42 @@ test('a branch with HTML shows as text', async ({ page }) => {
   await expect(page.getByRole('heading', { name: HTML_TEXT, level: 1 })).toBeVisible();
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
 
-  // A finding's summary on the Full run, in the timeline and in the findings table.
+  // A finding's summary on the Full run, in the findings table.
   await openFullRun(page);
-  await page.getByRole('group', { name: 'Task 2' }).getByText(/Task review/).click();
-  await expect(page.getByText(HTML_TEXT)).toBeVisible();
-  await page.getByRole('button', { name: 'Findings', exact: true }).click();
   await expect(page.getByRole('cell', { name: HTML_TEXT })).toBeVisible();
+  await expect(page.locator('img[src="x"]')).toHaveCount(0);
+
+  // The same summary in Task 2's detail.
+  await page.getByRole('group', { name: "The run's flow" }).getByRole('button', { name: /^Task 2(?!\d)/ }).click();
+  await expect(page.getByRole('table', { name: 'Task 2', exact: true }).getByText(HTML_TEXT)).toBeVisible();
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   expect(dialogs).toEqual([]);
 });
 
-test('the toggle switches between timeline and findings', async ({ page }) => {
+test("the Full run's Strengths table lists its three strengths", async ({ page }) => {
   await openFullRun(page);
-  await expect(page.getByText('Started')).toBeVisible();
-  await expect(page.getByRole('table')).toHaveCount(0);
-
-  await page.getByRole('button', { name: 'Findings', exact: true }).click();
-  await expect(page.getByRole('row')).toHaveCount(13);
-  await expect(page.getByText('Started')).toHaveCount(0);
-
-  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
-  await expect(page.getByText('Started')).toBeVisible();
-  await expect(page.getByRole('table')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Strengths (3)' })).toBeVisible();
+  const table = page.getByRole('region', { name: 'Strengths table' });
+  await expect(table.locator('tbody tr')).toHaveCount(3);
+  await expect(table.getByText('No sync payload reaches a log')).toBeVisible();
 });
 
-test('the schema 5 run page lists its strengths under the findings table', async ({ page }) => {
+test("at 1440 px the Strengths table's short columns take their content's width, so Summary takes the room", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openFullRun(page);
+  const table = page.getByRole('region', { name: 'Strengths table' });
+  const width = async (name: string) => (await table.getByRole('columnheader', { name, exact: true }).boundingBox())!.width;
+  const short = (await Promise.all(['#', 'Step', 'Task', 'Category'].map(width))).reduce((sum, w) => sum + w, 0);
+  expect(await width('Summary')).toBeGreaterThan(short);
+});
+
+test('the schema 5 run page lists its strengths in the Strengths table', async ({ page }) => {
   await page.goto('/runs');
   await page.getByRole('link', { name: 'feature/webhooks' }).click();
   await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
-  await page.getByRole('button', { name: 'Findings', exact: true }).click();
-  const strengths = page.getByRole('region', { name: 'Strengths', exact: true });
-  await expect(strengths.getByRole('listitem')).toHaveCount(2);
+  const strengths = page.getByRole('region', { name: 'Strengths table' });
+  await expect(strengths.locator('tbody tr')).toHaveCount(2);
   await expect(strengths.getByText('Each retry delay has its own test')).toBeVisible();
   await expect(strengths.getByText('The signing secret never reaches a log')).toBeVisible();
-  await settled(page.getByRole('group', { name: 'View' }));
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

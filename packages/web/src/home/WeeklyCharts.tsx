@@ -1,7 +1,7 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
 import { STEP_LABELS, formatCompact, formatCost, formatDay, formatDollars, weekLabel } from '../lib/format.ts';
-import { resolveVars, useDark } from '../lib/theme.ts';
+import { resolveVars, useDark, useFontLoaded } from '../lib/theme.ts';
 import { NUM, Num } from '../components/Num.tsx';
 import { Details, Line, Panel } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -34,7 +34,9 @@ const BASELINE = 'var(--chart-baseline)';
 function baseOption(weeks: string[]) {
   return {
     animation: false,
-    textStyle: { fontFamily: 'inherit' },
+    // The theme's font by name: ECharts measures text on a canvas, which can't read `inherit` and would measure in its
+    // default font, narrower than the SVG's, so labels laid out side by side (the legend's) would run into each other.
+    textStyle: { fontFamily: 'var(--font-sans)' },
     grid: { left: 8, right: 8, top: 8, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     tooltip: {
       trigger: 'axis',
@@ -109,8 +111,8 @@ export function singleBars(
 /**
  * Bars of several series by week, each series a palette slot in order unless it names its `color`, a 1px surface border
  * between bars, with a legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the
- * room under the plot for the legend: 64px by default, for a legend that wraps (Home's step kinds), 28px for one that
- * fits on one line. A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
+ * room under the plot for the legend, which each caller sizes to its legend's lines (a `media` rule raising it where
+ * the legend wraps). A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
  * none over a week with no bar, and hides a total that would overlap another.
  */
 export function barsOption(
@@ -160,28 +162,40 @@ export function barsOption(
   };
 }
 
-/** The findings of each step kind, stacked per week. On its own row the eight step kinds fit one legend line; a
- * narrow chart wraps the legend, so it gets the room for four rows. */
+/** The findings of each step kind, stacked per week. Each `maxWidth` is the widest chart in which ECharts wraps the
+ * eight step kinds' legend to one more line (measured in the theme's font), which gets 20px more room; the narrowest
+ * chart, at 375px, takes three lines. */
 function findingsOption(charts: Charts) {
   const option = barsOption(
     charts.weeks,
     stepKinds(charts).map((kind) => ({ name: STEP_LABELS[kind], data: charts.findingsByStep[kind] })),
     { stack: 'findings', legendRoom: 32 },
   );
-  return { baseOption: option, media: [{ query: { maxWidth: 700 }, option: { grid: { bottom: 84 } } }] };
+  return {
+    baseOption: option,
+    media: [
+      { query: { maxWidth: 671 }, option: { grid: { bottom: 52 } } },
+      { query: { maxWidth: 339 }, option: { grid: { bottom: 72 } } },
+    ],
+  };
 }
 
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
   useDark();
+  const fontLoaded = useFontLoaded();
   return (
     <Panel title={title} className="min-w-0 flex-1">
-      <ReactECharts
-        role="img"
-        aria-label={`${title}: bars by week; the numbers are in the table below.`}
-        option={resolveVars(option)}
-        opts={{ renderer: 'svg' }}
-        style={{ height }}
-      />
+      {fontLoaded ? (
+        <ReactECharts
+          role="img"
+          aria-label={`${title}: bars by week; the numbers are in the table below.`}
+          option={resolveVars(option)}
+          opts={{ renderer: 'svg' }}
+          style={{ height }}
+        />
+      ) : (
+        <div style={{ height }} />
+      )}
     </Panel>
   );
 }
