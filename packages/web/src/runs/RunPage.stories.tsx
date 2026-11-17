@@ -107,7 +107,7 @@ export const Full: Story = {
 
     await expect(pairs(canvas.getByRole('region', { name: 'Skills' }))).toEqual([
       ['subagent-driven-development', 'ran'],
-      ['simplify', 'applied 1, skipped 0'],
+      ['simplify', 'found something'],
     ]);
     // A model shows by its name, never its id.
     await expect(pairs(canvas.getByRole('region', { name: 'Models' }))).toEqual([

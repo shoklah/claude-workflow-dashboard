@@ -79,9 +79,9 @@ export const Full: Story = {
     // simplify's two outcomes take two rows, its Skill cell spanning them.
     await expect(simplify).toHaveAttribute('rowspan', '2');
     const first = within(simplify.closest('tr')!).getAllByRole('cell').map((c) => c.textContent);
-    expect(first).toEqual(['5', '1', formatDayTime(parseTime('2026-11-09T16:02:00Z')), 'Applied 2, skipped 1', '3']);
+    expect(first).toEqual(['5', '1', formatDayTime(parseTime('2026-11-09T16:02:00Z')), 'Found something', '3']);
     const second = simplify.closest('tr')!.nextElementSibling as HTMLElement;
-    expect(within(second).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Applied 0, skipped 0', '2']);
+    expect(within(second).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Found nothing', '2']);
     // An outcome reads capitalised.
     const brainstorming = canvas.getByRole('rowheader', { name: 'brainstorming' }).closest('tr')!;
     await expect(within(brainstorming).getByRole('cell', { name: 'Wrote a file' })).toBeVisible();

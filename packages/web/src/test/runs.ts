@@ -177,7 +177,7 @@ export const runFull: RunResponse = {
   ],
   skills: [
     { name: 'subagent-driven-development', outcome: 'ran' },
-    { name: 'simplify', outcome: 'applied 1, skipped 0' },
+    { name: 'simplify', outcome: 'found something' },
   ],
   models: [
     { model: 'claude-opus-5-5', cost: 5.2 },
