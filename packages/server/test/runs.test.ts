@@ -201,6 +201,102 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
   ]);
 });
 
+test("a step's model and effort are its dispatch's, else its own", async () => {
+  const { timeline: full } = await run(FULL);
+  // The Full run's steps are tied to no dispatch: the step's own alias.
+  expect(full[1].tasks[0].steps[0]).toMatchObject({ step: 'task_review', model: 'opus', effort: 'high' });
+  db.$client.close();
+  db = dbWith('report-v7', (raw) => {
+    // A tied dispatch whose model is null, as when its transcript is missing, leaves the step's own alias.
+    raw.runs[5].dispatches.find((d: any) => d.step === 2).model = null;
+  });
+  const webhooks = runKey(fixture('report-v7').runs[5]) as string;
+  const steps = (await run(webhooks)).timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]);
+  const task1 = steps.filter((s) => s.step === 'task_review' || s.step === 'fix_check');
+  expect(task1[0]).toMatchObject({ step: 'task_review', model: 'claude-opus-5-5', effort: 'high' });
+  expect(task1[1]).toMatchObject({ step: 'fix_check', model: 'opus', effort: 'high' });
+  expect(steps.find((s) => s.step === 'simplify')).toMatchObject({ model: null, effort: null });
+});
+
+test('a wave group carries its conflicts', async () => {
+  expect((await run(FULL)).timeline.map((g) => g.conflicts)).toEqual([null, 0, 1, null, null, null]);
+});
+
+/** report-full with the Full run's waves A (tasks 1 and 2) and B (task 4), and `extra` waves after them. */
+const regrouped = (...extra: { wave: string; tasks: number[] }[]) =>
+  dbWith('report-full', (raw) => {
+    raw.runs[4].waves = [{ wave: 'A', tasks: [1, 2] }, { wave: 'B', tasks: [4] }, ...extra];
+  });
+
+test("groups follow the run's order", async () => {
+  db.$client.close();
+  db = regrouped();
+  expect((await run(FULL)).timeline.map((g) => g.label)).toEqual([
+    'Start',
+    'Wave A',
+    'Task 3',
+    'Wave B',
+    'Simplify',
+    'Final review',
+    'End',
+  ]);
+});
+
+test('a wave with no step comes after the groups that have one', async () => {
+  db.$client.close();
+  db = regrouped({ wave: 'C', tasks: [9] });
+  expect((await run(FULL)).timeline.map((g) => g.label)).toEqual([
+    'Start',
+    'Wave A',
+    'Task 3',
+    'Wave B',
+    'Wave C',
+    'Simplify',
+    'Final review',
+    'End',
+  ]);
+});
+
+test("a step naming a wave the record doesn't list gets that wave's group", async () => {
+  db.$client.close();
+  db = dbWith('report-full', (raw) =>
+    raw.runs[4].steps.push({
+      step: 'task_review',
+      task: null,
+      wave: 'C',
+      round: 0,
+      agent: 'task-reviewer',
+      counts: { minor: 1 },
+      findings: [{ id: 'F13', severity: 'minor', summary: 'An invented finding' }],
+    }),
+  );
+  const { timeline, findings } = await run(FULL);
+  const waveC = timeline.find((g) => g.label === 'Wave C')!;
+  expect(waveC).toMatchObject({ kind: 'wave', tasks: [], conflicts: null });
+  expect(waveC.steps.map((s) => s.findings.map((f) => f.id))).toEqual([['F13']]);
+  const grouped = timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]).flatMap((s) => s.findings);
+  for (const f of findings) expect(grouped.map((g) => g.id)).toContain(f.id);
+});
+
+test("a kit's step carries its kit", async () => {
+  db.$client.close();
+  db = dbWith('report-full', (raw) =>
+    raw.runs[4].steps.push({ step: 'kit_review', kit: 'ui', task: 2, round: 0, agent: 'kit-reviewer', counts: {}, findings: [] }),
+  );
+  const task2 = (await run(FULL)).timeline[1].tasks.find((t) => t.task === 2)!;
+  expect(task2.steps.find((s) => s.step === 'kit_review')).toMatchObject({ kit: 'ui', agent: 'kit-reviewer' });
+});
+
+test('a strength carries its wave', async () => {
+  db.$client.close();
+  db = dbWith('report-full', (raw) => {
+    raw.runs[4].steps[4].strengths = [{ category: 'tests', summary: 'An invented strength' }];
+  });
+  expect((await run(FULL)).strengths).toEqual([
+    { step: 'task_review', task: null, wave: 'A', round: 0, category: 'tests', summary: 'An invented strength' },
+  ]);
+});
+
 // Every export fixture but report-shape, a deliberate shape failure, so a fixture that stops loading fails here. A
 // step is its kind, round, agent, task and wave, so a dropped step and a doubled one can't cancel out, even across
 // tasks: a shown step takes its task from its task row and its wave from its wave group's label ("Wave A").
@@ -350,13 +446,13 @@ test("a run's strengths list each review step's, with its step, task and round",
   db.$client.close();
   db = dbWith('report-v5');
   expect((await run(WEBHOOKS)).strengths).toEqual([
-    { step: 'task_review', task: 1, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
-    { step: 'final_review', task: null, round: 0, category: 'security_privacy', summary: 'The signing secret never reaches a log' },
+    { step: 'task_review', task: 1, wave: null, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
+    { step: 'final_review', task: null, wave: null, round: 0, category: 'security_privacy', summary: 'The signing secret never reaches a log' },
   ]);
   expect((await run(FULL)).strengths).toEqual([]);
 });
 
-test("with showing on, the run page holds no hidden project's name, path or branch, its strengths' included", async () => {
+test("with showing on, the run page holds no hidden project's name, path or branch, its strengths' and kit steps' included", async () => {
   const raw = fixture('report-v5');
   const branches = new Map<string, string[]>();
   for (const r of raw.runs) {
@@ -372,10 +468,17 @@ test("with showing on, the run page holds no hidden project's name, path or bran
     // A strength that names the hidden lantern-notes, its branch and a path in it.
     raw.runs[5].steps[1].strengths[0].summary =
       'As lantern-notes does on feature/offline-sync in /Users/example/Work/lantern-notes/src/retry.ts';
+    // A kit's step whose kit, agent and tied dispatch's model name the hidden lantern-notes.
+    const index = raw.runs[5].steps.push({
+      step: 'kit_review', kit: 'lantern-notes', task: 2, round: 0, agent: 'lantern-notes', counts: {}, findings: [],
+    }) - 1;
+    raw.runs[5].dispatches.push({ agent: 'kit-reviewer', model: 'lantern-notes', effort: 'high', step: index });
   });
   setShowing(db, [projectKey(TIDEPOOL)]);
   const body = await run(WEBHOOKS);
   expect(body.strengths[0].summary).toBe('As another project does on another branch in retry.ts');
+  const kitStep = body.timeline.flatMap((g) => g.tasks.flatMap((t) => t.steps)).find((s) => s.step === 'kit_review');
+  expect(kitStep).toMatchObject({ kit: 'another project', agent: 'another project', model: 'another project' });
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
 
@@ -383,9 +486,9 @@ test('a schema 1 run has empty groups and beforeSteps', async () => {
   const view = await run(RATE_LIMITS);
   expect(view.facts.beforeSteps).toBe(true);
   expect(view.timeline).toEqual([
-    { kind: 'start', label: 'Start', at: '2026-10-06T13:05:00Z', tasks: [], steps: [] },
-    { kind: 'final', label: 'Final review', at: null, tasks: [], steps: [] },
-    { kind: 'end', label: 'End', at: '2026-10-06T15:20:00Z', tasks: [], steps: [] },
+    { kind: 'start', label: 'Start', at: '2026-10-06T13:05:00Z', conflicts: null, tasks: [], steps: [] },
+    { kind: 'final', label: 'Final review', at: null, conflicts: null, tasks: [], steps: [] },
+    { kind: 'end', label: 'End', at: '2026-10-06T15:20:00Z', conflicts: null, tasks: [], steps: [] },
   ]);
   expect(view.findings).toEqual([]);
   expect(view).toMatchObject({ skills: [], models: [], advisor: null, warnings: [] });

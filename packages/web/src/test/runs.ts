@@ -139,17 +139,18 @@ const F5 = finding({ id: 'F5', step: 'simplify', summary: 'Merge the two query b
 const F6 = finding({ id: 'F6', step: 'final_review', severity: 'minor', summary: 'Error text not localized', outcome: 'open' });
 
 function step(s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep {
-  return { round: 0, agent: null, counts: {}, findings: [], ...s };
+  return { round: 0, agent: null, model: null, effort: null, kit: null, counts: {}, findings: [], ...s };
 }
 
 export const runFull: RunResponse = {
   facts: fullRun,
   timeline: [
-    { kind: 'start', label: 'Start', at: fullRun.startedAt, tasks: [], steps: [] },
+    { kind: 'start', label: 'Start', at: fullRun.startedAt, conflicts: null, tasks: [], steps: [] },
     {
       kind: 'wave',
       label: 'Wave A',
       at: null,
+      conflicts: null,
       tasks: [
         { task: 1, steps: [step({ step: 'task_review', counts: { important: 1, minor: 1 }, findings: [F1, F2] }), step({ step: 'fix_check', round: 1, counts: { fixed: 1 } })] },
         { task: 2, steps: [step({ step: 'task_review', counts: { critical: 1 }, findings: [F3] })] },
@@ -160,20 +161,21 @@ export const runFull: RunResponse = {
       kind: 'wave',
       label: 'Wave B',
       at: null,
+      conflicts: null,
       tasks: [
         { task: 3, steps: [step({ step: 'task_review' })] },
         { task: 4, steps: [step({ step: 'task_review' })] },
       ],
       steps: [],
     },
-    { kind: 'simplify', label: 'Simplify', at: null, tasks: [], steps: [step({ step: 'simplify', counts: { applied: 1 }, findings: [F5] })] },
-    { kind: 'final', label: 'Final review', at: null, tasks: [], steps: [step({ step: 'final_review', counts: { minor: 1 }, findings: [F6] })] },
-    { kind: 'end', label: 'End', at: fullRun.finishedAt, tasks: [], steps: [] },
+    { kind: 'simplify', label: 'Simplify', at: null, conflicts: null, tasks: [], steps: [step({ step: 'simplify', counts: { applied: 1 }, findings: [F5] })] },
+    { kind: 'final', label: 'Final review', at: null, conflicts: null, tasks: [], steps: [step({ step: 'final_review', counts: { minor: 1 }, findings: [F6] })] },
+    { kind: 'end', label: 'End', at: fullRun.finishedAt, conflicts: null, tasks: [], steps: [] },
   ],
   findings: [F1, F2, F3, F4, F5, F6],
   strengths: [
-    { step: 'task_review', task: 3, round: 0, category: 'reuse', summary: 'New page reuses the shared table and format helpers' },
-    { step: 'final_review', task: null, round: 0, category: 'tests', summary: 'Each view tested on both fixtures, null facts included' },
+    { step: 'task_review', task: 3, wave: null, round: 0, category: 'reuse', summary: 'New page reuses the shared table and format helpers' },
+    { step: 'final_review', task: null, wave: null, round: 0, category: 'tests', summary: 'Each view tested on both fixtures, null facts included' },
   ],
   skills: [
     { name: 'subagent-driven-development', outcome: 'ran' },
@@ -205,9 +207,9 @@ export const runFull: RunResponse = {
 export const runBeforeSteps: RunResponse = {
   facts: oldRun,
   timeline: [
-    { kind: 'start', label: 'Start', at: null, tasks: [], steps: [] },
-    { kind: 'final', label: 'Final review', at: null, tasks: [], steps: [] },
-    { kind: 'end', label: 'End', at: oldRun.finishedAt, tasks: [], steps: [] },
+    { kind: 'start', label: 'Start', at: null, conflicts: null, tasks: [], steps: [] },
+    { kind: 'final', label: 'Final review', at: null, conflicts: null, tasks: [], steps: [] },
+    { kind: 'end', label: 'End', at: oldRun.finishedAt, conflicts: null, tasks: [], steps: [] },
   ],
   findings: [],
   strengths: [],

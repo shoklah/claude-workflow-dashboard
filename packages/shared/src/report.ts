@@ -142,6 +142,8 @@ const DispatchSchema = z.object({
   skills: strings,
   counts,
   models: ModelsSchema,
+  // The index, in the run's exported `steps`, of the step the reporter tied this dispatch to; null when it tied none.
+  step: num,
 });
 
 export const RunEntrySchema = z.object({

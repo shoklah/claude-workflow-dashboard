@@ -39,28 +39,36 @@ export type FindingRow = {
   appRelevance: Relevance | null;
 };
 
+/** A step of the timeline: its model and effort its tied dispatch's, else its own (the alias it was asked for), field by
+ * field, and its kit's name on a kit's own review and fix-checks. */
 export type TimelineStep = {
   step: StepKind;
   round: number | null;
   agent: string | null;
+  model: string | null;
+  effort: string | null;
+  kit: string | null;
   counts: Record<string, number>;
   findings: FindingRow[];
 };
 
 /** A part of the untimed timeline: only `start` and `end` carry a time. A wave holds its tasks' steps and its wave
- * check's steps; a task in no wave is a `task` group holding that one task. */
+ * check's steps; a task in no wave is a `task` group holding that one task. `conflicts` is a wave's merge conflicts,
+ * null on every other group. */
 export type TimelineGroup = {
   kind: 'start' | 'plan' | 'wave' | 'task' | 'simplify' | 'final' | 'end';
   label: string;
   at: string | null;
+  conflicts: number | null;
   tasks: { task: number; steps: TimelineStep[] }[];
   steps: TimelineStep[];
 };
 
-/** A reviewer's strength, with its step's kind, task and round. */
+/** A reviewer's strength, with its step's kind, task, wave and round. */
 export type StrengthRow = {
   step: StepKind;
   task: number | null;
+  wave: string | null;
   round: number | null;
   category: string | null;
   summary: string | null;

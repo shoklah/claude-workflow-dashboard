@@ -88,12 +88,16 @@ export const NotRequired: Story = {
         kind: 'final',
         label: 'Final review',
         at: null,
+        conflicts: null,
         tasks: [],
         steps: [
           {
             step: 'final_review',
             round: 0,
             agent: null,
+            model: null,
+            effort: null,
+            kit: null,
             counts: { unneeded: 1, minor: 0 },
             findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'to_owner' }],
           },
