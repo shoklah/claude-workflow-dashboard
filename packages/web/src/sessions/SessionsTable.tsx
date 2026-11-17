@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { cn } from 'cn';
-import type { SessionRow } from '@cwd/shared';
-import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { parseTime, type SessionRow } from '@cwd/shared';
+import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
+import { Num, Text, Unknown } from '../components/Num.tsx';
+import { ScrollTable } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
-import { RowToggle } from '../components/RowToggle.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   WARNING_INK,
@@ -19,7 +18,6 @@ import {
   usageName,
 } from '../lib/format.ts';
 
-const COLUMN_COUNT = 14;
 const KINDS: Record<SessionRow['timeline'][number]['kind'], string> = {
   skill: 'Skill loaded',
   command: 'Command typed',
@@ -34,7 +32,7 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
   }
   const times = timelineTimes(session.timeline.map((item) => item.at));
   return (
-    <table aria-label={`Timeline of ${name}`} className="text-sm">
+    <ScrollTable label={`Timeline of ${name}`}>
       <thead>
         <tr className="text-left text-muted-foreground">
           {['Time', 'What', 'Name', 'Outcome'].map((column) => (
@@ -81,132 +79,96 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
           );
         })}
       </tbody>
-    </table>
+    </ScrollTable>
   );
 }
 
-/** A session's row of counts and, when open, its timeline's row below it. */
-function SessionRows({ session }: { session: SessionRow }) {
-  const [open, setOpen] = useState(false);
-  const name = sessionName(session.title);
-  const count = (kind: string) => new Set(session.timeline.filter((t) => t.kind === kind).map((t) => t.name)).size;
-  const neverLoaded = new Set(session.timeline.filter((t) => t.neverLoaded).map((t) => t.name)).size;
-  return (
-    <>
-      <TableRow className={open ? 'border-b-0' : undefined}>
-        <TableCell className="max-w-72 align-top font-medium whitespace-normal">
-          <RowToggle
-            open={open}
-            onToggle={() => setOpen(!open)}
-            className={cn(!session.title && 'font-normal text-muted-foreground')}
-          >
-            {name}
-          </RowToggle>
-        </TableCell>
-        <TableCell className="align-top text-muted-foreground">
-          {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} />}
-        </TableCell>
-        <TableCell className="align-top text-muted-foreground">{projectLabel(session.project)}</TableCell>
-        <TableCell className="align-top text-muted-foreground tabular-nums">
-          <Time iso={session.start} />
-        </TableCell>
-        <TableCell className={cn(NUM, 'align-top')}>
-          <Num value={session.minutes} format={formatLength} />
-        </TableCell>
-        <TableCell className="align-top">
-          {session.models.length === 0 && <Unknown />}
-          {session.models.map(({ model }) => (
+const count = (s: SessionRow, kind: string) => new Set(s.timeline.filter((t) => t.kind === kind).map((t) => t.name)).size;
+const neverLoaded = (s: SessionRow) => new Set(s.timeline.filter((t) => t.neverLoaded).map((t) => t.name)).size;
+
+const COLUMNS: ListColumn<SessionRow>[] = [
+  { id: 'session', header: 'Session', wide: true, value: (s) => s.title, cell: (s) => sessionName(s.title), text: (s) => sessionName(s.title) },
+  { id: 'project', header: 'Project', fold: true, value: (s) => projectLabel(s.project), cell: (s) => projectLabel(s.project) },
+  {
+    id: 'started',
+    header: 'Started',
+    fold: true,
+    value: (s) => (s.start === null ? null : parseTime(s.start).getTime()),
+    cell: (s) => <Time iso={s.start} />,
+  },
+  { id: 'length', header: 'Length', num: true, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },
+  {
+    id: 'cost',
+    header: 'Est. cost ($)',
+    num: true,
+    fold: true,
+    value: (s) => s.cost,
+    cell: (s) => <Num value={s.cost} format={formatDollars} />,
+  },
+  {
+    id: 'warnings',
+    header: 'Warnings',
+    num: true,
+    value: (s) => s.warnings,
+    cell: (s) => (
+      <span className={cn(s.warnings > 0 && WARNING_INK)}>
+        <Num value={s.warnings} />
+      </span>
+    ),
+  },
+];
+
+const FACTS: ListFact<SessionRow>[] = [
+  ['ID', (s) => (s.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={s.sessionId} />)],
+  [
+    'Model',
+    (s) =>
+      s.models.length === 0
+        ? null
+        : s.models.map(({ model }) => (
             <span key={model} className="block">
               <Text value={modelLabel(model)} />
             </span>
-          ))}
-        </TableCell>
-        <TableCell className="align-top text-muted-foreground">
-          {session.models.length === 0 && <Unknown />}
-          {session.models.map(({ model, effort }) => (
+          )),
+  ],
+  [
+    'Effort',
+    (s) =>
+      s.models.length === 0
+        ? null
+        : s.models.map(({ model, effort }) => (
             <span key={model} className="block">
               <Text value={effort} />
             </span>
-          ))}
-        </TableCell>
-        <TableCell className={cn(NUM, 'align-top')}>
-          <Num value={session.cost} format={formatDollars} />
-        </TableCell>
-        <TableCell className={cn(NUM, 'align-top')}>
-          <Num value={count('skill')} />
-        </TableCell>
-        <TableCell className={cn(NUM, 'align-top')}>
-          <Num value={count('command')} />
-        </TableCell>
-        <TableCell className={cn(NUM, 'align-top', neverLoaded > 0 && WARNING_INK)}>
-          <Num value={neverLoaded} />
-        </TableCell>
-        <TableCell className={cn(NUM, 'align-top')}>
-          <Num value={session.holds.length} />
-        </TableCell>
-        <TableCell className={cn('align-top', session.startup === false ? WARNING_INK : 'text-muted-foreground')}>
-          {session.startup === null ? <Unknown /> : session.startup ? 'Loaded' : 'Missing'}
-        </TableCell>
-        <TableCell className={cn(NUM, 'align-top', session.warnings > 0 && WARNING_INK)}>
-          <Num value={session.warnings} />
-        </TableCell>
-      </TableRow>
-      {open && (
-        <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={COLUMN_COUNT} className="pt-0 pb-4 pl-9">
-            <Timeline session={session} name={name} />
-          </TableCell>
-        </TableRow>
-      )}
-    </>
-  );
-}
+          )),
+  ],
+  ['Skills', (s) => <Num value={count(s, 'skill')} />],
+  ['Commands typed', (s) => <Num value={count(s, 'command')} />],
+  [
+    'Never loaded',
+    (s) => (
+      <span className={cn(neverLoaded(s) > 0 && WARNING_INK)}>
+        <Num value={neverLoaded(s)} />
+      </span>
+    ),
+  ],
+  ['Runs', (s) => <Num value={s.holds.length} />],
+  ['Startup', (s) => (s.startup === null ? null : <span className={cn(!s.startup && WARNING_INK)}>{s.startup ? 'Loaded' : 'Missing'}</span>)],
+];
 
-/** The Sessions list: a row per session, newest start first as the API gives them; a row's name opens its timeline. */
+/** The Sessions list: a row per session, newest start first as the API gives them; a row's title opens its facts, then
+ * its timeline. */
 export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
   return (
-    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Sessions' }}>
-      <TableHeader>
-        <TableRow>
-          <TableHead rowSpan={2}>Session</TableHead>
-          <TableHead rowSpan={2}>ID</TableHead>
-          <TableHead rowSpan={2}>Project</TableHead>
-          <TableHead rowSpan={2}>Started</TableHead>
-          <TableHead rowSpan={2} className={NUM}>
-            Length
-          </TableHead>
-          <TableHead rowSpan={2}>Model</TableHead>
-          <TableHead rowSpan={2}>Effort</TableHead>
-          <TableHead rowSpan={2} className={NUM}>
-            Est. cost ($)
-          </TableHead>
-          <TableHead rowSpan={2} className={NUM}>
-            Skills
-          </TableHead>
-          <GroupHead span={2}>Commands</GroupHead>
-          <TableHead rowSpan={2} className={NUM}>
-            Runs
-          </TableHead>
-          <TableHead rowSpan={2}>Startup</TableHead>
-          <TableHead rowSpan={2} className={NUM}>
-            Warnings
-          </TableHead>
-        </TableRow>
-        <TableRow>
-          <TableHead className={cn(SUB, NUM)}>Typed</TableHead>
-          <TableHead className={cn(SUB, NUM)}>Never loaded</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sessions.length === 0 && (
-          <EmptyRow columns={COLUMN_COUNT}>
-            No sessions in this period. A session shows here once the reporter reads its transcript.
-          </EmptyRow>
-        )}
-        {sessions.map((session) => (
-          <SessionRows key={session.key} session={session} />
-        ))}
-      </TableBody>
-    </Table>
+    <DataList
+      rows={sessions}
+      rowKey={(s) => s.key}
+      name={(s) => sessionName(s.title)}
+      columns={COLUMNS}
+      facts={FACTS}
+      extra={(s) => <Timeline session={s} name={sessionName(s.title)} />}
+      label="Sessions"
+      empty="No sessions in this period. A session shows here once the reporter reads its transcript."
+    />
   );
 }

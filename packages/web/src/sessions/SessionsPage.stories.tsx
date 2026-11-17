@@ -84,8 +84,8 @@ export const HasWarnings: Story = {
     await canvas.findByText('Debug the export timeout');
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Has warnings' }));
     await expect(fetch).toHaveBeenCalledWith('/api/sessions?weeks=4&warnings=1');
-    // Two header rows and a row per session.
-    await expect(await canvas.findAllByRole('row')).toHaveLength(4);
+    // A header row and a row per session.
+    await expect(await canvas.findAllByRole('row')).toHaveLength(3);
     await expect(canvas.queryByText('Debug the export timeout')).toBeNull();
   },
 };

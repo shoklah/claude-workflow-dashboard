@@ -52,19 +52,19 @@ test('a table that scrolls sideways fades at the edge hiding columns, and one th
   const cueEnd = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
   const mask = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto('/sessions', { waitUntil: 'networkidle' });
-  expect(await cueEnd('Sessions')).toBe('48px');
-  expect(await mask('Sessions')).toContain('100% - 48px');
+  await page.goto('/weeks', { waitUntil: 'networkidle' });
+  expect(await cueEnd('By week table')).toBe('48px');
+  expect(await mask('By week table')).toContain('100% - 48px');
   // The mask cuts what is drawn outside the box, so the keyboard's focus outline is drawn inside it.
   await page.keyboard.press('Tab');
-  const focus = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => {
+  const focus = await page.getByRole('region', { name: 'By week table', exact: true }).evaluate((el) => {
     el.focus();
     const style = getComputedStyle(el);
     return { visible: el.matches(':focus-visible'), mask: style.maskImage, outline: style.outlineStyle, inside: parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth) <= 0 };
   });
   expect(focus).toEqual({ visible: true, mask: expect.stringContaining('100% - 48px'), outline: 'solid', inside: true });
-  await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
-  await expect.poll(() => cueEnd('Sessions')).toBe('0px');
+  await page.getByRole('region', { name: 'By week table', exact: true }).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  await expect.poll(() => cueEnd('By week table')).toBe('0px');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/skills', { waitUntil: 'networkidle' });
   expect(await cueEnd('Skills')).toBe('0px');
