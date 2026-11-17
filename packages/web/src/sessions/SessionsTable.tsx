@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
-import { EmptyRow, GroupHead, NUM, Num, SUB, TITLE, Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, TITLE, Text, Unknown, WRAP } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { RowToggle } from '../components/RowToggle.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
@@ -107,15 +107,15 @@ function SessionRows({ session, initial }: { session: SessionRow; initial: boole
         <TableCell className="align-top text-muted-foreground">
           {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} />}
         </TableCell>
-        <TableCell className="align-top text-muted-foreground">{projectLabel(session.project)}</TableCell>
+        <TableCell className={cn(WRAP, 'align-top text-muted-foreground')}>{projectLabel(session.project)}</TableCell>
         <ChangeCells change={session.change} goal={session.goal} className="align-top" />
-        <TableCell className="align-top text-muted-foreground tabular-nums">
+        <TableCell className={cn(WRAP, 'align-top text-muted-foreground tabular-nums')}>
           <Time iso={session.start} />
         </TableCell>
         <TableCell className={cn(NUM, 'align-top')}>
           <Num value={session.minutes} format={formatLength} />
         </TableCell>
-        <TableCell className="align-top">
+        <TableCell className={cn(WRAP, 'align-top')}>
           {session.models.length === 0 && <Unknown />}
           {session.models.map(({ model }) => (
             <span key={model} className="block">
@@ -182,7 +182,7 @@ export function SessionsTable({ sessions, open = false }: { sessions: SessionRow
           </TableHead>
           <TableHead rowSpan={2}>Model</TableHead>
           <TableHead rowSpan={2}>Effort</TableHead>
-          <TableHead rowSpan={2} className={NUM}>
+          <TableHead rowSpan={2} className={cn(NUM, WRAP)}>
             Est. cost ($)
           </TableHead>
           <TableHead rowSpan={2} className={NUM}>
@@ -199,7 +199,7 @@ export function SessionsTable({ sessions, open = false }: { sessions: SessionRow
         </TableRow>
         <TableRow>
           <TableHead className={cn(SUB, NUM)}>Typed</TableHead>
-          <TableHead className={cn(SUB, NUM)}>Never loaded</TableHead>
+          <TableHead className={cn(SUB, NUM, WRAP)}>Never loaded</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

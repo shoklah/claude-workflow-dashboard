@@ -1,7 +1,7 @@
 import { cn } from 'cn';
 import type { RunRow } from '@cwd/shared';
 import { ChangeLink } from '../components/ChangeLink.tsx';
-import { EmptyRow, GroupHead, NUM, Num, SUB, TITLE, Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, NUM, Num, SUB, TITLE, Text, Unknown, WRAP } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -29,7 +29,7 @@ export function ChangeCells({
           <Unknown label="no design" />
         )}
       </TableCell>
-      <TableCell className={cn('text-muted-foreground', className)}>
+      <TableCell className={cn(WRAP, 'text-muted-foreground', className)}>
         <Text value={goal?.name} unknown="no goal" />
       </TableCell>
     </>
@@ -50,7 +50,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
           <TableHead rowSpan={2}>Project</TableHead>
           <TableHead rowSpan={2}>Path</TableHead>
           <TableHead rowSpan={2}>Finished</TableHead>
-          <TableHead rowSpan={2} className={NUM}>
+          <TableHead rowSpan={2} className={cn(NUM, WRAP)}>
             Time (min)
           </TableHead>
           <TableHead rowSpan={2} className={NUM}>
@@ -63,7 +63,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
           <TableHead rowSpan={2} className={NUM}>
             Stops
           </TableHead>
-          <TableHead rowSpan={2} className={NUM}>
+          <TableHead rowSpan={2} className={cn(NUM, WRAP)}>
             Est. cost ($)
           </TableHead>
           <TableHead rowSpan={2} className={NUM}>
@@ -88,16 +88,16 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
               {run.beforeSteps && <span className="ml-2 text-xs font-normal text-muted-foreground">before steps</span>}
             </TableCell>
             <ChangeCells change={run.change} goal={run.goal} />
-            <TableCell className="text-muted-foreground">
+            <TableCell className={cn(WRAP, 'text-muted-foreground')}>
               <Text value={run.branch} unknown="no branch" />
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className={cn(WRAP, 'text-muted-foreground')}>
               <Text value={run.project} />
             </TableCell>
             <TableCell className="text-muted-foreground">
               <Text value={pathLabel(run.path)} />
             </TableCell>
-            <TableCell className="text-muted-foreground tabular-nums">
+            <TableCell className={cn(WRAP, 'text-muted-foreground tabular-nums')}>
               {run.finishedAt === null ? <Text value={null} /> : <Time iso={run.finishedAt} />}
             </TableCell>
             <TableCell className={NUM}>

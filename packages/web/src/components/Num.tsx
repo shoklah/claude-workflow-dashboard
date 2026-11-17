@@ -6,9 +6,12 @@ import { formatWhole, NONE, type Pair } from '../lib/format.ts';
 /** A numeric column's alignment, for its header and its cells. */
 export const NUM = 'text-right tabular-nums';
 
-/** A title column's cells (a run's, a change's, a session's): the title wraps between 10 rem and 18 rem, never down to a
+/** A title column's cells (a run's, a change's, a session's): the title wraps between 9 rem and 18 rem, never down to a
  * word and never as wide as its longest title. */
-export const TITLE = 'min-w-40 max-w-72 whitespace-normal';
+export const TITLE = 'min-w-36 max-w-72 whitespace-normal';
+
+/** A wide table's other text cells and headers: they wrap at their spaces and hyphens, so the table fits its panel. */
+export const WRAP = 'whitespace-normal';
 
 /** A group header over its sub-columns, in a table's two-row header. */
 export const GROUP = 'h-8 border-b text-center';
