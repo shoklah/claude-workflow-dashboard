@@ -50,10 +50,13 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
 }
 
-/** A unit's `models` map's cost: null with no map, otherwise the sum of its entries' non-null cost (0 when none is
- * priced), as the reporter's spent does. */
+// A sum of known values: null until one is known.
+export const addKnown = (sum: number | null, value: number | null | undefined) => (value == null ? sum : (sum ?? 0) + value);
+
+/** A unit's `models` map's cost: null with no map or no priced entry, otherwise the sum of its entries' non-null
+ * cost. */
 export function modelsCost(models: RunEntry['models']): number | null {
-  return models ? Object.values(models).reduce((sum, m) => sum + (m.cost ?? 0), 0) : null;
+  return models ? Object.values(models).reduce<number | null>((sum, m) => addKnown(sum, m.cost), null) : null;
 }
 
 /** A unit's or a week's tool results summed over every class, 0 when the map is null. */
@@ -111,7 +114,7 @@ export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
     finishedAt: record?.date ?? null,
     // minutes: the reporter's run time, from started to date.
     minutes: run.minutes ?? null,
-    // cost: modelsCost, null when models is null (no window).
+    // cost: modelsCost, null with no models (no window) or no priced model.
     cost: modelsCost(run.models),
     findings: splitFindings(run.steps ?? []),
     // warnings: the number of the run's warns.

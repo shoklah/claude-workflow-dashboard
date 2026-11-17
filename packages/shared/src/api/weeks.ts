@@ -2,7 +2,7 @@ import type { Path } from '../report.ts';
 
 /** One week's sums over its runs, as the reporter's week_rows: runs by path, the summed tasks, final review findings,
  * fix rounds and stops, the summed known Fable and all points (null when none is known), the priced cost (null when
- * no run has models), the median of the known minutes (null when none is known) and the later fix commits. */
+ * no run has a priced model), the median of the known minutes (null when none is known) and the later fix commits. */
 export type WeekRow = {
   runs: Record<Path, number>;
   tasks: number;

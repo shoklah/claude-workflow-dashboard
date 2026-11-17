@@ -32,8 +32,8 @@ describe('runFacts', () => {
     expect(runFacts(noWindow).cost).toBeNull();
   });
 
-  test('cost is 0 when no model is priced', () => {
-    expect(runFacts(run('plan')).cost).toBe(0);
+  test('cost is null when no model is priced', () => {
+    expect(runFacts(run('plan')).cost).toBeNull();
   });
 
   test('stops comes from the record', () => {
@@ -96,10 +96,12 @@ describe('splitSessionId', () => {
 });
 
 describe('modelsCost', () => {
-  test("sums a models map's priced costs, 0 with none priced, null with no map", () => {
+  test("sums a models map's priced costs, null with none priced or no map", () => {
     const tokens = { input: 1, output: 1, cache_read: 0, cache_write: 0 };
     expect(modelsCost({ a: { ...tokens, cost: 0.24 }, b: { ...tokens, cost: null }, c: { ...tokens, cost: 1 } })).toBeCloseTo(1.24);
-    expect(modelsCost({ a: { ...tokens, cost: null } })).toBe(0);
+    expect(modelsCost({ a: { ...tokens, cost: null } })).toBeNull();
+    expect(modelsCost({})).toBeNull();
+    expect(modelsCost({ a: { ...tokens, cost: 0 } })).toBe(0);
     expect(modelsCost(null)).toBeNull();
   });
 });

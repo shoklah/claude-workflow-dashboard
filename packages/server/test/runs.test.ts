@@ -418,6 +418,7 @@ test('lists the run\'s skills, models, advisor notes and warnings', async () => 
     { model: 'claude-fable-6-preview', cost: null },
     { model: 'claude-sonnet-9-preview', cost: null },
   ]);
+  expect((await run(PLAN)).facts.cost).toBeNull();
 });
 
 test('a skill\'s path outcome shows as "wrote a file"', async () => {
