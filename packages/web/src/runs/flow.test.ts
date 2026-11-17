@@ -184,7 +184,7 @@ describe('layout', () => {
   });
 
   describe('flat', () => {
-    // 502 is the graph's width in a 768 px window.
+    // 502 is the narrowest graph the plan run lies flat in, its boxes at their need.
     it.each([['runSmall', 502], ['runSmall', 720], ['runSmall', 1392], ['runPlan', 502], ['runPlan', 720], ['runPlan', 1392]] as const)('lies %s flat at %i', (name, at) => {
       const result = layout(stagesOf(STORIES[name].timeline), at);
       expect(result.shape).toBe('flat');
@@ -258,8 +258,9 @@ describe('layout', () => {
   });
 
   describe('upright', () => {
-    it("stands the plan run up on a phone, where lying flat would cut its boxes' text", () => {
-      const result = layout(stagesOf(runPlan.timeline), 343);
+    // 454 is the graph's width at 768 px, beside the rail.
+    it.each([343, 454])("stands the plan run up at %i, where lying flat would cut its boxes' text", (at) => {
+      const result = layout(stagesOf(runPlan.timeline), at);
       expect(result.shape).toBe('upright');
       expect(clear(result)).toBe(true);
     });
