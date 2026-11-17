@@ -116,7 +116,7 @@ export const PairsNames: Story = {
           names
           pairs={[
             ['subagent-driven-development', 'ran'],
-            ['simplify', 'applied 2, skipped 1'],
+            ['simplify', 'found something'],
           ]}
         />
       </div>
@@ -126,7 +126,7 @@ export const PairsNames: Story = {
     const [long, short] = canvas.getAllByRole('term');
     await expect(long).not.toHaveClass('text-muted-foreground');
     await expect(long.nextElementSibling).toHaveClass('text-muted-foreground');
-    await expect(short.nextElementSibling).toHaveTextContent('applied 2, skipped 1');
+    await expect(short.nextElementSibling).toHaveTextContent('found something');
     // One line each: the long name sits level with its detail, its height one line's.
     await expect(long.getBoundingClientRect().top).toBe(long.nextElementSibling!.getBoundingClientRect().top);
     await expect(long.getBoundingClientRect().height).toBe(short.getBoundingClientRect().height);

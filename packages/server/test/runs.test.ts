@@ -401,7 +401,7 @@ test('lists the run\'s skills, models, advisor notes and warnings', async () => 
   expect(view.facts).toMatchObject({ key: FULL, path: 'full', waves: 2 });
   expect(view.skills).toEqual([
     { name: 'subagent-driven-development', outcome: 'ran' },
-    { name: 'simplify', outcome: 'applied 2, skipped 1' },
+    { name: 'simplify', outcome: 'found something' },
   ]);
   expect(view.models).toEqual([
     { model: 'claude-opus-5-5', cost: 9.52 },
@@ -427,7 +427,11 @@ test('a skill\'s path outcome shows as "wrote a file"', async () => {
   ]);
   expect(skillOutcomeLabel('/Users/example/notes.md')).toBe('wrote a file');
   expect(skillOutcomeLabel('ran')).toBe('ran');
-  expect(skillOutcomeLabel({ applied: 3, skipped: 0 })).toBe('applied 3, skipped 0');
+  expect(skillOutcomeLabel({ applied: 3, skipped: 0 })).toBe('found something');
+  expect(skillOutcomeLabel({ applied: 0, skipped: 2 })).toBe('found something');
+  expect(skillOutcomeLabel({ applied: 0, skipped: 0 })).toBe('found nothing');
+  expect(skillOutcomeLabel({})).toBe('found nothing');
+  expect(skillOutcomeLabel({ applied: 'x' })).toBe('–');
   expect(skillOutcomeLabel(['a', 'b'])).toBe('2 results');
   expect(skillOutcomeLabel(true)).toBe('record written');
   expect(skillOutcomeLabel(false)).toBe('no record');

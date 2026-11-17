@@ -82,7 +82,7 @@ test("skillSums over every stored run and session gives the reporter's runs and 
 test("skillSums counts a skill's loads by skillOutcomeLabel, and a unit that loads it twice once in runs", () => {
   const rows = byName(skillSums(units()));
   expect(rows.get('subagent-driven-development')?.outcomes).toEqual({ ran: 2, 'record written': 1 });
-  expect(rows.get('simplify')?.outcomes).toEqual({ 'applied 2, skipped 1': 1, 'applied 1, skipped 1': 1 });
+  expect(rows.get('simplify')?.outcomes).toEqual({ 'found something': 2 });
   expect(rows.get('brainstorming')?.outcomes).toEqual({ 'wrote a file': 1 });
 
   const twice = skillSums([
