@@ -5,20 +5,23 @@ import { cn } from 'cn';
 import type { ComplianceResponse, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
+import { Text, Unknown } from '../components/Num.tsx';
+import { Line, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import {
   FAMILY_LABELS,
   STEP_LABELS,
-  WARNING_BORDER,
   WARNING_INK,
   hiddenInformationLabel,
   hiddenWarningsLabel,
   informationMark,
   kindLabel,
   plural,
-  runName,
+  projectLabel,
   total,
   warningsSummary,
   weekLabel,
@@ -32,9 +35,16 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
     if (groups.at(-1)?.family !== row.family) {
       groups.push({ family: row.family, heading: FAMILY_LABELS[row.family] ?? row.family, rows: [] });
     }
-    groups.at(-1)!.rows.push({ id: row.kind ?? '', name: kindLabel(row.kind), header: kindLabel(row.kind), values: row.cells });
+    const name = kindLabel(row.kind);
+    groups.at(-1)!.rows.push({ id: row.kind ?? '', name, values: row.cells });
   }
   return groups;
+}
+
+/** A reporter's information line as a term and its value, split at the first ": "; a line with none is "Line N". */
+function informationPair(line: string, i: number): [string, string] {
+  const at = line.indexOf(': ');
+  return at < 0 ? [`Line ${i + 1}`, line] : [line.slice(0, at), line.slice(at + 2)];
 }
 
 /**
@@ -53,8 +63,8 @@ export function CompliancePage({ step }: { step?: StepKind }) {
   const cell = data && selected && data.rows.some((row) => (row.kind ?? '') === selected.id) ? selected : null;
   const listed = data && cell ? data.warnings.filter((w) => (w.kind ?? '') === cell.id && w.week === cell.week) : [];
   return (
-    <div className="flex flex-col gap-3">
-      <h1 className="text-xl font-semibold">Compliance</h1>
+    <div className="flex flex-col gap-4">
+      <PageTitle>Compliance</PageTitle>
       <ListFilters
         query={query}
         projects={projects}
@@ -63,7 +73,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           setSelected(null);
         }}
       >
-        <div role="group" aria-label="Current or resolved" className="flex flex-wrap gap-1">
+        <Options label="Warnings" shown>
           {[false, true].map((option) => (
             <Option
               key={String(option)}
@@ -73,12 +83,12 @@ export function CompliancePage({ step }: { step?: StepKind }) {
                 setSelected(null);
               }}
             >
-              {option ? 'Including resolved' : 'Current warnings'}
+              {option ? 'Including resolved' : 'Current'}
             </Option>
           ))}
-        </div>
+        </Options>
         {step && (
-          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5">
+          <span className="inline-flex items-center gap-1 rounded-control border border-input px-3 py-1">
             Step: {STEP_LABELS[step]}
             <Link to="/compliance" aria-label="Clear the step filter" className="rounded-full hover:bg-accent">
               <X className="size-3.5" aria-hidden />
@@ -86,22 +96,20 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           </span>
         )}
       </ListFilters>
-      {compliance.isPending && <p className="text-sm text-muted-foreground">Loading the warnings…</p>}
-      {compliance.isError && <p className="text-sm">Couldn't load the warnings.</p>}
+      {compliance.isPending && <State>Loading the warnings…</State>}
+      {compliance.isError && (
+        <State error>Couldn't load the warnings. Check that the dashboard server is running, then refresh.</State>
+      )}
       {data &&
         (data.rows.length === 0 ? (
-          <p className="text-sm">
-            {data.hidden > 0 ? 'No warnings to show in this period.' : 'No warnings in this period.'}
-          </p>
+          <Line>
+            {data.hidden > 0
+              ? 'No warnings to show in this period: showing mode leaves out other projects.'
+              : 'No warnings in this period. A warning shows here when the reporter flags a run or session.'}
+          </Line>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">
-              {warningsSummary(
-                total(data.rows.flatMap((row) => row.cells)),
-                data.weeks.length,
-                data.newWarnings,
-              )}
-            </p>
+            <Line>{warningsSummary(total(data.rows.flatMap((row) => row.cells)), data.weeks.length, data.newWarnings)}</Line>
             <HeatmapTable
               label="Warnings by kind and week"
               corner="Kind"
@@ -115,51 +123,56 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           </>
         ))}
       {cell && (
-        <>
-          <h2 className="font-semibold">
-            {`${kindLabel(cell.id || null)} · week of ${weekLabel(cell.week)} · ${plural(listed.length, 'warning')}`}
-          </h2>
-          <ul aria-label="Warnings" className="flex flex-col gap-2 text-sm">
-            {listed.map((w) => (
-              <li key={`${w.runKey} ${w.sessionId} ${w.text}`} className={cn('border-l-3 py-0.5 pl-2', WARNING_BORDER)}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-sm border px-1 text-xs text-muted-foreground">{kindLabel(w.kind)}</span>
-                  {w.runKey !== null && (
-                    <Link to="/runs/$key" params={{ key: w.runKey }} className="underline-offset-2 hover:underline">
-                      {runName(w)}
-                    </Link>
-                  )}
-                  {w.isNew && <span className={cn('text-xs', WARNING_INK)}>new</span>}
-                </div>
-                <div>
-                  <WarningText text={w.text} sessionId={w.sessionId} branch={w.branch} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
+        <Section
+          title={`${plural(listed.length, 'warning')} of "${kindLabel(cell.id || null)}", week of ${weekLabel(cell.week)}`}
+        >
+          <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Warnings' }}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Run</TableHead>
+                <TableHead>Project</TableHead>
+                <TableHead>Warning</TableHead>
+                <TableHead>Since you last looked</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listed.map((w) => (
+                <TableRow key={`${w.runKey} ${w.sessionId} ${w.text}`}>
+                  <TableCell className="align-top font-medium">
+                    {w.runKey === null ? (
+                      <Unknown label="no run" />
+                    ) : (
+                      <RunLink runKey={w.runKey} branch={w.branch} />
+                    )}
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground">
+                    {w.runKey === null ? projectLabel(w.project) : <Text value={w.project} />}
+                  </TableCell>
+                  <TableCell className="min-w-64 whitespace-normal">
+                    <span className="flex flex-col gap-1">
+                      <WarningText text={w.text} sessionId={w.sessionId} branch={w.branch} />
+                    </span>
+                  </TableCell>
+                  <TableCell className={cn('align-top', w.isNew ? WARNING_INK : 'text-muted-foreground')}>
+                    {w.isNew ? 'New' : 'Seen'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Section>
       )}
-      {data && data.rows.length > 0 && !cell && (
-        <p className="text-sm text-muted-foreground">Select a cell to list its warnings.</p>
-      )}
-      {data && data.hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenWarningsLabel(data.hidden)}</p>}
+      {data && data.rows.length > 0 && !cell && <Line>Select a cell to list its warnings.</Line>}
+      {data && data.hidden > 0 && <Line>{hiddenWarningsLabel(data.hidden)}</Line>}
       {data?.information && (
-        <>
-          <h2 className="font-semibold">
-            Information from the reporter
-            <ReporterMark mark={informationMark} />
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            The latest export's information lines, as the reporter writes them: not warnings, and not filtered by period.
-          </p>
-          <ul aria-label="Information from the reporter" className="flex flex-col gap-1 text-sm">
-            {data.information.hidden > 0 ? (
-              <li>{hiddenInformationLabel(data.information.hidden)}</li>
-            ) : (
-              data.information.lines.map((line, i) => <li key={i}>{line}</li>)
-            )}
-          </ul>
-        </>
+        <Panel title="Information from the reporter" aside={<ReporterMark mark={informationMark} />}>
+          {data.information.hidden > 0 ? (
+            <p className="text-sm text-muted-foreground">{hiddenInformationLabel(data.information.hidden)}</p>
+          ) : (
+            <Pairs text className="max-w-3xl" pairs={data.information.lines.map(informationPair)} />
+          )}
+          <p className="text-xs text-muted-foreground">Not warnings, and not filtered by period.</p>
+        </Panel>
       )}
     </div>
   );

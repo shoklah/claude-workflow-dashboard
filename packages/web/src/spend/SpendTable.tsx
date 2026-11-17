@@ -1,67 +1,73 @@
 import { useState } from 'react';
+import { cn } from 'cn';
 import type { SpendGroupRow, SpendResponse, SpendRow } from '@cwd/shared';
+import { GroupHead, NUM, Num, SUB, Text } from '../components/Num.tsx';
+import { Section } from '../components/Panel.tsx';
+import { RowToggle } from '../components/RowToggle.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { SPEND_GROUP_COLORS } from '../home/WeeklyCharts.tsx';
-import { SPEND_GROUP_LABELS, formatCost, phaseLabel } from '../lib/format.ts';
+import { SPEND_GROUP_LABELS, formatDollars, modelLabel, phaseLabel } from '../lib/format.ts';
 
-const COST = 'text-right tabular-nums';
-
-/** A row's figures after its name: cost, share (none on the total row), cost by model and the advisor's calls and cost. */
+/** A row's figures after its name: cost, share (none on the "All phases" row), cost by model and the advisor's calls
+ * and cost. */
 function Figures({ row, models, total = false }: { row: SpendRow; models: string[]; total?: boolean }) {
   return (
     <>
-      <TableCell className={COST}>{formatCost(row.cost)}</TableCell>
+      <TableCell className={NUM}>
+        <Num value={row.cost} format={formatDollars} />
+      </TableCell>
       <TableCell>{!total && <ShareBar share={row.share} />}</TableCell>
       {models.map((model) => (
-        <TableCell key={model} className={COST}>
-          {formatCost(row.byModel[model] ?? null)}
+        <TableCell key={model} className={NUM}>
+          <Num value={row.byModel[model] ?? null} format={formatDollars} />
         </TableCell>
       ))}
-      <TableCell className={COST}>{row.advisor.calls}</TableCell>
-      <TableCell className={COST}>{formatCost(row.advisor.cost)}</TableCell>
+      <TableCell className={NUM}>
+        <Num value={row.advisor.calls} />
+      </TableCell>
+      <TableCell className={NUM}>
+        <Num value={row.advisor.cost} format={formatDollars} />
+      </TableCell>
     </>
   );
 }
 
-/** A group's row after its colour's swatch and, when it names a phase other than itself and is open, its phases' rows
- * below it. */
+/** A group's row, its chevron and colour's swatch before its name, and, when it names a phase other than itself and is
+ * open, its phases' rows below it. */
 function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
   const [open, setOpen] = useState(false);
   const name = SPEND_GROUP_LABELS[row.group];
   const opens = row.phases.some((phase) => phase.name !== row.group);
+  const swatch = (
+    <i
+      aria-hidden
+      className="inline-block size-2.5 flex-none rounded-swatch"
+      style={{ background: SPEND_GROUP_COLORS[row.group] }}
+    />
+  );
   return (
     <>
-      <TableRow className="font-semibold">
+      <TableRow className={cn('font-medium', open && 'border-b-0')}>
         <TableCell>
-          <span aria-hidden className="mr-1.5 inline-block w-3 text-muted-foreground">
-            {opens ? (open ? '▾' : '▸') : ''}
-          </span>
-          <i
-            aria-hidden
-            className="mr-1.5 inline-block size-2.5 rounded-swatch align-baseline"
-            style={{ background: SPEND_GROUP_COLORS[row.group] }}
-          />
           {opens ? (
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => setOpen(!open)}
-              className="text-left underline-offset-2 hover:underline"
-            >
+            <RowToggle open={open} onToggle={() => setOpen(!open)} before={swatch}>
               {name}
-            </button>
+            </RowToggle>
           ) : (
-            name
+            <span className="flex items-center gap-2 pl-6">
+              {swatch}
+              {name}
+            </span>
           )}
         </TableCell>
         <Figures row={row} models={models} />
       </TableRow>
       {opens &&
         open &&
-        row.phases.map((phase) => (
-          <TableRow key={phase.name} className="text-muted-foreground">
-            <TableCell className="pl-11">{phaseLabel(phase.name)}</TableCell>
+        row.phases.map((phase, i) => (
+          <TableRow key={phase.name} className={cn(i < row.phases.length - 1 && 'border-b-0')}>
+            <TableCell className="pl-13 text-muted-foreground">{phaseLabel(phase.name)}</TableCell>
             <Figures row={phase} models={models} />
           </TableRow>
         ))}
@@ -70,51 +76,47 @@ function GroupRows({ row, models }: { row: SpendGroupRow; models: string[] }) {
 }
 
 /**
- * The period's spend by phase: a row per group, a group naming a phase other than itself opening to its phases' rows,
- * one column per model (the API's order, largest first), then the advisor's calls and cost, counted apart; a total row.
- * It scrolls sideways when the models are many.
+ * The period's spend by phase: "All phases" first, then a row per group, a group naming a phase other than itself
+ * opening to its phases' rows, one column per model (the API's order, largest first), then the advisor's calls and
+ * cost, counted apart. It scrolls sideways when the models are many.
  */
 export function SpendTable({ response }: { response: SpendResponse }) {
   const { models } = response;
   return (
-    <section className="flex flex-col gap-1.5">
-      <h2 className="text-sm font-semibold">By phase, over the period</h2>
+    <Section title="By phase, over the period">
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Spend by phase' }}>
         <TableHeader>
           <TableRow>
-            <TableCell colSpan={3} />
-            {models.length > 0 && (
-              <TableHead colSpan={models.length} scope="colgroup" className="border-b text-center">
-                By model
-              </TableHead>
-            )}
-            <TableHead colSpan={2} scope="colgroup" className="border-b text-center">
-              Advisor, counted apart
+            <TableHead rowSpan={2}>Phase</TableHead>
+            <TableHead rowSpan={2} className={NUM}>
+              Est. cost ($)
             </TableHead>
+            <TableHead rowSpan={2}>Share</TableHead>
+            {models.length > 0 && (
+              <GroupHead span={models.length}>By model ($)</GroupHead>
+            )}
+            <GroupHead span={2}>Advisor, counted apart</GroupHead>
           </TableRow>
           <TableRow>
-            <TableHead>Phase</TableHead>
-            <TableHead className={COST}>Cost</TableHead>
-            <TableHead>Share</TableHead>
             {models.map((model) => (
-              <TableHead key={model} className={COST}>
-                {model}
+              <TableHead key={model} className={cn(SUB, NUM)}>
+                <Text value={modelLabel(model)} />
               </TableHead>
             ))}
-            <TableHead className={COST}>Calls</TableHead>
-            <TableHead className={COST}>Cost</TableHead>
+            <TableHead className={cn(SUB, NUM)}>Calls</TableHead>
+            <TableHead className={cn(SUB, NUM)}>Cost ($)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
+          <TableRow className="font-semibold">
+            <TableCell className="pl-8">All phases</TableCell>
+            <Figures row={response.total} models={models} total />
+          </TableRow>
           {response.groups.map((row) => (
             <GroupRows key={row.group} row={row} models={models} />
           ))}
-          <TableRow className="border-t font-semibold">
-            <TableCell>Total</TableCell>
-            <Figures row={response.total} models={models} total />
-          </TableRow>
         </TableBody>
       </Table>
-    </section>
+    </Section>
   );
 }

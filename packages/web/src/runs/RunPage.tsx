@@ -1,135 +1,153 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { RunResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { Num, Text } from '../components/Num.tsx';
+import { Option, Options } from '../components/Option.tsx';
+import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx';
-import { CategoryBadge, FindingsTable } from './FindingsTable.tsx';
+import { FindingsTable } from './FindingsTable.tsx';
 import { RunTimeline } from './RunTimeline.tsx';
 import {
-  NONE,
-  findingsLabel,
+  categoryLabel,
+  closedFindings,
   formatCompact,
   formatCost,
   formatMinutes,
   formatShare,
-  plural,
-  runName,
+  foundFindings,
+  modelLabel,
+  pathLabel,
   strengthWhere,
 } from '../lib/format.ts';
 
-/** A titled list of the run's facts, "None" when it has none. */
-function Section({ title, children }: { title: string; children: ReactNode[] }) {
+/** A titled section of the side panel, its `none` line when it has nothing to show. */
+function SideSection({ title, none, children }: { title: string; none: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="flex flex-col gap-1">
-      <h2 className="font-semibold">{title}</h2>
-      {children.length === 0 ? <p className="text-muted-foreground">None</p> : <ul>{children}</ul>}
-    </section>
+    <Section title={title} className="gap-1.5 border-b pb-4 last:border-0 last:pb-0">
+      {children || <p className="text-sm text-muted-foreground">{none}</p>}
+    </Section>
   );
 }
 
+/** The run's facts, each a term over its value. */
 function Header({ run }: { run: RunResponse['facts'] }) {
-  const facts = [
-    ['Path · stage', `${run.path ?? NONE} · ${run.stage ?? NONE}`],
-    ['Time', formatMinutes(run.minutes)],
-    ['Est. cost', formatCost(run.cost)],
-    ['Findings', findingsLabel(run)],
-    ['Warnings', String(run.warnings)],
+  const facts: [string, ReactNode][] = [
+    ['Project', <Text value={run.project} />],
+    ['Path', <Text value={pathLabel(run.path)} />],
+    ['Stage', <Text value={run.stage} />],
+    ['Time', <Num value={run.minutes} format={formatMinutes} />],
+    ['Est. cost', <Num value={run.cost} format={formatCost} />],
+    ['Findings', <Num value={foundFindings(run)} />],
+    ['Closed', <Num value={closedFindings(run)} />],
+    ['Warnings', <Num value={run.warnings} />],
   ];
   return (
-    <div className="flex flex-col gap-2">
-      <h1 className="text-xl font-semibold">{runName(run)}</h1>
-      <dl className="flex flex-wrap gap-6">
-        {facts.map(([term, value]) => (
-          <div key={term}>
-            <dt className="text-xs text-muted-foreground">{term}</dt>
-            <dd className="font-semibold">{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+    <Panel className="py-3">
+      <Pairs inline="over" className="gap-x-10 gap-y-3" pairs={facts} />
+    </Panel>
   );
 }
 
 /**
- * One run: its header, the untimed timeline with a toggle to every finding in one table and the reviewers' strengths
- * under it, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
+ * One run: its branch and facts, the untimed timeline with a switch to every finding in one table and the reviewers'
+ * strengths under it, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
-  if (run.isPending) return <p className="text-sm text-muted-foreground">Loading the run…</p>;
-  if (run.isError) return <p className="text-sm">Couldn't load this run.</p>;
+  const [view, setView] = useState<'timeline' | 'findings'>('timeline');
+  if (run.isPending) return <State>Loading the run…</State>;
+  if (run.isError) return <State error>Couldn't load this run.</State>;
   const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
   return (
     <div className="flex flex-col gap-4">
+      <PageTitle>{facts.branch ?? 'Run'}</PageTitle>
       <Header run={facts} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <Tabs defaultValue="timeline" className="min-w-0 flex-1">
-          <TabsList>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="findings">Findings</TabsTrigger>
-          </TabsList>
-          <TabsContent value="timeline">
-            <RunTimeline timeline={timeline} beforeSteps={facts.beforeSteps} />
-          </TabsContent>
-          <TabsContent value="findings" className="flex flex-col gap-4">
-            <FindingsTable findings={findings} categoryLabels={categoryLabels} />
-            <Section title="Strengths">
-              {strengths.map((strength, i) => (
-                <li key={i} className="flex flex-wrap items-baseline gap-x-2">
-                  <CategoryBadge category={strength.category} judge="workflow" labels={categoryLabels} />
-                  <span>{strength.summary ?? NONE}</span>
-                  <span className="text-muted-foreground">{strengthWhere(strength)}</span>
-                </li>
-              ))}
-            </Section>
-          </TabsContent>
-        </Tabs>
-        <div className="flex flex-col gap-4 text-sm lg:w-72 lg:flex-none">
-          <Section title="Skills">
-            {skills.map((skill, i) => (
-              <li key={i}>
-                {skill.name} <span className="text-muted-foreground">{skill.outcome}</span>
-              </li>
-            ))}
-          </Section>
-          <Section title="Models">
-            {models.map((model) => (
-              <li key={model.model}>
-                {model.model} <span className="text-muted-foreground">{formatCost(model.cost)}</span>
-              </li>
-            ))}
-          </Section>
-          <Section title="Advisor">
-            {advisor ? [<li key="advisor">{`${advisor.calls} calls · ${advisor.notes} notes`}</li>] : []}
-          </Section>
-          <Section title="Context">
-            {context
-              ? [
-                  <li key="calls">{`${context.calls} calls · median ${formatCompact(context.medianTokens)} · largest ${formatCompact(context.maxTokens)}`}</li>,
-                  <li key="cap">
-                    {`${plural(context.callsOverCap, 'call')} past the cap · `}
-                    {context.handoff ? (
-                      <>
-                        handed off <Time iso={context.handoff} />
-                      </>
-                    ) : (
-                      'no handoff'
-                    )}
-                  </li>,
-                  <li key="tools">{`Tool results: ${formatCompact(context.toolCharacters)} characters · read ${formatShare(context.readShare)}`}</li>,
-                  <li key="sweeps">{`Sweeps: ${context.sweeps.inline} inline · ${context.sweeps.delegated} delegated`}</li>,
-                ]
-              : []}
-          </Section>
-          <Section title="Warnings">
-            {warnings.map((warning, i) => (
-              <li key={i}>
-                <WarningText text={warning.text} sessionId={warning.sessionId} branch={facts.branch} />
-              </li>
-            ))}
-          </Section>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <Options label="View">
+            <Option pressed={view === 'timeline'} onClick={() => setView('timeline')}>
+              Timeline
+            </Option>
+            <Option pressed={view === 'findings'} onClick={() => setView('findings')}>
+              Findings
+            </Option>
+          </Options>
+          {view === 'timeline' ? (
+            <Panel>
+              <RunTimeline timeline={timeline} beforeSteps={facts.beforeSteps} />
+            </Panel>
+          ) : (
+            <>
+              <FindingsTable findings={findings} categoryLabels={categoryLabels} />
+              <Panel title="Strengths" className="text-sm">
+                {strengths.length === 0 ? (
+                  <p className="text-muted-foreground">No strengths recorded.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {strengths.map((strength, i) => (
+                      <li key={i} className="flex flex-wrap items-baseline gap-x-2">
+                        {categoryLabel(strength.category, categoryLabels)}
+                        <span>
+                          <Text value={strength.summary} />
+                        </span>
+                        <span className="text-muted-foreground">{strengthWhere(strength)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Panel>
+            </>
+          )}
         </div>
+        <Panel className="gap-4 lg:w-80 lg:flex-none">
+          <SideSection title="Skills" none="No skill loaded.">
+            {skills.length > 0 && <Pairs names pairs={skills.map((skill) => [skill.name, skill.outcome])} />}
+          </SideSection>
+          <SideSection title="Models" none="No model recorded.">
+            {models.length > 0 && (
+              <Pairs names pairs={models.map((model) => [<Text value={modelLabel(model.model)} />, formatCost(model.cost)])} />
+            )}
+          </SideSection>
+          <SideSection title="Advisor" none="Not consulted.">
+            {advisor && (
+              <Pairs
+                pairs={[
+                  ['Calls', <Num value={advisor.calls} />],
+                  ['Notes', <Num value={advisor.notes} />],
+                ]}
+              />
+            )}
+          </SideSection>
+          <SideSection title="Context" none="No context facts for this run.">
+            {context && (
+              <Pairs
+                pairs={[
+                  ['Calls', <Num value={context.calls} />],
+                  ['Median tokens', <Num value={context.medianTokens} format={formatCompact} />],
+                  ['Largest tokens', <Num value={context.maxTokens} format={formatCompact} />],
+                  ['Calls past the cap', <Num value={context.callsOverCap} />],
+                  ['Handed off', context.handoff ? <Time iso={context.handoff} /> : <span className="text-muted-foreground">no</span>],
+                  ['Tool results (characters)', formatCompact(context.toolCharacters)],
+                  ['Read share', <Num value={context.readShare} format={formatShare} />],
+                  ['Sweeps inline', <Num value={context.sweeps.inline} />],
+                  ['Sweeps delegated', <Num value={context.sweeps.delegated} />],
+                ]}
+              />
+            )}
+          </SideSection>
+          <SideSection title="Warnings" none="No warnings.">
+            {warnings.length > 0 && (
+              <ul className="flex flex-col gap-2 text-sm">
+                {warnings.map((warning, i) => (
+                  <li key={i} className="flex flex-col gap-0.5">
+                    <WarningText text={warning.text} sessionId={warning.sessionId} branch={facts.branch} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SideSection>
+        </Panel>
       </div>
     </div>
   );

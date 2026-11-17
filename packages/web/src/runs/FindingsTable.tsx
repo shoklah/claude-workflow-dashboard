@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Link } from '@tanstack/react-router';
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -9,10 +8,12 @@ import {
   useTable,
 } from '@tanstack/react-table';
 import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
-import { Badge } from '../components/ui/badge.tsx';
+import { EmptyRow, Text, Unknown } from '../components/Num.tsx';
+import { TERM } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
-import { NONE, STEP_LABELS, appCallLabel, categoryLabel, runName } from '../lib/format.ts';
+import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName } from '../lib/format.ts';
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -22,62 +23,68 @@ const features = tableFeatures({
 // A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
 type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
 
-/** A category by its label from `labels`, in a badge, dashed to mark it as the app's label, never the reporter's, when
- * `judge` is the app; "unlabelled" bare. */
-export function CategoryBadge({
-  category,
-  judge,
-  labels,
-}: {
-  category: string | null;
-  judge?: FindingRow['judge'];
-  labels: Record<string, string>;
-}) {
-  if (category === null) return categoryLabel(null, labels);
-  const app = judge === 'app';
-  return (
-    <Badge variant="outline" className={app ? 'border-dashed' : undefined} title={app ? "The app's label" : undefined}>
-      {categoryLabel(category, labels)}
-    </Badge>
-  );
-}
-
 const helper = createColumnHelper<typeof features, Row>();
 /** The finding columns, each category named by `labels`. */
 const columnsOf = (labels: Record<string, string>) => helper.columns([
-  helper.accessor('id', { header: '#', cell: (c) => c.getValue() ?? NONE }),
+  helper.accessor('id', { header: '#', cell: (c) => <Text value={c.getValue()} /> }),
   helper.accessor('step', { header: 'Step', filterFn: 'equalsString', cell: (c) => STEP_LABELS[c.getValue()] }),
-  helper.accessor((f) => (f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : NONE), {
+  helper.accessor((f) => (f.task !== null ? String(f.task) : f.wave !== null ? `Wave ${f.wave}` : null), {
     id: 'task',
     header: 'Task',
+    cell: (c) => <Text value={c.getValue()} unknown="no task" />,
   }),
-  helper.accessor('severity', { header: 'Severity', filterFn: 'equalsString', cell: (c) => c.getValue() ?? NONE }),
+  helper.accessor('severity', {
+    header: 'Severity',
+    filterFn: 'equalsString',
+    cell: (c) => <Text value={c.getValue() && countName(c.getValue()!)} />,
+  }),
   helper.accessor('category', {
     header: 'Category',
-    cell: (c) => <CategoryBadge category={c.getValue()} judge={c.row.original.judge} labels={labels} />,
+    cell: (c) => categoryLabel(c.getValue(), labels),
   }),
-  helper.accessor('summary', { header: 'Summary', cell: (c) => c.getValue() ?? NONE }),
+  helper.accessor((f) => (f.category === null ? null : f.judge === 'app' ? 'App' : 'Workflow'), {
+    id: 'labelledBy',
+    header: 'Labelled by',
+    cell: (c) => <Text value={c.getValue()} unknown="not labelled" />,
+  }),
+  helper.accessor('summary', { header: 'Summary', cell: (c) => <Text value={c.getValue()} /> }),
   helper.accessor('outcome', {
     header: 'Outcome',
     filterFn: 'equalsString',
-    cell: (c) => {
-      const outcome = c.getValue();
-      return outcome ? <Badge variant="outline">{outcome}</Badge> : NONE;
-    },
+    cell: (c) => <Text value={c.getValue() && countName(c.getValue()!)} />,
   }),
-  helper.accessor('reason', { header: 'Reason', cell: (c) => c.getValue() ?? NONE }),
-  helper.accessor((f) => (f.verdicts.length ? f.verdicts.join(', ') : NONE), { id: 'verdicts', header: 'Verdicts' }),
+  helper.accessor('reason', {
+    header: 'Reason',
+    cell: (c) => (
+      <span className="text-muted-foreground">
+        <Text value={c.getValue()} unknown="no reason" />
+      </span>
+    ),
+  }),
+  helper.accessor('verdicts', {
+    header: 'Fix-check verdicts',
+    cell: (c) =>
+      c.getValue().length === 0 ? (
+        <Unknown label="none" />
+      ) : (
+        c.getValue().map((verdict, i) => (
+          <span key={i} className="block">
+            {countName(verdict)}
+          </span>
+        ))
+      ),
+  }),
   // The session's call, as the workflow records it.
-  helper.accessor('validity', { header: 'Valid', cell: (c) => c.getValue() ?? NONE }),
+  helper.accessor('validity', { header: 'Valid', cell: (c) => <Text value={c.getValue() && countName(c.getValue()!)} /> }),
   helper.accessor('relevance', {
     header: 'App',
     cell: (c) => {
-      if (c.getValue() === null) return NONE;
+      if (c.getValue() === null) return <Unknown label="no app label" />;
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span tabIndex={0} className="underline decoration-dotted underline-offset-2">
-              {appCallLabel(c.row.original, labels)}
+            <span tabIndex={0} className={TERM}>
+              {capitalize(appCallLabel(c.row.original, labels))}
             </span>
           </TooltipTrigger>
           <TooltipContent>{c.row.original.labelReason}</TooltipContent>
@@ -87,22 +94,21 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
   }),
 ]);
 const runColumn = helper.columns([
-  helper.accessor((f) => runName({ project: f.project ?? null, branch: f.branch ?? null }), {
+  helper.accessor((f) => f.branch ?? null, {
     id: 'run',
     header: 'Run',
     cell: (c) => (
-      <Link to="/runs/$key" params={{ key: c.row.original.runKey ?? '' }} className="underline-offset-2 hover:underline">
-        {c.getValue()}
-      </Link>
+      <RunLink runKey={c.row.original.runKey ?? ''} branch={c.getValue()} className="font-medium" />
     ),
   }),
+  helper.accessor((f) => f.project ?? null, { id: 'project', header: 'Project', cell: (c) => <Text value={c.getValue()} /> }),
 ]);
 
 // The filters: each lists the values its column holds, in order, labelled as the column shows them.
 const FILTERS = [
   { id: 'step', label: 'Step', show: (v: string) => STEP_LABELS[v as StepKind] },
-  { id: 'severity', label: 'Severity', show: (v: string) => v },
-  { id: 'outcome', label: 'Outcome', show: (v: string) => v },
+  { id: 'severity', label: 'Severity', show: countName },
+  { id: 'outcome', label: 'Outcome', show: countName },
 ] as const;
 
 /**
@@ -161,16 +167,16 @@ export function FindingsTable({
         </TableHeader>
         <TableBody>
           {rows.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={table.getAllLeafColumns().length} className="text-muted-foreground">
-                No findings.
-              </TableCell>
-            </TableRow>
+            <EmptyRow columns={table.getAllLeafColumns().length}>
+              {findings.length === 0
+                ? 'No findings.'
+                : 'No findings match these filters. Set a filter back to All to see more.'}
+            </EmptyRow>
           )}
           {rows.map((row) => (
             <TableRow key={row.id}>
               {row.getAllCells().map((cell) => (
-                <TableCell key={cell.id} className={cell.column.id === 'summary' || cell.column.id === 'reason' ? 'whitespace-normal' : undefined}>
+                <TableCell key={cell.id} className={cell.column.id === 'summary' || cell.column.id === 'reason' ? 'min-w-64 align-top whitespace-normal' : 'align-top'}>
                   <table.FlexRender cell={cell} />
                 </TableCell>
               ))}

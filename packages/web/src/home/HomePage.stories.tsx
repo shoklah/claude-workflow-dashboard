@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { emptyHome, fullHome } from '../test/home.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { HomePage } from './HomePage.tsx';
+import { expectNoJoined } from '../test/table.ts';
 
 const meta = { component: HomePage } satisfies Meta<typeof HomePage>;
 export default meta;
@@ -17,8 +18,10 @@ export const Loading: Story = {
     mockApi({ '/api/status': ok, '/api/home': 'pending' });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Loading…')).toBeVisible();
-    await expect(canvas.queryByRole('group', { name: 'Runs this week' })).toBeNull();
+    const state = await canvas.findByText('Loading the home screen…');
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
+    await expect(canvas.queryByRole('region', { name: 'This week' })).toBeNull();
   },
 };
 
@@ -27,7 +30,9 @@ export const Failed: Story = {
     mockApi({ '/api/status': ok, '/api/home': 500 });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Can't load the home screen.")).toBeVisible();
+    const state = await canvas.findByText("Can't load the home screen.");
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -37,26 +42,35 @@ export const Empty: Story = {
     mockApi({ '/api/status': ok, '/api/home': emptyHome });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('group', { name: 'Runs this week' })).toHaveTextContent('0');
-    await expect(canvas.getByRole('tab', { name: 'Full path' })).toBeVisible();
-    await expect(canvas.getByRole('heading', { name: 'Cost by week' })).toBeVisible();
-    await expect(canvas.getByText('Nothing new.')).toBeVisible();
+    await expect(await canvas.findByRole('region', { name: 'This week' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Full path' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByRole('heading', { name: 'Cost by week ($)' })).toBeVisible();
+    await expect(
+      canvas.getByText('Nothing new. Finished runs and new warnings show here until you mark them seen.'),
+    ).toBeVisible();
+    await expect(canvas.getByText('No skill loaded and no command typed in this period.')).toBeVisible();
   },
 };
 
-/** Full: tiles, the diagram, the charts and the feed, from one home response. */
+/** Full: the week's tables, the diagram, the charts, the skills and the feed, from one home response. */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': ok, '/api/home': fullHome });
   },
-  play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('group', { name: 'Findings' })).toHaveTextContent('19');
-    await expect(canvas.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
-    await expect(canvas.getByText('fix-checks: 7 ran · 1 still open · 1 reached round 3')).toBeVisible();
+  play: async ({ canvas, canvasElement }) => {
+    const week = within(await canvas.findByRole('region', { name: 'This week' }));
+    for (const name of ['Runs', 'Findings', 'Est. cost ($)', 'Warnings']) await expect(week.getByRole('table', { name })).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Full path' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByRole('button', { name: 'Small path' })).toHaveAttribute('aria-pressed', 'false');
     await expect(canvas.getByText(/Weeks before Oct 5 show/)).toBeVisible();
-    await expect(canvas.getAllByRole('listitem')).toHaveLength(4);
-    await expect(canvas.getByRole('button', { name: 'Mark all seen' })).toBeVisible();
+    await expect(canvas.getByText('The charts as a table').closest('details')).not.toBeNull();
+    const feed = within(canvas.getByRole('region', { name: 'Since you last looked' }));
+    await expect(feed.getAllByRole('listitem')).toHaveLength(4);
+    await expect(feed.getByRole('button', { name: 'Mark all seen' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Skills and commands' })).toBeVisible();
-    await expect(canvas.getByText('23 sessions · 6 runs')).toBeVisible();
+    await expect(canvas.getByText('23 sessions and 6 runs')).toBeVisible();
+    // One value per cell, everywhere on the page.
+    await expectNoJoined(canvasElement);
   },
 };

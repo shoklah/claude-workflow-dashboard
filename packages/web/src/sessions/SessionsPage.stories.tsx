@@ -19,7 +19,9 @@ export const Loading: Story = {
     mockApi({ '/api/status': status, [PROJECTS]: runsFull, '/api/sessions?weeks=4': 'pending' });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Loading the sessions…')).toBeVisible();
+    const state = await canvas.findByText('Loading the sessions…');
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -28,7 +30,11 @@ export const Failed: Story = {
     mockApi({ '/api/status': status, [PROJECTS]: runsFull, '/api/sessions?weeks=4': 500 });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Couldn't load the sessions.")).toBeVisible();
+    const state = await canvas.findByText(
+      "Couldn't load the sessions. Check that the dashboard server is running, then refresh.",
+    );
+    await expect(state).toBeVisible();
+    await expect(state.closest('.glass')).not.toBeNull();
   },
 };
 
@@ -37,24 +43,30 @@ export const Empty: Story = {
     mockApi({ '/api/status': status, [PROJECTS]: runsFull, '/api/sessions?weeks=4': sessionsEmpty });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('No sessions in this period.')).toBeVisible();
-    await expect(canvas.getByText('0 sessions · 0 hold a run')).toBeVisible();
+    await expect(
+      await canvas.findByText('No sessions in this period. A session shows here once the reporter reads its transcript.'),
+    ).toBeVisible();
   },
 };
 
-/** Full: the last 4 weeks by default; opening a session lists its timeline. */
+/** Full: the last 4 weeks by default; opening a session shows its timeline; the notes fold under the table. */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [PROJECTS]: runsFull, '/api/sessions?weeks=4': sessionsFull });
   },
   play: async ({ canvas, userEvent }) => {
     const toggle = await canvas.findByRole('button', { name: twoRunSession.title! });
-    await expect(canvas.getByText('3 sessions · 1 holds a run')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Sessions', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await userEvent.click(toggle);
-    const timeline = canvas.getByRole('list', { name: `Timeline of ${twoRunSession.title}` });
-    await expect(within(timeline).getAllByRole('listitem')).toHaveLength(twoRunSession.timeline.length);
+    const timeline = canvas.getByRole('table', { name: `Timeline of ${twoRunSession.title}` });
+    await expect(within(timeline).getAllByRole('row').slice(1)).toHaveLength(twoRunSession.timeline.length);
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
+    const notes = canvas.getByText('How sessions are listed').closest('details')!;
+    await expect(notes).not.toHaveAttribute('open');
+    await expect(canvas.getByRole('region', { name: 'Sessions' }).compareDocumentPosition(notes)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   },
 };
 
@@ -72,7 +84,8 @@ export const HasWarnings: Story = {
     await canvas.findByText('Debug the export timeout');
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Has warnings' }));
     await expect(fetch).toHaveBeenCalledWith('/api/sessions?weeks=4&warnings=1');
-    await expect(await canvas.findAllByRole('row')).toHaveLength(3);
+    // Two header rows and a row per session.
+    await expect(await canvas.findAllByRole('row')).toHaveLength(4);
     await expect(canvas.queryByText('Debug the export timeout')).toBeNull();
   },
 };

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { AREAS, type Area, type FindingsQuery, type FindingsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { Option } from '../components/Option.tsx';
+import { Option, Options } from '../components/Option.tsx';
+import { Line, PageTitle, Section, State } from '../components/Panel.tsx';
 import { AREA_LABELS, categoryLabel, hiddenLabel, plural, weekLabel } from '../lib/format.ts';
 import { FindingsTable } from '../runs/FindingsTable.tsx';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
@@ -34,8 +35,8 @@ export function FindingsPage() {
       ? data.findings.filter((f) => f.area === area && f.category === selected.category && f.week === selected.week)
       : [];
   return (
-    <div className="flex flex-col gap-3">
-      <h1 className="text-xl font-semibold">Findings</h1>
+    <div className="flex flex-col gap-4">
+      <PageTitle>Findings</PageTitle>
       <ListFilters
         query={query}
         projects={projects}
@@ -44,15 +45,15 @@ export function FindingsPage() {
           setSelected(null);
         }}
       />
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        <div role="group" aria-label="Measure" className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+        <Options label="Measure" shown>
           {MEASURES.map((option) => (
             <Option key={option.measure} pressed={measure === option.measure} onClick={() => setMeasure(option.measure)}>
               {option.label}
             </Option>
           ))}
-        </div>
-        <div role="group" aria-label="Area" className="flex flex-wrap gap-1">
+        </Options>
+        <Options label="Area" shown>
           {AREAS.map((option) => (
             <Option
               key={option}
@@ -65,35 +66,31 @@ export function FindingsPage() {
               {AREA_LABELS[option]}
             </Option>
           ))}
-        </div>
+        </Options>
       </div>
-      {findings.isPending && <p className="text-sm text-muted-foreground">Loading the findings…</p>}
-      {findings.isError && <p className="text-sm">Couldn't load the findings.</p>}
+      {findings.isPending && <State>Loading the findings…</State>}
+      {findings.isError && (
+        <State error>Couldn't load the findings. Check that the dashboard server is running, then refresh.</State>
+      )}
       {data && (
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
-            {!workflowLabelled(data) && (
-              <p className="text-sm text-muted-foreground">
-                Every label here is the app's, until the workflow labels findings itself.
-              </p>
-            )}
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
             <FindingsGrid response={data} measure={measure} area={area} selected={selected} onSelect={setSelected} />
-            {data.rows.every((row) => row.cells.every((c) => c.raised === 0)) && (
-              <p className="text-sm">No findings in this period.</p>
-            )}
-            {selected ? (
-              <>
-                <h2 className="font-semibold">
-                  {`${categoryLabel(selected.category, data.categoryLabels)} · week of ${weekLabel(selected.week)} · ${plural(listed.length, 'finding')}`}
-                </h2>
+            {!workflowLabelled(data) && <Line>Every label here is the app's, until the workflow labels findings itself.</Line>}
+            {data.rows.every((row) => row.cells.every((c) => c.raised === 0)) ? (
+              <Line>No findings in this period. A finding shows here once a run with a review is imported.</Line>
+            ) : selected ? (
+              <Section
+                title={`${plural(listed.length, 'finding')} in ${categoryLabel(selected.category, data.categoryLabels)}, week of ${weekLabel(selected.week)}`}
+              >
                 <FindingsTable findings={listed} categoryLabels={data.categoryLabels} run />
-              </>
+              </Section>
             ) : (
-              <p className="text-sm text-muted-foreground">Select a cell to list its findings.</p>
+              <Line>Select a cell to list its findings.</Line>
             )}
-            {data.hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenLabel(data.hidden, 'finding')}</p>}
+            {data.hidden > 0 && <Line>{hiddenLabel(data.hidden, 'finding')}</Line>}
           </div>
-          <div className="lg:w-72 lg:flex-none">
+          <div className="lg:w-80 lg:flex-none">
             <SignalsPanel signals={data.signals} labeller={data.labeller} />
           </div>
         </div>

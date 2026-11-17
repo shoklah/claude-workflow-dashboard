@@ -79,7 +79,10 @@ export const On: Story = {
   play: async ({ canvas, userEvent }) => {
     await expect(await canvas.findByText('Showing: Search app, Harbor API')).toBeVisible();
     await expect(canvas.queryByRole('switch')).toBeNull();
-    await userEvent.click(canvas.getByRole('button', { name: 'Stop showing' }));
+    const stop = canvas.getByRole('button', { name: 'Stop showing' });
+    // Every button is a pill (DESIGN.md), through index.css's one rule.
+    await expect(getComputedStyle(stop).borderTopLeftRadius).toBe('9999px');
+    await userEvent.click(stop);
     await expect(fetch).toHaveBeenCalledWith('/api/showing', {
       method: 'POST',
       headers: { 'X-Dashboard-Refresh': '1', 'Content-Type': 'application/json' },

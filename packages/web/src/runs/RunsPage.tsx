@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { PATHS, toPath, type FindingsQuery, type RunsQuery, type RunsResponse, type SpendUnits, type StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { hiddenLabel, pathLabel } from '../lib/format.ts';
+import { Line, PageTitle, State } from '../components/Panel.tsx';
 import { RunsTable } from './RunsTable.tsx';
 
 const PERIODS = [
@@ -97,20 +98,18 @@ export function RunsPage() {
   const runs = useLiveQuery<RunsResponse>(listPath('/api/runs', query));
   const set = (change: Partial<RunsQuery>) => setQuery({ ...query, ...change });
   return (
-    <div className="flex flex-col gap-3">
-      <h1 className="text-xl font-semibold">Runs</h1>
+    <div className="flex flex-col gap-4">
+      <PageTitle>Runs</PageTitle>
       <ListFilters query={query} projects={runs.data?.projects} onChange={set}>
         <label className="flex items-center gap-1.5">
           <input type="checkbox" checked={query.warnings} onChange={(e) => set({ warnings: e.target.checked })} />
           Has warnings
         </label>
       </ListFilters>
-      {runs.isPending && <p className="text-sm text-muted-foreground">Loading the runs…</p>}
-      {runs.isError && <p className="text-sm">Couldn't load the runs.</p>}
+      {runs.isPending && <State>Loading the runs…</State>}
+      {runs.isError && <State error>Couldn't load the runs.</State>}
       {runs.data && <RunsTable runs={runs.data.runs} />}
-      {runs.data && runs.data.hidden > 0 && (
-        <p className="text-sm text-muted-foreground">{hiddenLabel(runs.data.hidden, 'run')}</p>
-      )}
+      {runs.data && runs.data.hidden > 0 && <Line>{hiddenLabel(runs.data.hidden, 'run')}</Line>}
     </div>
   );
 }

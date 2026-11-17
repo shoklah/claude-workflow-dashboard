@@ -23,11 +23,14 @@ export function SectionTitle({ id, children }: { id?: string; children: ReactNod
   );
 }
 
-/** A glass panel holding one group of related content, labelled by its title when it has one. */
-export function Panel({ title, aside, className, children }: { title?: string; aside?: ReactNode; className?: string; children: ReactNode }) {
+type SectionProps = { title?: string; aside?: ReactNode; className?: string; children: ReactNode };
+
+/** A section without glass, a region labelled by its title when it has one, the title and `aside` (a switch, a count)
+ * in a row above its content. */
+export function Section({ title, aside, className, children }: SectionProps) {
   const titleId = useId();
   return (
-    <section aria-labelledby={title ? titleId : undefined} className={cn('glass flex flex-col gap-3 p-4', className)}>
+    <section aria-labelledby={title ? titleId : undefined} className={cn('flex flex-col gap-3', className)}>
       {(title || aside) && (
         <div className="flex flex-wrap items-center gap-3">
           {title && <SectionTitle id={titleId}>{title}</SectionTitle>}
@@ -39,14 +42,55 @@ export function Panel({ title, aside, className, children }: { title?: string; a
   );
 }
 
-/** Labelled pairs: each fact's name in secondary ink, its value beside it, right-aligned in tabular figures. */
-export function Pairs({ pairs, className }: { pairs: [string, ReactNode][]; className?: string }) {
+/** A glass panel holding one group of related content, labelled by its title when it has one. */
+export function Panel({ className, ...section }: SectionProps) {
+  return <Section className={cn('glass p-4', className)} {...section} />;
+}
+
+/** Labelled pairs: each fact's name in secondary ink, its value beside it, right-aligned in tabular figures. With
+ * `names`, a list of names with their detail (a skill's outcome, a model's cost): each name in primary ink on its own
+ * row, its detail muted, so a long name keeps its line when another row's detail is long. With `inline`, one row of
+ * facts that wraps: each term `beside` its value (a line of facts under a flow), or `over` it, the term small and the
+ * value bold (a page's header facts). With `text`, prose values: the terms' column as wide as the widest term, each
+ * value left-aligned beside its term and wrapping there (Compliance's information lines). */
+export function Pairs({
+  pairs,
+  names = false,
+  text = false,
+  inline,
+  className,
+}: {
+  pairs: [ReactNode, ReactNode][];
+  names?: boolean;
+  text?: boolean;
+  inline?: 'beside' | 'over';
+  className?: string;
+}) {
+  if (inline) {
+    return (
+      <dl className={cn('flex flex-wrap gap-x-6 gap-y-1 text-sm', className)}>
+        {pairs.map(([term, value], i) => (
+          <div key={i} className={cn(inline === 'beside' && 'flex gap-2')}>
+            <dt className={cn('text-muted-foreground', inline === 'over' && 'text-xs font-medium')}>{term}</dt>
+            <dd className={cn('tabular-nums', inline === 'over' && 'font-semibold')}>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
   return (
-    <dl className={cn('grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-sm', className)}>
+    <dl
+      className={cn(
+        names ? 'flex flex-col' : 'grid gap-x-4',
+        !names && (text ? 'grid-cols-[minmax(0,auto)_minmax(0,1fr)]' : 'grid-cols-[minmax(0,1fr)_auto]'),
+        'gap-y-1 text-sm',
+        className,
+      )}
+    >
       {pairs.map(([term, value], i) => (
-        <div key={i} className="contents">
-          <dt className="text-muted-foreground">{term}</dt>
-          <dd className={NUM}>{value}</dd>
+        <div key={i} className={names ? 'flex flex-wrap justify-between gap-x-4' : 'contents'}>
+          <dt className={cn(!names && 'text-muted-foreground')}>{term}</dt>
+          <dd className={cn(text ? 'text-left tabular-nums' : NUM, names && 'text-muted-foreground')}>{value}</dd>
         </div>
       ))}
     </dl>

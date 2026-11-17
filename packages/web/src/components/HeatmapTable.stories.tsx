@@ -36,11 +36,11 @@ export const Full: Story = {
       {
         heading: 'First group',
         rows: [
-          { id: 'alpha', name: 'alpha', header: 'alpha', values: [0, 1, 4] },
-          { id: 'beta', name: 'beta', header: 'beta', values: [2, 0, null] },
+          { id: 'alpha', name: 'alpha', values: [0, 1, 4] },
+          { id: 'beta', name: 'beta', values: [2, 0, null] },
         ],
       },
-      { heading: null, rows: [{ id: 'gamma', name: 'gamma', header: <i>gamma</i>, values: [0, 0, 1] }] },
+      { heading: null, rows: [{ id: 'gamma', name: 'gamma', values: [0, 0, 1] }] },
     ],
     selected: { id: 'alpha', week: '2026-11-08' },
   },
@@ -70,7 +70,7 @@ export const Full: Story = {
 export const Percent: Story = {
   args: {
     max: 100,
-    groups: [{ heading: null, rows: [{ id: 'alpha', name: 'alpha', header: 'alpha', values: [null, 50, 100] }] }],
+    groups: [{ heading: null, rows: [{ id: 'alpha', name: 'alpha', values: [null, 50, 100] }] }],
     format: (value) => (value === null ? '–' : `${value}%`),
   },
   play: async ({ canvas }) => {
@@ -91,8 +91,8 @@ export const WithExtras: Story = {
       {
         heading: 'First group',
         rows: [
-          { id: 'alpha', name: 'alpha', header: 'alpha', values: [0, 1, 4], extras: [3] },
-          { id: 'beta', name: 'beta', header: 'beta', values: [0, 0, 0], extras: [0] },
+          { id: 'alpha', name: 'alpha', values: [0, 1, 4], extras: [3] },
+          { id: 'beta', name: 'beta', values: [0, 0, 0], extras: [0] },
         ],
       },
     ],

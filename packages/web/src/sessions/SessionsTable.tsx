@@ -1,157 +1,159 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { SessionRow } from '@cwd/shared';
+import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { RunLink } from '../components/RunLink.tsx';
+import { RowToggle } from '../components/RowToggle.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
-import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
-  NONE,
-  NO_NAMES,
-  WARNING_BORDER,
   WARNING_INK,
-  formatCost,
-  formatMinutes,
-  modelsLabel,
+  formatDollars,
+  formatLength,
+  modelLabel,
+  pathLabel,
   projectLabel,
-  runWhere,
   sessionName,
   timelineTimes,
   usageName,
-  yesNoLabel,
 } from '../lib/format.ts';
 
-const COLUMNS = [
-  'Session',
-  'Project',
-  'Started',
-  'Length',
-  'Skills loaded',
-  'Commands typed',
-  'Model',
-  'Est. cost',
-  'Startup',
-  'Warnings',
-  'Holds',
-];
+const COLUMN_COUNT = 14;
+const KINDS: Record<SessionRow['timeline'][number]['kind'], string> = {
+  skill: 'Skill loaded',
+  command: 'Command typed',
+  run: 'Run started',
+};
 
-type Hold = SessionRow['holds'][number];
-
-/** A held run's link to its page: "atlas · feat/search · full". */
-function HoldLink({ hold }: { hold: Hold }) {
-  return (
-    <Link to="/runs/$key" params={{ key: hold.runKey }} className="underline-offset-2 hover:underline">
-      {runWhere(hold)}
-    </Link>
-  );
-}
-
-/** A session's skill loads, commands and held runs' window starts, in the API's time order. */
+/** A session's skill loads, commands and held runs' window starts, in the API's time order: a small table, one value
+ * per cell. */
 function Timeline({ session, name }: { session: SessionRow; name: string }) {
-  if (session.timeline.length === 0) return <p className="text-muted-foreground">No skill loads, commands or runs.</p>;
+  if (session.timeline.length === 0) {
+    return <p className="text-muted-foreground">No skill loads, commands or runs in this session.</p>;
+  }
   const times = timelineTimes(session.timeline.map((item) => item.at));
   return (
-    <ol aria-label={`Timeline of ${name}`} className="flex flex-col gap-0.5">
-      {session.timeline.map((item, i) => {
-        const hold = session.holds.find((h) => h.runKey === item.runKey);
-        return (
-          <li key={i}>
-            <time dateTime={item.at} className="mr-2 text-muted-foreground tabular-nums">
-              {times[i]}
-            </time>
-            {item.kind === 'skill' && (
-              <>
-                skill <b>{item.name}</b> · {item.outcome ?? NONE}
-              </>
-            )}
-            {item.kind === 'command' && (
-              <>
-                command <b>{usageName({ name: item.name, kind: 'command' })}</b>
-                {item.neverLoaded && <span className={WARNING_INK}> · its skill never loaded</span>}
-              </>
-            )}
-            {item.kind === 'run' && <>run window starts · {hold ? <HoldLink hold={hold} /> : item.name}</>}
-          </li>
-        );
-      })}
-    </ol>
+    <table aria-label={`Timeline of ${name}`} className="text-sm">
+      <thead>
+        <tr className="text-left text-muted-foreground">
+          {['Time', 'What', 'Name', 'Outcome'].map((column) => (
+            <th key={column} scope="col" className="py-1 pr-6 font-medium">
+              {column}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {session.timeline.map((item, i) => {
+          const hold = session.holds.find((h) => h.runKey === item.runKey);
+          return (
+            <tr key={i}>
+              <td className="py-1 pr-6 whitespace-nowrap text-muted-foreground tabular-nums">
+                <time dateTime={item.at}>{times[i]}</time>
+              </td>
+              <td className="py-1 pr-6 whitespace-nowrap text-muted-foreground">{KINDS[item.kind]}</td>
+              <td className="py-1 pr-6 font-medium">
+                {item.kind === 'run' && hold ? (
+                  <RunLink runKey={hold.runKey} branch={hold.branch} />
+                ) : (
+                  usageName({ name: item.name, kind: item.kind === 'command' ? 'command' : 'skill' })
+                )}
+              </td>
+              <td className={cn('py-1', item.neverLoaded && WARNING_INK)}>
+                {item.kind === 'skill' && <Text value={item.outcome} unknown="no outcome" />}
+                {item.kind === 'command' && (item.neverLoaded ? 'Its skill never loaded' : <Unknown label="no outcome" />)}
+                {item.kind === 'run' &&
+                  (hold ? (
+                    <span className="text-muted-foreground">
+                      <span className="block">
+                        <Text value={hold.project} />
+                      </span>
+                      <span className="block">
+                        <Text value={hold.path && `${pathLabel(hold.path)} path`} />
+                      </span>
+                    </span>
+                  ) : (
+                    <Unknown />
+                  ))}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
-/** A session's row and, when open, its timeline's row below it. */
+/** A session's row of counts and, when open, its timeline's row below it. */
 function SessionRows({ session }: { session: SessionRow }) {
   const [open, setOpen] = useState(false);
   const name = sessionName(session.title);
-  const skills = [...new Set(session.timeline.filter((t) => t.kind === 'skill').map((t) => t.name))];
-  const commands = new Map<string, boolean>();
-  for (const t of session.timeline.filter((t) => t.kind === 'command')) {
-    commands.set(t.name, (commands.get(t.name) ?? false) || t.neverLoaded);
-  }
+  const count = (kind: string) => new Set(session.timeline.filter((t) => t.kind === kind).map((t) => t.name)).size;
+  const neverLoaded = new Set(session.timeline.filter((t) => t.neverLoaded).map((t) => t.name)).size;
   return (
     <>
-      <TableRow>
-        <TableCell>
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-            className={cn('text-left underline-offset-2 hover:underline', !session.title && 'text-muted-foreground')}
+      <TableRow className={open ? 'border-b-0' : undefined}>
+        <TableCell className="max-w-72 align-top font-medium whitespace-normal">
+          <RowToggle
+            open={open}
+            onToggle={() => setOpen(!open)}
+            className={cn(!session.title && 'font-normal text-muted-foreground')}
           >
             {name}
-          </button>
-          {session.sessionId !== null && (
-            <div>
-              <SessionChip id={session.sessionId} />
-            </div>
-          )}
+          </RowToggle>
         </TableCell>
-        <TableCell className={cn(session.project === null && 'text-muted-foreground')}>
-          {projectLabel(session.project)}
+        <TableCell className="align-top text-muted-foreground">
+          {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} />}
         </TableCell>
-        <TableCell>
+        <TableCell className="align-top text-muted-foreground">{projectLabel(session.project)}</TableCell>
+        <TableCell className="align-top text-muted-foreground tabular-nums">
           <Time iso={session.start} />
         </TableCell>
-        <TableCell className="text-right tabular-nums">{formatMinutes(session.minutes)}</TableCell>
-        <TableCell className="whitespace-normal">
-          {skills.length === 0 && <span className="text-muted-foreground">{NO_NAMES}</span>}
-          {skills.map((skill) => (
-            <Badge key={skill} variant="outline" className="mr-1 mb-1">
-              {skill}
-            </Badge>
+        <TableCell className={cn(NUM, 'align-top')}>
+          <Num value={session.minutes} format={formatLength} />
+        </TableCell>
+        <TableCell className="align-top">
+          {session.models.length === 0 && <Unknown />}
+          {session.models.map(({ model }) => (
+            <span key={model} className="block">
+              <Text value={modelLabel(model)} />
+            </span>
           ))}
         </TableCell>
-        <TableCell className="whitespace-normal">
-          {commands.size === 0 && <span className="text-muted-foreground">{NO_NAMES}</span>}
-          {[...commands].map(([command, neverLoaded]) => (
-            <Badge
-              key={command}
-              variant="outline"
-              className={cn('mr-1 mb-1 font-mono', neverLoaded && [WARNING_BORDER, WARNING_INK])}
-            >
-              {usageName({ name: command, kind: 'command' })}
-              {neverLoaded && ' · never loaded'}
-            </Badge>
+        <TableCell className="align-top text-muted-foreground">
+          {session.models.length === 0 && <Unknown />}
+          {session.models.map(({ model, effort }) => (
+            <span key={model} className="block">
+              <Text value={effort} />
+            </span>
           ))}
         </TableCell>
-        <TableCell>{modelsLabel(session.models)}</TableCell>
-        <TableCell className="text-right tabular-nums">{formatCost(session.cost)}</TableCell>
-        <TableCell className={cn(session.startup === false && WARNING_INK)}>{yesNoLabel(session.startup)}</TableCell>
-        <TableCell className={cn('text-right tabular-nums', session.warnings > 0 && WARNING_INK)}>
-          {session.warnings}
+        <TableCell className={cn(NUM, 'align-top')}>
+          <Num value={session.cost} format={formatDollars} />
         </TableCell>
-        <TableCell>
-          {session.holds.length === 0 && NONE}
-          {session.holds.map((hold) => (
-            <div key={hold.runKey}>
-              <HoldLink hold={hold} />
-            </div>
-          ))}
+        <TableCell className={cn(NUM, 'align-top')}>
+          <Num value={count('skill')} />
+        </TableCell>
+        <TableCell className={cn(NUM, 'align-top')}>
+          <Num value={count('command')} />
+        </TableCell>
+        <TableCell className={cn(NUM, 'align-top', neverLoaded > 0 && WARNING_INK)}>
+          <Num value={neverLoaded} />
+        </TableCell>
+        <TableCell className={cn(NUM, 'align-top')}>
+          <Num value={session.holds.length} />
+        </TableCell>
+        <TableCell className={cn('align-top', session.startup === false ? WARNING_INK : 'text-muted-foreground')}>
+          {session.startup === null ? <Unknown /> : session.startup ? 'Loaded' : 'Missing'}
+        </TableCell>
+        <TableCell className={cn(NUM, 'align-top', session.warnings > 0 && WARNING_INK)}>
+          <Num value={session.warnings} />
         </TableCell>
       </TableRow>
       {open && (
-        <TableRow className="bg-muted/30">
-          <TableCell colSpan={COLUMNS.length} className="text-sm">
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={COLUMN_COUNT} className="pt-0 pb-4 pl-9">
             <Timeline session={session} name={name} />
           </TableCell>
         </TableRow>
@@ -166,23 +168,40 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Sessions' }}>
       <TableHeader>
         <TableRow>
-          {COLUMNS.map((column) => (
-            <TableHead
-              key={column}
-              className={cn(['Length', 'Est. cost', 'Warnings'].includes(column) && 'text-right')}
-            >
-              {column}
-            </TableHead>
-          ))}
+          <TableHead rowSpan={2}>Session</TableHead>
+          <TableHead rowSpan={2}>ID</TableHead>
+          <TableHead rowSpan={2}>Project</TableHead>
+          <TableHead rowSpan={2}>Started</TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Length
+          </TableHead>
+          <TableHead rowSpan={2}>Model</TableHead>
+          <TableHead rowSpan={2}>Effort</TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Est. cost ($)
+          </TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Skills
+          </TableHead>
+          <GroupHead span={2}>Commands</GroupHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Runs
+          </TableHead>
+          <TableHead rowSpan={2}>Startup</TableHead>
+          <TableHead rowSpan={2} className={NUM}>
+            Warnings
+          </TableHead>
+        </TableRow>
+        <TableRow>
+          <TableHead className={cn(SUB, NUM)}>Typed</TableHead>
+          <TableHead className={cn(SUB, NUM)}>Never loaded</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {sessions.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={COLUMNS.length} className="text-muted-foreground">
-              No sessions in this period.
-            </TableCell>
-          </TableRow>
+          <EmptyRow columns={COLUMN_COUNT}>
+            No sessions in this period. A session shows here once the reporter reads its transcript.
+          </EmptyRow>
         )}
         {sessions.map((session) => (
           <SessionRows key={session.key} session={session} />

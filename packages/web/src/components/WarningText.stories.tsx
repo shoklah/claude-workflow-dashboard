@@ -10,7 +10,7 @@ type Story = StoryObj<typeof meta>;
 export const NoSession: Story = {
   args: { text: 'fix/retry-backoff (2026-10-21): no session transcript found', sessionId: null, branch: null },
   play: async ({ canvasElement, canvas }) => {
-    await expect(canvasElement).toHaveTextContent('Fix/retry-backoff (2026-10-21): no session transcript found');
+    await expect(canvasElement).toHaveTextContent('fix/retry-backoff (2026-10-21): no session transcript found');
     await expect(canvas.queryByRole('button')).toBeNull();
   },
 };

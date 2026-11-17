@@ -1,20 +1,21 @@
 import { describe, expect, it, test } from 'vitest';
 import { parseTime, type FindingRow } from '@cwd/shared';
 import {
-  advisorLabel,
   appCallLabel,
-  byAppSplit,
-  judgedInvalidLabel,
   strengthWhere,
   cellShade,
+  closedFindings,
+  foundFindings,
   countLabel,
+  countName,
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
+  RULE_LABELS,
   phaseLabel,
   SPEND_GROUP_LABELS,
   spendUncountedLabel,
-  countsLabel,
+  countLines,
   formatCount,
   formatMinutes,
   formatPercent,
@@ -24,17 +25,10 @@ import {
   total,
   hiddenWarningsLabel,
   warningsSummary,
-  labellerLabel,
-  nonZeroCountsLabel,
-  ofLabel,
   usageName,
-  outcomesLabel,
   reporterMark,
-  runName,
   stepWarningsLabel,
   weekLabel,
-  modelsLabel,
-  sessionsSummary,
   yesNoLabel,
   timelineTimes,
   projectLabel,
@@ -79,40 +73,33 @@ describe('stepWarningsLabel', () => {
   });
 });
 
-describe('runName', () => {
-  it('joins the project and the branch, leaving out what is missing', () => {
-    expect(runName({ project: 'atlas', branch: 'feat/search' })).toBe('atlas · feat/search');
-    expect(runName({ project: 'atlas', branch: null })).toBe('atlas');
-    expect(runName({ project: null, branch: null })).toBe('');
-  });
-});
-
 describe('countLabel', () => {
   it('writes a count line key as words', () => {
     expect(countLabel('not_proportionate')).toBe('not proportionate');
   });
 });
 
-describe('countsLabel', () => {
-  it('writes each count after its key as words, a dash for a count that isn’t known', () => {
-    expect(countsLabel({ cuts: 11, not_proportionate: 0 })).toBe('cuts 11 · not proportionate 0');
-    expect(countsLabel({ with: 38, without: null })).toBe('with 38 · without –');
-  });
-
-  it('shows a dash for no counts, or counts that aren’t known', () => {
-    expect(countsLabel({})).toBe('–');
-    expect(countsLabel(null)).toBe('–');
+describe('countName', () => {
+  it('names a count key capitalised, the keys whose words aren’t their slug’s by name', () => {
+    expect(countName('not_proportionate')).toBe('Not proportionate');
+    expect(countName('important')).toBe('Important');
+    expect(countName('unneeded')).toBe('Not required');
+    expect(countName('couldnt_run')).toBe("Couldn't run");
   });
 });
 
-describe('nonZeroCountsLabel', () => {
-  it('writes the counts that are not 0, in their order, as words', () => {
-    expect(nonZeroCountsLabel({ small: 4, full: 0, plan: 1 })).toBe('small 4 · plan 1');
-    expect(nonZeroCountsLabel({ fix_rounds: 2 })).toBe('fix rounds 2');
+describe('countLines', () => {
+  it('writes each count as a line, its name capitalised, the keys whose words aren’t their slug’s by name', () => {
+    expect(countLines({ ran: 7, not_proportionate: 0, couldnt_run: 1, unneeded: null })).toEqual([
+      ['Ran', 7],
+      ['Not proportionate', 0],
+      ["Couldn't run", 1],
+      ['Not required', null],
+    ]);
   });
-  it('writes "none" when every count is 0', () => {
-    expect(nonZeroCountsLabel({ critical: 0, important: 0 })).toBe('none');
-    expect(nonZeroCountsLabel({})).toBe('none');
+
+  it('is null when the counts aren’t known', () => {
+    expect(countLines(null)).toBeNull();
   });
 });
 
@@ -159,16 +146,6 @@ describe('formatShare', () => {
   });
 });
 
-describe('advisorLabel', () => {
-  it('writes the notes, the changed ones and the share as a whole percent', () => {
-    expect(advisorLabel({ notes: 12, changed: 9, share: 7.8 })).toBe('notes 12 · changed 9 · share 8%');
-  });
-
-  it('shows a dash for each figure that isn’t known', () => {
-    expect(advisorLabel({ notes: null, changed: 3, share: null })).toBe('notes – · changed 3 · share –');
-  });
-});
-
 describe('cellShade', () => {
   it("shades a value on the theme's five ramp steps by its share of the max, each step with its own ink", () => {
     expect(cellShade(1, 10)).toBe('bg-shade-1 text-on-shade-1');
@@ -201,20 +178,6 @@ describe('weekLabel', () => {
   });
 });
 
-describe('labellerLabel', () => {
-  const tokensThisWeek = { input: 41_200, output: 2_150 };
-
-  it('says the labeller is off with no API key', () => {
-    expect(labellerLabel({ on: false, labelled: 17, waiting: 0, tokensThisWeek })).toBe('Labeller off: no API key');
-  });
-
-  it('counts the labelled and waiting findings and the week’s tokens, input and output together', () => {
-    expect(labellerLabel({ on: true, labelled: 8, waiting: 1, tokensThisWeek })).toBe(
-      '8 labelled · 1 waiting · 43,350 tokens this week',
-    );
-  });
-});
-
 describe('reporterMark', () => {
   it('names the latest export\'s all-time figure, and says why in its tooltip', () => {
     expect(reporterMark.text).toBe('reporter, all time');
@@ -224,24 +187,24 @@ describe('reporterMark', () => {
   });
 });
 
-describe('outcomesLabel', () => {
-  it('writes each outcome with its count, or a dash with none', () => {
-    expect(outcomesLabel({ ran: 2, 'applied 2, skipped 1': 1 })).toBe('ran × 2 · applied 2, skipped 1 × 1');
-    expect(outcomesLabel({})).toBe('–');
+describe('RULE_LABELS', () => {
+  it('names each rule capitalised', () => {
+    expect(RULE_LABELS.failingTest).toBe('Failing-test check');
+    expect(RULE_LABELS.offer).toBe('Offer');
   });
 });
 
 describe('kindLabel', () => {
-  it('words each of PR #8’s and CR10’s 31 kinds by hand', () => {
+  it('words each of PR #8’s and CR10’s 31 kinds by hand, capitalised', () => {
     expect(Object.keys(KIND_LABELS)).toHaveLength(31);
-    expect(kindLabel('step_agent_missing')).toBe('step has no agent id');
-    expect(kindLabel('model_less_dispatch')).toBe('model-less dispatch');
-    expect(kindLabel('findings_unlabelled')).toBe('findings unlabelled');
+    expect(kindLabel('step_agent_missing')).toBe('Step has no agent id');
+    expect(kindLabel('model_less_dispatch')).toBe('Model-less dispatch');
+    expect(kindLabel('findings_unlabelled')).toBe('Findings unlabelled');
   });
 
-  it('shows a kind it doesn’t hold as its slug with spaces, and no kind as "other"', () => {
-    expect(kindLabel('brand_new_check')).toBe('brand new check');
-    expect(kindLabel(null)).toBe('other');
+  it('shows a kind it doesn’t hold as its slug with spaces, and no kind as "Other", capitalised', () => {
+    expect(kindLabel('brand_new_check')).toBe('Brand new check');
+    expect(kindLabel(null)).toBe('Other');
   });
 });
 
@@ -260,8 +223,8 @@ describe('FAMILY_LABELS', () => {
 
 describe('warningsSummary', () => {
   it("sums the grid's warnings over its weeks and says how many are new", () => {
-    expect(warningsSummary(41, 8, 6)).toBe('41 warnings in 8 weeks · 6 new since you last looked');
-    expect(warningsSummary(1, 1, 0)).toBe('1 warning in 1 week · 0 new since you last looked');
+    expect(warningsSummary(41, 8, 6)).toBe('41 warnings in 8 weeks, 6 of them new since you last looked.');
+    expect(warningsSummary(1, 1, 0)).toBe('1 warning in 1 week, 0 of them new since you last looked.');
   });
 });
 
@@ -285,34 +248,21 @@ describe('appCallLabel', () => {
 
   it("names the app's category and call where they differ", () => {
     expect(appCallLabel(f({ appCategory: 'correctness', appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe(
-      'Correctness · invalid',
+      'Correctness · Invalid',
     );
-    expect(appCallLabel(f({ appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe('invalid');
+    expect(appCallLabel(f({ appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe('Invalid');
   });
 
   it("shows the app's call where the workflow made none", () => {
-    expect(appCallLabel(f({ validity: null, relevance: 'invalid' }), labels)).toBe('invalid');
+    expect(appCallLabel(f({ validity: null, relevance: 'invalid' }), labels)).toBe('Invalid');
     expect(appCallLabel(f({ validity: null, relevance: 'valid', appCategory: 'correctness' }), labels)).toBe(
-      'Correctness · valid',
+      'Correctness · Valid',
     );
-    expect(appCallLabel(f({ judge: 'app', validity: null, relevance: 'unclear' }), labels)).toBe('unclear');
+    expect(appCallLabel(f({ judge: 'app', validity: null, relevance: 'unclear' }), labels)).toBe('Unclear');
   });
 
   it('is a dash with no app label', () => {
     expect(appCallLabel(f({ relevance: null }), labels)).toBe('–');
-  });
-});
-
-describe('byAppSplit', () => {
-  it("adds the app's part of a count when it has one", () => {
-    expect(byAppSplit({ raised: 7, byApp: 5 })).toBe('7 · 5 by the app');
-    expect(byAppSplit({ raised: 2, byApp: 0 })).toBe('2');
-  });
-});
-
-describe('judgedInvalidLabel', () => {
-  it('counts the findings the session judged invalid', () => {
-    expect(judgedInvalidLabel(6)).toBe('6 judged invalid by the session');
   });
 });
 
@@ -343,37 +293,11 @@ describe('usageName', () => {
   });
 });
 
-describe('ofLabel', () => {
-  it('writes a count out of its whole, a count that isn’t known as a dash', () => {
-    expect(ofLabel(8, 23)).toBe('8 of 23');
-    expect(ofLabel(null, 6)).toBe('–');
-  });
-});
-
-describe('modelsLabel', () => {
-  it('writes each model with its effort, a dash with none', () => {
-    expect(
-      modelsLabel([
-        { model: 'claude-opus-5-5', effort: 'medium' },
-        { model: 'claude-sonnet-5-5', effort: null },
-      ]),
-    ).toBe('claude-opus-5-5 · medium, claude-sonnet-5-5');
-    expect(modelsLabel([])).toBe('–');
-  });
-});
-
 describe('yesNoLabel', () => {
   it('writes yes or no, a dash when it isn’t known', () => {
     expect(yesNoLabel(true)).toBe('yes');
     expect(yesNoLabel(false)).toBe('no');
     expect(yesNoLabel(null)).toBe('–');
-  });
-});
-
-describe('sessionsSummary', () => {
-  it('counts the sessions and those holding a run', () => {
-    expect(sessionsSummary([{ holds: [{}] }, { holds: [] }, { holds: [{}, {}] }])).toBe('3 sessions · 2 hold a run');
-    expect(sessionsSummary([{ holds: [{}] }])).toBe('1 session · 1 holds a run');
   });
 });
 
@@ -385,9 +309,9 @@ describe('sessionName', () => {
 });
 
 describe('projectLabel', () => {
-  it('names a project, "other project" for a session in no stored run\'s project', () => {
+  it('names a project, "Other project" for a session in no stored run\'s project', () => {
     expect(projectLabel('atlas')).toBe('atlas');
-    expect(projectLabel(null)).toBe('other project');
+    expect(projectLabel(null)).toBe('Other project');
   });
 });
 
@@ -410,16 +334,16 @@ describe('timelineTimes', () => {
 });
 
 describe('phaseLabel', () => {
-  it('names a step kind by its step label, in lower case', () => {
-    expect(phaseLabel('fix_check')).toBe('fix-check');
-    expect(phaseLabel('plan_simplify')).toBe('plan simplify');
+  it('names a step kind by its step label, capitalised', () => {
+    expect(phaseLabel('fix_check')).toBe('Fix-check');
+    expect(phaseLabel('plan_simplify')).toBe('Plan simplify');
   });
-  it('writes another phase with spaces', () => {
-    expect(phaseLabel('plan_writing')).toBe('plan writing');
-    expect(phaseLabel('design')).toBe('design');
+  it('writes another phase with spaces, capitalised', () => {
+    expect(phaseLabel('plan_writing')).toBe('Plan writing');
+    expect(phaseLabel('design')).toBe('Design');
   });
-  it('lower-cases an unknown name', () => {
-    expect(phaseLabel('Deploy_Check')).toBe('deploy check');
+  it('lower-cases an unknown name after its first letter', () => {
+    expect(phaseLabel('Deploy_Check')).toBe('Deploy check');
   });
 });
 
@@ -470,7 +394,8 @@ test('formatLength uses the largest units that fit', () => {
 });
 test('warningBody drops the log prefix and the run\'s own lead', () => {
   expect(warningBody('WARN: feat/sync (2026-11-08): no session transcript', 'feat/sync')).toBe('No session transcript');
-  expect(warningBody('WARN: feat/other (2026-11-08): no session transcript', 'feat/sync')).toBe('Feat/other (2026-11-08): no session transcript');
+  expect(warningBody('WARN: feat/other (2026-11-08): no session transcript', 'feat/sync')).toBe('feat/other (2026-11-08): no session transcript');
+  expect(warningBody('final_review step 1 ran late')).toBe('final_review step 1 ran late');
   expect(warningBody('session {session}: startup guidelines missing')).toBe('Startup guidelines missing');
   expect(warningBody('the handoff in {session} came late')).toBe('The handoff in the session came late');
   expect(warningBody('already plain')).toBe('Already plain'); expect(warningBody('WARN:')).toBe('');
@@ -491,3 +416,23 @@ test('a day and a day and time are written in en-US, in the reader\'s time zone,
 });
 test('capitalize', () => { expect(capitalize('important')).toBe('Important'); expect(capitalize('')).toBe(''); });
 test('STEP_LABELS names simplify as a step, capitalised', () => { expect(STEP_LABELS.simplify).toBe('Simplify'); });
+
+describe('foundFindings', () => {
+  it('counts every finding of the run', () => {
+    expect(foundFindings({ beforeSteps: false, findings: { total: 6, actedOn: 3, notActedOn: 2, open: 1 } })).toBe(6);
+  });
+
+  it('is unknown for a record from before steps', () => {
+    expect(foundFindings({ beforeSteps: true, findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 } })).toBeNull();
+  });
+});
+
+describe('closedFindings', () => {
+  it('counts the findings acted on and not acted on, the open ones left out', () => {
+    expect(closedFindings({ beforeSteps: false, findings: { total: 6, actedOn: 3, notActedOn: 2, open: 1 } })).toBe(5);
+  });
+
+  it('is unknown for a record from before steps', () => {
+    expect(closedFindings({ beforeSteps: true, findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 } })).toBeNull();
+  });
+});

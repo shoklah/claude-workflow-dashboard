@@ -30,6 +30,13 @@ for (const width of [375, 768, 1440]) {
       if (extra > 0) failures.push(`${path}: ${extra} px`);
       const { violations } = await new AxeBuilder({ page }).analyze();
       for (const v of violations) failures.push(`${path}: ${v.id}`);
+      // Secondary and status inks appear only on a panel: nothing in them has the backdrop as its nearest painted surface.
+      const offenders = await page.evaluate(() =>
+        [...document.querySelectorAll('main .text-muted-foreground, main [class*="text-warning-ink"]')]
+          // textContent, since an SVG (an icon) carrying the class has no innerText.
+          .filter((el) => (el.textContent ?? '').trim() !== '' && !el.closest('.glass, [data-slot="table-container"], [role="status"]'))
+          .map((el) => (el.textContent ?? '').slice(0, 40)));
+      if (offenders.length > 0) failures.push(`${path}: ink on the backdrop: ${offenders.join(' | ')}`);
     }
     expect(failures).toEqual([]);
   });

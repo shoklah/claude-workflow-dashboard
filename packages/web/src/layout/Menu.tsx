@@ -46,12 +46,12 @@ export function MenuButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="rounded-control md:hidden">
+        <Button variant="outline" size="sm" className="md:hidden">
           <MenuIcon aria-hidden />
           Menu
         </Button>
       </DialogTrigger>
-      <DialogContent className="top-2 left-2 max-w-64 translate-x-0 translate-y-0 rounded-panel p-4 sm:max-w-64">
+      <DialogContent className="top-2 left-2 max-w-64 translate-x-0 translate-y-0 rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
         <DialogHeader>
           <DialogTitle className="text-section-title">Pages</DialogTitle>
           <DialogDescription className="sr-only">Go to a page of the dashboard.</DialogDescription>

@@ -1,7 +1,7 @@
 import type { Area, FindingCell, FindingsResponse } from '@cwd/shared';
 import { HeatmapTable } from '../components/HeatmapTable.tsx';
-import { CategoryBadge } from '../runs/FindingsTable.tsx';
-import { byAppSplit, categoryLabel, formatCount, formatPercent } from '../lib/format.ts';
+import { Num } from '../components/Num.tsx';
+import { categoryLabel, formatCount, formatPercent, total } from '../lib/format.ts';
 
 export type Measure = 'raised' | 'actedOn' | 'invalid' | 'appDiffers' | 'strengths';
 
@@ -23,10 +23,10 @@ export function workflowLabelled(response: FindingsResponse): boolean {
 }
 
 /**
- * The area's categories down and the weeks across, in the heatmap: a count shaded against the grid's largest, a share
- * against 100%. Once a finding of the period shows the workflow's label, a raised count with some of it the app's says
- * so ("2 · 1 by the app") and the categories leave the app's dashed badge; until then the page's line says every label
- * is the app's.
+ * The area's categories down and the weeks across, in the heatmap, one value per cell: a count shaded against the
+ * grid's largest, a share against 100%. Under a count, each row ends with its total; under "Raised", once a finding of
+ * the period shows the workflow's label, also with how many of its findings the app labelled. Until then the page's
+ * line says every label is the app's.
  */
 export function FindingsGrid({
   response,
@@ -42,10 +42,9 @@ export function FindingsGrid({
   onSelect: (cell: Selection) => void;
 }) {
   const rows = response.rows.filter((row) => row.area === area);
-  const label = (category: string | null) => categoryLabel(category, response.categoryLabels);
   const count = COUNTS.includes(measure);
   const max = count ? Math.max(0, ...rows.flatMap((row) => row.cells.map((c) => value(c, measure) ?? 0))) : 100;
-  const byWorkflow = workflowLabelled(response);
+  const byApp = workflowLabelled(response) && measure === 'raised';
   return (
     <HeatmapTable
       label="Findings by category and week"
@@ -56,25 +55,18 @@ export function FindingsGrid({
           heading: null,
           rows: rows.map((row) => ({
             id: row.category ?? '',
-            name: label(row.category),
-            header: (
-              <CategoryBadge
-                category={row.category}
-                judge={byWorkflow ? null : 'app'}
-                labels={response.categoryLabels}
-              />
-            ),
+            name: categoryLabel(row.category, response.categoryLabels),
             values: row.cells.map((cell) => value(cell, measure)),
-            texts: byWorkflow && measure === 'raised' ? row.cells.map(byAppSplit) : undefined,
+            extras: byApp ? [<Num value={total(row.cells.map((c) => c.byApp))} />] : undefined,
           })),
         },
       ]}
       max={max}
       format={count ? formatCount : formatPercent}
+      total={count}
+      extras={byApp ? ['Labelled by the app'] : []}
       selected={selected && { id: selected.category ?? '', week: selected.week }}
-      onSelect={(cell) =>
-        onSelect({ category: cell.id || null, week: cell.week })
-      }
+      onSelect={(cell) => onSelect({ category: cell.id || null, week: cell.week })}
     />
   );
 }

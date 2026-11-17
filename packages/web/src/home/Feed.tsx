@@ -1,58 +1,57 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { FeedItem } from '@cwd/shared';
 import { markSeen } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
+import { Num } from '../components/Num.tsx';
+import { Pairs, Panel } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { WarningText } from '../components/WarningText.tsx';
-import {
-  SUCCESS_BORDER,
-  WARNING_BORDER,
-  actedOnSplit,
-  formatCost,
-  formatMinutes,
-  joined,
-  plural,
-  runWhere,
-} from '../lib/format.ts';
+import { Time } from '../layout/StatusBanner.tsx';
+import { formatCost, formatMinutes, pathLabel } from '../lib/format.ts';
 
-/** An item's first line, "Run finished · atlas · feat/search · full", opening its run when it has one. */
-function Headline({ item, title }: { item: FeedItem; title: string }) {
-  const where = runWhere(item);
-  const text = (
-    <>
-      <b>{title}</b>
-      {where && ` · ${where}`}
-    </>
-  );
-  if (item.runKey === null) return text;
-  return (
-    <Link to="/runs/$key" params={{ key: item.runKey }} className="underline-offset-2 hover:underline">
-      {text}
-    </Link>
-  );
-}
-
+/** An item: what happened and when, its status a swatch beside the word (the warning orange or the finished green);
+ * then the run it concerns, its branch leading and opening the run, its project and path trailing, muted; then its
+ * facts, a run's as labelled pairs, a warning's its text. */
 function Item({ item }: { item: FeedItem }) {
-  if (item.type === 'warning') {
-    return (
-      <li className={cn('border-l-3 py-0.5 pl-2', WARNING_BORDER)}>
-        <Headline item={item} title="New warning" />
-        <div>{item.text !== null && <WarningText text={item.text} sessionId={item.sessionId} branch={item.branch} />}</div>
-      </li>
-    );
-  }
-  const findings = item.findings && `${plural(item.findings.total, 'finding')} · ${actedOnSplit(item.findings)}`;
+  const warning = item.type === 'warning';
+  const path = pathLabel(item.path);
   return (
-    <li className={cn('border-l-3 py-0.5 pl-2', SUCCESS_BORDER)}>
-      <Headline item={item} title="Run finished" />
-      <div>
-        {joined([
-          findings,
-          item.minutes === null ? null : formatMinutes(item.minutes),
-          item.cost === null ? null : formatCost(item.cost),
-        ])}
+    <li className="flex flex-col gap-1 border-b pb-3 last:border-0 last:pb-0">
+      <div className="flex items-baseline gap-2">
+        <span
+          aria-hidden
+          className={cn('size-2.5 flex-none translate-y-px rounded-swatch', warning ? 'bg-warning-edge' : 'bg-success-edge')}
+        />
+        <b className="font-semibold">{warning ? 'New warning' : 'Run finished'}</b>
+        <span className="ml-auto text-xs text-muted-foreground">
+          <Time iso={item.at} />
+        </span>
       </div>
+      {item.runKey !== null ? (
+        <RunLink runKey={item.runKey} branch={item.branch} className="break-words" />
+      ) : (
+        item.branch !== null && <span className="break-words">{item.branch}</span>
+      )}
+      {item.project !== null && (
+        <span className="text-xs text-muted-foreground">
+          {path === null ? item.project : `${item.project}, ${path} path`}
+        </span>
+      )}
+      {warning ? (
+        item.text !== null && <WarningText text={item.text} sessionId={item.sessionId} branch={item.branch} />
+      ) : (
+        <Pairs
+          className="mt-1"
+          pairs={[
+            ['Findings', <Num value={item.findings?.total} />],
+            ['Acted on', <Num value={item.findings?.actedOn} />],
+            ['Open', <Num value={item.findings?.open} />],
+            ['Time', <Num value={item.minutes} format={formatMinutes} />],
+            ['Est. cost', <Num value={item.cost} format={formatCost} />],
+          ]}
+        />
+      )}
     </li>
   );
 }
@@ -65,24 +64,26 @@ export function Feed({ items }: { items: FeedItem[] }) {
     await queryClient.invalidateQueries({ queryKey: ['/api/home'] });
   }
   return (
-    <section aria-labelledby="feed-heading" className="flex flex-col gap-2 text-sm">
-      <h2 id="feed-heading" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        Since you last looked
-      </h2>
-      {items.length === 0 ? (
-        <p className="text-muted-foreground">Nothing new.</p>
-      ) : (
-        <>
-          <ul className="flex flex-col gap-2">
-            {items.map((item) => (
-              <Item key={`${item.type} ${item.at} ${item.runKey} ${item.text}`} item={item} />
-            ))}
-          </ul>
-          <Button variant="outline" size="sm" className="self-start" onClick={onMarkAllSeen}>
+    <Panel
+      title="Since you last looked"
+      aside={
+        items.length > 0 && (
+          <Button variant="outline" size="sm" className="ml-auto" onClick={onMarkAllSeen}>
             Mark all seen
           </Button>
-        </>
+        )
+      }
+      className="text-sm"
+    >
+      {items.length === 0 ? (
+        <p className="text-muted-foreground">Nothing new. Finished runs and new warnings show here until you mark them seen.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {items.map((item) => (
+            <Item key={`${item.type} ${item.at} ${item.runKey} ${item.text}`} item={item} />
+          ))}
+        </ul>
       )}
-    </section>
+    </Panel>
   );
 }

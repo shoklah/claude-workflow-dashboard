@@ -15,7 +15,9 @@ type Story = StoryObj<typeof meta>;
 export const Idle: Story = {
   args: { importing: false },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Refresh' }));
+    const button = canvas.getByRole('button', { name: 'Refresh' });
+    await expect(getComputedStyle(button).borderTopLeftRadius).toBe('9999px');
+    await userEvent.click(button);
     await expect(fetch).toHaveBeenCalledOnce();
     await expect(fetch).toHaveBeenCalledWith('/api/refresh', {
       method: 'POST',

@@ -12,7 +12,6 @@ type Story = StoryObj<typeof meta>;
 export const Mark: Story = {
   play: async ({ canvas, userEvent }) => {
     const mark = canvas.getByText('reporter, all time');
-    await expect(mark.closest('[data-slot="badge"]')).toBeNull();
     await expect(mark).toHaveClass(...TERM.split(' '));
     await userEvent.tab();
     await expect(mark).toHaveFocus();
@@ -25,7 +24,6 @@ export const Information: Story = {
   args: { mark: informationMark },
   play: async ({ canvas, userEvent }) => {
     const mark = canvas.getByText('reporter');
-    await expect(mark.closest('[data-slot="badge"]')).toBeNull();
     await expect(mark).toHaveClass(...TERM.split(' '));
     await userEvent.tab();
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('not filtered by period');

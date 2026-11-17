@@ -1,29 +1,35 @@
 import type { FindingsResponse } from '@cwd/shared';
-import { joined, judgedInvalidLabel, labellerLabel } from '../lib/format.ts';
+import { Num } from '../components/Num.tsx';
+import { Pairs, Panel } from '../components/Panel.tsx';
+import { formatCompact } from '../lib/format.ts';
 
-const SIGNALS: [keyof FindingsResponse['signals'], string][] = [
-  ['laterFixes', 'fix commits within 14 days after a run'],
-  ['finalAfterClean', 'final-review findings on runs whose task reviews came back clean'],
-  ['notProportionate', 'fix-check verdicts of "fixed, not proportionate"'],
-  ['declinedOrRuled', 'findings declined or ruled'],
-];
-
-/** The period's relevance signals, each a sum over the stored runs, the findings the session judged invalid beside
- * those declined or ruled, and the labeller's line. */
-export function SignalsPanel({
-  signals,
-  labeller,
-}: Pick<FindingsResponse, 'signals' | 'labeller'>) {
+/** The period's relevance signals, each a sum over the stored runs, as labelled pairs; then the labeller's facts, or
+ * the line that it is off. */
+export function SignalsPanel({ signals, labeller }: Pick<FindingsResponse, 'signals' | 'labeller'>) {
   return (
-    <section aria-label="Relevance signals" className="flex flex-col gap-2 text-sm">
-      <h2 className="font-semibold">Relevance signals</h2>
-      {SIGNALS.map(([key, label]) => (
-        <div key={key} role="group" aria-label={label} className="glass px-3 py-2">
-          <div className="text-lg font-semibold">{signals[key]}</div>
-          {key === 'declinedOrRuled' ? joined([label, judgedInvalidLabel(signals.judgedInvalid)]) : label}
-        </div>
-      ))}
-      <p className="text-muted-foreground">{labellerLabel(labeller)}</p>
-    </section>
+    <Panel title="Relevance signals">
+      <Pairs
+        pairs={[
+          ['Fix commits within 14 days after a run', <Num value={signals.laterFixes} />],
+          ['Final review findings on runs whose task reviews came back clean', <Num value={signals.finalAfterClean} />],
+          ['Fix-check verdicts of "fixed, not proportionate"', <Num value={signals.notProportionate} />],
+          ['Findings declined or ruled', <Num value={signals.declinedOrRuled} />],
+          ['Findings the session judged invalid', <Num value={signals.judgedInvalid} />],
+        ]}
+      />
+      <div className="border-t pt-3">
+        {labeller.on ? (
+          <Pairs
+            pairs={[
+              ['Labelled by the app', <Num value={labeller.labelled} />],
+              ['Waiting', <Num value={labeller.waiting} />],
+              ['Labeller tokens this week', <Num value={labeller.tokensThisWeek.input + labeller.tokensThisWeek.output} format={formatCompact} />],
+            ]}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">The labeller is off: the data folder's .env holds no API key.</p>
+        )}
+      </div>
+    </Panel>
   );
 }

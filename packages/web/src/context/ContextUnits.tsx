@@ -1,127 +1,148 @@
-import { Link } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
 import { cn } from 'cn';
 import type { ContextUnit } from '@cwd/shared';
+import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { Line, Section } from '../components/Panel.tsx';
+import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
-import { Badge } from '../components/ui/badge.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { NONE, formatCompact, hiddenLabel, projectLabel, runWhere, sessionName } from '../lib/format.ts';
+import {
+  WARNING_INK,
+  capitalize,
+  formatCompactFixed,
+  hiddenLabel,
+  projectLabel,
+  sessionName,
+} from '../lib/format.ts';
 
-// The approved mockup's columns, its counts right-aligned in tabular figures; the first names the unit's kind.
-const COLUMNS = [
-  { label: 'Kind', count: false },
-  { label: 'Unit', count: false },
-  { label: 'When', count: false },
-  { label: 'Calls', count: true },
-  { label: 'Median per call', count: true },
-  { label: 'Largest', count: true },
-  { label: 'Past the cap', count: true },
-  { label: 'Handoff', count: false },
-  { label: 'Handed off to', count: false },
-  { label: 'Read share', count: false },
-  { label: 'Sweeps inline · delegated', count: true },
-];
-const COUNT = 'text-right tabular-nums';
+const COLUMN_COUNT = 14;
 
-/** A session's name, with its ID's chip when it has one. */
-function SessionName({ title, sessionId }: { title: string | null; sessionId: string | null }) {
-  return (
-    <>
-      <span className={cn(!title && 'text-muted-foreground')}>{sessionName(title)}</span>
-      {sessionId !== null && (
-        <div>
-          <SessionChip id={sessionId} />
-        </div>
-      )}
-    </>
-  );
-}
-
-/** A run as its link to its page, a session as its name, chip and project. */
+/** A run's branch as its link to its page, a session's name alone (its ID stays off the row). */
 function UnitName({ unit }: { unit: ContextUnit }) {
   if (unit.run) {
     return (
-      <Link to="/runs/$key" params={{ key: unit.run.key }} className="underline-offset-2 hover:underline">
-        {runWhere(unit.run)}
-      </Link>
+      <RunLink runKey={unit.run.key} branch={unit.run.branch} />
     );
   }
-  const session = unit.session!;
-  return (
-    <>
-      <SessionName title={session.title} sessionId={session.sessionId} />
-      <div className="text-muted-foreground">{projectLabel(session.project)}</div>
-    </>
-  );
+  const title = unit.session?.title ?? null;
+  return <span className={cn(!title && 'font-normal text-muted-foreground')}>{sessionName(title)}</span>;
 }
 
 /**
  * The Context page's runs and sessions, in the API's order (most calls past the cap first): over the cap only, or all
- * with a context, by the page's "Units" switch; a line under them counts those of other projects while showing.
+ * with a context, by the switch beside its title (`children`); a line under them counts those of other projects while
+ * showing.
  */
 export function ContextUnits({
   units,
   hidden,
   over,
+  children,
 }: {
   units: ContextUnit[];
   hidden: number;
   over: boolean;
+  children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">Runs and sessions</h2>
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs and sessions' }}>
+    <Section title="Runs and sessions" aside={children}>
+      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs and sessions table' }}>
         <TableHeader>
           <TableRow>
-            {COLUMNS.map((column) => (
-              <TableHead key={column.label} className={cn(column.count && COUNT)}>
-                {column.label}
-              </TableHead>
-            ))}
+            <TableHead rowSpan={2}>Name</TableHead>
+            <TableHead rowSpan={2}>Kind</TableHead>
+            <TableHead rowSpan={2}>Project</TableHead>
+            <TableHead rowSpan={2}>When</TableHead>
+            <TableHead rowSpan={2} className={NUM}>
+              Calls
+            </TableHead>
+            <GroupHead span={2}>Context (tokens)</GroupHead>
+            <TableHead rowSpan={2} className={NUM}>
+              Calls past the cap
+            </TableHead>
+            <GroupHead span={3}>Handoff</GroupHead>
+            <TableHead rowSpan={2}>Read share</TableHead>
+            <GroupHead span={2}>Sweeps</GroupHead>
+          </TableRow>
+          <TableRow>
+            <TableHead className={cn(SUB, NUM)}>Median per call</TableHead>
+            <TableHead className={cn(SUB, NUM)}>Largest</TableHead>
+            <TableHead className={SUB}>At</TableHead>
+            <TableHead className={SUB}>To session</TableHead>
+            <TableHead className={SUB}>ID</TableHead>
+            <TableHead className={cn(SUB, NUM)}>Inline</TableHead>
+            <TableHead className={cn(SUB, NUM)}>Delegated</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {units.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={COLUMNS.length} className="text-muted-foreground">
-                {over
-                  ? 'No runs or sessions past the cap in this period.'
-                  : 'No runs or sessions with context in this period.'}
-              </TableCell>
-            </TableRow>
+            <EmptyRow columns={COLUMN_COUNT}>
+              {over
+                ? 'No runs or sessions past the cap in this period.'
+                : 'No runs or sessions with context in this period.'}
+            </EmptyRow>
           )}
           {units.map((unit) => (
             <TableRow key={unit.key}>
-              <TableCell>
-                <Badge variant="outline">{unit.kind}</Badge>
-              </TableCell>
-              <TableCell>
+              <TableCell className="font-medium">
                 <UnitName unit={unit} />
               </TableCell>
-              <TableCell>{unit.at === null ? NONE : <Time iso={unit.at} />}</TableCell>
-              <TableCell className={COUNT}>{unit.calls}</TableCell>
-              <TableCell className={COUNT}>{formatCompact(unit.medianTokens)}</TableCell>
-              <TableCell className={COUNT}>{formatCompact(unit.maxTokens)}</TableCell>
-              <TableCell className={COUNT}>{unit.callsOverCap}</TableCell>
-              <TableCell>{unit.handoff === null ? NONE : <Time iso={unit.handoff} />}</TableCell>
+              <TableCell className="text-muted-foreground">{capitalize(unit.kind)}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {unit.run ? <Text value={unit.run.project} /> : projectLabel(unit.session?.project ?? null)}
+              </TableCell>
+              <TableCell className="text-muted-foreground tabular-nums">
+                {unit.at === null ? <Unknown /> : <Time iso={unit.at} />}
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={unit.calls} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={unit.medianTokens} format={formatCompactFixed} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={unit.maxTokens} format={formatCompactFixed} />
+              </TableCell>
+              <TableCell className={cn(NUM, unit.callsOverCap > 0 && WARNING_INK)}>
+                <Num value={unit.callsOverCap} />
+              </TableCell>
+              <TableCell className="text-muted-foreground tabular-nums">
+                {unit.handoff === null ? <Unknown label="no handoff" /> : <Time iso={unit.handoff} />}
+              </TableCell>
               <TableCell>
                 {unit.handedOffTo === null ? (
-                  NONE
+                  <Unknown label="no handoff" />
                 ) : (
-                  <SessionName title={unit.handedOffTo.title} sessionId={unit.handedOffTo.sessionId} />
+                  <span className={cn(!unit.handedOffTo.title && 'text-muted-foreground')}>
+                    {sessionName(unit.handedOffTo.title)}
+                  </span>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {unit.handedOffTo === null ? (
+                  <Unknown label="no handoff" />
+                ) : unit.handedOffTo.sessionId === null ? (
+                  <Unknown label="hidden while showing" />
+                ) : (
+                  <SessionChip id={unit.handedOffTo.sessionId} />
                 )}
               </TableCell>
               <TableCell>
                 <ShareBar share={unit.readShare} />
               </TableCell>
-              <TableCell className={COUNT}>{`${unit.sweeps.inline} · ${unit.sweeps.delegated}`}</TableCell>
+              <TableCell className={NUM}>
+                <Num value={unit.sweeps.inline} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={unit.sweeps.delegated} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      {hidden > 0 && <p className="text-sm text-muted-foreground">{hiddenLabel(hidden, 'row')}</p>}
-    </div>
+      {hidden > 0 && <Line>{hiddenLabel(hidden, 'row')}</Line>}
+    </Section>
   );
 }

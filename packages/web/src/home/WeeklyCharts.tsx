@@ -1,8 +1,9 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCompact, formatCost, formatDay, weekLabel } from '../lib/format.ts';
+import { STEP_LABELS, formatCompact, formatCost, formatDay, formatDollars, weekLabel } from '../lib/format.ts';
 import { resolveVars, useDark } from '../lib/theme.ts';
-import { Line, Panel } from '../components/Panel.tsx';
+import { NUM, Num } from '../components/Num.tsx';
+import { Details, Line, Panel } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 
 type Charts = HomeResponse['charts'];
@@ -34,7 +35,7 @@ function baseOption(weeks: string[]) {
   return {
     animation: false,
     textStyle: { fontFamily: 'inherit' },
-    grid: { left: 8, right: 8, top: 8, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 8, top: 8, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -159,14 +160,15 @@ export function barsOption(
   };
 }
 
-/** The findings of each step kind, stacked per week. */
+/** The findings of each step kind, stacked per week. On its own row the eight step kinds fit one legend line; a
+ * narrow chart wraps the legend, so it gets the room for four rows. */
 function findingsOption(charts: Charts) {
-  return barsOption(
+  const option = barsOption(
     charts.weeks,
     stepKinds(charts).map((kind) => ({ name: STEP_LABELS[kind], data: charts.findingsByStep[kind] })),
-    // Eight step kinds wrap the legend to four rows.
-    { stack: 'findings', legendRoom: 84 },
+    { stack: 'findings', legendRoom: 32 },
   );
+  return { baseOption: option, media: [{ query: { maxWidth: 700 }, option: { grid: { bottom: 84 } } }] };
 }
 
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
@@ -187,17 +189,18 @@ export function Chart({ title, option, height }: { title: string; option: object
 /** Every charted number, a row per week, so no value depends on telling colors apart. */
 function ChartsTable({ charts }: { charts: Charts }) {
   return (
-    <details className="text-sm">
-      <summary className="cursor-pointer text-muted-foreground">The charts as a table</summary>
+    <Details summary="The charts as a table">
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'The charts as a table' }}>
         <TableHeader>
           <TableRow>
             <TableHead>Week</TableHead>
             {stepKinds(charts).map((kind) => (
-              <TableHead key={kind}>{STEP_LABELS[kind]} findings</TableHead>
+              <TableHead key={kind} className={NUM}>
+                {STEP_LABELS[kind]} findings
+              </TableHead>
             ))}
-            <TableHead>Cost</TableHead>
-            <TableHead>Warnings</TableHead>
+            <TableHead className={NUM}>Cost ($)</TableHead>
+            <TableHead className={NUM}>Warnings</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -205,15 +208,21 @@ function ChartsTable({ charts }: { charts: Charts }) {
             <TableRow key={week}>
               <TableHead scope="row">{weekLabel(week)}</TableHead>
               {stepKinds(charts).map((kind) => (
-                <TableCell key={kind}>{charts.findingsByStep[kind][i]}</TableCell>
+                <TableCell key={kind} className={NUM}>
+                  <Num value={charts.findingsByStep[kind][i]} />
+                </TableCell>
               ))}
-              <TableCell>{formatCost(charts.cost[i])}</TableCell>
-              <TableCell>{charts.warnings[i]}</TableCell>
+              <TableCell className={NUM}>
+                <Num value={charts.cost[i]} format={formatDollars} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={charts.warnings[i]} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </details>
+    </Details>
   );
 }
 
@@ -233,10 +242,10 @@ export function CoverageNote({ coverageFrom, firstWeek }: { coverageFrom: string
  */
 export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverageFrom: string | null }) {
   return (
-    <section aria-label="Weekly charts" className="flex flex-col gap-2">
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Chart title="Findings by week, by step" option={findingsOption(charts)} height={260} />
-        <Chart title="Cost by week" option={singleBars(charts.weeks, 'Cost', charts.cost, { cost: true })} height={260} />
+    <section aria-label="Weekly charts" className="flex flex-col gap-3">
+      <Chart title="Findings by week, by step" option={findingsOption(charts)} height={260} />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Chart title="Cost by week ($)" option={singleBars(charts.weeks, 'Cost', charts.cost, { cost: true })} height={260} />
         <Chart title="Warnings by week" option={singleBars(charts.weeks, 'Warnings', charts.warnings)} height={260} />
       </div>
       <CoverageNote coverageFrom={coverageFrom} firstWeek={charts.weeks[0]} />

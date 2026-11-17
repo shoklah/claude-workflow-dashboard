@@ -8,7 +8,13 @@ const meta = { component: FindingsTable } satisfies Meta<typeof FindingsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const APP_LABEL = "The app's label";
+/** No cell joins values with " · " outside the App column. */
+async function plain(canvasElement: HTMLElement): Promise<void> {
+  const app = [...canvasElement.querySelectorAll('th')].findIndex((th) => th.textContent === 'App');
+  for (const tr of canvasElement.querySelectorAll('tbody tr')) {
+    for (const [i, td] of [...tr.children].entries()) if (i !== app) await expect(td.textContent).not.toContain(' · ');
+  }
+}
 
 /** The text of each body row's cell under the header `name`. */
 function column(canvasElement: HTMLElement, name: string): (string | null)[] {
@@ -23,10 +29,22 @@ export const Empty: Story = {
   },
 };
 
+/** Filters that match nothing say so, and how to see more. */
+export const NoMatch: Story = {
+  args: { findings: runFull.findings, categoryLabels: runFull.categoryLabels },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Step' }), 'simplify');
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Severity' }), 'critical');
+    await expect(
+      canvas.getByText('No findings match these filters. Set a filter back to All to see more.'),
+    ).toBeVisible();
+  },
+};
+
 /**
- * Full: every finding of the run, one row each, its free text shown as text. The app's labels: each category in a
- * dashed badge, named by the response's `categoryLabels`, the relevance call with its reason in a tooltip; Valid is "–"
- * on a run the workflow didn't label.
+ * Full: every finding of the run, one row each, its free text shown as text. The app's labels: each category as plain
+ * text, named by the response's `categoryLabels`, "App" under Labelled by, the relevance call with its reason in a
+ * tooltip; Valid is "–" on a run the workflow didn't label.
  */
 export const Full: Story = {
   args: { findings: runFull.findings, categoryLabels: runFull.categoryLabels },
@@ -38,14 +56,16 @@ export const Full: Story = {
       'Task',
       'Severity',
       'Category',
+      'Labelled by',
       'Summary',
       'Outcome',
       'Reason',
-      'Verdicts',
+      'Fix-check verdicts',
       'Valid',
       'App',
     ]);
     await expect(canvas.getAllByRole('row')).toHaveLength(7);
+    await plain(canvasElement);
     // It scrolls sideways: its container is a named tab stop.
     await expect(canvas.getByRole('region', { name: 'Findings' })).toHaveAttribute('tabindex', '0');
     await expect(canvas.getAllByText(HTML_TEXT)).toHaveLength(1);
@@ -58,12 +78,12 @@ export const Full: Story = {
       'Simplicity',
       'unlabelled',
     ]);
-    const badges = canvas.getAllByTitle(APP_LABEL);
-    await expect(badges).toHaveLength(5);
-    for (const badge of badges) await expect(badge).toHaveClass('border-dashed');
-    await expect(column(canvasElement, 'Valid')).toEqual(Array(6).fill(NONE));
-    await expect(column(canvasElement, 'App')).toEqual(['valid', 'unclear', 'valid', 'invalid', 'valid', NONE]);
-    await userEvent.hover(canvas.getByText('invalid'));
+    await expect(column(canvasElement, 'Labelled by')).toEqual([...Array(5).fill('App'), `${NONE}not labelled`]);
+    await expect(column(canvasElement, 'Severity')).toEqual(['Important', 'Minor', 'Critical', 'Important', `${NONE}not known`, 'Minor']);
+    await expect(column(canvasElement, 'Fix-check verdicts')).toEqual(['Fixed', `${NONE}none`, 'Fixed', 'OpenOpenOpen', `${NONE}none`, `${NONE}none`]);
+    await expect(column(canvasElement, 'Valid')).toEqual(Array(6).fill(`${NONE}not known`));
+    await expect(column(canvasElement, 'App')).toEqual(['Valid', 'Unclear', 'Valid', 'Invalid', 'Valid', `${NONE}no app label`]);
+    await userEvent.hover(canvas.getByText('Invalid'));
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
       'The run means both tasks to share the index',
     );
@@ -71,11 +91,11 @@ export const Full: Story = {
     const outcomes = canvas.getByRole('combobox', { name: 'Outcome' });
     await expect([...outcomes.querySelectorAll('option')].map((o) => o.textContent)).toEqual([
       'All',
-      'applied',
-      'deferred',
-      'fixed',
-      'open',
-      'ruled',
+      'Applied',
+      'Deferred',
+      'Fixed',
+      'Open',
+      'Ruled',
     ]);
   },
 };
@@ -90,7 +110,7 @@ export const FilterRuled: Story = {
     const row = within(rows[0]);
     await expect(row.getByText('F4')).toBeVisible();
     await expect(row.getByText('One index per run is intended')).toBeVisible();
-    await expect(rows[0]).toHaveTextContent('open, open, open');
+    await expect(row.getAllByText('Open')).toHaveLength(3);
   },
 };
 
@@ -106,7 +126,7 @@ export const FilterStepAndSeverity: Story = {
   },
 };
 
-/** No finding labelled yet: every category is "unlabelled", with no badge, and the App column is "–". */
+/** No finding labelled yet: every category is "unlabelled", Labelled by and the App column "–". */
 export const Unlabelled: Story = {
   args: {
     findings: runFull.findings.map((f) => ({ ...f, category: null, relevance: null, labelReason: null })),
@@ -114,16 +134,15 @@ export const Unlabelled: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
-    await expect(headers).toEqual(expect.arrayContaining(['Category', 'Valid', 'App']));
+    await expect(headers).toEqual(expect.arrayContaining(['Category', 'Labelled by', 'Valid', 'App']));
     await expect(column(canvasElement, 'Category')).toEqual(Array(6).fill('unlabelled'));
-    await expect(canvas.queryAllByTitle(APP_LABEL)).toEqual([]);
-    await expect(column(canvasElement, 'App')).toEqual(Array(6).fill(NONE));
+    await expect(column(canvasElement, 'Labelled by')).toEqual(Array(6).fill(`${NONE}not labelled`));
+    await expect(column(canvasElement, 'App')).toEqual(Array(6).fill(`${NONE}no app label`));
   },
 };
 
 /**
- * After CR10: the workflow's categories in plain badges, the app's own in the dashed one; Valid is the workflow's
- * call; App says "agrees" when the workflow made both calls and the app's match, else the app's category where it
+ * After CR10: each category as plain text, Labelled by naming whose label it is; Valid is the workflow's call; App says "agrees" when the workflow made both calls and the app's match, else the app's category where it
  * differs and its call where it differs or the workflow made none.
  */
 export const WorkflowLabels: Story = {
@@ -137,23 +156,37 @@ export const WorkflowLabels: Story = {
       'Correctness',
       'Correctness',
     ]);
-    const badges = canvas.getAllByTitle(APP_LABEL);
-    await expect(badges.map((badge) => badge.textContent)).toEqual(['Conventions']);
-    await expect(badges[0]).toHaveClass('border-dashed');
-    await expect(canvas.getByText('Tests')).not.toHaveClass('border-dashed');
+    await expect(column(canvasElement, 'Labelled by')).toEqual(['Workflow', 'Workflow', 'App', 'Workflow', 'Workflow', 'Workflow']);
     await expect(canvas.getAllByRole('row')).toHaveLength(7);
-    await expect(column(canvasElement, 'Valid')).toEqual(['valid', 'invalid', NONE, 'unclear', NONE, NONE]);
+    await plain(canvasElement);
+    await expect(column(canvasElement, 'Valid')).toEqual(['Valid', 'Invalid', `${NONE}not known`, 'Unclear', `${NONE}not known`, `${NONE}not known`]);
     // With no validity from the workflow, the app's call shows: it never "agrees" with a call nobody made.
     await expect(column(canvasElement, 'App')).toEqual([
-      'agrees',
-      'Correctness · valid',
-      'valid',
-      NONE,
-      'invalid',
-      'Error handling · valid',
+      'Agrees',
+      'Correctness · Valid',
+      'Valid',
+      `${NONE}no app label`,
+      'Invalid',
+      'Error handling · Valid',
     ]);
-    await userEvent.hover(canvas.getByText('Correctness · valid'));
+    await userEvent.hover(canvas.getByText('Correctness · Valid'));
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('An empty export is a real case');
+  },
+};
+
+/** A severity or verdict whose words aren't its slug's reads as on every screen: `unneeded` as "Not required",
+ * `couldnt_run` as "Couldn't run", in the cells and the filter's options; an outcome as words, `to_owner` as "To owner". */
+export const NotRequired: Story = {
+  args: {
+    findings: [{ ...runFull.findings[0], severity: 'unneeded', outcome: 'to_owner', verdicts: ['couldnt_run'] }],
+    categoryLabels: runFull.categoryLabels,
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(column(canvasElement, 'Severity')).toEqual(['Not required']);
+    await expect(column(canvasElement, 'Outcome')).toEqual(['To owner']);
+    await expect(column(canvasElement, 'Fix-check verdicts')).toEqual(["Couldn't run"]);
+    const severities = canvas.getByRole('combobox', { name: 'Severity' });
+    await expect([...severities.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', 'Not required']);
   },
 };
 
@@ -165,7 +198,8 @@ export const UnnamedCategory: Story = {
   },
 };
 
-/** With `run`, the first column links each finding to its run's page, as the Findings page lists them. */
+/** With `run`, the first column links each finding to its run's page by its branch, its project beside it, as the
+ * Findings page lists them. */
 export const WithRun: Story = {
   args: {
     findings: runFull.findings.map((f) => ({
@@ -179,12 +213,13 @@ export const WithRun: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
-    await expect(headers.slice(0, 2)).toEqual(['Run', '#']);
-    await expect(headers).toEqual(expect.arrayContaining(['Category', 'Valid', 'App']));
-    await expect(canvas.getAllByTitle(APP_LABEL)).toHaveLength(5);
-    const links = canvas.getAllByRole('link', { name: 'atlas · feat/search' });
+    await expect(headers.slice(0, 3)).toEqual(['Run', 'Project', '#']);
+    await expect(headers).toEqual(expect.arrayContaining(['Category', 'Labelled by', 'Valid', 'App']));
+    const links = canvas.getAllByRole('link', { name: 'feat/search' });
     await expect(links).toHaveLength(6);
     await expect(links[0]).toHaveAttribute('href', `/runs/${fullRun.key}`);
-    await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill('atlas · feat/search'));
+    await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill('feat/search'));
+    await expect(column(canvasElement, 'Project')).toEqual(Array(6).fill('atlas'));
+    await plain(canvasElement);
   },
 };
