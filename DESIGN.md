@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Workflow dashboard
+name: edward
 description: >-
   A night-glass dashboard for reading a coding workflow's runs, findings and spend. Tinted glass panels, with a sheen and a bright edge, float over a
   vivid night gradient lit by soft colour orbs; type is white, numbers line up, and colour carries data or state, never
@@ -27,6 +27,8 @@ colors:
   orb-blue: "#2b86c5"
   orb-violet: "#784ba0"
   orb-teal: "#00d2b8"
+  mark-pink: "#ff3cac"
+  mark-teal: "#00d2b8"
   light-background: "#eef1fb"
   light-foreground: "#10162f"
   light-panel: "rgb(255 255 255 / 0.62)"
@@ -51,6 +53,7 @@ typography:
   body: { size: 14px, weight: 400, leading: 1.5 }
   table: { size: 14px, weight: 400, head-weight: 600 }
   small: { size: 12px, weight: 500 }
+  wordmark: { size: 20px, weight: 300, ward-weight: 700, tracking: -0.025em }
 rounded:
   base: 0.875rem
   panel: 1.25rem
@@ -66,7 +69,7 @@ components:
   button: pill; the pressed option is solid primary, the others clear glass with an edge
   select: pill, clear glass, a drawn chevron inset like the text
   table: rows on the panel, hairline row borders, header row slightly lighter, row hover lightens
-  menu: a glass rail; the current page is a lighter pill with full-weight text
+  menu: a glass rail, 224px and window-tall; named sections of icon and label entries, the current page a lighter pill with full-weight text; the brand on top, showing mode, Refresh and the import time at its foot
   chart: drawn on the panel, recessive grid, the categorical palette below
   heatmap-cell: one-hue blue ramp, zero a faint glass cell with muted ink
   share-bar: blue fill on the ramp's track
@@ -74,7 +77,7 @@ components:
   notice: amber glass bar with an amber edge
 ---
 
-# Workflow dashboard
+# edward
 
 ## Overview
 
@@ -94,6 +97,8 @@ Dark is the look. Light mode is its daylight pair: the same panels, radii, type 
 
 **Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffc8ab` dark / `#a8461c` light. In the feed, each item's status is a swatch beside its word: a new warning's in the warning orange, a finished run's in green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
 
+The mark, and only the mark, uses two of the backdrop's orb colours (pink and teal), the same in both modes.
+
 ## Typography
 
 One family, **Outfit** (open licence, variable weight), bundled with the app so it works offline. It is geometric and rounded like the glass, and it has tabular figures, which every number column needs (Sora, rendered in the direction step, lacks them). Numbers are always set with `tabular-nums`.
@@ -105,6 +110,7 @@ One family, **Outfit** (open licence, variable weight), bundled with the app so 
 | Body, table cells | 14px | 400 | 0 |
 | Table header | 14px | 600 | 0 |
 | Small, captions | 12px | 500 | 0 |
+| Wordmark | 20px | 300, "ward" in 700 | tight |
 
 The page and section title sizes are the tokens `text-page-title` and `text-section-title` (size, line height, tracking and weight in one utility).
 
@@ -112,7 +118,7 @@ Three levels of emphasis at most on a screen: the page title, section titles, an
 
 ## Layout
 
-A glass menu rail on the left (under 768px the rail is hidden and a Menu button in the header row opens the page list in a dialog), a header row with the import status, showing mode and refresh, then the page. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
+A glass menu rail on the left, as tall as the window and static while the page scrolls: edward's mark and wordmark, the pages in named sections, and at its foot showing mode, Refresh and the time of the last good import; in a short window only its menu scrolls. From 768px there is no header row: the import banner shows above the page only when it has something to say. Under 768px the rail is hidden and a top row holds a Menu button, which opens the same sections in a dialog, showing mode and Refresh. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
 
 ## Elevation & Depth
 
@@ -130,7 +136,7 @@ Panels and notice bars use a 1.25rem radius; buttons, selects and pressed option
 - **Button and option switch:** pills. In a switch, the pressed option is solid primary and the others are clear glass with an edge; a disabled option is 50% opacity with its tooltip still reachable.
 - **Select:** a clear glass pill with a drawn chevron in secondary ink, inset from the right as far as the text is from the left; its open list uses the system's popup.
 - **Table:** header row a slightly lighter glass band, header text 600; hairline row borders; row hover lightens the row by one glass step. Numeric columns right-aligned with tabular figures; the unit goes in the header; the one cell that carries its own unit is a session's length ("45 min", "7 h 46", "3 d 11 h"). A table that scrolls sideways fades at the edge where columns are hidden.
-- **Menu rail:** glass; the current page is a lighter pill with 600 weight, the rest 400 with hover.
+- **Menu rail:** glass, 224px; section names in the small role in secondary ink, 24px between sections; an entry is a 16px icon and its label, the current page a lighter pill with 600 weight, the rest 400 with hover; an icon never carries state; the brand on top, and at the foot, above a hairline, showing mode, Refresh and the import time.
 - **Heatmap cell:** the ramp under Chart colours, its number written in it.
 - **Share bar:** the ramp's fourth step on its first step, the percent written beside it.
 - **Reporter mark:** a figure from the reporter's all-time totals is followed by muted 12px text with a dotted underline that opens its explanation; it has no border or fill, so it never reads as a chip.
@@ -168,7 +174,7 @@ Motion explains a change and nothing else: a detail row opening, data refreshing
 
 ## Dark mode
 
-Every colour role has a dark and a light value (front matter, Colors). Dark is the look; the app sets `.dark` on the root from the system's `prefers-color-scheme` and follows its changes.
+Every colour role has a dark and a light value (front matter, Colors), except the mark's two colours, one value for both modes. Dark is the look; the app sets `.dark` on the root from the system's `prefers-color-scheme` and follows its changes.
 
 ## Chart colours
 
