@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 
-// The menu only: the page beside it changes as Tasks 9 and 10 build the screens, which get their own screenshots.
-test('the menu', async ({ page }) => {
+// The whole rail: brand, menu and its foot; the pages beside it get their own screenshots. 900 px tall so the menu doesn't scroll.
+test('the rail', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await pinClock(page);
   await page.goto('/');
-  await expect(page.getByRole('navigation')).toHaveScreenshot('menu.png');
+  await expect(page.getByRole('complementary')).toHaveScreenshot('rail.png');
 });
