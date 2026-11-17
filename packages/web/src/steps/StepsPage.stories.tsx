@@ -64,7 +64,7 @@ export const Empty: Story = {
     const rules = await table(canvasElement, 'Rules table');
     const review = await steps.findByRole('rowheader', { name: 'Task review' });
     await expect(rowsOf(review)).toHaveLength(1);
-    await expect(cells(review.closest('tr')!)).toEqual(['0', '0', 'No counts', '0', '0', '0', '0', '0.0', '0.00']);
+    await expect(cells(review.closest('tr')!)).toEqual(['0', '0', 'No counts', '0', '0', '0', '0', '0.0', DASH]);
     // Simplify's spend isn't known.
     await expect(cells(steps.getByRole('rowheader', { name: 'Simplify' }).closest('tr')!).slice(-2)).toEqual([DASH, DASH]);
     await expect(rules.queryByRole('rowheader', { name: /^Offer/ })).toBeNull();

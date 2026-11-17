@@ -1,6 +1,6 @@
-# claude-workflow-dashboard
+# edward
 
-A live dashboard for the Claude Code agentic workflow (`shoklah/claude-workflow`, exported as `shoklah/claude-workflow-template`). It shows what the workflow's reporter, `scripts/workflow-report.py --json`, says about runs, steps, findings and spend.
+Edward is a live dashboard for the Claude Code agentic workflow (`shoklah/claude-workflow`, exported as `shoklah/claude-workflow-template`). It shows what the workflow's reporter, `scripts/workflow-report.py --json`, says about runs, steps, findings and spend.
 
 This is a personal project, used as a playground for trying things and as a portfolio piece to show. The repo is public: it holds code and invented data only, and reads the real data at run time on the owner's machine. Design decisions are recorded in `docs/superpowers/specs/2026-11-09-live-dashboard-design.md`.
 
@@ -44,6 +44,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 
 ## Code conventions
 
+- The app is edward: lower-case as a wordmark, "Edward" in prose. The `@cwd` package scope (its initials), the data folder (`loadConfig`'s default in `packages/server/src/config.ts`) and the launchd label (`LABEL` in `packages/server/src/agent.ts`) keep the project's first name.
 - The data is personal (project paths, branch names, session IDs, costs, finding text): never commit real data, never put it in fixtures, never publish it publicly. Fixtures are invented.
 - `workflow-report.py` is the only parser of the run log and the transcripts: when the dashboard needs a new fact, it goes to the workflow repo as a change request, never parsed here.
 - This repo never edits the workflow repo or the template; they are a reference and the data source.
@@ -68,6 +69,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - A failure's error text (the reporter's, an import's, the labeller's) never quotes the reporter's stdout or the model's reply, which hold the data: it names the command, the exit and stderr's last line, the API's own error, or a fixed message; model calls go only through `anthropicLabelClient` in `packages/server/src/labeller.ts`, which turns the reply parser's errors into a fixed message.
 - Background work runs through `createQueue` in `packages/server/src/queue.ts`, one queue per job named by its second argument (`import`, `label`), which logs a failing job under that name instead of rejecting, so a background error never crashes the server.
 - An e2e axe check right after an animated change (a pressed switch, a dialog opening) first waits for that element's animations through `settled` in `packages/web/e2e/settled.ts`.
+- A test file whose tests each start a Node process (`packages/server/test/check-real.test.ts`) raises its own timeout with `vi.setConfig`.
 - A test that waits on an `fs.watch` event repeats the change inside `vi.waitFor`, since macOS can drop a change made right after the watch starts.
 - Node runs the TypeScript sources directly with its built-in type stripping (Node >= 22.18, the `engines` floor), as in `check:real`: code stays erasable-only TypeScript (`erasableSyntaxOnly` in `tsconfig.base.json`), with no enums, namespaces or parameter properties.
 - The server's request rules (the `Host` check, and for any method but GET and HEAD the `X-Dashboard-Refresh: 1` header and an allowed `Origin`) live only in `createApp`'s one middleware in `packages/server/src/app.ts`, which runs before every route; a route never checks them itself, and nothing sets an `Access-Control-*` header.
@@ -104,7 +106,8 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - Whether a finding's outcome takes the warning ink is only `outcomeWarns` in `format.ts`: the graph's chips, the step detail's Ended chip and Left for later alike.
 - A run's timeline becomes the graph's boxes only through `stagesOf` and `unitsOf` in `packages/web/src/runs/flow.ts`; what a unit left is only `leftOf`, a stuck fix loop only `stuck`, and a unit's strengths only `strengthsOf`, all there.
 - A stored session that another page names (Context's handoff, the run page's session and handoff) comes only from `shownSession` in `views/sessions.ts`: `sessionFacts`' title and ID while `showSession` holds, else null.
-- A skill's outcome leaves the backend only as `skillOutcomeLabel`'s label in `packages/server/src/views/runs.ts`, since a string outcome is a file path.
+- A skill's outcome leaves the backend only as `skillOutcomeLabel`'s label in `packages/server/src/views/runs.ts`, since a string outcome is a file path; a counted outcome (a dict of numbers, simplify's `{applied, skipped}`) is "found something" when any count isn't 0, else "found nothing", as the reporter's `skill_totals` groups it, and its counts never leave the backend.
+- A step kind's cost (`stepSums` in `views/steps.ts`) is null until one of its dispatched models has a price, then the sum of the priced ones, through `addKnown` in `views/home.ts` (the one sum that stays null until a value is known, `weekSums`' too), unlike `modelsCost`, which gives 0 when no model is priced; check:real compares step costs with a null read as 0 on both sides, since the reporter writes 0.0 where the dashboard writes null.
 - A warning is current only while the latest export still reports it (a run's while its text is in the run's latest merged `warns`, a session's while the latest export holds the session and the text is in its latest `warns`), and only through `currentWarnings` in `views/runs.ts`; the stored `warnings` table supplies first-seen times, kinds and steps.
 - A warning's family comes only from `FAMILIES` and `familyOf` in `packages/server/src/views/compliance.ts` ("other" for an unknown or null kind); with a scope, Compliance leaves out the "other" rows, its list leaves out "other" warnings and the session warnings `showSession` doesn't hold (as Home's feed does) and its `hidden` counts every warning in the period it left out of the list, and its information lines are left out whole and counted in `information.hidden`, never masked, since any line can name a project; its session warnings count in their first-seen week whatever the path and project filters, as Skills' session loads do.
 - A query value becomes a step kind only through `toStepKind` in `packages/shared/src/report.ts`, as a path does through `toPath` and the Spend page's units through `toSpendUnits`.

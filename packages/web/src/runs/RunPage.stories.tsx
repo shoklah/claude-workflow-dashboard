@@ -196,7 +196,7 @@ export const Full: Story = {
     ]);
     await expect(tableRows(canvas.getByRole('region', { name: 'Skills' }), 'Skills')).toEqual([
       ['subagent-driven-development', 'Loaded', 'Ran'],
-      ['simplify', 'Loaded', 'Applied 1, skipped 0'],
+      ['simplify', 'Loaded', 'Found something'],
       ['graphify', 'Offered', 'Accepted'],
       ['session-summary', 'Offered', 'Skipped'],
     ]);

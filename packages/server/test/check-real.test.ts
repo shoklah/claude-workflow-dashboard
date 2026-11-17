@@ -3,10 +3,13 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { fixture, fixturePath } from '../../shared/test/fixture.ts';
 
 const SCRIPT = fileURLToPath(new URL('../src/check-real.ts', import.meta.url));
+
+// Every test here starts a Node process, which takes seconds on a busy machine.
+vi.setConfig({ testTimeout: 60_000 });
 
 const dirs: string[] = [];
 
