@@ -2,12 +2,13 @@ import { cn } from 'cn';
 import { parseTime, type SessionRow } from '@cwd/shared';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
 import { Num, Text, Unknown } from '../components/Num.tsx';
-import { ScrollTable } from '../components/Panel.tsx';
+import { ColumnHead, ScrollTable } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   WARNING_INK,
+  formatDayTime,
   formatDollars,
   formatLength,
   modelLabel,
@@ -25,21 +26,20 @@ const KINDS: Record<SessionRow['timeline'][number]['kind'], string> = {
 };
 
 /** A session's skill loads, commands and held runs' window starts, in the API's time order: a small table, one value
- * per cell. */
+ * per cell, named by its session's name and start, so two sessions of one name open with regions of their own. */
 function Timeline({ session, name }: { session: SessionRow; name: string }) {
   if (session.timeline.length === 0) {
     return <p className="text-muted-foreground">No skill loads, commands or runs in this session.</p>;
   }
   const times = timelineTimes(session.timeline.map((item) => item.at));
   return (
-    <ScrollTable label={`Timeline of ${name}`}>
+    <ScrollTable label={`Timeline of ${name}, ${formatDayTime(parseTime(session.start))}`}>
       <thead>
-        <tr className="text-left text-muted-foreground">
-          {['Time', 'What', 'Name', 'Outcome'].map((column) => (
-            <th key={column} scope="col" className="py-1 pr-6 font-medium">
-              {column}
-            </th>
-          ))}
+        <tr>
+          <ColumnHead>Time</ColumnHead>
+          <ColumnHead>What</ColumnHead>
+          <ColumnHead>Name</ColumnHead>
+          <ColumnHead>Outcome</ColumnHead>
         </tr>
       </thead>
       <tbody>
@@ -47,18 +47,18 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
           const hold = session.holds.find((h) => h.runKey === item.runKey);
           return (
             <tr key={i}>
-              <td className="py-1 pr-6 whitespace-nowrap text-muted-foreground tabular-nums">
+              <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground tabular-nums">
                 <time dateTime={item.at}>{times[i]}</time>
               </td>
-              <td className="py-1 pr-6 whitespace-nowrap text-muted-foreground">{KINDS[item.kind]}</td>
-              <td className="py-1 pr-6 font-medium">
+              <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{KINDS[item.kind]}</td>
+              <td className="px-2 py-1.5 font-medium">
                 {item.kind === 'run' && hold ? (
                   <RunLink runKey={hold.runKey} branch={hold.branch} />
                 ) : (
                   usageName({ name: item.name, kind: item.kind === 'command' ? 'command' : 'skill' })
                 )}
               </td>
-              <td className={cn('py-1', item.neverLoaded && WARNING_INK)}>
+              <td className={cn('px-2 py-1.5', item.neverLoaded && WARNING_INK)}>
                 {item.kind === 'skill' && <Text value={item.outcome} unknown="no outcome" />}
                 {item.kind === 'command' && (item.neverLoaded ? 'Its skill never loaded' : <Unknown label="no outcome" />)}
                 {item.kind === 'run' &&
@@ -93,7 +93,7 @@ const COLUMNS: ListColumn<SessionRow>[] = [
     id: 'started',
     header: 'Started',
     fold: true,
-    value: (s) => (s.start === null ? null : parseTime(s.start).getTime()),
+    value: (s) => parseTime(s.start).getTime(),
     cell: (s) => <Time iso={s.start} />,
   },
   { id: 'length', header: 'Length', num: true, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },

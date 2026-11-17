@@ -1,7 +1,9 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
+import { parseTime } from '@cwd/shared';
+import { formatDayTime } from '../lib/format.ts';
 import { fullRun, smallRun } from '../test/runs.ts';
-import { sessionsFull } from '../test/sessions.ts';
+import { otherSession, sessionsFull, twoRunSession } from '../test/sessions.ts';
 import { expectNoJoined } from '../test/table.ts';
 import { SessionsTable } from './SessionsTable.tsx';
 
@@ -15,6 +17,9 @@ const wide: Decorator = (Story) => (
 const meta = { component: SessionsTable, decorators: [wide] } satisfies Meta<typeof SessionsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/** The timeline's name: its session's name and start. */
+const TIMELINE = `Timeline of Plan the search index, ${formatDayTime(parseTime(twoRunSession.start))}`;
 
 /** Each body cell's text in a table, one array per row, leaving out any table nested in it. */
 function cells(table: Element): string[][] {
@@ -81,7 +86,7 @@ export const Full: Story = {
     await expectNoJoined(canvasElement);
 
     // Closed, a row shows no facts or timeline; its title is the toggle.
-    await expect(canvas.queryByRole('table', { name: 'Timeline of Plan the search index' })).toBeNull();
+    await expect(canvas.queryByRole('table', { name: TIMELINE })).toBeNull();
     const toggle = canvas.getByRole('button', { name: 'Plan the search index' });
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(toggle);
@@ -104,10 +109,13 @@ export const Full: Story = {
     await expect(fact(opened, 'Startup').firstElementChild).not.toHaveClass('text-warning-ink');
 
     // Then the timeline as a small table in its own scrolling region: one value per cell, times on the 24-hour clock.
-    await expect(canvas.getByRole('region', { name: 'Timeline of Plan the search index table' })).toBeVisible();
-    const timeline = canvas.getByRole('table', { name: 'Timeline of Plan the search index' });
+    await expect(canvas.getByRole('region', { name: `${TIMELINE} table` })).toBeVisible();
+    const timeline = canvas.getByRole('table', { name: TIMELINE });
     const inTimeline = within(timeline);
     await expect(inTimeline.getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Time', 'What', 'Name', 'Outcome']);
+    // Muted column heads (`ColumnHead`), the body cells padded as they are.
+    for (const th of inTimeline.getAllByRole('columnheader')) await expect(th).toHaveClass('px-2', 'py-1.5', 'text-muted-foreground');
+    for (const td of inTimeline.getAllByRole('cell')) await expect(td).toHaveClass('px-2', 'py-1.5');
     const lines = cells(timeline);
     await expect(lines).toHaveLength(6);
     await expect(lines[0][0]).toMatch(/^Nov \d{1,2}, \d{2}:\d{2}$/);
@@ -122,7 +130,7 @@ export const Full: Story = {
     await expectNoJoined(canvasElement);
 
     await userEvent.click(toggle);
-    await expect(canvas.queryByRole('table', { name: 'Timeline of Plan the search index' })).toBeNull();
+    await expect(canvas.queryByRole('table', { name: TIMELINE })).toBeNull();
 
     // Missing startup is orange, a zero Never loaded isn't.
     const otherToggle = canvas.getByRole('button', { name: 'no title' });
@@ -148,5 +156,28 @@ export const EmptyTimeline: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Release checklist draft' }));
     await expect(canvas.getByText('No skill loads, commands or runs in this session.')).toBeVisible();
+  },
+};
+
+/** Two sessions of one title, and two untitled, opened at once: each timeline's region has a name of its own. */
+export const SameNames: Story = {
+  args: {
+    sessions: [
+      twoRunSession,
+      { ...twoRunSession, key: 'e1e2d3c4b5a69788', start: '2026-11-11T14:20:00Z' },
+      otherSession,
+      { ...otherSession, key: 'b9b8c7d6e5f40312', start: '2026-11-09T07:45:00Z' },
+    ],
+  },
+  play: async ({ canvas, userEvent }) => {
+    for (const name of ['Plan the search index', 'no title']) {
+      for (const toggle of canvas.getAllByRole('button', { name })) await userEvent.click(toggle);
+    }
+    const names = canvas
+      .getAllByRole('region')
+      .map((region) => region.getAttribute('aria-label'))
+      .filter((name) => name?.startsWith('Timeline of'));
+    await expect(names).toHaveLength(4);
+    await expect(new Set(names).size).toBe(4);
   },
 };

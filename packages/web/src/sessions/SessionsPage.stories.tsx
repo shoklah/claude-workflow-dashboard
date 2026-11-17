@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import type { StatusResponse } from '@cwd/shared';
+import { parseTime, type StatusResponse } from '@cwd/shared';
+import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { otherSession, sessionsEmpty, sessionsFull, sessionsHidden, twoRunSession } from '../test/sessions.ts';
@@ -59,7 +60,7 @@ export const Full: Story = {
     await expect(canvas.getByRole('heading', { name: 'Sessions', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await userEvent.click(toggle);
-    const timeline = canvas.getByRole('table', { name: `Timeline of ${twoRunSession.title}` });
+    const timeline = canvas.getByRole('table', { name: `Timeline of ${twoRunSession.title}, ${formatDayTime(parseTime(twoRunSession.start))}` });
     await expect(within(timeline).getAllByRole('row').slice(1)).toHaveLength(twoRunSession.timeline.length);
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
     const notes = canvas.getByText('How sessions are listed').closest('details')!;
