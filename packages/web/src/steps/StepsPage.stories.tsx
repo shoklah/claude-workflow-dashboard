@@ -60,8 +60,8 @@ export const Empty: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/steps?weeks=4': stepsEmpty });
   },
   play: async ({ canvas, canvasElement }) => {
-    const steps = await table(canvasElement, 'Steps');
-    const rules = await table(canvasElement, 'Rules');
+    const steps = await table(canvasElement, 'Steps table');
+    const rules = await table(canvasElement, 'Rules table');
     const review = await steps.findByRole('rowheader', { name: 'Task review' });
     await expect(rowsOf(review)).toHaveLength(1);
     await expect(cells(review.closest('tr')!)).toEqual(['0', '0', 'No counts', '0', '0', '0', '0', '0.0', '0.00']);
@@ -87,11 +87,15 @@ export const Full: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/steps?weeks=4': stepsFull });
   },
   play: async ({ canvas, canvasElement }) => {
-    const steps = await table(canvasElement, 'Steps');
-    const rules = await table(canvasElement, 'Rules');
+    const steps = await table(canvasElement, 'Steps table');
+    const rules = await table(canvasElement, 'Rules table');
     const review = await steps.findByRole('rowheader', { name: 'Task review' });
-    await expect(canvas.getByRole('heading', { name: 'Steps', level: 2 })).toBeVisible();
-    await expect(canvas.getByRole('heading', { name: 'Rules', level: 2 })).toBeVisible();
+    // Each table sits in a section, a region named by its title.
+    for (const name of ['Steps', 'Rules']) {
+      const section = within(canvas.getByRole('region', { name }));
+      await expect(section.getByRole('heading', { name, level: 2 })).toBeVisible();
+      await expect(section.getByRole('region', { name: `${name} table` })).toBeVisible();
+    }
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     await expect(steps.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       'Step',
@@ -174,7 +178,7 @@ export const OldReporter: Story = {
     mockApi({ '/api/status': status, ...projects, '/api/steps?weeks=4': stepsOldReporter });
   },
   play: async ({ canvasElement }) => {
-    const rules = await table(canvasElement, 'Rules');
+    const rules = await table(canvasElement, 'Rules table');
     const row = async (name: string) => (await rules.findByRole('rowheader', { name })).closest('tr')!;
     await expect(cells(await row('Dispatch guard'))).toEqual([DASH, DASH, DASH, DASH]);
     await expect(cells(await row('Advisor'))).toEqual([DASH, DASH, DASH, DASH]);

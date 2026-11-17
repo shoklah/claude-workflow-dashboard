@@ -52,7 +52,7 @@ export const Empty: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await expect(await canvas.findByText(EMPTY)).toBeVisible();
-    const weeks = table(canvasElement, 'Weeks');
+    const weeks = table(canvasElement, 'By week table');
     // Two header rows and twelve weeks.
     await expect(weeks.getAllByRole('row')).toHaveLength(14);
     const row = weeks.getAllByRole('row')[2];
@@ -64,7 +64,7 @@ export const Empty: Story = {
     for (const cell of within(row).getAllByRole('cell')) {
       await expect(cell.querySelector('.text-muted-foreground')).not.toBeNull();
     }
-    await expect(cells(table(canvasElement, 'Full runs').getAllByRole('row')[1])).toEqual(['0', '0', unknown]);
+    await expect(cells(table(canvasElement, 'Full runs, with and without waves table').getAllByRole('row')[1])).toEqual(['0', '0', unknown]);
     await expect(canvas.queryByText(/the reporter can no longer read them/)).toBeNull();
     await expectNoJoined(canvasElement);
   },
@@ -80,8 +80,8 @@ export const Full: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     // The scroll region names the table, so the table has no name of its own.
-    await expect(within(await canvas.findByRole('region', { name: 'Weeks' })).getByRole('table')).not.toHaveAccessibleName();
-    const weeks = table(canvasElement, 'Weeks');
+    await expect(within(await canvas.findByRole('region', { name: 'By week table' })).getByRole('table')).not.toHaveAccessibleName();
+    const weeks = table(canvasElement, 'By week table');
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('12');
     for (const title of CHARTS) await expect(canvas.getByRole('heading', { name: title })).toBeVisible();
     const charts = canvas.getAllByRole('img');
@@ -90,7 +90,7 @@ export const Full: Story = {
     const grid = charts[0].closest('section')!.parentElement!;
     await expect(grid).toHaveClass('sm:grid-cols-2', '2xl:grid-cols-4');
 
-    await expect(canvas.getByRole('heading', { name: 'By week' })).toBeVisible();
+    await expect(within(canvas.getByRole('region', { name: 'By week' })).getByRole('heading', { name: 'By week' })).toBeVisible();
     await expect(weeks.getAllByRole('columnheader').map((h) => h.textContent)).toEqual(HEADERS);
     const [, , newest, previous] = weeks.getAllByRole('row');
     await expect(within(newest).getByRole('rowheader')).toHaveTextContent('Nov 8');
@@ -100,8 +100,9 @@ export const Full: Story = {
     // A duration is rounded to whole minutes.
     await expect(cells(previous).at(-2)).toBe('166');
 
-    await expect(canvas.getByRole('heading', { name: 'Full runs, with and without waves' })).toBeVisible();
-    const runTime = table(canvasElement, 'Full runs');
+    const fullRuns = within(canvas.getByRole('region', { name: 'Full runs, with and without waves' }));
+    await expect(fullRuns.getByRole('heading', { name: 'Full runs, with and without waves' })).toBeVisible();
+    const runTime = table(canvasElement, 'Full runs, with and without waves table');
     await expect(runTime.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       'Kind', 'Runs', 'With a run time', 'Median time (min)',
     ]);
@@ -141,7 +142,7 @@ export const Filters: Story = {
     });
   },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('region', { name: 'Weeks' });
+    await canvas.findByRole('region', { name: 'By week table' });
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Path' }), 'full');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '4');
     await expect(fetch).toHaveBeenCalledWith('/api/weeks?path=full&weeks=4');

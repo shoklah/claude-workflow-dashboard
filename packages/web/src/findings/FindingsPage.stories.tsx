@@ -83,9 +83,11 @@ export const Full: Story = {
     await expect(canvas.getByText('Select a cell to list its findings.')).toBeVisible();
 
     await userEvent.click(cell);
-    await expect(canvas.getByRole('heading', { name: '2 findings in Tests, week of Nov 8' })).toBeVisible();
+    // The list sits in a section, a region named by its title.
+    const section = within(canvas.getByRole('region', { name: '2 findings in Tests, week of Nov 8' }));
+    await expect(section.getByRole('heading', { name: '2 findings in Tests, week of Nov 8' })).toBeVisible();
     await expect(canvas.queryByText('Select a cell to list its findings.')).toBeNull();
-    const list = within(canvas.getByRole('region', { name: 'Findings' }));
+    const list = within(section.getByRole('region', { name: 'Findings' }));
     await expect(list.getAllByRole('row')).toHaveLength(3);
     await expect(list.getByText('The retry path has no test')).toBeVisible();
     await expect(list.getByText('Story for the error state is missing')).toBeVisible();

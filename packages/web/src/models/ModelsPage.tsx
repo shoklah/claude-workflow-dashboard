@@ -3,7 +3,7 @@ import { cn } from 'cn';
 import type { FindingsQuery, ModelsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { EmptyRow, GroupHead, Lines, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
-import { PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
+import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import {
@@ -23,6 +23,10 @@ import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 const NO_FACTS = 'No advisor facts: the export is from before the reporter counted them.';
 const STAGES = ['1', '2', '3', 'out'];
+const AGENTS_COLUMN_COUNT = 8;
+const ROLES_COLUMN_COUNT = 3;
+const FAILED_COLUMN_COUNT = 2;
+const WEEKS_COLUMN_COUNT = 5;
 
 type Pair = { model: string | null; effort: string | null; count: number };
 const pairsOf = (counts: Record<string, number>): Pair[] =>
@@ -62,219 +66,230 @@ function ModelsTables({ response }: { response: ModelsResponse }) {
   const failed = Object.entries(facts?.failed ?? {});
   return (
     <>
-      <SectionTitle>Agents</SectionTitle>
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Agents' }}>
-        <TableHeader>
-          <TableRow>
-            <TableHead rowSpan={2}>Agent</TableHead>
-            <GroupHead span={3}>Requested</GroupHead>
-            <GroupHead span={3}>Ran on</GroupHead>
-            <TableHead rowSpan={2} className={NUM}>
-              Mismatches
-              <ReporterMark />
-            </TableHead>
-          </TableRow>
-          <TableRow>
-            {['requested', 'actual'].map((side) => (
-              <Fragment key={side}>
-                <TableHead className={SUB}>Model</TableHead>
-                <TableHead className={SUB}>Effort</TableHead>
-                <TableHead className={cn(SUB, NUM)}>Dispatches</TableHead>
-              </Fragment>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {agents.length === 0 && (
-            <EmptyRow columns={8}>
-              No dispatches in this period. An agent shows here once a run or session dispatches it.
-            </EmptyRow>
-          )}
-          {agents.map((row) => {
-            const requested = pairsOf(row.requested);
-            const actual = pairsOf(row.actual);
-            return (
-              <Lines
-                key={row.name}
-                name={row.name}
-                lines={Math.max(1, requested.length, actual.length)}
-                line={(i) => (
-                  <>
-                    <PairCells pairs={requested} line={i} unset="not set" none="No dispatches" />
-                    <PairCells pairs={actual} line={i} unset="not known" none="No dispatches" />
-                  </>
-                )}
-                after={[<Num value={row.mismatches} />]}
-              />
-            );
-          })}
-        </TableBody>
-      </Table>
-
-      <SectionTitle>Main sessions</SectionTitle>
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Main sessions' }}>
-        <TableHeader>
-          <TableRow>
-            <TableHead rowSpan={2}>Path</TableHead>
-            <GroupHead span={4}>
-              Recommended, by stage
-              <ReporterMark />
-            </GroupHead>
-            <GroupHead span={3}>Ran on</GroupHead>
-            <TableHead rowSpan={2} className={NUM}>
-              Differs
-              <ReporterMark />
-            </TableHead>
-          </TableRow>
-          <TableRow>
-            {['Stage 1', 'Stage 2', 'Stage 3', 'Out'].map((stage) => (
-              <TableHead key={stage} className={SUB}>
-                {stage}
-              </TableHead>
-            ))}
-            <TableHead className={SUB}>Model</TableHead>
-            <TableHead className={SUB}>Effort</TableHead>
-            <TableHead className={cn(SUB, NUM)}>Sessions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {byPath.map((row) => {
-            const actual = pairsOf(row.actual);
-            return (
-              <Lines
-                key={row.path}
-                name={pathLabel(row.path)}
-                before={STAGES.map((stage) => {
-                  const { model, effort } = splitPair(row.recommended?.[stage] ?? '-');
-                  return (
-                    <TableCell key={stage} className="align-top">
-                      <Text value={model} unknown={row.recommended ? 'none' : undefined} />
-                      {effort && <span className="block text-xs text-muted-foreground">{effort}</span>}
-                    </TableCell>
-                  );
-                })}
-                lines={Math.max(1, actual.length)}
-                line={(i) => <PairCells pairs={actual} line={i} unset="not known" none="No sessions" />}
-                after={[<Num value={row.differs} />]}
-              />
-            );
-          })}
-        </TableBody>
-      </Table>
-
-      <SectionTitle>Advisor</SectionTitle>
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Panel title="This period">
-          {facts === null ? (
-            <p className="text-sm text-muted-foreground">{NO_FACTS}</p>
-          ) : (
-            <Pairs
-              pairs={[
-                ['Calls', <Num value={facts.calls} />],
-                ['Tokens', <Num value={facts.tokens && total(facts.tokens)} format={(n) => formatTokens({ n })} />],
-                ['Est. cost', <Num value={facts.cost} format={formatCost} />],
-                ['Notes', <Num value={facts.notes} />],
-                ['Notes that changed something', <Num value={facts.changed} />],
-                ['Notes missing', <Num value={facts.missing} />],
-                ['Share of Fable spend', <Num value={facts.share} format={formatShare} />],
-              ]}
-            />
-          )}
-          <p className="border-t pt-3 text-sm">
-            <span className="text-muted-foreground">Trial</span>
-            <ReporterMark />
-            <span className="mt-1 block">
-              <Text value={advisor.reporter.trial} />
-            </span>
-          </p>
-        </Panel>
-        <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Advisor calls by role' }}>
+      <Section title="Agents">
+        <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Agents table' }}>
           <TableHeader>
             <TableRow>
-              <TableHead>Role</TableHead>
-              <TableHead className={NUM}>Calls</TableHead>
-              <TableHead>May consult</TableHead>
+              <TableHead rowSpan={2}>Agent</TableHead>
+              <GroupHead span={3}>Requested</GroupHead>
+              <GroupHead span={3}>Ran on</GroupHead>
+              <TableHead rowSpan={2} className={NUM}>
+                Mismatches
+                <ReporterMark />
+              </TableHead>
+            </TableRow>
+            <TableRow>
+              {['requested', 'actual'].map((side) => (
+                <Fragment key={side}>
+                  <TableHead className={SUB}>Model</TableHead>
+                  <TableHead className={SUB}>Effort</TableHead>
+                  <TableHead className={cn(SUB, NUM)}>Dispatches</TableHead>
+                </Fragment>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {roles.length === 0 && (
-              <EmptyRow columns={3}>{facts === null ? NO_FACTS : 'No advisor calls in this period.'}</EmptyRow>
+            {agents.length === 0 && (
+              <EmptyRow columns={AGENTS_COLUMN_COUNT}>
+                No dispatches in this period. An agent shows here once a run or session dispatches it.
+              </EmptyRow>
             )}
-            {roles.map(([role, { calls, flagged }]) => (
-              <TableRow key={role}>
-                <TableHead scope="row">{role}</TableHead>
+            {agents.map((row) => {
+              const requested = pairsOf(row.requested);
+              const actual = pairsOf(row.actual);
+              return (
+                <Lines
+                  key={row.name}
+                  name={row.name}
+                  lines={Math.max(1, requested.length, actual.length)}
+                  line={(i) => (
+                    <>
+                      <PairCells pairs={requested} line={i} unset="not set" none="No dispatches" />
+                      <PairCells pairs={actual} line={i} unset="not known" none="No dispatches" />
+                    </>
+                  )}
+                  after={[<Num value={row.mismatches} />]}
+                />
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Section>
+
+      <Section title="Main sessions">
+        <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Main sessions table' }}>
+          <TableHeader>
+            <TableRow>
+              <TableHead rowSpan={2}>Path</TableHead>
+              <GroupHead span={4}>
+                Recommended, by stage
+                <ReporterMark />
+              </GroupHead>
+              <GroupHead span={3}>Ran on</GroupHead>
+              <TableHead rowSpan={2} className={NUM}>
+                Differs
+                <ReporterMark />
+              </TableHead>
+            </TableRow>
+            <TableRow>
+              {['Stage 1', 'Stage 2', 'Stage 3', 'Out'].map((stage) => (
+                <TableHead key={stage} className={SUB}>
+                  {stage}
+                </TableHead>
+              ))}
+              <TableHead className={SUB}>Model</TableHead>
+              <TableHead className={SUB}>Effort</TableHead>
+              <TableHead className={cn(SUB, NUM)}>Sessions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {byPath.map((row) => {
+              const actual = pairsOf(row.actual);
+              return (
+                <Lines
+                  key={row.path}
+                  name={pathLabel(row.path)}
+                  before={STAGES.map((stage) => {
+                    const { model, effort } = splitPair(row.recommended?.[stage] ?? '-');
+                    return (
+                      <TableCell key={stage} className="align-top">
+                        <Text value={model} unknown={row.recommended ? 'none' : undefined} />
+                        {effort && <span className="block text-xs text-muted-foreground">{effort}</span>}
+                      </TableCell>
+                    );
+                  })}
+                  lines={Math.max(1, actual.length)}
+                  line={(i) => <PairCells pairs={actual} line={i} unset="not known" none="No sessions" />}
+                  after={[<Num value={row.differs} />]}
+                />
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Section>
+
+      <Section title="Advisor">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Panel title="This period">
+            {facts === null ? (
+              <p className="text-sm text-muted-foreground">{NO_FACTS}</p>
+            ) : (
+              <Pairs
+                pairs={[
+                  ['Calls', <Num value={facts.calls} />],
+                  ['Tokens', <Num value={facts.tokens && total(facts.tokens)} format={(n) => formatTokens({ n })} />],
+                  ['Est. cost', <Num value={facts.cost} format={formatCost} />],
+                  ['Notes', <Num value={facts.notes} />],
+                  ['Notes that changed something', <Num value={facts.changed} />],
+                  ['Notes missing', <Num value={facts.missing} />],
+                  ['Share of Fable spend', <Num value={facts.share} format={formatShare} />],
+                ]}
+              />
+            )}
+            <div className="border-t pt-3">
+              <Pairs
+                inline="over"
+                pairs={[
+                  [
+                    <>
+                      Trial
+                      <ReporterMark />
+                    </>,
+                    <Text value={advisor.reporter.trial} />,
+                  ],
+                ]}
+              />
+            </div>
+          </Panel>
+          <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Advisor calls by role' }}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Role</TableHead>
+                <TableHead className={NUM}>Calls</TableHead>
+                <TableHead>May consult</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {roles.length === 0 && (
+                <EmptyRow columns={ROLES_COLUMN_COUNT}>{facts === null ? NO_FACTS : 'No advisor calls in this period.'}</EmptyRow>
+              )}
+              {roles.map(([role, { calls, flagged }]) => (
+                <TableRow key={role}>
+                  <TableHead scope="row">{role}</TableHead>
+                  <TableCell className={NUM}>
+                    <Num value={calls} />
+                  </TableCell>
+                  <TableCell>
+                    <span className={flagged ? WARNING_INK : 'text-muted-foreground'}>{yesNoLabel(!flagged)}</span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Failed calls, by error' }}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Failed calls, by error</TableHead>
+                <TableHead className={NUM}>Calls</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {failed.length === 0 && (
+                <EmptyRow columns={FAILED_COLUMN_COUNT}>{facts === null ? NO_FACTS : 'No failed calls in this period.'}</EmptyRow>
+              )}
+              {failed.map(([code, calls]) => (
+                <TableRow key={code}>
+                  <TableHead scope="row">{countLabel(code)}</TableHead>
+                  <TableCell className={NUM}>
+                    <Num value={calls} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Section>
+
+      <Section title="Advisor spend by week">
+        <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Advisor spend by week table' }}>
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                Week
+                <ReporterMark />
+              </TableHead>
+              <TableHead className={NUM}>Advisor ($)</TableHead>
+              <TableHead className={NUM}>Fable ($)</TableHead>
+              <TableHead className={NUM}>Share (%)</TableHead>
+              <TableHead>Past the stop share</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {advisor.reporter.weeks.length === 0 && <EmptyRow columns={WEEKS_COLUMN_COUNT}>No advisor weeks in this period.</EmptyRow>}
+            {advisor.reporter.weeks.map((week) => (
+              <TableRow key={week.week}>
+                <TableHead scope="row">{weekLabel(week.week)}</TableHead>
                 <TableCell className={NUM}>
-                  <Num value={calls} />
+                  <Num value={week.advisor} format={formatDollars} />
+                </TableCell>
+                <TableCell className={NUM}>
+                  <Num value={week.fable} format={formatDollars} />
+                </TableCell>
+                <TableCell className={NUM}>
+                  <Num value={week.share} />
                 </TableCell>
                 <TableCell>
-                  <span className={flagged ? WARNING_INK : 'text-muted-foreground'}>{yesNoLabel(!flagged)}</span>
+                  {week.stop === null ? (
+                    <Unknown />
+                  ) : (
+                    <span className={week.stop ? WARNING_INK : 'text-muted-foreground'}>{yesNoLabel(week.stop)}</span>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Failed calls, by error' }}>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Failed calls, by error</TableHead>
-              <TableHead className={NUM}>Calls</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {failed.length === 0 && (
-              <EmptyRow columns={2}>{facts === null ? NO_FACTS : 'No failed calls in this period.'}</EmptyRow>
-            )}
-            {failed.map(([code, calls]) => (
-              <TableRow key={code}>
-                <TableHead scope="row">{countLabel(code)}</TableHead>
-                <TableCell className={NUM}>
-                  <Num value={calls} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      <SectionTitle>Advisor spend by week</SectionTitle>
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Advisor spend by week' }}>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
-              Week
-              <ReporterMark />
-            </TableHead>
-            <TableHead className={NUM}>Advisor ($)</TableHead>
-            <TableHead className={NUM}>Fable ($)</TableHead>
-            <TableHead className={NUM}>Share (%)</TableHead>
-            <TableHead>Past the stop share</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {advisor.reporter.weeks.length === 0 && <EmptyRow columns={5}>No advisor weeks in this period.</EmptyRow>}
-          {advisor.reporter.weeks.map((week) => (
-            <TableRow key={week.week}>
-              <TableHead scope="row">{weekLabel(week.week)}</TableHead>
-              <TableCell className={NUM}>
-                <Num value={week.advisor} format={formatDollars} />
-              </TableCell>
-              <TableCell className={NUM}>
-                <Num value={week.fable} format={formatDollars} />
-              </TableCell>
-              <TableCell className={NUM}>
-                <Num value={week.share} />
-              </TableCell>
-              <TableCell>
-                {week.stop === null ? (
-                  <Unknown />
-                ) : (
-                  <span className={week.stop ? WARNING_INK : 'text-muted-foreground'}>{yesNoLabel(week.stop)}</span>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      </Section>
     </>
   );
 }

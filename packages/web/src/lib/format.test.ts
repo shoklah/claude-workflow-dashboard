@@ -248,17 +248,17 @@ describe('appCallLabel', () => {
 
   it("names the app's category and call where they differ", () => {
     expect(appCallLabel(f({ appCategory: 'correctness', appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe(
-      'Correctness · invalid',
+      'Correctness · Invalid',
     );
-    expect(appCallLabel(f({ appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe('invalid');
+    expect(appCallLabel(f({ appRelevance: 'invalid', relevance: 'invalid' }), labels)).toBe('Invalid');
   });
 
   it("shows the app's call where the workflow made none", () => {
-    expect(appCallLabel(f({ validity: null, relevance: 'invalid' }), labels)).toBe('invalid');
+    expect(appCallLabel(f({ validity: null, relevance: 'invalid' }), labels)).toBe('Invalid');
     expect(appCallLabel(f({ validity: null, relevance: 'valid', appCategory: 'correctness' }), labels)).toBe(
-      'Correctness · valid',
+      'Correctness · Valid',
     );
-    expect(appCallLabel(f({ judge: 'app', validity: null, relevance: 'unclear' }), labels)).toBe('unclear');
+    expect(appCallLabel(f({ judge: 'app', validity: null, relevance: 'unclear' }), labels)).toBe('Unclear');
   });
 
   it('is a dash with no app label', () => {

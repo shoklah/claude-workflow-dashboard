@@ -3,7 +3,7 @@ import { cn } from 'cn';
 import type { FindingsQuery, RunTime, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { GroupHead, NUM, Num, SUB } from '../components/Num.tsx';
-import { Line, PageTitle, SectionTitle, State } from '../components/Panel.tsx';
+import { Line, PageTitle, Section, State } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
 import { PATH_LABELS, countName, formatDollars, total, weekLabel } from '../lib/format.ts';
@@ -54,7 +54,7 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
 /** The week table, newest first for display, one value per cell under its group. */
 function WeeksTable({ weeks }: { weeks: Week[] }) {
   return (
-    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Weeks' }}>
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'By week table' }}>
       <TableHeader>
         <TableRow>
           <TableHead rowSpan={2}>Week</TableHead>
@@ -128,7 +128,7 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
 
 function RunTimeTable({ runTime }: { runTime: RunTime }) {
   return (
-    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Full runs' }}>
+    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Full runs, with and without waves table' }}>
       <TableHeader>
         <TableRow>
           <TableHead>Kind</TableHead>
@@ -181,10 +181,12 @@ export function WeeksPage() {
             <Line>No runs in this period. A week fills once a run that finished in it is imported.</Line>
           )}
           <CoverageNote coverageFrom={data.coverageFrom} firstWeek={data.weeks[0].week} />
-          <SectionTitle>By week</SectionTitle>
-          <WeeksTable weeks={data.weeks} />
-          <SectionTitle>Full runs, with and without waves</SectionTitle>
-          <RunTimeTable runTime={data.runTime} />
+          <Section title="By week">
+            <WeeksTable weeks={data.weeks} />
+          </Section>
+          <Section title="Full runs, with and without waves">
+            <RunTimeTable runTime={data.runTime} />
+          </Section>
         </>
       )}
     </div>

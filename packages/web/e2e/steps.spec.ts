@@ -16,9 +16,9 @@ test('the steps and rules page shows each step and rule, summed over the period,
   await expect(page.getByRole('heading', { name: 'Steps and rules' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Steps', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Rules', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Steps', exact: true }).getByRole('rowheader', { name: 'Task review' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Steps table', exact: true }).getByRole('rowheader', { name: 'Task review' })).toBeVisible();
   // report-v6's dispatch guard, over the period's runs and sessions: no_model 2, no_simplify 1, a line each.
-  const rules = page.getByRole('region', { name: 'Rules', exact: true });
+  const rules = page.getByRole('region', { name: 'Rules table', exact: true });
   const guard = rules.getByRole('row', { name: /^Dispatch guard/ });
   await expect(guard.getByRole('cell', { name: 'No model', exact: true })).toBeVisible();
   await expect(guard.getByRole('cell', { name: '2', exact: true })).toBeVisible();

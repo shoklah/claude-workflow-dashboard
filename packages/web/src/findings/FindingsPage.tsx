@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AREAS, type Area, type FindingsQuery, type FindingsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Option, Options } from '../components/Option.tsx';
-import { Line, PageTitle, SectionTitle, State } from '../components/Panel.tsx';
+import { Line, PageTitle, Section, State } from '../components/Panel.tsx';
 import { AREA_LABELS, categoryLabel, hiddenLabel, plural, weekLabel } from '../lib/format.ts';
 import { FindingsTable } from '../runs/FindingsTable.tsx';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
@@ -80,12 +80,11 @@ export function FindingsPage() {
             {data.rows.every((row) => row.cells.every((c) => c.raised === 0)) ? (
               <Line>No findings in this period. A finding shows here once a run with a review is imported.</Line>
             ) : selected ? (
-              <>
-                <SectionTitle>
-                  {`${plural(listed.length, 'finding')} in ${categoryLabel(selected.category, data.categoryLabels)}, week of ${weekLabel(selected.week)}`}
-                </SectionTitle>
+              <Section
+                title={`${plural(listed.length, 'finding')} in ${categoryLabel(selected.category, data.categoryLabels)}, week of ${weekLabel(selected.week)}`}
+              >
                 <FindingsTable findings={listed} categoryLabels={data.categoryLabels} run />
-              </>
+              </Section>
             ) : (
               <Line>Select a cell to list its findings.</Line>
             )}

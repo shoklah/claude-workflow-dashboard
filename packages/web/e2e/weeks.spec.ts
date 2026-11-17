@@ -14,13 +14,13 @@ test('the weeks page shows its small multiples and weekly sums and has no axe vi
   await page.goto('/');
   await page.getByRole('navigation').getByRole('link', { name: 'Weeks' }).click();
   // Two header rows, then the newest week.
-  const thisWeek = page.getByRole('region', { name: 'Weeks', exact: true }).getByRole('table').getByRole('row').nth(2);
+  const thisWeek = page.getByRole('region', { name: 'By week table', exact: true }).getByRole('table').getByRole('row').nth(2);
   await expect(thisWeek.getByRole('rowheader')).toHaveText('Nov 8');
   await expect(thisWeek.getByRole('cell').nth(0)).toHaveText('1');
   await expect(thisWeek.getByRole('cell').nth(1)).toHaveText('2');
   await expect(thisWeek.getByRole('cell').nth(2)).toHaveText('1');
   await expect(page.getByRole('img', { name: /: bars by week/ })).toHaveCount(4);
-  await expect(page.getByRole('region', { name: 'Full runs', exact: true }).getByRole('table')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Full runs, with and without waves table', exact: true }).getByRole('table')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
@@ -33,7 +33,7 @@ for (const width of [375, 768]) {
     // The latest week, as the week table names it in its first body row.
     await expectLatestWeekWhole(
       charts,
-      page.getByRole('region', { name: 'Weeks', exact: true }).getByRole('row').nth(2).getByRole('rowheader'),
+      page.getByRole('region', { name: 'By week table', exact: true }).getByRole('row').nth(2).getByRole('rowheader'),
     );
   });
 }

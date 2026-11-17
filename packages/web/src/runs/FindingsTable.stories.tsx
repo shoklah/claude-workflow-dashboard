@@ -163,13 +163,13 @@ export const WorkflowLabels: Story = {
     // With no validity from the workflow, the app's call shows: it never "agrees" with a call nobody made.
     await expect(column(canvasElement, 'App')).toEqual([
       'Agrees',
-      'Correctness · valid',
+      'Correctness · Valid',
       'Valid',
       `${NONE}no app label`,
       'Invalid',
-      'Error handling · valid',
+      'Error handling · Valid',
     ]);
-    await userEvent.hover(canvas.getByText('Correctness · valid'));
+    await userEvent.hover(canvas.getByText('Correctness · Valid'));
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('An empty export is a real case');
   },
 };

@@ -6,7 +6,7 @@ import type { ComplianceResponse, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
-import { Line, PageTitle, Pairs, Panel, SectionTitle, State } from '../components/Panel.tsx';
+import { Line, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
@@ -123,10 +123,9 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           </>
         ))}
       {cell && (
-        <>
-          <SectionTitle>
-            {`${plural(listed.length, 'warning')} of "${kindLabel(cell.id || null)}", week of ${weekLabel(cell.week)}`}
-          </SectionTitle>
+        <Section
+          title={`${plural(listed.length, 'warning')} of "${kindLabel(cell.id || null)}", week of ${weekLabel(cell.week)}`}
+        >
           <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Warnings' }}>
             <TableHeader>
               <TableRow>
@@ -161,7 +160,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
               ))}
             </TableBody>
           </Table>
-        </>
+        </Section>
       )}
       {data && data.rows.length > 0 && !cell && <Line>Select a cell to list its warnings.</Line>}
       {data && data.hidden > 0 && <Line>{hiddenWarningsLabel(data.hidden)}</Line>}

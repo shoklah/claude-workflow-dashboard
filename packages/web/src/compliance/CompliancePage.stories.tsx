@@ -98,8 +98,9 @@ export const Full: Story = {
     await expect(canvas.getByText('Select a cell to list its warnings.')).toBeVisible();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Step has no agent id, week of Nov 8: 1' }));
-    await expect(canvas.getByRole('heading', { name: '1 warning of "Step has no agent id", week of Nov 8' })).toBeVisible();
-    const table = within(canvas.getByRole('region', { name: 'Warnings' }));
+    // The list sits in a section, a region named by its title.
+    const listed = within(canvas.getByRole('region', { name: '1 warning of "Step has no agent id", week of Nov 8' }));
+    const table = within(listed.getByRole('region', { name: 'Warnings' }));
     await expect(table.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
       'Run',
       'Project',

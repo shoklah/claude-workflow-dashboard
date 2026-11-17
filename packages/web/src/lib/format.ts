@@ -198,14 +198,14 @@ export function categoryLabel(category: string | null, labels: Record<string, st
 
 /**
  * A finding's App column: "agrees" when the workflow made both calls (category and validity) and the app's label
- * matches them; else the app's category where it differs and its call where it differs or the workflow made none; a
- * dash with no app label.
+ * matches them; else the app's category where it differs and its call (`countName`) where it differs or the workflow
+ * made none; a dash with no app label.
  */
 export function appCallLabel(f: FindingRow, labels: Record<string, string>): string {
   if (f.relevance === null) return NONE;
   const call = f.validity === null ? f.relevance : f.appRelevance;
-  const differs = joined([f.appCategory && categoryLabel(f.appCategory, labels), call]);
-  return differs || (f.judge === 'workflow' ? 'agrees' : f.relevance);
+  const differs = joined([f.appCategory && categoryLabel(f.appCategory, labels), call && countName(call)]);
+  return differs || (f.judge === 'workflow' ? 'agrees' : countName(f.relevance));
 }
 
 /** Where a reviewer's strength comes from: its step, and its task when it has one: "Task review · task 3". */

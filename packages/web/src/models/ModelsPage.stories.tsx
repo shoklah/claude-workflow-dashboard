@@ -72,7 +72,7 @@ export const Empty: Story = {
     await expect(canvas.getByText('No advisor calls in this period.')).toBeVisible();
     await expect(canvas.getByText('No failed calls in this period.')).toBeVisible();
     await expect(canvas.getByText('No advisor weeks in this period.')).toBeVisible();
-    const main = table(canvasElement, 'Main sessions');
+    const main = table(canvasElement, 'Main sessions table');
     await expect(lines(main, 'Full', 1)).toEqual([
       ['Opus 5.5medium', 'Opus 5.5medium', 'Opus 5.5medium', 'Opus 5.5medium', 'No sessions', '0'],
     ]);
@@ -101,8 +101,18 @@ export const Full: Story = {
     await expect(canvas.getByRole('heading', { name: 'Models and advisor', level: 1 })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
 
-    const agents = table(canvasElement, 'Agents');
-    await expect(canvas.getByRole('region', { name: 'Agents' })).toHaveAttribute('tabindex', '0');
+    const agents = table(canvasElement, 'Agents table');
+    await expect(canvas.getByRole('region', { name: 'Agents table' })).toHaveAttribute('tabindex', '0');
+    // Each table sits in a section, a region named by its title; the advisor's tables share theirs.
+    for (const [name, inner] of [
+      ['Agents', 'Agents table'],
+      ['Main sessions', 'Main sessions table'],
+      ['Advisor', 'Advisor calls by role'],
+      ['Advisor', 'Failed calls, by error'],
+      ['Advisor spend by week', 'Advisor spend by week table'],
+    ]) {
+      await expect(within(canvas.getByRole('region', { name })).getByRole('region', { name: inner })).toBeVisible();
+    }
     await expect(columns(agents)).toEqual([
       'Agent',
       'Requested',
@@ -123,7 +133,7 @@ export const Full: Story = {
     // A pair with no model or effort shows the dash.
     await expect(lines(agents, 'task-reviewer', 1)).toEqual([['–not set', '–not set', '31', 'Opus 5.5', 'high', '31', '0']]);
 
-    const main = table(canvasElement, 'Main sessions');
+    const main = table(canvasElement, 'Main sessions table');
     await expect(columns(main)).toEqual([
       'Path',
       `Recommended, by stage${MARK}`,
@@ -155,6 +165,7 @@ export const Full: Story = {
       'Notes that changed something',
       'Notes missing',
       'Share of Fable spend',
+      `Trial${MARK}`,
     ]);
     await expect(period.getAllByRole('definition').map((value) => value.textContent)).toEqual([
       '14',
@@ -164,10 +175,10 @@ export const Full: Story = {
       '9',
       '2',
       '8%',
+      'runs 8/5, weeks 0/3 CHECKPOINT',
     ]);
-    await expect(period.getByText('Trial')).toBeVisible();
-    await expect(period.getByText(MARK)).toBeVisible();
-    await expect(period.getByText('runs 8/5, weeks 0/3 CHECKPOINT')).toBeVisible();
+    // The trial is a term and its value, the reporter's mark in the term.
+    await expect(within(period.getAllByRole('term').at(-1)!).getByText(MARK)).toBeVisible();
 
     const roles = table(canvasElement, 'Advisor calls by role');
     await expect(columns(roles)).toEqual(['Role', 'Calls', 'May consult']);
@@ -178,7 +189,7 @@ export const Full: Story = {
     await expect(columns(failed)).toEqual(['Failed calls, by error', 'Calls']);
     await expect(lines(failed, 'overloaded error', 1)).toEqual([['1']]);
 
-    const weeks = table(canvasElement, 'Advisor spend by week');
+    const weeks = table(canvasElement, 'Advisor spend by week table');
     await expect(columns(weeks)).toEqual([`Week${MARK}`, 'Advisor ($)', 'Fable ($)', 'Share (%)', 'Past the stop share']);
     await expect(lines(weeks, 'Nov 1', 2)).toEqual([
       ['9.80', '25.10', '39', 'yes'],
@@ -199,10 +210,10 @@ export const OldReporter: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('rowheader', { name: 'final-reviewer' });
-    await expect(lines(table(canvasElement, 'Agents'), 'implementer', 1)).toEqual([
+    await expect(lines(table(canvasElement, 'Agents table'), 'implementer', 1)).toEqual([
       ['Opus 5.5', 'medium', '22', 'Opus 5.5', 'medium', '22', '–not known'],
     ]);
-    await expect(lines(table(canvasElement, 'Main sessions'), 'Full', 1)).toEqual([
+    await expect(lines(table(canvasElement, 'Main sessions table'), 'Full', 1)).toEqual([
       ['–not known', '–not known', '–not known', '–not known', 'Opus 5.5', 'medium', '5', '–not known'],
     ]);
     await expect(canvas.getAllByText(NO_FACTS)).toHaveLength(3);
