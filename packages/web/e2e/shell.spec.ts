@@ -29,6 +29,10 @@ for (const width of [375, 768, 1440]) {
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (extra > 0) failures.push(`${path}: ${extra} px`);
+      // Nothing of a list's first glance hides behind a sideways scroll: its narrow columns fold instead.
+      const lists = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-list]')].map((el) => ({ name: el.getAttribute('aria-label'), extra: el.scrollWidth - el.clientWidth })));
+      for (const list of lists) if (list.extra > 0) failures.push(`${path}: the ${list.name} list scrolls sideways by ${list.extra} px`);
       const { violations } = await new AxeBuilder({ page }).analyze();
       for (const v of violations) failures.push(`${path}: ${v.id}`);
       // Secondary and status inks appear only on a panel: nothing in them has the backdrop as its nearest painted surface.
