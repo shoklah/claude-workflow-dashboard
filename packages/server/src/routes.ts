@@ -119,23 +119,29 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
 
   // Task 7: the Runs list and one run.
   app.get('/api/runs', (c) => {
-    const query: RunsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
+    const query: RunsQuery = {
+      ...periodQuery(c),
+      warnings: c.req.query('warnings') === '1',
+      goal: c.req.query('goal') || undefined,
+    };
     const runs = listUnits(deps.db, 'run');
-    return c.json(runsList(runs, listWarnings(deps.db), query, deps.now(), scopeFor(runs)));
+    const sessions = listUnits(deps.db, 'session');
+    return c.json(runsList(runs, sessions, listWarnings(deps.db), query, deps.now(), scopeFor(runs, sessions)));
   });
   app.get('/api/runs/:key', (c) => {
     const run = getRun(deps.db, c.req.param('key'));
     if (!run) return c.notFound();
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     const list = activeList(deps.db);
     const labels = list ? currentLabels(deps.db, labelInputs([run]), list.number) : new Map();
     const view = runPageView({
       run,
       runs,
-      sessions: listUnits(deps.db, 'session'),
+      sessions,
       warnings: listWarnings(deps.db),
       names: storedNames(runs),
-      scope: scopeFor(runs),
+      scope: scopeFor(runs, sessions),
       labels,
       list,
     });
@@ -254,7 +260,12 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
 
   // Slice 2c, task 6: the Sessions page, each session's facts, held runs and timeline.
   app.get('/api/sessions', (c) => {
-    const query: SessionsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
+    const query: SessionsQuery = {
+      ...periodQuery(c),
+      warnings: c.req.query('warnings') === '1',
+      goal: c.req.query('goal') || undefined,
+      session: c.req.query('session') || undefined,
+    };
     const runs = listUnits(deps.db, 'run');
     const sessions = listUnits(deps.db, 'session');
     return c.json(

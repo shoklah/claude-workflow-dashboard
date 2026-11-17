@@ -10,8 +10,9 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setSeenAt, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { FAMILIES, familyOf } from '../src/views/compliance.ts';
-import { storedSessionRoots } from '../src/views/runs.ts';
+import { storedBranches, storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { goalHomes, levels } from '../src/views/work.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -97,6 +98,7 @@ test('the current warnings sit by family and kind, in their runs\' weeks, with "
     runKey: expect.stringMatching(/^[0-9a-f]{16}$/),
     project: 'tidepool-api',
     branch: 'feature/webhooks',
+    headline: null,
     step: 'final_review',
     isNew: true,
   });
@@ -115,6 +117,7 @@ test('resolved adds the warning report-v5 no longer reports, with no object, und
     runKey: null,
     project: null,
     branch: null,
+    headline: null,
     step: null,
     isNew: false,
   });
@@ -289,5 +292,37 @@ test('with showing on, the information lines are hidden and counted, and nothing
   setShowing(db, [projectKey(LANTERN)]);
   const body = await compliance('?resolved=1&weeks=52');
   expect(body.information).toEqual({ lines: [], hidden: 3, source: 'reporter' });
+  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+});
+
+test("a run's warning carries the run's headline, masked with showing on, and nothing leaks", async () => {
+  // report-work's offline-sync full run.
+  const offline = '97d6367dec7d9739';
+  importOnly('report-work');
+  const plain = (await compliance('?weeks=52')).warnings.filter((w) => w.runKey === offline);
+  expect(plain.length).toBeGreaterThan(0);
+  expect(plain.map((w) => w.headline)).toEqual(plain.map(() => 'Queue edits offline and replay them on reconnect'));
+
+  importOnly('report-work', (raw) => {
+    raw.runs.find((r: any) => r.key === offline).headline = 'Queue edits as tidepool-api does';
+  });
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await compliance('?weeks=52');
+  const masked = body.warnings.filter((w) => w.runKey === offline);
+  expect(masked.map((w) => w.headline)).toEqual(masked.map(() => 'Queue edits as another project does'));
+  expect(masked.length).toBeGreaterThan(0);
+
+  const runs = listUnits(db, 'run');
+  const sessions = listUnits(db, 'session');
+  const branches = storedBranches(runs);
+  const sessionIds = sessions.flatMap((s) => s.merged.file.match(/[0-9a-f]{8}-[0-9a-f-]{27}/) ?? []);
+  const strings = forbiddenStrings(
+    [...branches.keys()],
+    branches,
+    [LANTERN],
+    sessionIds,
+    storedSessionRoots(sessions),
+    goalHomes(levels(runs, sessions)),
+  );
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });

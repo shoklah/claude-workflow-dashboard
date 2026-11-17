@@ -17,11 +17,12 @@ export type FindingCell = {
 /** An area's category (an id of the active list), by week; a null category is the area's unlabelled row. */
 export type FindingsRow = { area: Area; category: string | null; cells: FindingCell[] };
 
-/** A finding as the Findings page lists it: its run's key, project name and branch, its week and area. */
+/** A finding as the Findings page lists it: its run's key, project name, branch and headline, its week and area. */
 export type FindingItem = FindingRow & {
   runKey: string;
   project: string;
   branch: string | null;
+  headline: string | null;
   week: string;
   area: Area;
 };

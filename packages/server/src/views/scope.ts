@@ -90,13 +90,14 @@ export function maskOffers(scope: Scope | null, offers: RunEntry['offers']): Run
 
 /**
  * A run's facts as a view shows them: with a scope, null for a hidden project's run, else named by the scope, with its
- * branch masked (maskText).
+ * branch and headline masked (maskText).
  */
 export function showFacts(scope: Scope | null, facts: RunFacts): RunFacts | null {
   if (!scope) return facts;
   if (!scope.shown.has(facts.projectKey)) return null;
   const branch = maskText(scope, facts.branch);
-  return { ...facts, project: scope.names.get(facts.projectKey)!, branch };
+  const headline = maskText(scope, facts.headline);
+  return { ...facts, project: scope.names.get(facts.projectKey)!, branch, headline };
 }
 
 /**

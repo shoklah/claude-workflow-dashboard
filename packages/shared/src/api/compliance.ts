@@ -18,6 +18,7 @@ export type ComplianceWarning = {
   runKey: string | null;
   project: string | null;
   branch: string | null;
+  headline: string | null;
   step: StepKind | null;
   isNew: boolean;
 };

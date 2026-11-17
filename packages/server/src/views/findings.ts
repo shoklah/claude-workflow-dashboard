@@ -113,9 +113,9 @@ export function findingsView(input: {
       hidden += all.findings.length;
       continue;
     }
-    const { project, branch } = shown.facts;
+    const { project, branch, headline } = shown.facts;
     findings.push(
-      ...shown.findings.map((f) => ({ ...f, runKey: unit.key, project, branch, week, area: areaOf(f.step) })),
+      ...shown.findings.map((f) => ({ ...f, runKey: unit.key, project, branch, headline, week, area: areaOf(f.step) })),
     );
   }
 

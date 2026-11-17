@@ -246,6 +246,38 @@ export function listedGoal(
   return { key: goalKey(goal), name: maskText(scope, goal) };
 }
 
+/** A run's change as the Runs view and the run page show it: listedChange, null for a change of that one run with no
+ * spec. */
+export function runChange(levels: Levels, scope: Scope | null, runKey: string): { key: string; title: string } | null {
+  const change = levels.changeOf.get(runKey);
+  return change && !change.spec && change.runs.length === 1 ? null : listedChange(levels, scope, runKey);
+}
+
+/** Whether a unit passes a goal filter (a goal's key, none passing every unit): its goal (goalOf) has that key. */
+export function inGoal(levels: Levels, unitKey: string, goal: string | undefined): boolean {
+  const own = levels.goalOf(unitKey);
+  return !goal || (own !== null && goalKey(own) === goal);
+}
+
+/** The Goal select's options over the given units: each one's change's goal while that change's home is shown, else a
+ * loose session's own goal while showSession holds, once each by key, its name masked (maskText), by name. */
+export function goalOptions(
+  levels: Levels,
+  scope: Scope | null,
+  unitKeys: string[],
+): { key: string; name: string }[] {
+  const loose = new Map(levels.loose.map((s) => [s.key, s.merged]));
+  const names = unitKeys.flatMap((key) => {
+    const change = levels.changeOf.get(key);
+    if (change) return change.goal && shownRoot(scope, change.home) ? [change.goal] : [];
+    const session = loose.get(key);
+    return session?.goal && showSession(scope, session.project) ? [session.goal] : [];
+  });
+  return [...new Set(names)]
+    .map((name) => ({ key: goalKey(name), name: maskText(scope, name) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /**
  * The links between dated sessions: a session's `started_by` naming a stored session (`how` 'handoff' a handoff, any
  * other a start), then a handoff to a stored session its own or a held run's `context.handoff_to` names; one edge per
@@ -506,7 +538,8 @@ export function workView(input: {
   names: Map<string, string>;
 }): WorkResponse {
   const { query, scope, names } = input;
-  const { changes, changeOf } = levels(input.runs, input.sessions);
+  const all = levels(input.runs, input.sessions);
+  const { changes, changeOf } = all;
   const inPeriod = periodStoredUnits(input.runs, input.sessions, { weeks: query.weeks }, input.now);
   const thisWeek = inPeriod.weeks.at(-1);
   const periodKeys = new Set([...inPeriod.runs, ...inPeriod.sessions].map((unit) => unit.key));
@@ -537,7 +570,6 @@ export function workView(input: {
     lastActivity: latest(rows.map((row) => row.lastActivity)),
     rows: byLatest(rows, (row) => row.lastActivity),
   }));
-  const goalNames = [...new Set(periodChanges.filter((c) => isShown(c.home)).flatMap((c) => c.goal ?? []))];
 
   return {
     goals: [
@@ -549,9 +581,11 @@ export function workView(input: {
     ],
     looseSessions: inPeriod.sessions.filter((session) => !changeOf.has(session.key)).length,
     anyGoal: [...input.runs, ...input.sessions].some((unit) => !!unit.merged.goal),
-    goalOptions: goalNames
-      .map((name) => ({ key: goalKey(name), name: maskText(scope, name) }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    goalOptions: goalOptions(
+      all,
+      scope,
+      periodChanges.flatMap((c) => [...c.runs, ...c.sessions].map((unit) => unit.key)),
+    ),
     hidden: listed.filter((change) => !isShown(change.home)).length,
   };
 }

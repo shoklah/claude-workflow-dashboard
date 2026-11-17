@@ -7,6 +7,7 @@ export type RunFacts = {
   projectKey: string;
   project: string;
   branch: string | null;
+  headline: string | null;
   path: Path | null;
   stage: string | null;
   startedAt: string | null;
@@ -118,6 +119,8 @@ export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
     // project: the last segment of record.project, so no path leaves the backend.
     project: (record?.project ?? '').split('/').filter(Boolean).at(-1) ?? '',
     branch: record?.branch ?? null,
+    // headline: the run's one-line title.
+    headline: run.headline ?? null,
     path,
     stage: record?.stage ?? null,
     startedAt: record?.started ?? null,

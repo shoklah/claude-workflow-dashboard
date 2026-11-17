@@ -8,9 +8,10 @@ import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
-import { projectKey } from '../src/keys.ts';
-import { storedSessionRoots } from '../src/views/runs.ts';
+import { changeKey, goalKey, projectKey } from '../src/keys.ts';
+import { storedBranches, storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { goalHomes, levels } from '../src/views/work.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -22,13 +23,13 @@ const TWO_RUNS = '5a9d3f12-6e8b-4c7a-9f2d-3b1e0c8a4d56';
 let dir: string;
 let db: Db;
 
-/** A fresh database holding report-v6, changed first by `change`. */
-function dbWith(change: (raw: any) => void = () => {}): Db {
-  const fresh = openDb(join(dir, 'dashboard.sqlite'));
-  const raw = fixture('report-v6');
+/** A fresh database holding `name` (report-v6 unless given), changed first by `change`. */
+function dbWith(change: (raw: any) => void = () => {}, name = 'report-v6'): Db {
+  const fresh = openDb(join(dir, `${name}.sqlite`));
+  const raw = fixture(name);
   change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
-  if (!loaded.ok) throw new Error('report-v6 does not load');
+  if (!loaded.ok) throw new Error(`${name} does not load`);
   importReport(fresh, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
   return fresh;
 }
@@ -72,8 +73,20 @@ describe('with showing off', () => {
   test('the two-run session holds both runs, in window order, with its facts', async () => {
     const row = twoRuns(await sessions());
     expect(row.holds).toEqual([
-      { runKey: runKey('feature/offline-sync', 'plan'), project: 'lantern-notes', branch: 'feature/offline-sync', path: 'plan' },
-      { runKey: runKey('feature/webhooks', 'full'), project: 'tidepool-api', branch: 'feature/webhooks', path: 'full' },
+      {
+        runKey: runKey('feature/offline-sync', 'plan'),
+        project: 'lantern-notes',
+        branch: 'feature/offline-sync',
+        headline: null,
+        path: 'plan',
+      },
+      {
+        runKey: runKey('feature/webhooks', 'full'),
+        project: 'tidepool-api',
+        branch: 'feature/webhooks',
+        headline: null,
+        path: 'full',
+      },
     ]);
     expect(row).toMatchObject({
       title: 'Offline sync plan',
@@ -215,5 +228,94 @@ describe('with showing on lantern-notes', () => {
     );
     expect(strings.forbidden).toEqual(expect.arrayContaining(['tidepool-api', 'lantern', 'feature/webhooks']));
     expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  });
+});
+
+describe('changes and goals, on report-work', () => {
+  const TIDEPOOL = '/Users/example/Work/tidepool-api';
+  const OFFLINE_RUN = '97d6367dec7d9739';
+  const S_5A9D = '52e8f40878fa827a';
+  const S_7D1E = '60851c0c8aec995e';
+  const S_2E8D = 'e66de89cb5c23e32';
+  const S_6B1F = '233f23f883fa7c21';
+  const OFFLINE_CHANGE = {
+    key: changeKey({ project: LANTERN, path: 'docs/superpowers/specs/2026-11-05-offline-sync-design.md' }, null, '', ''),
+    title: 'Plan the offline queue and replay',
+  };
+  const goal = (name: string) => ({ key: goalKey(name), name });
+
+  beforeEach(() => {
+    db.$client.close();
+    db = dbWith(() => {}, 'report-work');
+  });
+
+  const rowOf = (body: SessionsResponse, key: string) => body.sessions.find((s) => s.key === key)!;
+  const keys = (body: SessionsResponse) => body.sessions.map((s) => s.key);
+
+  test("a session carries its change and goal, and its held runs' headlines", async () => {
+    const row = rowOf(await sessions(), S_7D1E);
+    expect(row).toMatchObject({ change: OFFLINE_CHANGE, goal: goal('Offline sync') });
+    const headline = 'Queue edits offline and replay them on reconnect';
+    expect(row.holds).toEqual([expect.objectContaining({ runKey: OFFLINE_RUN, headline })]);
+    expect(row.timeline.filter((t) => t.kind === 'run')).toEqual([
+      expect.objectContaining({ runKey: OFFLINE_RUN, headline }),
+    ]);
+    // A session in no change carries its own goal.
+    expect(rowOf(await sessions(), S_6B1F)).toMatchObject({ change: null, goal: goal('Release checklist') });
+  });
+
+  test("goal filters the sessions by their change's goal; goalOptions names the period's goals", async () => {
+    expect(keys(await sessions(`?weeks=4&goal=${goalKey('Webhooks')}`))).toEqual([S_5A9D]);
+    expect(keys(await sessions(`?weeks=4&goal=${goalKey('Release checklist')}`))).toEqual([S_6B1F]);
+    expect((await sessions()).goalOptions).toEqual([
+      goal('Offline sync'),
+      goal('Release checklist'),
+      goal('Webhooks'),
+    ]);
+  });
+
+  test('session lists only that session, whatever the period and the other filters', async () => {
+    const query = `&weeks=1&path=full&project=${projectKey(TIDEPOOL)}&goal=${goalKey('Webhooks')}&warnings=1`;
+    expect(keys(await sessions(`?session=${S_6B1F}${query}`))).toEqual([S_6B1F]);
+    expect(keys(await sessions(`?session=nope${query}`))).toEqual([]);
+  });
+
+  test("with showing on, a session showing mode hides lists none, and Work's unlisted change and goal are null", async () => {
+    setShowing(db, [projectKey(LANTERN)]);
+    expect(keys(await sessions(`?session=${S_2E8D}`))).toEqual([]);
+    const body = await sessions();
+    expect(rowOf(body, S_5A9D)).toMatchObject({ change: null, goal: null });
+    expect(body.goalOptions).toEqual([goal('Offline sync')]);
+
+    const runs = listUnits(db, 'run');
+    const stored = listUnits(db, 'session');
+    const branches = storedBranches(runs);
+    const sessionIds = stored.flatMap((s) => s.merged.file.match(/[0-9a-f]{8}-[0-9a-f-]{27}/) ?? []);
+    const strings = forbiddenStrings(
+      [...branches.keys()],
+      branches,
+      [LANTERN],
+      sessionIds,
+      storedSessionRoots(stored),
+      goalHomes(levels(runs, stored)),
+    );
+    expect(strings.forbidden).toEqual(expect.arrayContaining(['tidepool-api', 'Webhooks', 'Release checklist']));
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  });
+
+  test('with showing on, headlines and goal names are masked', async () => {
+    db.$client.close();
+    rmSync(dir, { recursive: true, force: true });
+    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
+    db = dbWith((raw) => {
+      raw.runs.find((r: any) => r.key === OFFLINE_RUN).headline = 'Queue edits as tidepool-api does';
+      for (const unit of [...raw.runs, ...raw.sessions]) {
+        if (unit.goal === 'Offline sync') unit.goal = 'Offline sync like tidepool-api';
+      }
+    }, 'report-work');
+    setShowing(db, [projectKey(LANTERN)]);
+    const row = rowOf(await sessions(), S_7D1E);
+    expect(row.holds[0].headline).toBe('Queue edits as another project does');
+    expect(row.goal?.name).toBe('Offline sync like another project');
   });
 });

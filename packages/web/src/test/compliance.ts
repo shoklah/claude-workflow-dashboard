@@ -11,7 +11,16 @@ function warning(
   w: Pick<ComplianceWarning, 'kind' | 'family' | 'week' | 'text'> & Partial<ComplianceWarning>,
   run: typeof fullRun = fullRun,
 ): ComplianceWarning {
-  return { sessionId: null, runKey: run.key, project: run.project, branch: run.branch, step: null, isNew: false, ...w };
+  return {
+    sessionId: null,
+    runKey: run.key,
+    project: run.project,
+    branch: run.branch,
+    headline: run.headline,
+    step: null,
+    isNew: false,
+    ...w,
+  };
 }
 
 export const complianceEmpty: ComplianceResponse = {
@@ -98,6 +107,7 @@ export const complianceFull: ComplianceResponse = {
       runKey: null,
       project: null,
       branch: null,
+      headline: null,
       step: null,
       isNew: true,
     },
