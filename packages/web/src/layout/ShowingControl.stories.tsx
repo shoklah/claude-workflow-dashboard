@@ -111,3 +111,32 @@ export const Failed: Story = {
     await expect(canvas.queryByRole('switch')).toBeNull();
   },
 };
+
+/** Stacked, as at the rail's foot: long names wrap inside the rail's width, "Stop showing" under them. */
+export const StackedLongNames: Story = {
+  render: () => (
+    <div style={{ width: 176 }}>
+      <ShowingControl stacked />
+    </div>
+  ),
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      '/api/showing': {
+        on: true,
+        projects: [
+          { key: ATLAS, name: 'lantern-notes-archive', picked: true },
+          { key: '2b3c4d5e6f708192', name: 'tidepool-api-gateway', picked: true },
+          { key: '3c4d5e6f70819203', name: 'quarry-field-recorder', picked: true },
+        ],
+      },
+    });
+  },
+  play: async ({ canvas }) => {
+    const stop = await canvas.findByRole('button', { name: 'Stop showing' });
+    const bar = stop.parentElement!;
+    await expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
+    await expect(bar.getBoundingClientRect().width).toBeLessThanOrEqual(176);
+    await expect(stop.getBoundingClientRect().top).toBeGreaterThan(canvas.getByText(/^Showing:/).getBoundingClientRect().bottom - 1);
+  },
+};

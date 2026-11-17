@@ -67,7 +67,7 @@ components:
   button: pill; the pressed option is solid primary, the others clear glass with an edge
   select: pill, clear glass, a drawn chevron inset like the text
   table: rows on the panel, hairline row borders, header row slightly lighter, row hover lightens
-  menu: a glass rail; the current page is a lighter pill with full-weight text
+  menu: a glass rail, 224px and window-tall; named sections of icon and label entries, the current page a lighter pill with full-weight text; the brand on top, showing mode, Refresh and the import time at its foot
   chart: drawn on the panel, recessive grid, the categorical palette below
   heatmap-cell: one-hue blue ramp, zero a faint glass cell with muted ink
   share-bar: blue fill on the ramp's track
@@ -116,7 +116,7 @@ Three levels of emphasis at most on a screen: the page title, section titles, an
 
 ## Layout
 
-A glass menu rail on the left (under 768px the rail is hidden and a Menu button in the header row opens the page list in a dialog), a header row with the import status, showing mode and refresh, then the page. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
+A glass menu rail on the left, as tall as the window and static while the page scrolls: edward's mark and wordmark, the pages in named sections, and at its foot showing mode, Refresh and the time of the last good import; in a short window only its menu scrolls. From 768px there is no header row: the import banner shows above the page only when it has something to say. Under 768px the rail is hidden and a top row holds a Menu button, which opens the same sections in a dialog, showing mode and Refresh. Content is left-aligned and uses the full width it is given. Groups are separated by 24px, items inside a group by 12px or less. Panels hold related content; the page title, filters and notes sit directly on the backdrop.
 
 ## Elevation & Depth
 
@@ -134,7 +134,7 @@ Panels and notice bars use a 1.25rem radius; buttons, selects and pressed option
 - **Button and option switch:** pills. In a switch, the pressed option is solid primary and the others are clear glass with an edge; a disabled option is 50% opacity with its tooltip still reachable.
 - **Select:** a clear glass pill with a drawn chevron in secondary ink, inset from the right as far as the text is from the left; its open list uses the system's popup.
 - **Table:** header row a slightly lighter glass band, header text 600; hairline row borders; row hover lightens the row by one glass step. Numeric columns right-aligned with tabular figures; the unit goes in the header; the one cell that carries its own unit is a session's length ("45 min", "7 h 46", "3 d 11 h"). A table that scrolls sideways fades at the edge where columns are hidden.
-- **Menu rail:** glass; the current page is a lighter pill with 600 weight, the rest 400 with hover.
+- **Menu rail:** glass, 224px; section names in the small role in secondary ink, 24px between sections; an entry is a 16px icon and its label, the current page a lighter pill with 600 weight, the rest 400 with hover; an icon never carries state; the brand on top, and at the foot, above a hairline, showing mode, Refresh and the import time.
 - **Heatmap cell:** the ramp under Chart colours, its number written in it.
 - **Share bar:** the ramp's fourth step on its first step, the percent written beside it.
 - **Reporter mark:** a figure from the reporter's all-time totals is followed by muted 12px text with a dotted underline that opens its explanation; it has no border or fill, so it never reads as a chip.

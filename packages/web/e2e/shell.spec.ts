@@ -73,6 +73,7 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto('/spend');
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeHidden();
+  await expect(page.getByRole('complementary')).toBeHidden();
   const menu = page.getByRole('button', { name: 'Menu' });
   const pages = page.getByRole('dialog', { name: 'Pages' });
   await menu.click();
@@ -88,6 +89,25 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   await expect(page).toHaveURL(/\/runs$/);
   await expect(pages).toBeHidden();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeInViewport();
+});
+
+test('the rail stays put while a long page scrolls, with no header row', async ({ page }) => {
+  await pinClock(page);
+  const rail = page.getByRole('complementary');
+  // The rail starts at 768 px.
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await expect(rail).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Menu' })).toBeHidden();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.getByRole('banner')).toBeHidden();
+  for (const name of ['Activity', 'Usage and cost', 'Workflow']) await expect(rail.getByRole('group', { name })).toBeVisible();
+  await expect(rail.getByText(/^Imported /)).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await expect(rail.getByText('edward', { exact: true })).toBeInViewport();
+  await expect(rail.getByRole('button', { name: 'Refresh' })).toBeInViewport();
+  expect(Math.round((await rail.boundingBox())!.height)).toBe(900 - 24);
 });
 
 test('on a short phone the Menu dialog scrolls to its last link', async ({ page }) => {
