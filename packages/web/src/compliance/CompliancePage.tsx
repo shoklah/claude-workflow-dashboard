@@ -138,7 +138,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
                     {w.runKey === null ? (
                       <Unknown label="no run" />
                     ) : (
-                      <RunLink runKey={w.runKey} branch={w.branch} />
+                      <RunLink runKey={w.runKey} branch={w.branch} title={w.headline} />
                     )}
                   </TableCell>
                   <TableCell className="align-top text-muted-foreground">

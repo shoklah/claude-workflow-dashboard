@@ -78,7 +78,7 @@ export const Full: Story = {
     await expect(session[13]).toHaveTextContent(/^0$/);
 
     const run = within(body[1]).getAllByRole('cell');
-    await expect(within(run[0]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(within(run[0]).getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(run[1]).toHaveTextContent(/^Run$/);
     await expect(run[2]).toHaveTextContent('atlas');
 

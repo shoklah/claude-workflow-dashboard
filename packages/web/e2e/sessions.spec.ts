@@ -24,6 +24,6 @@ test('a session opens its timeline, links its runs and has no axe violations', a
   await expect(timeline.getByText('Its skill never loaded')).toHaveCount(2);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
-  await timeline.getByRole('link', { name: 'feature/webhooks' }).click();
-  await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
+  await timeline.getByRole('link', { name: 'Send webhooks for note changes' }).click();
+  await expect(page.getByRole('heading', { name: 'Send webhooks for note changes', level: 1 })).toBeVisible();
 });

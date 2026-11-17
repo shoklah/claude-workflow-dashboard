@@ -118,8 +118,8 @@ export const Full: Story = {
     await expect(lines[1].slice(1, 3)).toEqual(['Command typed', '/graphify']);
     await expect(lines[2].slice(1)).toEqual(['Command typed', '/grill-me', 'Its skill never loaded']);
     await expect(inTimeline.getByText('Its skill never loaded').closest('td')).toHaveClass('text-warning-ink');
-    await expect(lines[3].slice(1, 3)).toEqual(['Run started', 'feat/search']);
-    await expect(inTimeline.getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
+    await expect(lines[3].slice(1, 3)).toEqual(['Run started', 'Search every note by title and body']);
+    await expect(inTimeline.getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
     await expect(inTimeline.getByRole('link', { name: 'fix/retry' })).toHaveAttribute('href', `/runs/${smallRun.key}`);
 
     await userEvent.click(toggle);

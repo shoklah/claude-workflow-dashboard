@@ -23,7 +23,7 @@ const COLUMN_COUNT = 14;
 function UnitName({ unit }: { unit: ContextUnit }) {
   if (unit.run) {
     return (
-      <RunLink runKey={unit.run.key} branch={unit.run.branch} />
+      <RunLink runKey={unit.run.key} branch={unit.run.branch} title={unit.run.headline} />
     );
   }
   const title = unit.session?.title ?? null;

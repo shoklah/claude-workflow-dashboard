@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type { GoalSection, WorkQuery, WorkResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { GoalLink } from '../components/GoalLink.tsx';
 import { Unknown } from '../components/Num.tsx';
 import { Option, Options } from '../components/Option.tsx';
 import { LINK, Line, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
@@ -37,9 +38,7 @@ function GoalRows({ goal }: { goal: GoalSection }) {
         onToggle={() => setOpen(!open)}
         link={
           goal.key ? (
-            <Link to="/work/goals/$key" params={{ key: goal.key }} className={LINK}>
-              {name}
-            </Link>
+            <GoalLink goalKey={goal.key} name={name} />
           ) : (
             name
           )

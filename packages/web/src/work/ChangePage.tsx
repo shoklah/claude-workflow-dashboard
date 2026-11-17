@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import type { ChangeResponse } from '@cwd/shared';
 import { ApiError, useLiveQuery } from '../api.ts';
+import { GoalLink } from '../components/GoalLink.tsx';
 import { Unknown } from '../components/Num.tsx';
 import { LINK, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -18,9 +19,7 @@ function Facts({ change }: { change: ChangeResponse }) {
     [
       'Goal',
       change.goal ? (
-        <Link to="/work/goals/$key" params={{ key: change.goal.key }} className={LINK}>
-          {change.goal.name}
-        </Link>
+        <GoalLink goalKey={change.goal.key} name={change.goal.name} />
       ) : (
         <Unknown backdrop label="no goal" />
       ),

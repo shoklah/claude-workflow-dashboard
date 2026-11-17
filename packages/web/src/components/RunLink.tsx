@@ -17,7 +17,7 @@ export function RunLink({
 }: {
   runKey: string;
   branch: string | null | undefined;
-  title?: string | null;
+  title: string | null;
   className?: string;
 }) {
   return (

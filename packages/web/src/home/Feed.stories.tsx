@@ -38,9 +38,9 @@ export const Full: Story = {
     const items = within(canvas.getByRole('list')).getAllByRole('listitem');
     await expect(items).toHaveLength(4);
 
-    // A finished run: its branch opening the run, its project and path, then its facts as labelled pairs.
+    // A finished run: its title opening the run, its project and path, then its facts as labelled pairs.
     await expect(items[0]).toHaveTextContent('Run finished');
-    await expect(within(items[0]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(within(items[0]).getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(within(items[0]).getByText('atlas, Full path')).toBeVisible();
     await expect(facts(items[0])).toEqual([
       ['Findings', '6'],
@@ -60,7 +60,7 @@ export const Full: Story = {
     await expect(items[1].querySelector('.bg-warning-edge')).not.toBeNull();
 
     // A run's warning opens its run; the run's own "branch (date):" lead is gone, the branch already leads.
-    await expect(within(items[2]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(within(items[2]).getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(within(items[2]).getByText('final-reviewer ran on another model than its pin')).toBeVisible();
     await expect(facts(items[2])).toEqual([]);
 

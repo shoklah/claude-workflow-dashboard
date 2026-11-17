@@ -91,7 +91,7 @@ export const Full: Story = {
     await expect(list.getAllByRole('row')).toHaveLength(3);
     await expect(list.getByText('The retry path has no test')).toBeVisible();
     await expect(list.getByText('Story for the error state is missing')).toBeVisible();
-    await expect(list.getAllByRole('link', { name: 'feat/search' })[0]).toHaveAttribute(
+    await expect(list.getAllByRole('link', { name: 'Search every note by title and body' })[0]).toHaveAttribute(
       'href',
       '/runs/a1b2c3d4e5f60718',
     );

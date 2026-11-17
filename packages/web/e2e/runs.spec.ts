@@ -14,7 +14,7 @@ async function openFullRun(page: Page): Promise<void> {
   await page.goto('/work?view=runs');
   const row = page.getByRole('row').filter({ hasText: 'feature/offline-sync' }).filter({ hasText: 'Full' });
   await row.getByRole('link', { name: FULL_TITLE }).click();
-  await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: FULL_TITLE, level: 1 })).toBeVisible();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -88,7 +88,7 @@ test("the Full run's chain opens its plan run and counts its later fix", async (
   await expect(chain.getByText('1 later fix')).toBeVisible();
   await chain.getByRole('link', { name: 'Plan run' }).click();
   await expect(page).toHaveURL(/\/runs\/51120289e82db399$/);
-  await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Plan the offline queue and replay', level: 1 })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Before and after this run' }).getByText('This run, plan')).toBeVisible();
 });
 
@@ -100,7 +100,7 @@ test("each run's row names its title as the link to its page, its branch after i
   await expect(row.getByRole('cell').nth(5)).toHaveText('Full');
   await row.getByRole('link', { name: 'Send webhooks for note changes' }).first().click();
   await expect(page).toHaveURL(/\/runs\/[0-9a-f]{16}$/);
-  await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Send webhooks for note changes', level: 1 })).toBeVisible();
 });
 
 test('a branch with HTML shows as text', async ({ page }) => {
@@ -119,9 +119,11 @@ test('a branch with HTML shows as text', async ({ page }) => {
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   await expect(page.locator('main b')).toHaveCount(0);
 
-  // That run's page.
+  // That run's page: its title with markup, and its branch among the header's facts, both as text.
   await link.click();
-  await expect(page.getByRole('heading', { name: HTML_TEXT, level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Fix the sync log's <b>escaping</b>", level: 1 })).toBeVisible();
+  await expect(page.getByRole('definition').filter({ hasText: HTML_TEXT })).toBeVisible();
+  await expect(page.locator('main b')).toHaveCount(0);
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
 
   // A finding's summary on the Full run, in the findings table.
@@ -156,7 +158,7 @@ test("at 1440 px the Strengths table's short columns take their content's width,
 test('the schema 5 run page lists its strengths in the Strengths table', async ({ page }) => {
   await page.goto('/work?view=runs');
   await page.getByRole('link', { name: 'Send webhooks for note changes' }).first().click();
-  await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Send webhooks for note changes', level: 1 })).toBeVisible();
   const strengths = page.getByRole('region', { name: 'Strengths table' });
   await expect(strengths.locator('tbody tr')).toHaveCount(2);
   await expect(strengths.getByText('Each retry delay has its own test')).toBeVisible();

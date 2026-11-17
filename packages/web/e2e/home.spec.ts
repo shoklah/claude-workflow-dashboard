@@ -28,11 +28,11 @@ test('the path switch shows the Small path', async ({ page }) => {
   expect(results.violations).toEqual([]);
 });
 
-// report-later's new run is on the branch `<img src=x onerror=alert(1)>`: the feed shows it as text, and no warning
-// shows the log's "WARN:" prefix.
+// report-later's new run is on the branch `<img src=x onerror=alert(1)>`, and report-work titles it with markup: the
+// feed names it by its title as text, and no warning shows the log's "WARN:" prefix.
 test('a summary with HTML shows as text', async ({ page }) => {
   const feed = page.getByRole('region', { name: 'Since you last looked', exact: true });
-  await expect(feed.getByText('<img src=x onerror=alert(1)>')).toBeVisible();
+  await expect(feed.getByRole('link', { name: "Fix the sync log's <b>escaping</b>" })).toBeVisible();
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   await expect(feed).not.toContainText('WARN:');
 });

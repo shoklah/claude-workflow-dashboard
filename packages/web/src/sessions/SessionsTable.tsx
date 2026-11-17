@@ -56,7 +56,7 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
               <td className="py-1 pr-6 whitespace-nowrap text-muted-foreground">{KINDS[item.kind]}</td>
               <td className="py-1 pr-6 font-medium">
                 {item.kind === 'run' && hold ? (
-                  <RunLink runKey={hold.runKey} branch={hold.branch} />
+                  <RunLink runKey={hold.runKey} branch={hold.branch} title={hold.headline} />
                 ) : (
                   usageName({ name: item.name, kind: item.kind === 'command' ? 'command' : 'skill' })
                 )}
