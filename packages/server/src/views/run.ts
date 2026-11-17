@@ -64,7 +64,7 @@ export function runPageView(input: {
     offers: (maskOffers(scope, entry.offers) ?? []).map((o) => ({ skill: o.skill ?? '', outcome: o.outcome ?? '' })),
     laterFixes: (entry.later_fixes ?? []).map((f) => ({ date: f.date ?? null, subject: maskText(scope, f.subject ?? '') })),
     agents: agentRows(modelSums([masked])).map(({ name, actual }) => ({ name, actual })),
-    main: masked.main ? { model: masked.main.model ?? null, effort: masked.main.effort ?? null } : null,
+    sessionModel: masked.main ? { model: masked.main.model ?? null, effort: masked.main.effort ?? null } : null,
     phases: (entry.phases ?? []).map((p) => ({ name: maskPhase(scope, p.name), cost: modelsCost(p.models) })),
   };
 }

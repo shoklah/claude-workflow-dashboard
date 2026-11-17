@@ -486,6 +486,27 @@ test("with showing on, the run page holds no hidden project's name, path or bran
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
 
+test('with showing on, the run page has no field named after a hidden branch named main', async () => {
+  db.$client.close();
+  // A hidden lantern-notes run on the branch most projects have.
+  const change = (raw: any) => {
+    raw.runs.find((r: any) => r.record.project.endsWith('lantern-notes')).record.branch = 'main';
+  };
+  db = dbWith('report-v5', change);
+  const raw = fixture('report-v5');
+  change(raw);
+  const branches = new Map<string, string[]>();
+  for (const r of raw.runs) {
+    const root = projectRoot(r.record.project);
+    branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
+  }
+  const TIDEPOOL = '/Users/example/Work/tidepool-api';
+  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], storedSessionRoots(listUnits(db, 'session')));
+  expect(strings.forbidden).toContain('main');
+  setShowing(db, [projectKey(TIDEPOOL)]);
+  expect(leaks(await run(WEBHOOKS), strings.forbidden, strings.shown)).toEqual([]);
+});
+
 describe("the run's surroundings", () => {
   // report-v7's runs: the Plan and Full feature/offline-sync runs on lantern-notes, feature/webhooks on tidepool-api,
   // and a small run whose transcript no stored session has.
@@ -613,9 +634,9 @@ describe("the run's surroundings", () => {
     expect((await run(WEBHOOKS_V7)).agents).toEqual(expected);
   });
 
-  test("main and phases are the run's main session and each phase's cost", async () => {
+  test("sessionModel and phases are the run's main session and each phase's cost", async () => {
     const body = await run(FULL_V7);
-    expect(body.main).toEqual({ model: 'claude-opus-5-5', effort: 'medium' });
+    expect(body.sessionModel).toEqual({ model: 'claude-opus-5-5', effort: 'medium' });
     expect(body.phases[0]).toEqual({ name: 'design', cost: 1.6 });
     expect(body.phases).toEqual(v7.runs[4].phases.map((p: any) => ({ name: p.name, cost: modelsCost(p.models) })));
   });
@@ -652,7 +673,7 @@ describe("the run's surroundings", () => {
     expect(body.agents.filter((a) => a.name === 'another project')).toEqual([
       { name: 'another project', actual: { 'another project/another project': 1, 'claude-opus-5-5/high': 1 } },
     ]);
-    expect(body.main).toEqual({ model: 'another project', effort: 'high' });
+    expect(body.sessionModel).toEqual({ model: 'another project', effort: 'high' });
     expect(body.offers[0]).toEqual({ skill: 'another project', outcome: 'accepted' });
     expect(body.skills[0].name).toBe('another project');
     expect(body.models.at(-1)).toEqual({ model: 'another project', cost: 0.2 });

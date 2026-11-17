@@ -122,6 +122,6 @@ export type RunPageResponse = RunResponse & {
   offers: { skill: string; outcome: string }[];
   laterFixes: { date: string | null; subject: string }[];
   agents: Pick<AgentModels, 'name' | 'actual'>[];
-  main: { model: string | null; effort: string | null } | null;
+  sessionModel: { model: string | null; effort: string | null } | null;
   phases: { name: string; cost: number | null }[];
 };
