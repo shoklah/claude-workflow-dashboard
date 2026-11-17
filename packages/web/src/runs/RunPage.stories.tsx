@@ -4,6 +4,7 @@ import { expect, spyOn, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
+import { cells } from '../test/table.ts';
 import { fullRun, oldRun, runBeforeSteps, runFull, runSmall, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
@@ -154,6 +155,9 @@ export const Full: Story = {
     }
     await expect(canvas.queryByRole('heading', { name: /^Findings/ })).toBeNull();
     await expect(canvas.queryByRole('combobox', { name: 'Step' })).toBeNull();
+    // Problems is a region named by its title, its filters inside it.
+    const problems = canvas.getByRole('region', { name: 'Problems (6)' });
+    await expect(within(problems).getByRole('combobox', { name: 'Severity' })).toBeVisible();
     await expect(canvas.getByRole('region', { name: 'Problems table' })).toHaveClass('border-l-notice-edge');
     await expect(canvas.getByRole('region', { name: 'Strengths table' })).toHaveClass('border-l-success-edge');
   },
@@ -224,7 +228,7 @@ export const OtherRun: Story = {
 /** The data rows of the table region named `name`, by their first cell. */
 function ids(canvasElement: HTMLElement, name: string): (string | null)[] {
   const region = within(canvasElement).getByRole('region', { name });
-  return [...region.querySelectorAll('tbody tr')].map((tr) => tr.firstElementChild!.textContent);
+  return [...region.querySelectorAll('tbody tr')].map((tr) => cells(tr as HTMLElement)[0]);
 }
 
 /** A selected step filters Problems and Strengths, and their titles name it; closing restores the whole run. */
@@ -235,7 +239,7 @@ export const SelectedStepTables: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
     const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
     await userEvent.click(flow.getByRole('button', { name: /^Task 1(?!\d)/ }));
-    await expect(canvas.getByRole('heading', { name: 'Problems in Task 1 (2)' })).toBeVisible();
+    await expect(canvas.getByRole('region', { name: 'Problems in Task 1 (2)' })).toBeVisible();
     await expect(ids(canvasElement, 'Problems table')).toEqual(['F1', 'F2']);
     const strengths = canvas.getByRole('region', { name: 'Strengths in Task 1 (0)' });
     await expect(within(strengths).getByText('The reviewers named no strength in Task 1.')).toBeVisible();
@@ -270,6 +274,22 @@ export const ProblemsNoMatch: Story = {
   },
 };
 
+/** A filter set on one step resets when the step changes: the new step's every problem shows. */
+export const FiltersResetWithStep: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
+    await userEvent.click(flow.getByRole('button', { name: /^Task 1(?!\d)/ }));
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Severity' }), 'minor');
+    await expect(ids(canvasElement, 'Problems table')).toEqual(['F2']);
+    await userEvent.click(flow.getByRole('button', { name: /^Task 2(?!\d)/ }));
+    await expect(ids(canvasElement, 'Problems table')).toEqual(['F3']);
+    await expect(canvas.getByRole('combobox', { name: 'Severity' })).toHaveValue('');
+  },
+};
+
 /** A run with no finding and no strength says so in each section's line. */
 export const Small: Story = {
   args: { runKey: smallRun.key },
@@ -293,5 +313,8 @@ export const EmptyTables: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByText('Recorded before findings were logged: this run has none to list.')).toBeVisible();
     await expect(canvas.getByText('Recorded before strengths were logged: this run has none to list.')).toBeVisible();
+    // Not known is not zero: the titles carry no count, as the header's Findings shows the dash.
+    await expect(canvas.getByRole('region', { name: 'Problems' })).toBeVisible();
+    await expect(canvas.getByRole('region', { name: 'Strengths' })).toBeVisible();
   },
 };

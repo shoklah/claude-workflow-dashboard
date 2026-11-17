@@ -113,7 +113,8 @@ export function Line({ children }: { children: ReactNode }) {
   return <p className="text-sm">{children}</p>;
 }
 
-/** A region's loading or error state: its panel with one line saying what is loading, or what failed and what to do. */
-export function State({ error = false, children }: { error?: boolean; children: ReactNode }) {
-  return <p className={cn('glass p-4 text-sm', error ? WARNING_BORDER : 'text-muted-foreground')}>{children}</p>;
+/** A region's loading, error or empty state: its panel with one line saying what is loading, what failed and what to
+ * do, or that there is nothing (`className` adds to the panel, a findings table's side). */
+export function State({ error = false, className, children }: { error?: boolean; className?: string; children: ReactNode }) {
+  return <p className={cn('glass p-4 text-sm', error ? WARNING_BORDER : 'text-muted-foreground', className)}>{children}</p>;
 }

@@ -230,13 +230,15 @@ export const RunPageProblems: Story = {
   args: {
     findings: runFull.findings,
     categoryLabels: runFull.categoryLabels,
-    heading: <h2>Problems (6)</h2>,
+    heading: 'Problems (6)',
     label: 'Problems table',
     skip: ['step'],
     containerClassName: PROBLEMS_SIDE,
   },
   play: async ({ canvas }) => {
     await expect(canvas.queryByRole('combobox', { name: 'Step' })).toBeNull();
+    // A region named by its heading, which starts the filter row.
+    await expect(canvas.getByRole('region', { name: 'Problems (6)' })).toBeVisible();
     const row = canvas.getByRole('heading', { name: 'Problems (6)' }).parentElement!;
     await expect(within(row).getByRole('combobox', { name: 'Severity' })).toBeVisible();
     await expect(within(row).getByRole('combobox', { name: 'Outcome' })).toBeVisible();

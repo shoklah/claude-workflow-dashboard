@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useId, useMemo, type ReactNode } from 'react';
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -9,7 +9,7 @@ import {
 } from '@tanstack/react-table';
 import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { EmptyRow, Text, Unknown } from '../components/Num.tsx';
-import { TERM } from '../components/Panel.tsx';
+import { SectionTitle, TERM } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -115,7 +115,7 @@ const FILTERS = [
 /**
  * Every finding of the run in one table, filtered by step, severity and outcome, with its labels: the workflow's, which
  * win, and the app's; each category named by `categoryLabels` (the response's). With `run`, a first column links each
- * finding to its run. On the run page, `heading` starts the filter row, `label` names the scrolling container, `skip`
+ * finding to its run. On the run page, `heading` is its title, starting the filter row and naming it as a region, `label` names the scrolling container, `skip`
  * leaves out filters and `containerClassName` adds to the container's classes (its coloured side).
  */
 export function FindingsTable({
@@ -138,10 +138,11 @@ export function FindingsTable({
   const columns = useMemo(() => [...(run ? runColumn : []), ...columnsOf(categoryLabels)], [run, categoryLabels]);
   const table = useTable({ features, columns, data: findings });
   const rows = table.getRowModel().rows;
+  const headingId = useId();
   return (
-    <div className="flex flex-col gap-3">
+    <section aria-labelledby={heading ? headingId : undefined} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-4 text-sm">
-        {heading}
+        {heading && <SectionTitle id={headingId}>{heading}</SectionTitle>}
         {FILTERS.filter((filter) => !skip.includes(filter.id)).map((filter) => {
           const column = table.getColumn(filter.id)!;
           const values = [...new Set(findings.map((f) => f[filter.id]).filter((v) => v !== null))].sort();
@@ -203,6 +204,6 @@ export function FindingsTable({
           ))}
         </TableBody>
       </Table>
-    </div>
+    </section>
   );
 }

@@ -4,7 +4,7 @@ import { cn } from 'cn';
 import type { RunPageResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
-import { PageTitle, Pairs, Panel, Section, SectionTitle, State } from '../components/Panel.tsx';
+import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
@@ -46,11 +46,11 @@ function TableTitle({ icon, text }: { icon: ReactNode; text: string }) {
   );
 }
 
-/** A findings section with nothing to list: its title, then one line in a panel with the section's side. */
+/** A findings section with nothing to list: its title, then its one line in a panel with the section's side. */
 function NoneLine({ title, side, children }: { title: ReactNode; side: string; children: string }) {
   return (
     <Section title={title}>
-      <p className={cn('glass p-4 text-sm text-muted-foreground', side)}>{children}</p>
+      <State className={side}>{children}</State>
     </Section>
   );
 }
@@ -94,11 +94,12 @@ export function RunPage({ runKey }: { runKey: string }) {
   const problems = unit ? unit.findings : findings;
   const praised = unit ? strengthsOf(unit, numbered) : numbered;
   const where = unit ? ` in ${unit.name}` : '';
+  // Before steps the counts aren't known, as the header's Findings dash says, so the titles carry none.
   const problemsTitle = (
-    <TableTitle icon={<TriangleAlert aria-hidden className={cn('size-5', PROBLEMS_INK)} />} text={`Problems${where} (${problems.length})`} />
+    <TableTitle icon={<TriangleAlert aria-hidden className={cn('size-5', PROBLEMS_INK)} />} text={facts.beforeSteps ? 'Problems' : `Problems${where} (${problems.length})`} />
   );
   const strengthsTitle = (
-    <TableTitle icon={<ThumbsUp aria-hidden className={cn('size-5', STRENGTHS_INK)} />} text={`Strengths${where} (${praised.length})`} />
+    <TableTitle icon={<ThumbsUp aria-hidden className={cn('size-5', STRENGTHS_INK)} />} text={facts.beforeSteps ? 'Strengths' : `Strengths${where} (${praised.length})`} />
   );
   return (
     <div className="flex flex-col gap-4">
@@ -124,9 +125,11 @@ export function RunPage({ runKey }: { runKey: string }) {
           </Panel>
           {problems.length > 0 ? (
             <FindingsTable
+              // Keyed by the selection, so a filter set on one step resets with it.
+              key={unit?.id ?? 'run'}
               findings={problems}
               categoryLabels={categoryLabels}
-              heading={<SectionTitle>{problemsTitle}</SectionTitle>}
+              heading={problemsTitle}
               label="Problems table"
               skip={['step']}
               containerClassName={PROBLEMS_SIDE}
