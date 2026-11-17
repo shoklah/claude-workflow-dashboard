@@ -1,5 +1,13 @@
 import { useState, type ReactNode } from 'react';
-import { PATHS, toPath, type FindingsQuery, type RunsQuery, type RunsResponse, type SpendUnits, type StepKind } from '@cwd/shared';
+import {
+  PATHS,
+  toPath,
+  type RunsQuery,
+  type RunsResponse,
+  type SpendUnits,
+  type StepKind,
+  type WorkQuery,
+} from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { hiddenLabel, pathLabel } from '../lib/format.ts';
 import { Line, PageTitle, State } from '../components/Panel.tsx';
@@ -16,17 +24,26 @@ const PERIODS = [
  * not 'all'). */
 export function listPath(
   base: string,
-  query: FindingsQuery & { warnings?: boolean; resolved?: boolean; step?: StepKind; over?: boolean; units?: SpendUnits },
+  query: WorkQuery & {
+    warnings?: boolean;
+    resolved?: boolean;
+    step?: StepKind;
+    over?: boolean;
+    units?: SpendUnits;
+    session?: string;
+  },
 ): string {
   const params = new URLSearchParams();
   if (query.path) params.set('path', query.path);
   if (query.project) params.set('project', query.project);
   params.set('weeks', String(query.weeks));
+  if (query.goal) params.set('goal', query.goal);
   if (query.warnings) params.set('warnings', '1');
   if (query.resolved) params.set('resolved', '1');
   if (query.step) params.set('step', query.step);
   if (query.over) params.set('over', '1');
   if (query.units && query.units !== 'all') params.set('units', query.units);
+  if (query.session) params.set('session', query.session);
   return `${base}?${params}`;
 }
 
@@ -35,34 +52,38 @@ export function useProjects(): RunsResponse['projects'] | undefined {
   return useLiveQuery<RunsResponse>(listPath('/api/runs', { weeks: 52 })).data?.projects;
 }
 
-/** A list's path, project and period filters, then the page's own controls; `projects` are the project options. */
+/** A list's path, project, goal and period filters, then the page's own controls; `projects` are the project
+ * options, `goals` the goal options (no Goal select without them), and `paths` false leaves Path out. */
 export function ListFilters({
   query,
   projects,
+  goals,
+  paths = true,
   onChange,
   children,
 }: {
-  query: FindingsQuery;
+  query: WorkQuery;
   projects: RunsResponse['projects'] | undefined;
-  onChange: (change: Partial<FindingsQuery>) => void;
+  goals?: { key: string; name: string }[];
+  paths?: boolean;
+  onChange: (change: Partial<WorkQuery>) => void;
   children?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-4 text-sm">
-      <label className="flex items-center gap-1.5">
-        Path
-        <select
-          value={query.path ?? ''}
-          onChange={(e) => onChange({ path: toPath(e.target.value) })}
-        >
-          <option value="">All</option>
-          {PATHS.map((path) => (
-            <option key={path} value={path}>
-              {pathLabel(path)}
-            </option>
-          ))}
-        </select>
-      </label>
+      {paths && (
+        <label className="flex items-center gap-1.5">
+          Path
+          <select value={query.path ?? ''} onChange={(e) => onChange({ path: toPath(e.target.value) })}>
+            <option value="">All</option>
+            {PATHS.map((path) => (
+              <option key={path} value={path}>
+                {pathLabel(path)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex items-center gap-1.5">
         Project
         <select
@@ -77,6 +98,19 @@ export function ListFilters({
           ))}
         </select>
       </label>
+      {goals && (
+        <label className="flex items-center gap-1.5">
+          Goal
+          <select value={query.goal ?? ''} onChange={(e) => onChange({ goal: e.target.value || undefined })}>
+            <option value="">All</option>
+            {goals.map((goal) => (
+              <option key={goal.key} value={goal.key}>
+                {goal.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex items-center gap-1.5">
         Period
         <select value={query.weeks} onChange={(e) => onChange({ weeks: Number(e.target.value) })}>

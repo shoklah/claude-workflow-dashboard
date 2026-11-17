@@ -13,6 +13,8 @@ import { SkillsPage } from './skills/SkillsPage.tsx';
 import { SpendPage } from './spend/SpendPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
+import { WorkPage, type WorkView } from './work/WorkPage.tsx';
+import { State } from './components/Panel.tsx';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -101,6 +103,31 @@ const weeksRoute = createRoute({
   component: WeeksPage,
 });
 
+const workRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/work',
+  validateSearch: (search: Record<string, unknown>): { view?: WorkView; session?: string } => ({
+    view: search.view === 'runs' || search.view === 'sessions' ? search.view : undefined,
+    session: typeof search.session === 'string' && search.session !== '' ? search.session : undefined,
+  }),
+  component: function Work() {
+    return <WorkPage view={workRoute.useSearch().view} />;
+  },
+});
+
+// Placeholders until the goal's and the change's pages are built, so links to them already type-check.
+const goalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/work/goals/$key',
+  component: () => <State>A goal's page isn't built yet.</State>,
+});
+
+const changeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/work/changes/$key',
+  component: () => <State>A change's page isn't built yet.</State>,
+});
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     homeRoute,
@@ -115,6 +142,9 @@ export const router = createRouter({
     modelsRoute,
     spendRoute,
     weeksRoute,
+    workRoute,
+    goalRoute,
+    changeRoute,
   ]),
 });
 

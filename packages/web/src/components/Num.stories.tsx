@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from './ui/table.tsx';
-import { EmptyRow, GroupHead, Lines, Num, Text } from './Num.tsx';
+import { EmptyRow, GroupHead, Lines, Num, Text, Unknown } from './Num.tsx';
 
 const meta = {
   component: Num,
@@ -48,6 +48,16 @@ export const Values: Story = {
     await expect(canvas.getByTestId('formatted')).toHaveTextContent('12.40');
     await expect(canvas.getByTestId('text')).toHaveTextContent('main');
     await expect(canvas.getByTestId('no-text').querySelector('.sr-only')).toHaveTextContent('no branch');
+  },
+};
+
+/** On the backdrop (a goal section's totals), the dash in primary ink, still read out. */
+export const UnknownOnBackdrop: Story = {
+  render: () => <Unknown backdrop />,
+  play: async ({ canvasElement }) => {
+    const dash = canvasElement.querySelector('[aria-hidden]')!.parentElement!;
+    await expect(dash).not.toHaveClass('text-muted-foreground');
+    await expect(dash.querySelector('.sr-only')).toHaveTextContent('not known');
   },
 };
 

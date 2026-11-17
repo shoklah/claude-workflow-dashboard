@@ -21,10 +21,11 @@ export function GroupHead({ span, className, children }: { span: number; classNa
 /** A sub-column's header, under its group. */
 export const SUB = 'h-8 font-medium text-muted-foreground';
 
-/** An unknown value: a muted dash, read out as "not known". */
-export function Unknown({ label = 'not known' }: { label?: string }) {
+/** An unknown value: a muted dash, read out as "not known"; with `backdrop`, in primary ink, since it sits on the
+ * backdrop (a goal section's totals). */
+export function Unknown({ label = 'not known', backdrop = false }: { label?: string; backdrop?: boolean }) {
   return (
-    <span className="text-muted-foreground">
+    <span className={cn(!backdrop && 'text-muted-foreground')}>
       <span aria-hidden>{NONE}</span>
       <span className="sr-only">{label}</span>
     </span>

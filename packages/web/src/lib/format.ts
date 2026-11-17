@@ -1,4 +1,4 @@
-import { parseTime, toStepKind, type Area, type Path, type FindingRow, type Outcome, type SpendGroup, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type Path, type FindingRow, type Outcome, type SpendGroup, type StepKind, type WorkStep } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -349,6 +349,23 @@ export function hiddenLabel(count: number, noun: string): string {
   return `+ ${plural(count, noun)} in other projects, counted in totals and charts only`;
 }
 
+/** The Work page's line for the period's sessions in no change: "4 sessions in this period belong to no change.". */
+export function looseSessionsLabel(count: number): string {
+  return `${plural(count, 'session')} in this period ${count === 1 ? 'belongs' : 'belong'} to no change.`;
+}
+
+/** A change's other projects beside its home project: "+2". */
+export function otherCountLabel(count: number): string {
+  return `+${formatWhole(count)}`;
+}
+
+/** The tooltip of a change's "+N": its other projects' names, then how many more showing mode doesn't name,
+ * "tidepool-api, 1 other project". */
+export function otherProjectsLabel(names: string[], count: number): string {
+  const unnamed = count - names.length;
+  return [...names, ...(unnamed > 0 ? [plural(unnamed, 'other project')] : [])].join(', ');
+}
+
 /** Compliance's line above its grid: the grid's warnings, its weeks and how many of the warnings are new, "41 warnings
  * in 8 weeks, 6 of them new since you last looked.". */
 export function warningsSummary(warnings: number, weeks: number, fresh: number): string {
@@ -414,6 +431,9 @@ export function cellShade(value: number, max: number): string {
 
 /** A path's name on screen. */
 export const PATH_LABELS: Record<Path, string> = { small: 'Small', full: 'Full', plan: 'Plan' };
+
+/** How far a change got, or what a session held, on screen. */
+export const STAGE_LABELS: Record<WorkStep, string> = { design: 'Design', plan: 'Plan', implementation: 'Implementation' };
 
 /** A path on screen: its name, a path the dashboard doesn't know as it is; null for none. */
 export function pathLabel(path: string | null): string | null {
