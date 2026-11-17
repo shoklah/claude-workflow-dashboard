@@ -1,12 +1,16 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
 // The theme follows the system: DESIGN.md's dark look (`.dark` on the root) when it is dark, its light pair otherwise.
-// One query serves the class and every `useDark`.
-let scheme: MediaQueryList | undefined;
-const darkScheme = () => (scheme ??= window.matchMedia('(prefers-color-scheme: dark)'));
+// Two queries: Chromium fires a list's `change` only when the system differs from what the list last saw, and reading
+// its `matches` refreshes that, so a render reading the state between a change and the list's check would swallow the
+// change for every listener. The listened list is never read; `isDark` reads the other.
+const QUERY = '(prefers-color-scheme: dark)';
+let listened: MediaQueryList | undefined;
+let read: MediaQueryList | undefined;
+const isDark = () => (read ??= window.matchMedia(QUERY)).matches;
 
 const subscribe = (onChange: () => void) => {
-  const query = darkScheme();
+  const query = (listened ??= window.matchMedia(QUERY));
   query.addEventListener('change', onChange);
   return () => query.removeEventListener('change', onChange);
 };
@@ -17,7 +21,7 @@ const subscribe = (onChange: () => void) => {
  */
 export function applySystemTheme(): () => void {
   const apply = () => {
-    document.documentElement.classList.toggle('dark', darkScheme().matches);
+    document.documentElement.classList.toggle('dark', isDark());
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolveVars('var(--background)'));
   };
   apply();
@@ -26,7 +30,7 @@ export function applySystemTheme(): () => void {
 
 /** Whether the system is dark, re-rendering its caller when that changes (the charts redraw in the other theme's colours). */
 export function useDark(): boolean {
-  return useSyncExternalStore(subscribe, () => darkScheme().matches);
+  return useSyncExternalStore(subscribe, isDark);
 }
 
 /**
