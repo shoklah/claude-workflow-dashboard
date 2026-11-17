@@ -125,7 +125,7 @@ export const StackedLongNames: Story = {
       '/api/showing': {
         on: true,
         projects: [
-          { key: ATLAS, name: 'lantern-notes-archive', picked: true },
+          { key: ATLAS, name: 'lanternnotesarchiveexport', picked: true },
           { key: '2b3c4d5e6f708192', name: 'tidepool-api-gateway', picked: true },
           { key: '3c4d5e6f70819203', name: 'quarry-field-recorder', picked: true },
         ],

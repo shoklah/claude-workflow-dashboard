@@ -27,6 +27,8 @@ colors:
   orb-blue: "#2b86c5"
   orb-violet: "#784ba0"
   orb-teal: "#00d2b8"
+  mark-pink: "#ff3cac"
+  mark-teal: "#00d2b8"
   light-background: "#eef1fb"
   light-foreground: "#10162f"
   light-panel: "rgb(255 255 255 / 0.62)"
@@ -51,7 +53,7 @@ typography:
   body: { size: 14px, weight: 400, leading: 1.5 }
   table: { size: 14px, weight: 400, head-weight: 600 }
   small: { size: 12px, weight: 500 }
-  wordmark: { size: 20px, weight: 300, ward-weight: 700, tracking: tight }
+  wordmark: { size: 20px, weight: 300, ward-weight: 700, tracking: -0.025em }
 rounded:
   base: 0.875rem
   panel: 1.25rem
@@ -172,7 +174,7 @@ Motion explains a change and nothing else: a detail row opening, data refreshing
 
 ## Dark mode
 
-Every colour role has a dark and a light value (front matter, Colors). Dark is the look; the app sets `.dark` on the root from the system's `prefers-color-scheme` and follows its changes.
+Every colour role has a dark and a light value (front matter, Colors), except the mark's two colours, one value for both modes. Dark is the look; the app sets `.dark` on the root from the system's `prefers-color-scheme` and follows its changes.
 
 ## Chart colours
 

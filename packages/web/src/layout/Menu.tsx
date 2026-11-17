@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import type { LinkProps } from '@tanstack/react-router';
 import {
   Bot, CalendarDays, CircleDollarSign, Gauge, House, ListChecks, Menu as MenuIcon, Play, Puzzle, SearchCheck,
   ShieldCheck, Terminal,
@@ -9,7 +10,7 @@ import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
 import { Brand } from './Brand.tsx';
 
-type Entry = { to: string; label: string; icon: LucideIcon; exact?: boolean };
+type Entry = { to: LinkProps['to']; label: string; icon: LucideIcon; exact?: boolean };
 
 // The one list of pages, in sections: Home and Weeks first, unnamed, then a named section per kind of page. An entry
 // is current on its pages below it too (Runs on a run's page), except Home, which every path is below. An icon is a
@@ -38,7 +39,7 @@ const SECTIONS: { name: string | null; entries: Entry[] }[] = [
 
 /** The pages' links in their sections; `onNavigate` runs when one is followed. */
 export function Menu({ onNavigate }: { onNavigate?: () => void }) {
-  // The rail and the dialog both render the menu, so a section's name gets its id per render.
+  // The rail and the dialog both render the menu, so a section's name gets its id per instance.
   const id = useId();
   return (
     <nav aria-label="Main" className="flex flex-col gap-6 text-sm">
