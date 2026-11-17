@@ -19,8 +19,8 @@ function finished(at: string | null): number {
  * its session (the stored one whose file is its transcript, with its key) and the one it handed off to (its context's
  * `handoff_to`), each as shownSession names it; the other stored runs of
  * its project root and branch, in the order they finished (none without a branch); its offers, later fixes (no sha), agents (agentRows over modelSums), main session and phases'
- * costs (modelsCost). With a scope, offers' skills (maskOffers) and fixes' subjects (maskText) are masked, agents and main as Models
- * masks them (maskModels), and phase names as Spend does (maskPhase).
+ * costs (modelsCost). With a scope, offers' skills (maskOffers) and fixes' subjects (maskText) are masked, agents and the main session
+ * (`sessionModel`) as Models masks them (maskModels), and phase names as Spend does (maskPhase).
  */
 export function runPageView(input: {
   run: StoredUnit<RunEntry>;

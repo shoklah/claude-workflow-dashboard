@@ -460,7 +460,7 @@ test("with showing on, the run page holds no hidden project's name, path or bran
   const TIDEPOOL = '/Users/example/Work/tidepool-api';
   db.$client.close();
   db = dbWith('report-v5', (raw) => {
-    // A hidden lantern-notes run on the branch most projects have, so no response field may be named `main`.
+    // A hidden lantern-notes run on the branch most projects have, so no response key may contain `main`.
     raw.runs[2].record.branch = 'main';
     // A strength that names the hidden lantern-notes, its branch and a path in it.
     raw.runs[5].steps[1].strengths[0].summary =
