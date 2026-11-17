@@ -105,7 +105,7 @@ function SessionRows({ session, initial }: { session: SessionRow; initial: boole
           </RowToggle>
         </TableCell>
         <TableCell className="align-top text-muted-foreground">
-          {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} />}
+          {session.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={session.sessionId} copy={false} />}
         </TableCell>
         <TableCell className={cn(WRAP, 'align-top text-muted-foreground')}>{projectLabel(session.project)}</TableCell>
         <ChangeCells change={session.change} goal={session.goal} className="align-top" />

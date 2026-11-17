@@ -68,6 +68,8 @@ export const Full: Story = {
       await expect(row.getByText(length).closest('td')).toHaveClass('text-right', 'tabular-nums');
     }
     await expect(two.getByText('7d1e4b2a')).toBeVisible();
+    // The ID keeps its tooltip but has no copy button here, so the table fits its panel at 1440 px.
+    await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
     await expect(two.getByText('1.05')).toBeVisible();
     await expect(other.getByText('Other project')).toBeVisible();
 
