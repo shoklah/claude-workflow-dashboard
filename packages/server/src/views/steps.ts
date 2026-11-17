@@ -11,6 +11,7 @@ import {
   type StepsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
+import { addKnown } from './home.ts';
 import { addCount, periodUnits } from './runs.ts';
 import { maskText, type Scope } from './scope.ts';
 
@@ -81,7 +82,7 @@ export function stepSums(runs: RunEntry[]): StepRow[] {
       for (const m of Object.values(dispatch.models)) {
         for (const label of TOKENS) row.tokens[label] += m[label] ?? 0;
         // A model the reporter has no price for adds tokens only.
-        if (m.cost != null) row.cost = (row.cost ?? 0) + m.cost;
+        row.cost = addKnown(row.cost, m.cost);
       }
     }
   }
