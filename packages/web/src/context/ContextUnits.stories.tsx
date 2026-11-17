@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { contextFull, contextHidden } from '../test/context.ts';
 import { ContextUnits } from './ContextUnits.tsx';
@@ -11,10 +11,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const headers = (canvas: HTMLElement) =>
-  within(within(canvas).getByRole('region', { name: 'Runs and sessions' }))
-    .getAllByRole('columnheader')
-    .map((header) => header.textContent);
+/** The list in a box of a set width. */
+const width =
+  (px: number): Decorator =>
+  (Story) => (
+    <div style={{ width: px }}>
+      <Story />
+    </div>
+  );
+
+/** An opened row's visible terms (`dt`) or values (`dd`). */
+const visible = (row: HTMLElement, tag: string) =>
+  [...row.querySelectorAll<HTMLElement>(tag)].filter((el) => el.checkVisibility()).map((el) => el.textContent);
 
 /** Empty: no unit past the cap. */
 export const Empty: Story = {
@@ -33,61 +41,77 @@ export const EmptyAll: Story = {
 };
 
 /**
- * Full: the rows in the response's order, under grouped headers; a run's branch linking to its page, a session's name
- * without its ID, the kind as plain text, and the handoff's session and ID in their own cells or as dashes.
+ * Full, 1000 px wide: the rows in the response's order under the first glance's sortable headers; a run's branch
+ * linking to its page, a session's name without its ID, and a run opening to its other facts, the empty ones absent.
  */
 export const Full: Story = {
-  play: async ({ canvas, canvasElement }) => {
+  decorators: [width(1000)],
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await expect(canvas.getByRole('heading', { name: 'Runs and sessions', level: 2 })).toBeVisible();
-    await expect(headers(canvasElement)).toEqual([
-      'Name',
-      'Kind',
-      'Project',
-      'When',
-      'Calls',
-      'Context (tokens)',
-      'Calls past the cap',
-      'Handoff',
-      'Read share',
-      'Sweeps',
-      'Median per call',
-      'Largest',
-      'At',
-      'To session',
-      'ID',
-      'Inline',
-      'Delegated',
-    ]);
-    const table = within(canvas.getByRole('region', { name: 'Runs and sessions' }));
-    const body = table.getAllByRole('row').slice(2);
+    const region = within(canvas.getByRole('region', { name: 'Runs and sessions table' }));
+    const heads = region.getAllByRole('columnheader');
+    await expect(heads.map((h) => h.textContent)).toEqual(['Name', 'Kind', 'When', 'Past the cap', 'Largest', 'Read share']);
+    for (const head of heads) await expect(head).toBeVisible();
+    const body = region.getAllByRole('row').slice(1);
     await expect(body).toHaveLength(3);
 
     const session = within(body[0]).getAllByRole('cell');
     await expect(session[0]).toHaveTextContent(/^Refactor the sync queue$/);
     await expect(within(session[0]).queryByRole('button', { name: 'Copy session ID' })).toBeNull();
     await expect(session[1]).toHaveTextContent(/^Session$/);
-    await expect(session[2]).toHaveTextContent('atlas');
-    await expect(session[4]).toHaveTextContent(/^412$/);
-    await expect(session[5]).toHaveTextContent(/^296.0K$/);
-    await expect(session[6]).toHaveTextContent(/^902.0K$/);
-    await expect(session[7]).toHaveTextContent(/^187$/);
-    await expect(session[8]).toHaveTextContent('no handoff');
-    await expect(session[9]).toHaveTextContent('no handoff');
-    await expect(session[11]).toHaveTextContent('61%');
-    await expect(session[12]).toHaveTextContent(/^9$/);
-    await expect(session[13]).toHaveTextContent(/^0$/);
+    await expect(session[3]).toHaveTextContent(/^187$/);
+    await expect(session[4]).toHaveTextContent(/^902.0K$/);
+    await expect(session[5]).toHaveTextContent('61%');
 
     const run = within(body[1]).getAllByRole('cell');
     await expect(within(run[0]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(run[1]).toHaveTextContent(/^Run$/);
-    await expect(run[2]).toHaveTextContent('atlas');
 
-    const handedOff = within(body[2]).getAllByRole('cell');
-    await expect(handedOff[9]).toHaveTextContent(/^Plan the offline sync, part 2$/);
-    await expect(within(handedOff[10]).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
+    await userEvent.click(region.getByRole('button', { name: 'Details of feat/search' }));
+    const opened = region.getAllByRole('row')[3];
+    await expect(visible(opened, 'dt')).toEqual([
+      'Project',
+      'Calls',
+      'Median tokens per call',
+      'Sweeps inline',
+      'Sweeps delegated',
+    ]);
+    await expect(visible(opened, 'dd')).toEqual(['atlas', '268', '281.0K', '4', '1']);
+
+    await userEvent.click(region.getByRole('button', { name: 'Plan the offline sync' }));
+    const handedOff = region.getAllByRole('row').at(-1)!;
+    await expect(visible(handedOff, 'dt')).toEqual([
+      'Project',
+      'Calls',
+      'Median tokens per call',
+      'Handed off',
+      'To session',
+      'Its ID',
+      'Sweeps inline',
+      'Sweeps delegated',
+    ]);
+    await expect(visible(handedOff, 'dd')[4]).toBe('Plan the offline sync, part 2');
+    await expect(
+      within(handedOff).getAllByRole('button', { name: 'Copy session ID', hidden: true }).filter((b) => b.checkVisibility()),
+    ).toHaveLength(1);
 
     await expectNoJoined(canvasElement);
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
+  },
+};
+
+/** Narrow, 375 px: Kind, When, Largest and Read share fold into the opened row. */
+export const Narrow: Story = {
+  decorators: [width(375)],
+  play: async ({ canvas, userEvent }) => {
+    const region = within(canvas.getByRole('region', { name: 'Runs and sessions table' }));
+    await expect(region.getByRole('columnheader', { name: 'Name' })).toBeVisible();
+    await expect(region.getByRole('columnheader', { name: 'Past the cap' })).toBeVisible();
+    for (const name of ['Kind', 'When', 'Largest', 'Read share'])
+      await expect(region.getByText(name).closest('th')).not.toBeVisible();
+    await userEvent.click(region.getByRole('button', { name: 'Refactor the sync queue' }));
+    const opened = region.getAllByRole('row')[2];
+    await expect(visible(opened, 'dt').slice(0, 5)).toEqual(['Kind', 'When', 'Largest', 'Read share', 'Project']);
   },
 };
 
