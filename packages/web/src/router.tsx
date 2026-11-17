@@ -12,8 +12,8 @@ import { SpendPage } from './spend/SpendPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
 import { ChangePage } from './work/ChangePage.tsx';
+import { GoalPage } from './work/GoalPage.tsx';
 import { WorkPage, type WorkView } from './work/WorkPage.tsx';
-import { State } from './components/Panel.tsx';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -120,11 +120,12 @@ const workRoute = createRoute({
   },
 });
 
-// A placeholder until the goal's page is built, so links to it already type-check.
 const goalRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/work/goals/$key',
-  component: () => <State>A goal's page isn't built yet.</State>,
+  component: function Goal() {
+    return <GoalPage goalKey={goalRoute.useParams().key} />;
+  },
 });
 
 const changeRoute = createRoute({

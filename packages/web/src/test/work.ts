@@ -1,4 +1,4 @@
-import type { ChangeResponse, ChangeRow, GoalSection, RunFacts, SessionGraphData, WorkResponse, WorkSessionRow } from '@cwd/shared';
+import type { ChangeResponse, ChangeRow, GoalResponse, GoalSection, RunFacts, SessionGraphData, WorkResponse, WorkSessionRow } from '@cwd/shared';
 import { HTML_TEXT } from './runs.ts';
 
 // Invented answers of GET /api/work for the Work page's stories.
@@ -396,3 +396,55 @@ export const changeSmall: ChangeResponse = {
   runs: [{ ...syncRuns[1], path: 'small' }],
   sessions: [syncSessions[0]],
 };
+
+// Invented answers of GET /api/work/goals/:key for a goal's page.
+
+/** The offline sync goal's graph: a lane for its change, one for its session in no change, and one for the session of
+ * another goal its sessions started. */
+const goalGraph: SessionGraphData = {
+  lanes: [
+    { key: syncChange.key, title: syncChange.title, kind: 'change' },
+    { key: null, title: 'No change', kind: 'none' },
+    { key: null, title: 'Other goals', kind: 'other' },
+  ],
+  nodes: [
+    ...syncGraph.nodes.slice(0, 5),
+    { key: 's1a2b3c4d5e6f708', title: 'Sketch the sync settings', step: 'design', run: null, lane: 1, elsewhere: null },
+    { ...syncGraph.nodes[5], lane: 2 },
+  ],
+  edges: [...syncGraph.edges.slice(0, 5), { from: S.design, to: 's1a2b3c4d5e6f708', how: 'started' }],
+  hidden: 0,
+};
+
+/** The offline sync goal, in one project: two changes, a session in no change and one of another goal in its graph. */
+export const goalFull: GoalResponse = {
+  key: '843fdb9f8959fb12',
+  name: 'Offline sync',
+  projects: ['lantern-notes'],
+  startedAt: '2026-11-03T10:10:00Z',
+  lastActivity: '2026-11-12T10:15:00Z',
+  changeCount: 2,
+  runCount: 3,
+  sessionCount: 7,
+  findings: 25,
+  cost: 64.5,
+  graph: goalGraph,
+  changes: [syncChange, markupChange],
+  sessions: [
+    ...syncSessions,
+    {
+      ...syncSessions[0],
+      key: 's1a2b3c4d5e6f708',
+      title: 'Sketch the sync settings',
+      start: '2026-11-05T09:00:00Z',
+      end: '2026-11-05T09:40:00Z',
+      minutes: 40,
+      cost: 1.2,
+      startedBy: { key: S.design, title: 'Design offline sync' },
+      change: null,
+    },
+  ],
+};
+
+/** The goal across two projects, with no known findings or cost. */
+export const goalSeveral: GoalResponse = { ...goalFull, projects: ['lantern-notes', 'tidepool-api'], findings: null, cost: null };

@@ -112,3 +112,22 @@ test("an unknown change's key says it isn't in the data any more", async ({ page
   await expect(page.getByText("This change isn't in the data any more.")).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: 'Work' })).toHaveAttribute('href', '/work');
 });
+
+// The Offline sync goal of report-work: `goalKey('Offline sync')` (server/test/work.test.ts).
+const GOAL = '/work/goals/843fdb9f8959fb12';
+
+// Its graph, two sessions, fits at 375 px; the shell checks keep the page from scrolling sideways.
+test("a goal's page has no axe violations", async ({ page }) => {
+  await page.goto(GOAL);
+  await expect(page.getByRole('heading', { name: 'Offline sync', level: 1 })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Sessions of this goal, as a graph' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Changes table' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Sessions table' })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("an unknown goal's key says it isn't in the data any more", async ({ page }) => {
+  await page.goto('/work/goals/0000000000000000');
+  await expect(page.getByText("This goal isn't in the data any more.")).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Work' })).toHaveAttribute('href', '/work');
+});
