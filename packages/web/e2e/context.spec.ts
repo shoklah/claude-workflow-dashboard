@@ -24,6 +24,8 @@ test('the context page lists the units over the cap, links their runs and has no
 
   await first.click();
   await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
+  // The run's context sits in its folded "Cost, context and skills".
+  await page.getByText('Cost, context and skills').click();
   await expect(page.getByRole('region', { name: 'Context', exact: true })).toBeVisible();
 
   await page.goBack();

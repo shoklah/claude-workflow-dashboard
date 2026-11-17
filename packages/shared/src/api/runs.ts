@@ -1,6 +1,8 @@
 import type { Relevance } from '../categories.ts';
 import type { ContextFacts, RunFacts } from '../facts.ts';
 import type { Outcome, Path, StepKind } from '../report.ts';
+import type { AgentModels } from './models.ts';
+import type { SessionRow } from './sessions.ts';
 
 /** `GET /api/runs`'s query: `path`, `project` (a project's key), `weeks` (default 4) and `warnings=1`. */
 export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings: boolean };
@@ -39,28 +41,36 @@ export type FindingRow = {
   appRelevance: Relevance | null;
 };
 
+/** A step of the timeline: its model and effort its tied dispatch's, else its own (the alias it was asked for), field by
+ * field, and its kit's name on a kit's own review and fix-checks. */
 export type TimelineStep = {
   step: StepKind;
   round: number | null;
   agent: string | null;
+  model: string | null;
+  effort: string | null;
+  kit: string | null;
   counts: Record<string, number>;
   findings: FindingRow[];
 };
 
 /** A part of the untimed timeline: only `start` and `end` carry a time. A wave holds its tasks' steps and its wave
- * check's steps; a task in no wave is a `task` group holding that one task. */
+ * check's steps; a task in no wave is a `task` group holding that one task. `conflicts` is a wave's merge conflicts,
+ * null on every other group. */
 export type TimelineGroup = {
   kind: 'start' | 'plan' | 'wave' | 'task' | 'simplify' | 'final' | 'end';
   label: string;
   at: string | null;
+  conflicts: number | null;
   tasks: { task: number; steps: TimelineStep[] }[];
   steps: TimelineStep[];
 };
 
-/** A reviewer's strength, with its step's kind, task and round. */
+/** A reviewer's strength, with its step's kind, task, wave and round. */
 export type StrengthRow = {
   step: StepKind;
   task: number | null;
+  wave: string | null;
   round: number | null;
   category: string | null;
   summary: string | null;
@@ -85,4 +95,19 @@ export type RunResponse = {
   context: RunContext | null;
   warnings: { text: string; sessionId: string | null }[];
   categoryLabels: Record<string, string>;
+};
+
+/** `GET /api/runs/:key`: the run as `runView` builds it, with what surrounds it: the session whose file is its
+ * transcript and the one it handed off to (null when not stored or not shown), the other runs of its project and branch,
+ * its offers, its later fixes (no sha), its agents as modelSums names them, its main session's model and effort, and
+ * its phases' costs. */
+export type RunPageResponse = RunResponse & {
+  session: Pick<SessionRow, 'title' | 'sessionId'> | null;
+  handoffTo: Pick<SessionRow, 'title' | 'sessionId'> | null;
+  related: { key: string; path: Path | null; finishedAt: string | null }[];
+  offers: { skill: string; outcome: string }[];
+  laterFixes: { date: string | null; subject: string }[];
+  agents: Pick<AgentModels, 'name' | 'actual'>[];
+  main: { model: string | null; effort: string | null } | null;
+  phases: { name: string; cost: number | null }[];
 };

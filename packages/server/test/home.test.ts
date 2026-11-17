@@ -73,7 +73,7 @@ describe('week numbers', () => {
     const { thisWeek, lastWeek } = await home(dbWith(fixture('report-full')));
     // The plan record's 5 findings and the Full run's 12.
     expect(thisWeek.findings).toEqual({ total: 17, actedOn: 8, notActedOn: 7, open: 1 });
-    // The plan record has models with no price (cost 0); the Full run costs 9.52 + 4.275.
+    // The plan record's models have no price (cost unknown); the Full run costs 9.52 + 4.275.
     expect(thisWeek.cost).toBeCloseTo(13.795, 10);
     expect(thisWeek.costPerRun).toBeCloseTo(13.795 / 2, 10);
     expect(lastWeek.findings).toEqual({ total: 4, actedOn: 2, notActedOn: 2, open: 0 });
@@ -84,6 +84,17 @@ describe('week numbers', () => {
   test('cost is null when no run is priced', async () => {
     const raw = fixture('report-full');
     for (const run of raw.runs) if (run.record.date >= '2026-11-08') run.models = null;
+    const { thisWeek } = await home(dbWith(raw));
+    expect(thisWeek.cost).toBeNull();
+    expect(thisWeek.costPerRun).toBeNull();
+  });
+
+  test('a week of only unpriced runs has a null cost', async () => {
+    const raw = fixture('report-full');
+    for (const run of raw.runs) {
+      if (run.record.date < '2026-11-08') continue;
+      for (const m of Object.values<{ cost: number | null }>(run.models ?? {})) m.cost = null;
+    }
     const { thisWeek } = await home(dbWith(raw));
     expect(thisWeek.cost).toBeNull();
     expect(thisWeek.costPerRun).toBeNull();

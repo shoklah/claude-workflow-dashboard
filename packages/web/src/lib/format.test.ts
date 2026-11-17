@@ -2,12 +2,22 @@ import { describe, expect, it, test } from 'vitest';
 import { parseTime, type FindingRow } from '@cwd/shared';
 import {
   appCallLabel,
-  strengthWhere,
+  taskLabel,
   cellShade,
   closedFindings,
   foundFindings,
   countLabel,
   countName,
+  outcomeLabel,
+  outcomeWarns,
+  roundsLabel,
+  laterFixesLabel,
+  LATER_FIXES_TERM,
+  stepBy,
+  reviewerLabel,
+  byLabel,
+  roundVerdictLabel,
+  verdictLabel,
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
@@ -85,6 +95,80 @@ describe('countName', () => {
     expect(countName('important')).toBe('Important');
     expect(countName('unneeded')).toBe('Not required');
     expect(countName('couldnt_run')).toBe("Couldn't run");
+  });
+});
+
+describe('laterFixesLabel', () => {
+  test('counts later fixes, the term its tooltip explains', () => {
+    expect(laterFixesLabel(1)).toBe('1 later fix');
+    expect(laterFixesLabel(2)).toBe('2 later fixes');
+    expect(LATER_FIXES_TERM).toBe('Commits starting with "fix" that touched this run\'s files in the 14 days after it.');
+  });
+});
+
+describe('roundsLabel', () => {
+  it("reads a loop's rounds, and says so when the last left findings open", () => {
+    expect(roundsLabel(1, false)).toBe('1 round');
+    expect(roundsLabel(3, true)).toBe('3 rounds, the last left findings open');
+  });
+});
+
+describe('outcomeLabel', () => {
+  it("names an outcome as a count key, and none as 'No outcome'", () => {
+    expect(outcomeLabel('to_owner')).toBe('To owner');
+    expect(outcomeLabel('none')).toBe('No outcome');
+    expect(outcomeLabel(null)).toBe('No outcome');
+  });
+});
+
+describe('stepBy', () => {
+  it("names who ran a step: the agent, then its model and effort, 'in the session' without an agent", () => {
+    expect(stepBy({ agent: 'task-reviewer', model: 'claude-opus-5-5', effort: 'high' })).toBe('task-reviewer · Opus 5.5, high');
+    expect(stepBy({ agent: 'fix-checker', model: 'opus', effort: null })).toBe('fix-checker · Opus');
+    expect(stepBy({ agent: 'simplify', model: null, effort: null })).toBe('simplify');
+    expect(stepBy(null)).toBe('in the session');
+    expect(stepBy({ agent: null, model: 'claude-opus-5-5', effort: 'high' })).toBe('in the session');
+  });
+});
+
+describe('reviewerLabel', () => {
+  it("names who ran a step by its agent alone, 'in the session' without one", () => {
+    expect(reviewerLabel({ agent: 'task-reviewer' })).toBe('task-reviewer');
+    expect(reviewerLabel({ agent: null })).toBe('in the session');
+    expect(reviewerLabel(null)).toBe('in the session');
+  });
+});
+
+describe('byLabel', () => {
+  it("says who ran a step after a verb: 'by' its agent, or 'in the session'", () => {
+    expect(byLabel({ agent: 'fix-checker', model: 'opus', effort: null })).toBe('by fix-checker · Opus');
+    expect(byLabel({ agent: null, model: null, effort: null })).toBe('in the session');
+    expect(byLabel(null)).toBe('in the session');
+  });
+});
+
+describe('roundVerdictLabel', () => {
+  it("names a round's verdict on the stacked list: 'Round 2: still open'", () => {
+    expect(roundVerdictLabel(2, 'open')).toBe('Round 2: still open');
+    expect(roundVerdictLabel(1, 'not_proportionate')).toBe('Round 1: not proportionate');
+  });
+});
+
+describe('verdictLabel', () => {
+  it("names a fix-check verdict, open as 'Still open'", () => {
+    expect(verdictLabel('open')).toBe('Still open');
+    expect(verdictLabel('fixed')).toBe('Fixed');
+    expect(verdictLabel('not_proportionate')).toBe('Not proportionate');
+    expect(verdictLabel('later')).toBe('Later');
+  });
+});
+
+describe('outcomeWarns', () => {
+  it('takes the warning ink for Open and No outcome only', () => {
+    expect(outcomeWarns('open')).toBe(true);
+    expect(outcomeWarns('none')).toBe(true);
+    expect(outcomeWarns(null)).toBe(true);
+    for (const outcome of ['fixed', 'applied', 'ruled', 'declined', 'deferred', 'to_owner'] as const) expect(outcomeWarns(outcome)).toBe(false);
   });
 });
 
@@ -266,10 +350,11 @@ describe('appCallLabel', () => {
   });
 });
 
-describe('strengthWhere', () => {
-  it("names a strength's step, and its task when it has one", () => {
-    expect(strengthWhere({ step: 'task_review', task: 3 })).toBe('Task review · task 3');
-    expect(strengthWhere({ step: 'final_review', task: null })).toBe('Final review');
+describe('taskLabel', () => {
+  it("names a finding's or strength's task, else its wave, else nothing", () => {
+    expect(taskLabel({ task: 3, wave: null })).toBe('3');
+    expect(taskLabel({ task: null, wave: 'A' })).toBe('Wave A');
+    expect(taskLabel({ task: null, wave: null })).toBeNull();
   });
 });
 

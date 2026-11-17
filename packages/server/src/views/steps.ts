@@ -1,4 +1,5 @@
 import {
+  addKnown,
   STEP_KINDS,
   toStepKind,
   type AdvisorFacts,
@@ -11,9 +12,8 @@ import {
   type StepsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { addKnown } from './home.ts';
 import { addCount, periodUnits } from './runs.ts';
-import { maskText, type Scope } from './scope.ts';
+import { maskOffers, maskText, type Scope } from './scope.ts';
 
 // The reporter's token labels, its failing-test results (TEST_RESULTS) and its offer outcomes (OFFER_OUTCOMES).
 const TOKENS = ['input', 'output', 'cache_read', 'cache_write'] as const;
@@ -211,7 +211,7 @@ export function stepsView(input: {
   const units = periodUnits(input.runs, input.sessions, input.query, input.now);
   const runs = units.runs.map((run) => ({
     ...run,
-    offers: run.offers?.map((o) => ({ ...o, skill: maskText(input.scope, o.skill) })),
+    offers: maskOffers(input.scope, run.offers),
   }));
   const cr6 = cr6Of(
     input.runs.map((unit) => unit.merged),

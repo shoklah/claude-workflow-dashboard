@@ -128,9 +128,9 @@ export function SpendPage() {
                 })),
                 { stack: 'spend', cost: true, totals: true, legendRoom: 28 },
               ),
-              // The five groups fit one legend line in a wide chart; a narrow one wraps it to two lines, so it gets
-              // their room, clear of the week labels.
-              media: [{ query: { maxWidth: 520 }, option: { grid: { bottom: 56 } } }],
+              // At this width and below, ECharts wraps the five groups' legend to two lines (measured in the theme's font), so
+              // it gets their room, clear of the week labels.
+              media: [{ query: { maxWidth: 445 }, option: { grid: { bottom: 56 } } }],
             }}
             height={260}
           />

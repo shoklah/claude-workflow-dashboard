@@ -11,8 +11,8 @@ function Table({
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
       {...containerProps}
+      className={cn("relative w-full overflow-x-auto", containerProps?.className)}
     >
       <table
         data-slot="table"

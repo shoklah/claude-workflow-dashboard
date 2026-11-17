@@ -1,9 +1,24 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { ShowingRequest, StatusResponse } from '@cwd/shared';
 
+/** A GET the API answered with an error status, which the page can tell apart (a 404 is an unknown key). */
+export class ApiError extends Error {
+  status: number;
+  constructor(path: string, status: number) {
+    super(`${path} answered ${status}`);
+    this.status = status;
+  }
+}
+
+/** The app's retries, as its query client's default: never for a 404, which a retry won't change, else three as
+ * TanStack's default. */
+export function retry(failures: number, error: Error): boolean {
+  return !(error instanceof ApiError && error.status === 404) && failures < 3;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
-  if (!response.ok) throw new Error(`${path} answered ${response.status}`);
+  if (!response.ok) throw new ApiError(path, response.status);
   return response.json() as Promise<T>;
 }
 
