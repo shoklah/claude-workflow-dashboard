@@ -119,7 +119,7 @@ const COLUMNS: ListColumn<SessionRow>[] = [
 ];
 
 const FACTS: ListFact<SessionRow>[] = [
-  ['ID', (s) => (s.sessionId === null ? <Unknown label="hidden while showing" /> : <SessionChip id={s.sessionId} />)],
+  ['ID', (s) => (s.sessionId === null ? null : <SessionChip id={s.sessionId} />)],
   [
     'Model',
     (s) =>
