@@ -267,6 +267,22 @@ function Switching() {
   );
 }
 
+/** An offer with no outcome shows the muted dash, read out as "not known", never a blank cell. */
+export const OfferWithoutOutcome: Story = {
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      [`/api/runs/${fullRun.key}`]: { ...runFull, offers: [{ skill: 'graphify', outcome: '' }] },
+    });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    await openFold(canvasElement, (element) => userEvent.click(element));
+    const skills = canvas.getByRole('region', { name: 'Skills' });
+    await expect(tableRows(skills, 'Skills').at(-1)).toEqual(['graphify', 'Offered', '–not known']);
+  },
+};
+
 /** A selection belongs to its run: unit ids repeat across runs, so the other run shows no box pressed and the hint. */
 export const OtherRun: Story = {
   render: () => <Switching />,
@@ -282,6 +298,23 @@ export const OtherRun: Story = {
     const other = within(await canvas.findByRole('region', { name: 'Flow' }));
     await expect(await other.findByText(HINT)).toBeVisible();
     for (const box of other.getAllByRole('button')) await expect(box).toHaveAttribute('aria-pressed', 'false');
+  },
+};
+
+/** A filter belongs to its run too: the other run shows its every problem, and its select reads All. */
+export const OtherRunFilters: Story = {
+  render: () => <Switching />,
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull, [`/api/runs/${otherKey}`]: runFull });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await canvas.findByRole('region', { name: 'Flow' });
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Severity' }), 'minor');
+    await expect(ids(canvasElement, 'Problems table')).not.toHaveLength(runFull.findings.length);
+    await userEvent.click(canvas.getByRole('button', { name: 'Other run' }));
+    await expect(fetch).toHaveBeenCalledWith(`/api/runs/${otherKey}`);
+    await expect(ids(canvasElement, 'Problems table')).toEqual(runFull.findings.map((f) => f.id));
+    await expect(canvas.getByRole('combobox', { name: 'Severity' })).toHaveValue('');
   },
 };
 
@@ -420,7 +453,31 @@ export const HandedOffTo: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
-    await expect(chain(canvasElement).getByText('Handed off to Search page polish')).toBeVisible();
+    await expect(chain(canvasElement).getAllByRole('listitem')[2]).toHaveTextContent(/^Handed off to Search page polish/);
+    await expect(chain(canvasElement).getByText('Search page polish')).not.toHaveClass('text-muted-foreground');
+  },
+};
+
+/** A session with no title reads "no title", muted, in this run's box and the handoff's alike. */
+export const UntitledSessions: Story = {
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      [`/api/runs/${fullRun.key}`]: {
+        ...runHandedOff,
+        session: { ...runHandedOff.session!, title: null },
+        handoffTo: { ...runHandedOff.handoffTo!, title: null },
+      },
+    });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    const boxes = chain(canvasElement).getAllByRole('listitem');
+    await expect(boxes[1]).toHaveTextContent('This run, fullin session no title 0f1e2d3c');
+    await expect(boxes[2]).toHaveTextContent(/^Handed off to no title/);
+    await expect(chain(canvasElement).queryByText(/null/)).toBeNull();
+    // This run's session line is muted whole; the handoff's bold name gives way to the muted "no title".
+    await expect(within(boxes[2]).getByText('no title')).toHaveClass('font-normal', 'text-muted-foreground');
   },
 };
 

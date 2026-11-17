@@ -1,11 +1,14 @@
 import type { StrengthRow } from '@cwd/shared';
-import { Text } from '../components/Num.tsx';
+import { EmptyRow, Text } from '../components/Num.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { STEP_LABELS, STRENGTHS_SIDE, categoryLabel, taskLabel } from '../lib/format.ts';
 
+const COLUMN_COUNT = 5;
+
 /**
  * The reviewers' strengths, numbered by the run page: each one's step, task, category (named by `categoryLabels`) and
- * summary, the reporter's only facts about a strength. The container carries the strengths' green side.
+ * summary, the reporter's only facts about a strength, or one row saying there is none. The container carries the
+ * strengths' green side.
  */
 export function StrengthsTable({
   strengths,
@@ -35,6 +38,7 @@ export function StrengthsTable({
         </TableRow>
       </TableHeader>
       <TableBody>
+        {strengths.length === 0 && <EmptyRow columns={COLUMN_COUNT}>No strengths.</EmptyRow>}
         {strengths.map((strength) => (
           <TableRow key={strength.id}>
             <TableCell className="align-top">{strength.id}</TableCell>

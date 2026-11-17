@@ -38,3 +38,15 @@ export const WithoutSummary: Story = {
     await expect(canvas.getByText('not known')).toHaveClass('sr-only');
   },
 };
+
+/** No strength: one muted row across the five columns says so. */
+export const Empty: Story = {
+  args: { strengths: [], categoryLabels: runFull.categoryLabels },
+  play: async ({ canvas }) => {
+    const rows = canvas.getAllByRole('row').slice(1);
+    await expect(rows).toHaveLength(1);
+    const cell = canvas.getByRole('cell', { name: 'No strengths.' });
+    await expect(cell).toHaveAttribute('colspan', '5');
+    await expect(cell).toHaveClass('text-muted-foreground');
+  },
+};

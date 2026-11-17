@@ -30,6 +30,7 @@ import {
   pairsOf,
   pathLabel,
   phaseLabel,
+  sessionName,
   PROBLEMS_INK,
   PROBLEMS_SIDE,
   STRENGTHS_INK,
@@ -138,7 +139,7 @@ function Fold({ run }: { run: RunPageResponse }) {
               <tbody>
                 {[
                   ...skills.map((skill) => [skill.name, 'Loaded', capitalize(skill.outcome)]),
-                  ...offers.map((offer) => [offer.skill, 'Offered', countName(offer.outcome)]),
+                  ...offers.map((offer) => [offer.skill, 'Offered', <Text value={offer.outcome && countName(offer.outcome)} />]),
                 ].map(([name, use, outcome], i) => (
                   <Lines
                     key={i}
@@ -225,14 +226,21 @@ function Chain({ run }: { run: RunPageResponse }) {
       <span className="font-semibold">{facts.path ? `This run, ${pathLabel(facts.path)!.toLowerCase()}` : 'This run'}</span>
       {session && (
         <Under>
-          {`in session ${session.title} `}
+          {`in session ${sessionName(session.title)} `}
           {session.sessionId && <SessionChip id={session.sessionId} />}
         </Under>
       )}
     </ChainBox>,
     (context?.handoff || handoffTo) && (
       <ChainBox key="handoff" dashed>
-        <span className="font-semibold">{`Handed off to ${handoffTo?.title ?? 'a new session'}`}</span>
+        <span className="font-semibold">
+          {'Handed off to '}
+          {handoffTo ? (
+            <span className={cn(!handoffTo.title && 'font-normal text-muted-foreground')}>{sessionName(handoffTo.title)}</span>
+          ) : (
+            'a new session'
+          )}
+        </span>
         {context?.handoff && (
           <Under>
             <Time iso={context.handoff} />
@@ -339,7 +347,7 @@ export function RunPage({ runKey }: { runKey: string }) {
                 {unit ? (
                   <StepDetail unit={unit} onClose={() => select(null)} />
                 ) : (
-                  <p className="text-muted-foreground">Select a task or a review to see its rounds, and its findings below.</p>
+                  <Line muted>Select a task or a review to see its rounds, and its findings below.</Line>
                 )}
               </div>
             </>
@@ -347,8 +355,8 @@ export function RunPage({ runKey }: { runKey: string }) {
         </Panel>
         {problems.length > 0 ? (
           <FindingsTable
-            // Keyed by the selection, so a filter set on one step resets with it.
-            key={unit?.id ?? 'run'}
+            // Keyed by the run and the selection, so a filter set on one step or run resets with it.
+            key={`${runKey}:${unit?.id ?? 'run'}`}
             findings={problems}
             categoryLabels={categoryLabels}
             heading={problemsTitle}
