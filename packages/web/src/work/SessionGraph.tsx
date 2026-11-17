@@ -20,7 +20,7 @@ function elsewhereLabel(elsewhere: NonNullable<GraphNode['elsewhere']>, label: s
     case 'change':
       return `Other change: ${elsewhere.title}`;
     case 'goal':
-      return label === 'goal' ? `Goal: ${elsewhere.name}` : `Other goal: ${elsewhere.name}`;
+      return `Goal: ${elsewhere.name}`;
     case 'none':
       return 'No change';
     case 'unlisted':

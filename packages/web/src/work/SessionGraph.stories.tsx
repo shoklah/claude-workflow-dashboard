@@ -22,9 +22,9 @@ export const Full: Story = {
     await expect(links.map((link) => link.textContent)).toEqual(syncGraph.nodes.map((n) => n.title));
     await expect(links[0]).toHaveAttribute('href', `/work?view=sessions&session=${syncGraph.nodes[0].key}`);
     await expect(within(region).getByText('Run: Queue edits while offline')).toBeVisible();
-    await expect(within(region).getByText('Other goal: Legal pages')).toBeVisible();
+    await expect(within(region).getByText('Goal: Legal pages')).toBeVisible();
     await expect(within(region).getByText('Other change: Conflict banner')).toBeVisible();
-    const terms = within(region).getByText('Other goal: Legal pages').parentElement!;
+    const terms = within(region).getByText('Goal: Legal pages').parentElement!;
     await expect(terms).toHaveClass('border-dashed');
     await expect(links[0].parentElement).not.toHaveClass('border-dashed');
 
