@@ -1,6 +1,6 @@
 # Work: goals, changes and the session graph
 
-Status: draft, awaiting the owner's approval. Path: Full (new facts in the import's schema, new views, routes and pages, showing mode, `check:real`, fixtures, two routes redirected). Captures: `docs/design/2026-11-17-work/`, rendered on the real components with invented data, on the throwaway branch `claude/activity-mock` at `cada742`, cut from `main` at `855395e` (the side menu and the run page redesign are both merged).
+Status: draft, awaiting the owner's approval. Path: Full (new facts in the import's schema, new views, routes and pages, showing mode, `check:real`, fixtures, two routes redirected). Captures: `docs/design/2026-11-17-work/`, rendered on the real components with invented data, on the throwaway branch `claude/activity-mock` at `1e0bf75` (the Work and goal captures re-rendered after the grilling; the goal page's mocked Sessions table shows only the columns its mock data has), cut from `main` at `855395e` (the side menu and the run page redesign are both merged).
 
 ## Intent
 
@@ -30,7 +30,7 @@ The question the Work page answers: what have I been working toward, and what di
 - Any other page. Home, Weeks, Findings, Context, Spend, Compliance, Steps and rules, Skills and Models and advisor stay as they are. The owner decided to keep Weeks apart from Home: Home is "now", with fixed windows and no filters; Weeks is filtered history with tables of its own.
 - Goals or changes on other pages (spend by goal, findings by goal, a goal filter on Home). Worth having later; not here.
 - Creating, renaming or assigning a goal in the dashboard. The owner ruled it out: it would not be kept consistent.
-- Backfilling titles, specs, starters or goals for work already recorded. That is the workflow's own task if it wants it.
+- Backfilling titles, specs or goals in the dashboard, by a classifier or by hand. Older records gain them through the workflow's own backfill (change request 6), and the dashboard reads them like any others.
 - The run's page, beyond the header facts named under "The run's page".
 - The phone layout beyond what "At each width" says.
 
@@ -53,15 +53,17 @@ The question the Work page answers: what have I been working toward, and what di
 Written here so the workflow repo can take them as its own tasks. Field names are the workflow's to choose; the dashboard's schema follows what the reporter ships. Each fact is nullable: an older record has none. Three shapes are asked for, so the dashboard has nothing to guess: each fact sits on the unit's exported entry, as `title` and `key` do; a session exports at most one spec; and a starter is named by the reporter's own session `key`, as `handoff_to` names a successor.
 
 1. **A run's title.** When a Small or Full path run finishes, the session writes one line into its record saying what the run achieved, in the same step that fills the record from the ledger. A plan record gets one too. The reporter exports it on the run, apart from the session's title it already exports.
-2. **The spec.** Each plan record and each Full path run names the spec it comes from, as a path under the project root. The reporter exports it on those units, and on each session it can tie to that spec (the sessions that wrote the spec, the plan record or the run's record, and the sessions linked to them by a handoff or a start), so a design session belongs to its change. A session tied to several specs exports the one of the newest record it holds, else the one of the session that started it.
+2. **The spec.** Each plan record and each Full path run names the spec it comes from, as the spec's own project and its path under that project's root, since a change often spans repos: a run in one repo can be built from a spec kept in another. The reporter exports it on those units, and on each session it can tie to that spec (the sessions that wrote the spec, the plan record or the run's record, and the sessions linked to them by a handoff or a start), so a design session belongs to its change. A session tied to several specs exports the one of the newest record it holds, else the one of the session that started it.
 3. **Who started a session.** For each session, the reporter exports the session that started it and how: `started` (through `start_session`) or `handoff`. Today only a handoff's successor is exported (`context.handoff_to`).
 4. **The goal.** A workflow rule and a fact:
    - A session started from another session, or by a handoff, is given its goal in its brief. The starting session decides: the same goal when the task serves that goal's outcome, another goal or none when it doesn't. (The owner's examples: renaming the app during the UI work belongs to the UI goal, since the brand is part of the look; "by the way, start on the terms of use" does not.)
    - A session the owner starts directly states the goal in its first message, beside the path and stage. It picks one of the project's known goals when the request continues one, and otherwise proposes a name. The owner corrects it in words; no question is asked.
-   - To pick consistently, the session reads the known goals from the log (a reporter command that lists them).
+   - To pick consistently, the session reads the known goals from the log (a reporter command that lists them), across every project, since a goal can span repos.
    - The goal goes in the ledger and in the plan and run records. The reporter exports it on each run, plan record and session. A session with no goal exports none.
+5. **One change per session.** A workflow rule, no new fact: when a new change comes up in a session (a new design, a new spec), it starts in a fresh session, through `start_session`, never in the same one. So a session holds the units of one change at most, and the dashboard's rule for a session holding two (below) covers only records from before it.
+6. **A backfill of older records.** A one-off task in the workflow repo, after 1, 2 and 4, whose fields it fills: a session reads the older records with their ledgers and archives (`~/.claude/workflow-archive`) and proposes each record's title, spec and goal; the owner reviews the proposals once, and only then are they written where the reporter reads them. Nothing in the dashboard changes for it.
 
-The four are independent of each other. They are filed and built first; the dashboard's plan starts once the reporter exports them, so `check:real` has real fields to read. Records from before them still import: see "Before the facts arrive".
+Requests 1 to 5 are independent of each other; 6 follows 1, 2 and 4. Requests 1 to 5 are filed and built first; the dashboard's plan starts once the reporter exports 1 to 4, so `check:real` has real fields to read. Records from before them still import: see "Before the facts arrive".
 
 ## Approaches
 
@@ -91,15 +93,15 @@ For the level above a run, the owner's first thesis was "a spec equals a run, wi
 
 ### The levels, as the dashboard builds them
 
-- **A change** is the units that share a spec: its runs, its plan records and its sessions. Runs and plan records with no spec that share a plan file (`plan`, exported today) are one change, so an older plan record joins the run built from it. A run or plan record with neither is a change of its own.
-- **A session is in one change at most:** the one of the spec the reporter gives it; else the change of the newest run or plan record it holds; else none. A session that held runs of two changes sits in the newer one's, and the older run's change shows that run with no session; the graph still draws the session once.
+- **A change** is the units that share a spec (its project and path): its runs, its plan records and its sessions, in whichever projects they ran. **A change's projects** are its units' roots; its **home project** is its spec's, else its one run's. Runs and plan records with no spec that share a plan file (`plan`, exported today) are one change, so an older plan record joins the run built from it. A run or plan record with neither is a change of its own.
+- **A session is in one change at most:** the one of the spec the reporter gives it; else the change of the newest run or plan record it holds; else none. A session that held runs of two changes sits in the newer one's, and the older run's change shows that run with no session; the graph still draws the session once. Change request 5 makes this a case of older records only.
 - **A change's title** is its newest plan record's title, else its newest run's title, else its spec's file name without the date and `-design.md`, else its run's branch. (Claude's call: the reporter exports no spec title, and this needs no new fact.)
 - **A goal belongs to a change,** not to each unit: a change's goal is the goal of its newest unit that has one, and every unit of the change counts and shows under it, whatever its own. Units of one change normally agree; when they don't, the newest wins and nothing is flagged. A session in no change carries its own goal. The Goal column and filter of the Runs and Sessions views use the same rule. The "Other goals" lane and the anti-goal follow from it: a session started from this goal's sessions sits there when its change's goal (or its own, in no change) is another.
 - **A change's path** is Full when it has a spec or a Full run, else Small. **Its stage** is the furthest it reached: Implementation with a Full or Small run, else Plan with a plan record, else Design.
 - **A session's step** is what it held: Implementation when it holds a Full or Small run, else Plan when it holds a plan record, else Design. A session holding both reads Implementation.
 - **A goal** is the changes and loose sessions that carry its name. It may span projects.
 - **Totals.** A change's cost is the sum of its runs' and sessions' priced costs; the reporter already keeps a session's cost to its rows outside every run window, so nothing counts twice. Its findings are its runs' found findings. Its last activity is the latest of its runs' finishes and its sessions' ends; its start is its earliest session's start. A goal's totals are sums over its changes, plus the cost of its sessions that belong to no change.
-- **A period** holds a change when any of its units is in it, and a goal when any of its changes is. **Filters choose what is listed; they never cut a change.** A listed change's numbers are its whole numbers, units outside the period included, since a change is one thing. A goal section's totals on the Work page are the sums of the changes it lists, so they match the rows under them; the goal's page shows the whole goal, whatever the filters were.
+- **A period** holds a change when any of its units is in it, and a goal when any of its changes is. **Filters choose what is listed; they never cut a change.** A listed change's numbers are its whole numbers, units outside the period included, since a change is one thing. A goal section's totals on the Work page are the sums of the changes it lists, so they match the rows under them; the goal's page shows the whole goal, whatever the filters were. So Work's totals over a period can be more than Weeks' or Spend's over the same weeks, which sum each unit in its own week: Work answers what each effort took, Weeks and Spend what the weeks cost. The page doesn't say so; this spec does. The project filter lists a change when any of its units ran in that project.
 
 These sums live in one place, a new `views/work.ts`, as the other pages' sums do, with the response types in `packages/shared/src/api/work.ts`.
 
@@ -112,7 +114,7 @@ Every new field is `.nullish()` in the report schema. With none of them, each ru
 The question: what have I been working toward, and what did each effort take?
 
 - **Title** "Work". **View** switch: Changes, Runs, Sessions (an `Options` group). **Filters**: Project, Goal and Period on the Changes view; the Runs and Sessions views keep today's filters and gain Goal.
-- **Changes view.** One section per goal, most recently active first, "No goal" last. A section's title row holds a chevron button that opens and closes it, the goal's name as a link to the goal's page, and its totals: Changes, Runs, Sessions, Est. cost, Last activity. Open, it shows a table of the goal's changes: Change (a link to its page), Project, Path, Stage, Last activity, Runs, Sessions, Findings, Est. cost ($). A goal with a change active in the current week starts open; the rest start closed. "No goal" has no page and its name is plain text.
+- **Changes view.** One section per goal, most recently active first, "No goal" last. A section's title row holds a chevron button that opens and closes it, the goal's name as a link to the goal's page, and its totals: Changes, Runs, Sessions, Est. cost, Last activity. The title rows of all sections share one set of columns: the name's column is as wide on every row, a longer name wrapping inside it, and each total sits in its own column, numbers right-aligned, so the totals line up down the page whatever the names' lengths (the owner's note on the first captures). Open, it shows a table of the goal's changes: Change (a link to its page), Project (the home project, with "+N" for its other projects, a tooltip naming them), Path, Stage, Last activity, Runs, Sessions, Findings, Est. cost ($). A goal with a change active in the current week starts open; the rest start closed. "No goal" has no page and its name is plain text.
 - Under the sections, one line when the period has sessions in no change: "4 sessions in this period belong to no change.", with a link to the Sessions view.
 - **Runs view.** Today's Runs table and its "Has warnings" control, with three changes: its first column is "Run", the run's title linking to the run's page; a "Change" column links to the change's page (the dash, read "no design", for a change of one run with no spec); a "Goal" column. Branch stays, after Goal.
 - **Sessions view.** Today's Sessions table, its opening rows and its "Has warnings" control, with "Change" and "Goal" columns added after Project. With `session=<key>` in the URL it lists that one session, whatever the period and the other filters, with its row open, under a chip naming it with a link that clears it, as Compliance's step chip does. A key that matches nothing, or a session showing mode hides, lists none and says so.
@@ -125,15 +127,15 @@ The question: what did this effort take, and how did it spread?
 - A link back to Work, the goal's name as the page title, and its facts as `Pairs`: Project (or "Several projects"), Started, Last activity, Changes, Runs, Sessions, Findings, Est. cost.
 - **"How the work spread"**: the session graph (below), one lane per change, in order of each change's start, then a lane "No change" for the goal's sessions in none, then a lane "Other goals" for sessions started from this goal's sessions but given another goal.
 - **Changes**: the same table as a section of the Work page, without Project when the goal has one project.
-- **Sessions**: the table described under the change's page, with a Change column. (The mockup leaves this table out; the build has it, since the graph needs its table.)
+- **Sessions**: the table described under the change's page, with a Change column, since the graph needs its table. A goal can reach dozens of sessions; long tables wait on the tables work's pagination, as a long run's findings do.
 
 ### A change's page, `/work/changes/$key` (`change-*`)
 
 The question: what did this design take, from the first conversation to the last run?
 
-- A link back to Work, the change's title, and its facts: Goal (a link to the goal's page), Project, Path, Stage, Started, Last activity, Sessions, Runs, Est. cost, and Spec (the file's name) when it has one.
+- A link back to Work, the change's title, and its facts: Goal (a link to the goal's page), Project (its home project) and Other projects when it has some, Path, Stage, Started, Last activity, Sessions, Runs, Est. cost, and Spec (the file's name) when it has one.
 - **"How the work spread"**: the session graph in one lane, with sessions of other changes or goals that this change's sessions started, or that started them, drawn outlined.
-- **Runs**: Run (title, linking to the run's page), Branch, Finished, Time (min), Tasks, Findings (Found, Closed), Est. cost ($). Plan records are listed too, with their path shown in a Path column when the change has one.
+- **Runs**: Run (title, linking to the run's page), Project when the change has several, Branch, Finished, Time (min), Tasks, Findings (Found, Closed), Est. cost ($). Plan records are listed too, with their path shown in a Path column when the change has one.
 - **Sessions**: Session (its title, a link to `/work?view=sessions&session=<key>`), Step, Started, Started by (the starting session's title; the dash, read "started by you", when none), Length, Model, Run (the title of the run it holds), Est. cost ($).
 
 ### The session graph
@@ -155,11 +157,11 @@ The question: what did this design take, from the first conversation to the last
 
 - `SECTIONS` in `layout/Menu.tsx`: Activity becomes **Work** (`/work`, the `Layers` icon) and **Findings**. Ten entries.
 - `/runs` redirects to `/work?view=runs` and `/sessions` to `/work?view=sessions`. `/runs/$key` stays the run's page, and Work is the current entry on it and on every `/work/...` page.
-- A goal's key is made from its name, a change's from its project root and spec path (or its one run's key when it has no spec), with the recipe `keys.ts` uses for runs and sessions. Both are the dashboard's own: the reporter exports no key for them.
+- A goal's key is made from its name, a change's from its spec's project root and spec path, whichever project its units ran in (its plan file's when it has no spec, or its one run's key when it has neither), with the recipe `keys.ts` uses for runs and sessions. Both are the dashboard's own: the reporter exports no key for them.
 
 ### Showing mode
 
-As every view: counts include every project and session; lists are filtered. Goal names, change titles, run titles, session titles and spec file names are text from units and are masked with `maskText`. A change is listed when its project's root is shown; a goal when one of its changes is. A graph leaves out the sessions `showSession` doesn't hold, drops the edges to them, and says how many it left out. A goal's or change's page whose every unit is hidden answers as a missing one. `views/work.ts` gets the `leaks` check like every view, and a goal name is added to the scope's hidden strings when none of its changes is shown.
+As every view: counts include every project and session; lists are filtered. Goal names, change titles, run titles, session titles and spec file names are text from units and are masked with `maskText`. A change is listed when its home project's root is shown; a goal when one of its changes is. A listed change's units in hidden projects count in its numbers but are not listed (no row, no graph box), and its hidden projects show only in the "+N" count, never by name. A graph leaves out the sessions `showSession` doesn't hold, drops the edges to them, and says how many it left out. A goal's or change's page whose every unit is hidden answers as a missing one. `views/work.ts` gets the `leaks` check like every view, and a goal name is added to the scope's hidden strings when none of its changes is shown.
 
 ### States
 
@@ -205,16 +207,19 @@ As every view: counts include every project and session; lists are filtered. Goa
 - `check:real`: a line comparing, counts only, the changes' and goals' cost totals with the sum of the units' costs, so a double count shows.
 - The `## Code conventions` lines this design settles (where the levels are built, where a title is shown, the keys).
 
-## Claude's calls, open to correction
+## Settled in the owner's grilling (2026-11-17)
 
-- A change's title, goal, path and stage, and a session's step, are derived in the dashboard from facts the reporter exports, as listed under "The levels". No change request asks for them.
-- A goal belongs to a change: a unit whose own goal differs from its change's counts under the change's.
+- A goal belongs to a change: its newest unit's goal, for every unit of it, with no flag when units disagree.
 - A listed change always shows its whole numbers; the period and project filters only choose which changes are listed.
-- Older runs and plan records with no spec are joined into one change by their plan file.
-- A session's link opens it alone in the Sessions view, through `session=<key>`.
-- A goal may span projects, and is identified by its name alone.
-- The page is named "Work" and its URLs are under `/work`.
+- A session is in one change at most, and the workflow enforces it: a new change starts in a fresh session (change request 5).
+- Older runs and plan records with no spec are joined into one change by their plan file. Older records gain titles, specs and goals through the workflow's backfill (change request 6), never a classifier in the dashboard.
+- A goal may span projects, and is identified by its name alone; the known-goals list covers every project.
+- A change may span projects: keyed by its spec's project and path, listed under its home project with "+N", matched by the project filter through any of its units.
 - "No goal" has a section and no page.
+- The page is named "Work" and its URLs are under `/work`.
+- The goal's page has a Sessions table under its graph.
 - A goal active in the current week starts open; the open state is not remembered between visits.
-- The goal's page gains a Sessions table the mockup doesn't show.
-- The workflow's change requests are built before the dashboard's plan starts.
+- A session's link opens it alone in the Sessions view, through `session=<key>`; there is no session page.
+- A goal section's title row lines its totals up in columns shared by every section.
+
+Still Claude's call, not raised in the grilling: a change's title, path and stage, and a session's step, are derived in the dashboard from facts the reporter exports, as listed under "The levels"; no change request asks for them.
