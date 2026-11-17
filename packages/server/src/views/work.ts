@@ -7,20 +7,27 @@ import {
   runFacts,
   sessionRootOf,
   weekOf,
+  type ChangeResponse,
   type ChangeRow,
+  type GoalResponse,
   type GoalSection,
+  type GraphEdge,
+  type GraphNode,
+  type HeldRun,
   type RunEntry,
   type SessionEntry,
+  type SessionGraphData,
   type SpecRef,
   type WorkQuery,
   type WorkResponse,
+  type WorkSessionRow,
   type WorkStep,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
 import { changeKey, goalKey, projectKey } from '../keys.ts';
-import { periodStoredUnits, rootOf } from './runs.ts';
-import { maskText, type Scope } from './scope.ts';
-import { heldRuns } from './sessions.ts';
+import { periodStoredUnits, rootOf, storedFacts } from './runs.ts';
+import { maskText, showFacts, showSession, type Scope } from './scope.ts';
+import { heldRuns, sessionFacts, sessionRow, shownSession } from './sessions.ts';
 
 /**
  * A change: the runs and plan records sharing a spec (else a plan file under one root, else one run) and the sessions
@@ -184,6 +191,300 @@ export function goalHomes(levels: Levels): Map<string, string[]> {
   return homes;
 }
 
+/** Whether showing mode shows a root: always without a scope. */
+function shownRoot(scope: Scope | null, root: string): boolean {
+  return !scope || scope.shown.has(projectKey(root));
+}
+
+/** A root's project name: the scope's, else the stored one; null for a root no stored run has ("other project"), as
+ * sessionFacts names a session's. */
+function rootName(scope: Scope | null, names: Map<string, string>, root: string): string | null {
+  return scope?.names.get(projectKey(root)) ?? names.get(root) ?? null;
+}
+
+/** A change's row: its whole totals, its title masked (maskText), its home named, its other projects the shown, named
+ * ones by name and every one in the count. */
+function changeRow(change: Change, scope: Scope | null, names: Map<string, string>): ChangeRow {
+  const others = change.roots.filter((root) => root !== change.home);
+  return {
+    key: change.key,
+    title: maskText(scope, change.title),
+    project: rootName(scope, names, change.home),
+    otherProjects: others
+      .filter((root) => shownRoot(scope, root))
+      .flatMap((root) => rootName(scope, names, root) ?? []),
+    otherCount: others.length,
+    path: change.path,
+    stage: change.stage,
+    lastActivity: change.last,
+    runs: change.runs.length,
+    sessions: change.sessions.length,
+    findings: change.findings,
+    cost: change.cost,
+  };
+}
+
+/** A unit's change as Work lists it: null when it has none or, with a scope, when its change's home isn't shown. */
+export function listedChange(
+  levels: Levels,
+  scope: Scope | null,
+  unitKey: string,
+): { key: string; title: string } | null {
+  const change = levels.changeOf.get(unitKey);
+  return change && shownRoot(scope, change.home) ? { key: change.key, title: maskText(scope, change.title) } : null;
+}
+
+/** A unit's goal (goalOf) as Work lists it: null when it has none or, with a scope, when none of the goal's homes
+ * (goalHomes) is shown. */
+export function listedGoal(
+  levels: Levels,
+  scope: Scope | null,
+  unitKey: string,
+): { key: string; name: string } | null {
+  const goal = levels.goalOf(unitKey);
+  if (!goal || !(goalHomes(levels).get(goal) ?? []).some((root) => shownRoot(scope, root))) return null;
+  return { key: goalKey(goal), name: maskText(scope, goal) };
+}
+
+/**
+ * The links between dated sessions: a session's `started_by` naming a stored session (`how` 'handoff' a handoff, any
+ * other a start), then a handoff to a stored session its own or a held run's `context.handoff_to` names; one edge per
+ * pair, a `started_by` winning.
+ */
+function sessionEdges(dated: StoredUnit<SessionEntry>[], held: Map<string, StoredUnit<RunEntry>[]>): GraphEdge[] {
+  const stored = new Set(dated.map((s) => s.key));
+  const edges = new Map<string, GraphEdge>();
+  const add = (from: string, to: string, how: GraphEdge['how']) => {
+    const pair = `${from}|${to}`;
+    if (from !== to && stored.has(from) && stored.has(to) && !edges.has(pair)) edges.set(pair, { from, to, how });
+  };
+  for (const s of dated) {
+    const by = s.merged.started_by;
+    if (by) add(by.key, s.key, by.how === 'handoff' ? 'handoff' : 'started');
+  }
+  for (const s of dated) {
+    for (const unit of [s, ...(held.get(s.merged.file) ?? [])]) {
+      const to = unit.merged.context?.handoff_to;
+      if (to) add(s.key, to, 'handoff');
+    }
+  }
+  return [...edges.values()];
+}
+
+/** What a change's or goal's page reads: the levels, the dated sessions in start order, their edges and held runs. */
+type Pages = {
+  levels: Levels;
+  scope: Scope | null;
+  names: Map<string, string>;
+  runRoots: Set<string>;
+  held: Map<string, StoredUnit<RunEntry>[]>;
+  dated: StoredUnit<SessionEntry>[];
+  edges: GraphEdge[];
+};
+
+function pagesOf(
+  runs: StoredUnit<RunEntry>[],
+  sessions: StoredUnit<SessionEntry>[],
+  scope: Scope | null,
+  names: Map<string, string>,
+): Pages {
+  const held = heldRuns(runs);
+  const dated = sessions.filter((s) => s.merged.start).sort((a, b) => time(a.merged.start) - time(b.merged.start));
+  const edges = sessionEdges(dated, held);
+  return { levels: levels(runs, sessions), scope, names, runRoots: new Set(runs.map(rootOf)), held, dated, edges };
+}
+
+/** A session's newest held run that showing mode shows (showFacts), by its headline (masked) and branch. */
+function shownRun(pages: Pages, session: StoredUnit<SessionEntry>): HeldRun | null {
+  for (const run of newestFirst(pages.held.get(session.merged.file) ?? [], runTime)) {
+    const facts = showFacts(pages.scope, storedFacts(run, pages.names));
+    if (facts) return { key: run.key, title: maskText(pages.scope, run.merged.headline ?? null), branch: facts.branch };
+  }
+  return null;
+}
+
+const shownSessions = (pages: Pages, keys: Set<string>) =>
+  pages.dated.filter((s) => keys.has(s.key) && showSession(pages.scope, s.merged.project));
+
+/** A shown session's row: sessionRow's facts, its step, its starter (the edge into it; key and title null when
+ * shownSession hides it), its newest shown held run and its listed change. */
+function workRow(pages: Pages, unit: StoredUnit<SessionEntry>): WorkSessionRow {
+  const { key, title, start, end, minutes, models, cost } = sessionRow(unit, pages.runRoots, pages.names, pages.scope);
+  const starter = pages.edges.find((edge) => edge.to === unit.key);
+  const from = starter && pages.dated.find((s) => s.key === starter.from);
+  const shown = from && shownSession(from.merged, pages.runRoots, pages.names, pages.scope);
+  return {
+    key,
+    title,
+    start,
+    end,
+    minutes,
+    models,
+    cost,
+    step: stepOf(pages.held.get(unit.merged.file) ?? []),
+    startedBy: starter ? (shown ? { key: starter.from, title: shown.title } : { key: null, title: null }) : null,
+    run: shownRun(pages, unit),
+    change: listedChange(pages.levels, pages.scope, key),
+  };
+}
+
+/** Where a session of the other lane belongs, seen from a page of `goal`: another goal, else another change, by
+ * listedGoal and listedChange ('unlisted' when Work doesn't list it), else no change. */
+function elsewhereOf(pages: Pages, key: string, goal: string | null): GraphNode['elsewhere'] {
+  const { levels, scope } = pages;
+  const own = levels.goalOf(key);
+  if (own && own !== goal) {
+    const listed = listedGoal(levels, scope, key);
+    return listed ? { kind: 'goal', name: listed.name } : { kind: 'unlisted' };
+  }
+  if (levels.changeOf.has(key)) {
+    const listed = listedChange(levels, scope, key);
+    return listed ? { kind: 'change', title: listed.title } : { kind: 'unlisted' };
+  }
+  return { kind: 'none' };
+}
+
+/**
+ * The session graph of a page's `members`, with the sessions linked to them (by an edge from a member, or with
+ * `either` into one too): a member in one of `changes` (listed, in lane order) sits in its change's lane, a member in
+ * no change in No change, any other in the other lane titled `other`, saying where it belongs (elsewhereOf). Lanes
+ * without a box are left out; with a scope, the sessions showSession doesn't hold are left out with their edges and
+ * counted in `hidden`.
+ */
+function graphOf(
+  pages: Pages,
+  members: Set<string>,
+  either: boolean,
+  changes: Change[],
+  other: string,
+  goal: string | null,
+): SessionGraphData {
+  const linked = pages.edges
+    .filter((edge) => members.has(edge.from) || (either && members.has(edge.to)))
+    .flatMap((edge) => [edge.from, edge.to]);
+  const all = new Set([...members, ...linked]);
+  const nodes = shownSessions(pages, all);
+  const hidden = pages.dated.filter((s) => all.has(s.key)).length - nodes.length;
+  const laneOf = (key: string): { key: string | null; title: string; kind: 'change' | 'none' | 'other' } => {
+    const change = pages.levels.changeOf.get(key);
+    if (members.has(key) && change && changes.includes(change)) {
+      return { key: change.key, title: maskText(pages.scope, change.title), kind: 'change' };
+    }
+    if (members.has(key) && !change) return { key: null, title: 'No change', kind: 'none' };
+    return { key: null, title: other, kind: 'other' };
+  };
+  const placed = nodes.map((unit) => ({ unit, lane: laneOf(unit.key) }));
+  const rank = (lane: { key: string | null; kind: string }) => {
+    if (lane.kind === 'change') return changes.findIndex((c) => c.key === lane.key);
+    return lane.kind === 'none' ? changes.length : changes.length + 1;
+  };
+  const lanes = [...new Map(placed.map(({ lane }) => [`${lane.kind}|${lane.key}`, lane])).values()].sort(
+    (a, b) => rank(a) - rank(b),
+  );
+  const index = (lane: { key: string | null; kind: string }) =>
+    lanes.findIndex((l) => l.kind === lane.kind && l.key === lane.key);
+  const shown = new Set(nodes.map((s) => s.key));
+  return {
+    lanes,
+    nodes: placed.map(({ unit, lane }) => ({
+      key: unit.key,
+      title: sessionFacts(unit.merged, pages.runRoots, pages.names, pages.scope).title,
+      step: stepOf(pages.held.get(unit.merged.file) ?? []),
+      run: shownRun(pages, unit),
+      lane: index(lane),
+      elsewhere: lane.kind === 'other' ? elsewhereOf(pages, unit.key, goal) : null,
+    })),
+    edges: pages.edges.filter((edge) => shown.has(edge.from) && shown.has(edge.to)),
+    hidden,
+  };
+}
+
+/**
+ * A change's page: its facts and whole totals, its graph (its sessions in its lane, the sessions of other changes
+ * linked to them either way in "Other changes"), its shown runs (showFacts, newest first) and its shown dated sessions;
+ * null for an unknown key or, with a scope, a change Work doesn't list (its home isn't shown).
+ */
+export function changeView(input: {
+  runs: StoredUnit<RunEntry>[];
+  sessions: StoredUnit<SessionEntry>[];
+  key: string;
+  scope: Scope | null;
+  names: Map<string, string>;
+}): ChangeResponse | null {
+  const { scope, names } = input;
+  const pages = pagesOf(input.runs, input.sessions, scope, names);
+  const change = pages.levels.changes.find((c) => c.key === input.key);
+  if (!change || !shownRoot(scope, change.home)) return null;
+  const row = changeRow(change, scope, names);
+  const members = new Set(change.sessions.map((s) => s.key));
+  return {
+    key: change.key,
+    title: row.title,
+    goal: listedGoal(pages.levels, scope, (change.runs[0] ?? change.sessions[0])!.key),
+    project: row.project,
+    otherProjects: row.otherProjects,
+    otherCount: row.otherCount,
+    path: change.path,
+    stage: change.stage,
+    spec: change.spec ? maskText(scope, change.spec.path.split('/').at(-1) ?? '') : null,
+    startedAt: change.start,
+    lastActivity: change.last,
+    sessionCount: change.sessions.length,
+    runCount: change.runs.length,
+    cost: change.cost,
+    graph: graphOf(pages, members, true, [change], 'Other changes', change.goal),
+    runs: newestFirst(change.runs, runTime).flatMap((run) => showFacts(scope, storedFacts(run, names)) ?? []),
+    sessions: shownSessions(pages, members).map((unit) => workRow(pages, unit)),
+  };
+}
+
+/**
+ * A goal's page: its facts and whole totals (its changes', plus its sessions in no change), its graph (a lane per
+ * listed change with a box, in order of the change's start, then No change, then "Other goals" for the sessions its
+ * sessions started), its listed changes in that order and its shown dated sessions; null for an unknown key or, with
+ * a scope, a goal none of whose homes (goalHomes) is shown.
+ */
+export function goalView(input: {
+  runs: StoredUnit<RunEntry>[];
+  sessions: StoredUnit<SessionEntry>[];
+  key: string;
+  scope: Scope | null;
+  names: Map<string, string>;
+}): GoalResponse | null {
+  const { scope, names } = input;
+  const pages = pagesOf(input.runs, input.sessions, scope, names);
+  const homes = goalHomes(pages.levels);
+  const goal = [...homes.keys()].find((name) => goalKey(name) === input.key);
+  if (!goal || !homes.get(goal)!.some((root) => shownRoot(scope, root))) return null;
+  const startOf = (change: Change) => (change.start ? time(change.start) : Infinity);
+  const changes = pages.levels.changes.filter((c) => c.goal === goal).sort((a, b) => startOf(a) - startOf(b));
+  const listed = changes.filter((c) => shownRoot(scope, c.home));
+  const loose = pages.levels.loose.filter((s) => s.merged.goal === goal);
+  const looseRoots = loose.flatMap((s) => sessionRootOf(s.merged.project) ?? []);
+  const members = new Set([...changes.flatMap((c) => c.sessions), ...loose].map((s) => s.key));
+  return {
+    key: input.key,
+    name: maskText(scope, goal),
+    projects: [...new Set([...changes.flatMap((c) => c.roots), ...looseRoots])]
+      .filter((root) => shownRoot(scope, root))
+      .flatMap((root) => rootName(scope, names, root) ?? [])
+      .sort(),
+    startedAt: earliest([...changes.map((c) => c.start), ...loose.map((s) => s.merged.start)]),
+    lastActivity: latest([...changes.map((c) => c.last), ...loose.map((s) => s.merged.end)]),
+    changeCount: changes.length,
+    runCount: changes.reduce((sum, c) => sum + c.runs.length, 0),
+    sessionCount: changes.reduce((sum, c) => sum + c.sessions.length, 0) + loose.length,
+    findings: changes.reduce<number | null>((sum, c) => addKnown(sum, c.findings), null),
+    cost: [...changes.map((c) => c.cost), ...loose.map((s) => modelsCost(s.merged.models))].reduce<number | null>(
+      (sum, cost) => addKnown(sum, cost),
+      null,
+    ),
+    graph: graphOf(pages, members, false, listed, 'Other goals', goal),
+    changes: listed.map((change) => changeRow(change, scope, names)),
+    sessions: shownSessions(pages, members).map((unit) => workRow(pages, unit)),
+  };
+}
+
 /**
  * The Changes view: the changes with a unit in the query's period (periodStoredUnits over its weeks alone), any of whose
  * roots is the project filter's and whose goal is the goal filter's, by goal, each section's rows and the sections
@@ -209,9 +510,7 @@ export function workView(input: {
   const periodChanges = changes.filter((change) =>
     [...change.runs, ...change.sessions].some((unit) => periodKeys.has(unit.key)),
   );
-  const isShown = (root: string) => !scope || scope.shown.has(projectKey(root));
-  // A root no stored run has is "other project" (null), as sessionFacts names a session's.
-  const nameOf = (root: string) => scope?.names.get(projectKey(root)) ?? names.get(root) ?? null;
+  const isShown = (root: string) => shownRoot(scope, root);
   const byLatest = <T>(items: T[], at: (item: T) => string | null) => newestFirst(items, (item) => time(at(item)));
 
   const listed = periodChanges.filter(
@@ -221,24 +520,7 @@ export function workView(input: {
   );
   const sections = new Map<string | null, ChangeRow[]>();
   for (const change of listed.filter((c) => isShown(c.home))) {
-    const others = change.roots.filter((root) => root !== change.home);
-    sections.set(change.goal, [
-      ...(sections.get(change.goal) ?? []),
-      {
-        key: change.key,
-        title: maskText(scope, change.title),
-        project: nameOf(change.home),
-        otherProjects: others.filter(isShown).flatMap((root) => nameOf(root) ?? []),
-        otherCount: others.length,
-        path: change.path,
-        stage: change.stage,
-        lastActivity: change.last,
-        runs: change.runs.length,
-        sessions: change.sessions.length,
-        findings: change.findings,
-        cost: change.cost,
-      },
-    ]);
+    sections.set(change.goal, [...(sections.get(change.goal) ?? []), changeRow(change, scope, names)]);
   }
 
   const goals: GoalSection[] = [...sections].map(([goal, rows]) => ({

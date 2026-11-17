@@ -45,7 +45,7 @@ import { spendView } from './views/spend.ts';
 import { statusView } from './views/status.ts';
 import { stepsView } from './views/steps.ts';
 import { weeksView } from './views/weeks.ts';
-import { goalHomes, levels, workView } from './views/work.ts';
+import { changeView, goalHomes, goalView, levels, workView } from './views/work.ts';
 
 /** The answer to any method but POST on a POST-only route. */
 function postOnly(c: Context): Response {
@@ -293,5 +293,22 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     return c.json(
       workView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions), names: storedNames(runs) }),
     );
+  });
+
+  // Work page, task 4: a change's and a goal's facts with their session graph; a change or goal Work doesn't list is a
+  // 404, as an unknown key.
+  app.get('/api/work/changes/:key', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    const scope = scopeFor(runs, sessions);
+    const view = changeView({ runs, sessions, key: c.req.param('key'), scope, names: storedNames(runs) });
+    return view ? c.json(view) : c.notFound();
+  });
+  app.get('/api/work/goals/:key', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    const scope = scopeFor(runs, sessions);
+    const view = goalView({ runs, sessions, key: c.req.param('key'), scope, names: storedNames(runs) });
+    return view ? c.json(view) : c.notFound();
   });
 }

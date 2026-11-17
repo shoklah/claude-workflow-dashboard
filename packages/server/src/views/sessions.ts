@@ -97,6 +97,37 @@ export function shownSession(
   return { title, sessionId };
 }
 
+/**
+ * A dated session's row facts, for the Sessions view and the Work pages alike: its key, sessionFacts, start, end,
+ * length in minutes, models by cost with each one's most-used effort (masked, maskText), and cost (modelsCost).
+ */
+export function sessionRow(
+  unit: StoredUnit<SessionEntry>,
+  runRoots: Set<string>,
+  names: Map<string, string>,
+  scope: Scope | null,
+): Pick<
+  SessionRow,
+  'key' | 'title' | 'sessionId' | 'projectKey' | 'project' | 'start' | 'end' | 'minutes' | 'models' | 'cost'
+> {
+  const session = unit.merged;
+  // Only a session with a start is listed.
+  const start = session.start!;
+  const efforts = session.efforts ?? {};
+  const mostUsed = (model: string) => Object.entries(efforts[model] ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const models = Object.entries(session.models ?? {}).sort((a, b) => (b[1].cost ?? 0) - (a[1].cost ?? 0));
+  const end = session.end ?? null;
+  return {
+    key: unit.key,
+    ...sessionFacts(session, runRoots, names, scope),
+    start,
+    end,
+    minutes: end === null ? null : (time(end) - time(start)) / 60000,
+    models: models.map(([model]) => ({ model: maskText(scope, model), effort: maskText(scope, mostUsed(model)) })),
+    cost: modelsCost(session.models),
+  };
+}
+
 /** The runs each session holds, by its transcript file: the runs whose window is in that transcript. */
 export function heldRuns(runs: StoredUnit<RunEntry>[]): Map<string, StoredUnit<RunEntry>[]> {
   const byTranscript = new Map<string, StoredUnit<RunEntry>[]>();
@@ -160,18 +191,8 @@ export function sessionsView(input: {
     });
     if (!matches(shown.map((s) => s.facts))) continue;
 
-    const efforts = session.efforts ?? {};
-    const mostUsed = (model: string) => Object.entries(efforts[model] ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    const models = Object.entries(session.models ?? {}).sort((a, b) => (b[1].cost ?? 0) - (a[1].cost ?? 0));
-    const end = session.end ?? null;
     sessions.push({
-      key: unit.key,
-      ...sessionFacts(session, runRoots, names, scope),
-      start,
-      end,
-      minutes: end === null ? null : (time(end) - time(start)) / 60000,
-      models: models.map(([model]) => ({ model: maskText(scope, model), effort: maskText(scope, mostUsed(model)) })),
-      cost: modelsCost(session.models),
+      ...sessionRow(unit, runRoots, names, scope),
       startup: session.startup ?? null,
       warnings,
       holds: shown.map(({ run, facts }) => ({ runKey: run.key, project: facts.project, branch: facts.branch, path: facts.path })),

@@ -2,7 +2,19 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { loadReport, type RunEntry, type SessionEntry, type WorkResponse } from '@cwd/shared';
+import {
+  loadReport,
+  type ChangeResponse,
+  type GoalResponse,
+  type GraphEdge,
+  type GraphNode,
+  type RunEntry,
+  type SessionEntry,
+  type SessionGraphData,
+  type SessionRow,
+  type WorkResponse,
+  type WorkSessionRow,
+} from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb } from '../src/db/open.ts';
@@ -211,13 +223,13 @@ describe('stepOf', () => {
   });
 });
 
-/** GET /api/work on a fresh database holding `name` after `change`, showing `showing`'s roots when given. */
-async function work(
-  query: string,
+/** GET `path` on a fresh database holding `name` after `change`, showing `showing`'s roots when given. */
+async function api(
+  path: string,
   showing?: string[],
   name = 'report-work',
   change: (raw: any) => void = () => {},
-): Promise<WorkResponse> {
+): Promise<{ status: number; body: any }> {
   const db = openDb(join(dir, `dashboard-${count++}.sqlite`));
   const raw = fixture(name);
   change(raw);
@@ -235,10 +247,21 @@ async function work(
     aliases: {},
     labeller: null,
   });
-  const res = await app.request(`/api/work${query}`, { headers: { Host: 'localhost:4317' } });
-  expect(res.status).toBe(200);
-  const body = await res.json();
+  const res = await app.request(path, { headers: { Host: 'localhost:4317' } });
+  const body = res.status === 200 ? await res.json() : null;
   db.$client.close();
+  return { status: res.status, body };
+}
+
+/** GET /api/work on a fresh database holding `name` after `change`, showing `showing`'s roots when given. */
+async function work(
+  query: string,
+  showing?: string[],
+  name = 'report-work',
+  change: (raw: any) => void = () => {},
+): Promise<WorkResponse> {
+  const { status, body } = await api(`/api/work${query}`, showing, name, change);
+  expect(status).toBe(200);
   return body;
 }
 
@@ -401,5 +424,306 @@ describe('goalHomes', () => {
     expect(homes.get('Webhooks')).toEqual([TIDEPOOL]);
     expect(homes.get('Offline sync')).toEqual([LANTERN]);
     expect(homes.get('Release checklist')).toEqual([SCRATCH]);
+  });
+});
+
+const changePage = (key: string, showing?: string[], name?: string, change?: (raw: any) => void) =>
+  api(`/api/work/changes/${key}`, showing, name, change);
+const goalPage = (name: string, showing?: string[], change?: (raw: any) => void) =>
+  api(`/api/work/goals/${goalKey(name)}`, showing, 'report-work', change);
+const OFFLINE_V7 = hash(`plan|${LANTERN}|${OFFLINE_PLAN}`);
+const WEBHOOKS_V7 = hash(`plan|${TIDEPOOL}|${WEBHOOKS_PLAN}`);
+
+/** A graph's node keys by lane, each lane's in the graph's order. */
+function lanesOf(graph: SessionGraphData): string[][] {
+  return graph.lanes.map((_, i) => graph.nodes.filter((n) => n.lane === i).map((n) => n.key));
+}
+const nodeOf = (graph: SessionGraphData, key: string) => graph.nodes.find((n) => n.key === key)!;
+const sortEdges = (edges: GraphEdge[]) => [...edges].sort((a, b) => `${a.from}${a.to}`.localeCompare(`${b.from}${b.to}`));
+
+/** What a showing-mode response of report-work may not hold, with `shownRoots` shown. */
+function forbiddenFor(shownRoots: string[]) {
+  const raw = fixture('report-work');
+  const { runs, sessions } = unitsOf('report-work');
+  const branches = storedBranches(runs);
+  const sessionIds = [
+    ...new Set(JSON.stringify(raw).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)),
+  ];
+  const strings = forbiddenStrings(
+    [...branches.keys()],
+    branches,
+    shownRoots,
+    sessionIds,
+    storedSessionRoots(sessions),
+    goalHomes(levels(runs, sessions)),
+  );
+  return { forbidden: [...strings.forbidden, '/Users/example'], shown: strings.shown };
+}
+
+describe('changeView', () => {
+  test("the offline-sync change: its facts, its lane, then the other change's session that started its sessions", async () => {
+    const { status, body } = await changePage(OFFLINE_CHANGE);
+    expect(status).toBe(200);
+    const change = body as ChangeResponse;
+    expect(change).toMatchObject({
+      key: OFFLINE_CHANGE,
+      title: 'Plan the offline queue and replay',
+      goal: { key: goalKey('Offline sync'), name: 'Offline sync' },
+      project: 'lantern-notes',
+      otherProjects: ['tidepool-api'],
+      otherCount: 1,
+      path: 'full',
+      stage: 'implementation',
+      spec: '2026-11-05-offline-sync-design.md',
+      startedAt: '2026-11-09T13:40:12.551Z',
+      lastActivity: '2026-11-10T16:47:31.880Z',
+      sessionCount: 2,
+      runCount: 2,
+    });
+    expect(change.cost).toBeCloseTo(15.255, 6);
+    expect(change.graph.lanes).toEqual([
+      { key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay', kind: 'change' },
+      { key: null, title: 'Other changes', kind: 'other' },
+    ]);
+    expect(lanesOf(change.graph)).toEqual([[S_2E8D, S_7D1E], [S_5A9D]]);
+    expect(nodeOf(change.graph, S_7D1E)).toEqual({
+      key: S_7D1E,
+      title: 'Offline sync build',
+      step: 'implementation',
+      run: { key: OFFLINE_RUN, title: 'Queue edits offline and replay them on reconnect', branch: 'feature/offline-sync' },
+      lane: 0,
+      elsewhere: null,
+    });
+    expect(nodeOf(change.graph, S_5A9D)).toMatchObject({
+      title: 'Offline sync plan',
+      step: 'implementation',
+      run: { key: WEBHOOKS_RUN, title: 'Send webhooks for note changes', branch: 'feature/webhooks' },
+      elsewhere: { kind: 'goal', name: 'Webhooks' },
+    });
+    expect(sortEdges(change.graph.edges)).toEqual(
+      sortEdges([
+        { from: S_5A9D, to: S_7D1E, how: 'started' },
+        { from: S_5A9D, to: S_2E8D, how: 'handoff' },
+      ]),
+    );
+    expect(change.graph.hidden).toBe(0);
+    expect(change.runs.map((r) => r.key)).toEqual([OFFLINE_RUN, PLAN_RECORD]);
+    expect(change.sessions.map((s) => s.key)).toEqual([S_2E8D, S_7D1E]);
+    const build = change.sessions.find((s) => s.key === S_7D1E)!;
+    expect(build.startedBy).toEqual({ key: S_5A9D, title: 'Offline sync plan' });
+    expect(build.step).toBe('implementation');
+    expect(build.run).toEqual({ key: OFFLINE_RUN, title: 'Queue edits offline and replay them on reconnect', branch: 'feature/offline-sync' });
+    expect(build.change).toEqual({ key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay' });
+  });
+
+  test("a session row's length, models and cost are the Sessions view's", async () => {
+    const change = (await changePage(OFFLINE_CHANGE)).body as ChangeResponse;
+    const sessions = (await api('/api/sessions?weeks=4')).body.sessions as SessionRow[];
+    for (const row of change.sessions) {
+      const listed = sessions.find((s) => s.key === row.key)!;
+      expect({ ...row }).toMatchObject({
+        title: listed.title,
+        start: listed.start,
+        end: listed.end,
+        minutes: listed.minutes,
+        models: listed.models,
+        cost: listed.cost,
+      });
+    }
+  });
+
+  test("a session of the same goal's other change reads that change", async () => {
+    const { body } = await changePage(OFFLINE_CHANGE, undefined, 'report-work', (raw) => {
+      runOf(raw, WEBHOOKS_RUN).goal = 'Offline sync';
+      sessionOf(raw, S_5A9D).goal = 'Offline sync';
+    });
+    expect(nodeOf(body.graph, S_5A9D).elsewhere).toEqual({ kind: 'change', title: 'Send webhooks for note changes' });
+  });
+
+  test('an unknown key is a 404', async () => {
+    expect((await changePage('0000000000000000')).status).toBe(404);
+  });
+
+  test("handoffs before started_by: a session's or a held run's handoff_to naming a stored session is a handoff edge", async () => {
+    const { status, body } = await changePage(WEBHOOKS_V7, undefined, 'report-v7');
+    expect(status).toBe(200);
+    expect(lanesOf(body.graph)).toEqual([[S_5A9D], [S_2E8D]]);
+    expect(nodeOf(body.graph, S_2E8D).elsewhere).toEqual({ kind: 'none' });
+    // The webhooks run's handoff_to, 9c41e07b5d28a3f6, names no stored session.
+    expect(body.graph.edges).toEqual([{ from: S_5A9D, to: S_2E8D, how: 'handoff' }]);
+    const offline = (await changePage(OFFLINE_V7, undefined, 'report-v7')).body;
+    expect(offline.graph.edges).toEqual([]);
+    expect(offline.sessions.every((s: WorkSessionRow) => s.startedBy === null)).toBe(true);
+  });
+
+  test("a held run's handoff_to gives the edge too", async () => {
+    const { body } = await changePage(WEBHOOKS_V7, undefined, 'report-v7', (raw) => {
+      sessionOf(raw, S_5A9D).context.handoff_to = null;
+      runOf(raw, WEBHOOKS_RUN).context.handoff_to = S_2E8D;
+    });
+    expect(body.graph.edges).toEqual([{ from: S_5A9D, to: S_2E8D, how: 'handoff' }]);
+  });
+
+  test('a started_by wins over a handoff_to for the same pair', async () => {
+    const { body } = await changePage(OFFLINE_CHANGE, undefined, 'report-work', (raw) => {
+      sessionOf(raw, S_2E8D).started_by = { key: S_5A9D, how: 'started' };
+    });
+    expect(body.graph.edges).toContainEqual({ from: S_5A9D, to: S_2E8D, how: 'started' });
+    expect(body.graph.edges.filter((e: GraphEdge) => e.to === S_2E8D)).toHaveLength(1);
+  });
+
+  test('a started_by naming no stored session gives no edge', async () => {
+    const { body } = await changePage(OFFLINE_CHANGE, undefined, 'report-work', (raw) => {
+      sessionOf(raw, S_7D1E).started_by = { key: 'ffffffffffffffff', how: 'started' };
+    });
+    expect(body.graph.edges.filter((e: GraphEdge) => e.to === S_7D1E)).toEqual([]);
+    expect(body.sessions.find((s: WorkSessionRow) => s.key === S_7D1E).startedBy).toBeNull();
+  });
+
+  test('a session with no start is in no list or graph', async () => {
+    const { body } = await changePage(OFFLINE_CHANGE, undefined, 'report-work', (raw) => {
+      sessionOf(raw, S_D4A7).spec = OFFLINE_SPEC;
+      sessionOf(raw, S_D4A7).started_by = { key: S_7D1E, how: 'started' };
+    });
+    expect(body.sessions.map((s: WorkSessionRow) => s.key)).not.toContain(S_D4A7);
+    expect(body.graph.nodes.map((n: GraphNode) => n.key)).not.toContain(S_D4A7);
+    expect(body.graph.edges.filter((e: GraphEdge) => e.to === S_D4A7)).toEqual([]);
+  });
+});
+
+describe('goalView', () => {
+  test("the Webhooks goal: its change's lane, then Other goals with the sessions it started", async () => {
+    const { status, body } = await goalPage('Webhooks');
+    expect(status).toBe(200);
+    const goal = body as GoalResponse;
+    expect(goal.graph.lanes).toEqual([
+      { key: WEBHOOKS_CHANGE, title: 'Send webhooks for note changes', kind: 'change' },
+      { key: null, title: 'Other goals', kind: 'other' },
+    ]);
+    expect(lanesOf(goal.graph)).toEqual([[S_5A9D], [S_2E8D, S_7D1E]]);
+    expect(nodeOf(goal.graph, S_5A9D).elsewhere).toBeNull();
+    expect(nodeOf(goal.graph, S_7D1E).elsewhere).toEqual({ kind: 'goal', name: 'Offline sync' });
+    expect(nodeOf(goal.graph, S_2E8D).elsewhere).toEqual({ kind: 'goal', name: 'Offline sync' });
+    expect(sortEdges(goal.graph.edges)).toEqual(
+      sortEdges([
+        { from: S_5A9D, to: S_7D1E, how: 'started' },
+        { from: S_5A9D, to: S_2E8D, how: 'handoff' },
+      ]),
+    );
+    expect(goal.sessions.map((s) => s.key)).toEqual([S_5A9D]);
+    expect(goal.changes.map((c) => c.key)).toEqual([WEBHOOKS_CHANGE]);
+  });
+
+  test('the Offline sync goal: a lane per change with a session, none for the session that started them', async () => {
+    const goal = (await goalPage('Offline sync')).body as GoalResponse;
+    expect(goal).toMatchObject({
+      key: goalKey('Offline sync'),
+      name: 'Offline sync',
+      projects: ['lantern-notes', 'tidepool-api'],
+      changeCount: 2,
+      runCount: 3,
+      sessionCount: 2,
+    });
+    expect(goal.cost).toBeCloseTo(15.255, 6);
+    expect(goal.graph.lanes).toEqual([{ key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay', kind: 'change' }]);
+    expect(lanesOf(goal.graph)).toEqual([[S_2E8D, S_7D1E]]);
+    expect(goal.graph.edges).toEqual([]);
+    expect(goal.changes.map((c) => c.key)).toEqual([TIDY_RUN, OFFLINE_CHANGE]);
+  });
+
+  test("lanes go in order of their change's start", async () => {
+    const release = { project: LANTERN, path: 'docs/superpowers/specs/2026-11-05-release-design.md' };
+    const goal = (
+      await goalPage('Offline sync', undefined, (raw) => {
+        sessionOf(raw, S_6B1F).spec = release;
+        sessionOf(raw, S_6B1F).goal = 'Offline sync';
+      })
+    ).body as GoalResponse;
+    expect(goal.graph.lanes.map((l) => l.key)).toEqual([changeKey(release, null, '', ''), OFFLINE_CHANGE]);
+    expect(lanesOf(goal.graph)).toEqual([[S_6B1F], [S_2E8D, S_7D1E]]);
+  });
+
+  test("a loose session of the goal has the No change lane, and its cost counts in the goal's", async () => {
+    const goal = (
+      await goalPage('Offline sync', undefined, (raw) => {
+        sessionOf(raw, S_6B1F).goal = 'Offline sync';
+      })
+    ).body as GoalResponse;
+    expect(goal.graph.lanes.map((l) => [l.kind, l.title])).toEqual([
+      ['change', 'Plan the offline queue and replay'],
+      ['none', 'No change'],
+    ]);
+    expect(lanesOf(goal.graph)).toEqual([[S_2E8D, S_7D1E], [S_6B1F]]);
+    expect(nodeOf(goal.graph, S_6B1F).elsewhere).toBeNull();
+    const loose = goal.sessions.find((s) => s.key === S_6B1F)!;
+    expect(loose.change).toBeNull();
+    expect(goal.sessionCount).toBe(3);
+    expect(goal.cost).toBeCloseTo(15.255 + loose.cost!, 6);
+    // The tidy-imports change started before the loose session.
+    expect(goal.startedAt).toBe('2026-11-03T09:55:00Z');
+  });
+
+  test('an unknown key is a 404', async () => {
+    expect((await api('/api/work/goals/0000000000000000')).status).toBe(404);
+  });
+});
+
+describe('the change and goal pages in showing mode', () => {
+  test('lantern-notes shown: the webhooks change and goal are missing; the offline change leaves out tidepool-api', async () => {
+    expect((await changePage(WEBHOOKS_CHANGE, [LANTERN])).status).toBe(404);
+    expect((await goalPage('Webhooks', [LANTERN])).status).toBe(404);
+    const { status, body } = await changePage(OFFLINE_CHANGE, [LANTERN]);
+    expect(status).toBe(200);
+    const change = body as ChangeResponse;
+    expect(nodeOf(change.graph, S_5A9D)).toMatchObject({
+      elsewhere: { kind: 'unlisted' },
+      run: { key: PLAN_RECORD, title: 'Plan the offline queue and replay', branch: 'feature/offline-sync' },
+    });
+    expect(change.graph.nodes.map((n) => n.key)).not.toContain(S_2E8D);
+    expect(change.graph.edges).toEqual([{ from: S_5A9D, to: S_7D1E, how: 'started' }]);
+    expect(change.graph.hidden).toBe(1);
+    expect(change.sessions.map((s) => s.key)).toEqual([S_7D1E]);
+    expect(change.runs.map((r) => r.key)).toEqual([OFFLINE_RUN, PLAN_RECORD]);
+    expect(change.sessionCount).toBe(2);
+    expect(change.cost).toBeCloseTo(15.255, 6);
+    expect(change.otherProjects).toEqual([]);
+    expect(change.otherCount).toBe(1);
+
+    const goal = (await goalPage('Offline sync', [LANTERN])).body as GoalResponse;
+    expect(goal.projects).toEqual(['lantern-notes']);
+    expect(goal.sessionCount).toBe(2);
+
+    const { forbidden, shown } = forbiddenFor([LANTERN]);
+    expect(leaks(change, forbidden, shown)).toEqual([]);
+    expect(leaks(goal, forbidden, shown)).toEqual([]);
+  });
+
+  test("tidepool-api shown: offline sync is missing, and a starter that isn't shown is named by nothing", async () => {
+    expect((await changePage(OFFLINE_CHANGE, [TIDEPOOL])).status).toBe(404);
+    expect((await goalPage('Offline sync', [TIDEPOOL])).status).toBe(404);
+    const moved = (raw: any) => {
+      sessionOf(raw, S_2E8D).spec = WEBHOOKS_SPEC;
+      sessionOf(raw, S_2E8D).goal = 'Webhooks';
+    };
+    const { status, body } = await changePage(WEBHOOKS_CHANGE, [TIDEPOOL], 'report-work', moved);
+    expect(status).toBe(200);
+    const change = body as ChangeResponse;
+    const port = change.sessions.find((s) => s.key === S_2E8D)!;
+    expect(port.startedBy).toEqual({ key: null, title: null });
+    expect(change.sessions.map((s) => s.key)).toEqual([S_2E8D]);
+    expect(change.graph.nodes.map((n) => n.key)).toEqual([S_2E8D]);
+    expect(change.graph.edges).toEqual([]);
+    // 5a9d… and 7d1e…, both in lantern-notes.
+    expect(change.graph.hidden).toBe(2);
+    const goal = (await goalPage('Webhooks', [TIDEPOOL], moved)).body as GoalResponse;
+    expect(goal.sessions.map((s) => s.key)).toEqual([S_2E8D]);
+
+    const plain = (await changePage(WEBHOOKS_CHANGE, [TIDEPOOL])).body as ChangeResponse;
+    expect(plain.graph.nodes.map((n) => n.key)).not.toContain(S_5A9D);
+
+    const { forbidden, shown } = forbiddenFor([TIDEPOOL]);
+    expect(leaks(change, forbidden, shown)).toEqual([]);
+    expect(leaks(goal, forbidden, shown)).toEqual([]);
+    expect(leaks(plain, forbidden, shown)).toEqual([]);
   });
 });
