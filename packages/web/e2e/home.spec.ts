@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { expectLegendClear } from './charts.ts';
 import { pinClock } from './fixed-time.ts';
 import { settled } from './settled.ts';
 
@@ -61,8 +62,7 @@ for (const width of [375, 768, 1440]) {
       expect(extra).toBe(0);
     });
 
-    // The findings chart's legend: every label whole (no swatch drawn over it), none over a week label, and its room
-    // under the plot only what its rows take, with no empty band between the week labels and the legend.
+    // The findings chart's legend: every label whole, none over a week label, and no empty band above it.
     test("the findings chart's legend labels are whole and fit their room", async ({ page }) => {
       const chart = page.getByRole('img', { name: /^Findings by week, by step:/ });
       await expect(chart).toBeVisible();
@@ -73,37 +73,7 @@ for (const width of [375, 768, 1440]) {
       const kinds = (await table.getByRole('columnheader').allTextContents())
         .filter((h) => h.endsWith(' findings'))
         .map((h) => h.replace(/ findings$/, ''));
-      type Box = { x: number; y: number; width: number; height: number };
-      const { legend, labels, swatches } = await chart.locator('svg').evaluate(
-        (svg, { weeks, kinds }) => {
-          const box = (el: Element) => {
-            const { x, y, width, height } = el.getBoundingClientRect();
-            return { x, y, width, height };
-          };
-          const texts = [...svg.querySelectorAll('text')];
-          const legend = texts.filter((t) => kinds.includes(t.textContent ?? '')).map(box);
-          const labels = texts.filter((t) => weeks.includes(t.textContent ?? '')).map(box);
-          // A legend swatch: a small mark on a legend label's row.
-          const swatches = [...svg.querySelectorAll('path')]
-            .map(box)
-            .filter((p) => p.width > 0 && p.width <= 14 && p.height <= 14)
-            .filter((p) => legend.some((l) => Math.abs(p.y + p.height / 2 - (l.y + l.height / 2)) < 3));
-          return { legend, labels, swatches };
-        },
-        { weeks, kinds },
-      );
-      expect(legend).toHaveLength(kinds.length);
-      expect(swatches).toHaveLength(kinds.length);
-      expect(labels.length).toBeGreaterThan(0);
-      const overlaps = (a: Box, b: Box) =>
-        a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-      for (const item of legend) {
-        for (const swatch of swatches) expect(overlaps(item, swatch)).toBe(false);
-        for (const label of labels) expect(overlaps(item, label)).toBe(false);
-      }
-      const labelsBottom = Math.max(...labels.map((l) => l.y + l.height));
-      const legendTop = Math.min(...legend.map((l) => l.y));
-      expect(legendTop - labelsBottom).toBeLessThan(16);
+      await expectLegendClear(chart, weeks, kinds);
     });
   });
 }

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 // The theme follows the system: DESIGN.md's dark look (`.dark` on the root) when it is dark, its light pair otherwise.
 // One query serves the class and every `useDark`.
@@ -38,4 +38,28 @@ export function resolveVars<T>(value: T): T {
     return item;
   };
   return resolve(value) as T;
+}
+
+/** The theme's font (`--font-sans`) at the charts' 12px. */
+const chartFont = () => `12px ${getComputedStyle(document.documentElement).getPropertyValue('--font-sans')}`;
+
+/**
+ * Whether the theme's font has loaded (or failed to), re-rendering its caller when it does: ECharts measures text on a
+ * canvas and keeps every width it measures for the page's life, so a chart drawn before the font loads would lay out its
+ * labels in a fallback's widths for good.
+ */
+export function useFontLoaded(): boolean {
+  const [loaded, setLoaded] = useState(() => document.fonts.check(chartFont()));
+  useEffect(() => {
+    if (loaded) return;
+    let live = true;
+    document.fonts
+      .load(chartFont())
+      .catch(() => undefined)
+      .then(() => live && setLoaded(true));
+    return () => {
+      live = false;
+    };
+  }, [loaded]);
+  return loaded;
 }

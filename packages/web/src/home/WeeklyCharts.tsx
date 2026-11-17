@@ -1,7 +1,7 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
 import { STEP_LABELS, formatCompact, formatCost, formatDay, formatDollars, weekLabel } from '../lib/format.ts';
-import { resolveVars, useDark } from '../lib/theme.ts';
+import { resolveVars, useDark, useFontLoaded } from '../lib/theme.ts';
 import { NUM, Num } from '../components/Num.tsx';
 import { Details, Line, Panel } from '../components/Panel.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -162,9 +162,9 @@ export function barsOption(
   };
 }
 
-/** The findings of each step kind, stacked per week. The eight step kinds' legend (12px Outfit, as ECharts lays it out)
- * fits one line in a chart 672px wide or more, two lines from 340px and three below, down to the narrowest chart (309px
- * at 375px); each line below the first gets 20px more room. */
+/** The findings of each step kind, stacked per week. Each `maxWidth` is the chart width below which ECharts wraps the
+ * eight step kinds' legend to one more line (measured in the theme's font), which gets 20px more room; the narrowest
+ * chart, at 375px, takes three lines. */
 function findingsOption(charts: Charts) {
   const option = barsOption(
     charts.weeks,
@@ -182,15 +182,20 @@ function findingsOption(charts: Charts) {
 
 export function Chart({ title, option, height }: { title: string; option: object; height: number }) {
   useDark();
+  const fontLoaded = useFontLoaded();
   return (
     <Panel title={title} className="min-w-0 flex-1">
-      <ReactECharts
-        role="img"
-        aria-label={`${title}: bars by week; the numbers are in the table below.`}
-        option={resolveVars(option)}
-        opts={{ renderer: 'svg' }}
-        style={{ height }}
-      />
+      {fontLoaded ? (
+        <ReactECharts
+          role="img"
+          aria-label={`${title}: bars by week; the numbers are in the table below.`}
+          option={resolveVars(option)}
+          opts={{ renderer: 'svg' }}
+          style={{ height }}
+        />
+      ) : (
+        <div style={{ height }} />
+      )}
     </Panel>
   );
 }
