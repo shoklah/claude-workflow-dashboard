@@ -1,6 +1,6 @@
-# claude-workflow-dashboard
+# edward
 
-A live dashboard for the Claude Code agentic workflow (`shoklah/claude-workflow`, exported as `shoklah/claude-workflow-template`). It shows what the workflow's reporter, `scripts/workflow-report.py --json`, says about runs, steps, findings and spend.
+Edward is a live dashboard for the Claude Code agentic workflow (`shoklah/claude-workflow`, exported as `shoklah/claude-workflow-template`). It shows what the workflow's reporter, `scripts/workflow-report.py --json`, says about runs, steps, findings and spend.
 
 This is a personal project, used as a playground for trying things and as a portfolio piece to show. The repo is public: it holds code and invented data only, and reads the real data at run time on the owner's machine. Design decisions are recorded in `docs/superpowers/specs/2026-11-09-live-dashboard-design.md`.
 
@@ -43,6 +43,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 
 ## Code conventions
 
+- The app is edward: lower-case as a wordmark, "Edward" in prose. The `@cwd` package scope, the data folder (`~/Library/Application Support/claude-workflow-dashboard`) and the launchd label (`com.shoklah.claude-workflow-dashboard`) keep the project's first name and are not renamed.
 - The data is personal (project paths, branch names, session IDs, costs, finding text): never commit real data, never put it in fixtures, never publish it publicly. Fixtures are invented.
 - `workflow-report.py` is the only parser of the run log and the transcripts: when the dashboard needs a new fact, it goes to the workflow repo as a change request, never parsed here.
 - This repo never edits the workflow repo or the template; they are a reference and the data source.
