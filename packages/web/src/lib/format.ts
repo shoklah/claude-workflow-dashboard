@@ -269,8 +269,6 @@ export function joined(parts: (string | null)[]): string {
   return parts.filter(Boolean).join(' · ');
 }
 
-export { closedFindings, foundFindings } from '@cwd/shared';
-
 /** A skill or command on Home's skills and commands: a command with its slash, "/model", a skill bare. */
 export function usageName(row: { name: string; kind: 'skill' | 'command' }): string {
   return row.kind === 'command' ? `/${row.name}` : row.name;

@@ -102,21 +102,12 @@ export type WorkSessionRow = Pick<SessionRow, 'key' | 'title' | 'start' | 'end' 
 
 /** `GET /api/work/changes/:key`: a change's facts and whole totals, its session graph, and its shown runs and
  * sessions. `project` is null for "other project"; `spec` is the spec's file name. */
-export type ChangeResponse = {
-  key: string;
-  title: string;
+export type ChangeResponse = Omit<ChangeRow, 'runs' | 'sessions' | 'findings'> & {
   goal: { key: string; name: string } | null;
-  project: string | null;
-  otherProjects: string[];
-  otherCount: number;
-  path: 'full' | 'small';
-  stage: WorkStep;
   spec: string | null;
   startedAt: string | null;
-  lastActivity: string | null;
   sessionCount: number;
   runCount: number;
-  cost: number | null;
   graph: SessionGraphData;
   runs: RunFacts[];
   sessions: WorkSessionRow[];

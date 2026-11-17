@@ -1,11 +1,9 @@
 import { describe, expect, it, test } from 'vitest';
-import { parseTime, type FindingRow } from '@cwd/shared';
+import { closedFindings, foundFindings, parseTime, type FindingRow } from '@cwd/shared';
 import {
   appCallLabel,
   taskLabel,
   cellShade,
-  closedFindings,
-  foundFindings,
   countLabel,
   countName,
   outcomeLabel,

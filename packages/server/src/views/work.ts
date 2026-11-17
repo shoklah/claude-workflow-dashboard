@@ -1,5 +1,6 @@
 import {
   addKnown,
+  folderName,
   foundFindings,
   modelsCost,
   parseTime,
@@ -25,7 +26,7 @@ import {
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
 import { changeKey, goalKey, projectKey } from '../keys.ts';
-import { periodStoredUnits, rootOf, storedFacts } from './runs.ts';
+import { period, periodStoredUnits, rootOf, storedFacts } from './runs.ts';
 import { maskText, showFacts, showSession, type Scope } from './scope.ts';
 import { heldRuns, sessionFacts, sessionRow, shownSession } from './sessions.ts';
 
@@ -51,13 +52,15 @@ export type Change = {
   findings: number | null;
 };
 
-/** Every change, each unit's change by its key, the sessions in no change, and a unit's goal (its change's, else a
- * loose session's own). */
+/** Every change, each unit's change by its key, the sessions in no change, a unit's goal (its change's, else a
+ * loose session's own), each goal's homes (goalHomes) and the runs each transcript holds (heldRuns). */
 export type Levels = {
   changes: Change[];
   changeOf: Map<string, Change>;
   loose: StoredUnit<SessionEntry>[];
   goalOf(unitKey: string): string | null;
+  homes: Map<string, string[]>;
+  held: Map<string, StoredUnit<RunEntry>[]>;
 };
 
 const time = (at: string | null | undefined) => (at ? parseTime(at).getTime() : -Infinity);
@@ -77,7 +80,7 @@ export function stepOf(held: StoredUnit<RunEntry>[]): WorkStep {
 
 /** A spec's file name without its date and `-design.md`: `2026-11-05-offline-sync-design.md` → `offline-sync`. */
 function specName(path: string): string {
-  return (path.split('/').at(-1) ?? '').replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/-design\.md$/, '');
+  return folderName(path).replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/-design\.md$/, '');
 }
 
 type Group = {
@@ -171,29 +174,26 @@ export function levels(runs: StoredUnit<RunEntry>[], sessions: StoredUnit<Sessio
   const byGroupKey = new Map(changes.map((change) => [change.key, change]));
   const changeOf = new Map([...groupOf].map(([unitKey, g]) => [unitKey, byGroupKey.get(g.key)!]));
   const looseGoals = new Map(loose.map((s) => [s.key, s.merged.goal ?? null]));
+  const homes = new Map<string, string[]>();
+  const add = (goal: string | null | undefined, root: string | null) => {
+    if (goal && root) homes.set(goal, [...new Set([...(homes.get(goal) ?? []), root])]);
+  };
+  for (const { goal, home } of changes) add(goal, home);
+  for (const { merged } of loose) add(merged.goal, sessionRootOf(merged.project));
   return {
     changes,
     changeOf,
     loose,
     goalOf: (unitKey) => (changeOf.has(unitKey) ? changeOf.get(unitKey)!.goal : (looseGoals.get(unitKey) ?? null)),
+    homes,
+    held,
   };
 }
 
 /** Each goal's name with its changes' home roots and its loose sessions' roots (sessionRootOf), for showing mode's
  * hidden goal names (scopeOf, forbiddenStrings). */
 export function goalHomes(levels: Levels): Map<string, string[]> {
-  const homes = new Map<string, string[]>();
-  const add = (goal: string | null | undefined, root: string | null) => {
-    if (goal && root) homes.set(goal, [...new Set([...(homes.get(goal) ?? []), root])]);
-  };
-  for (const { goal, home } of levels.changes) add(goal, home);
-  for (const { merged } of levels.loose) add(merged.goal, sessionRootOf(merged.project));
-  return homes;
-}
-
-/** Whether showing mode shows a root: always without a scope. */
-function shownRoot(scope: Scope | null, root: string): boolean {
-  return !scope || scope.shown.has(projectKey(root));
+  return levels.homes;
 }
 
 /** A root's project name: the scope's, else the stored one; null for a root no stored run has ("other project"), as
@@ -211,7 +211,7 @@ function changeRow(change: Change, scope: Scope | null, names: Map<string, strin
     title: maskText(scope, change.title),
     project: rootName(scope, names, change.home),
     otherProjects: others
-      .filter((root) => shownRoot(scope, root))
+      .filter((root) => showSession(scope, root))
       .flatMap((root) => rootName(scope, names, root) ?? []),
     otherCount: others.length,
     path: change.path,
@@ -231,7 +231,7 @@ export function listedChange(
   unitKey: string,
 ): { key: string; title: string } | null {
   const change = levels.changeOf.get(unitKey);
-  return change && shownRoot(scope, change.home) ? { key: change.key, title: maskText(scope, change.title) } : null;
+  return change && showSession(scope, change.home) ? { key: change.key, title: maskText(scope, change.title) } : null;
 }
 
 /** A unit's goal (goalOf) as Work lists it: null when it has none or, with a scope, when none of the goal's homes
@@ -242,7 +242,7 @@ export function listedGoal(
   unitKey: string,
 ): { key: string; name: string } | null {
   const goal = levels.goalOf(unitKey);
-  if (!goal || !(goalHomes(levels).get(goal) ?? []).some((root) => shownRoot(scope, root))) return null;
+  if (!goal || !(levels.homes.get(goal) ?? []).some((root) => showSession(scope, root))) return null;
   return { key: goalKey(goal), name: maskText(scope, goal) };
 }
 
@@ -269,7 +269,7 @@ export function goalOptions(
   const loose = new Map(levels.loose.map((s) => [s.key, s.merged]));
   const names = unitKeys.flatMap((key) => {
     const change = levels.changeOf.get(key);
-    if (change) return change.goal && shownRoot(scope, change.home) ? [change.goal] : [];
+    if (change) return change.goal && showSession(scope, change.home) ? [change.goal] : [];
     const session = loose.get(key);
     return session?.goal && showSession(scope, session.project) ? [session.goal] : [];
   });
@@ -320,10 +320,11 @@ function pagesOf(
   scope: Scope | null,
   names: Map<string, string>,
 ): Pages {
-  const held = heldRuns(runs);
+  const all = levels(runs, sessions);
+  const { held } = all;
   const dated = sessions.filter((s) => s.merged.start).sort((a, b) => time(a.merged.start) - time(b.merged.start));
   const edges = sessionEdges(dated, held);
-  return { levels: levels(runs, sessions), scope, names, runRoots: new Set(runs.map(rootOf)), held, dated, edges };
+  return { levels: all, scope, names, runRoots: new Set(runs.map(rootOf)), held, dated, edges };
 }
 
 /** A session's newest held run that showing mode shows (showFacts), by its headline (masked) and branch. */
@@ -447,24 +448,16 @@ export function changeView(input: {
   const { scope, names } = input;
   const pages = pagesOf(input.runs, input.sessions, scope, names);
   const change = pages.levels.changes.find((c) => c.key === input.key);
-  if (!change || !shownRoot(scope, change.home)) return null;
-  const row = changeRow(change, scope, names);
+  if (!change || !showSession(scope, change.home)) return null;
+  const { runs, sessions, findings, ...row } = changeRow(change, scope, names);
   const members = new Set(change.sessions.map((s) => s.key));
   return {
-    key: change.key,
-    title: row.title,
+    ...row,
     goal: listedGoal(pages.levels, scope, (change.runs[0] ?? change.sessions[0])!.key),
-    project: row.project,
-    otherProjects: row.otherProjects,
-    otherCount: row.otherCount,
-    path: change.path,
-    stage: change.stage,
-    spec: change.spec ? maskText(scope, change.spec.path.split('/').at(-1) ?? '') : null,
+    spec: change.spec ? maskText(scope, folderName(change.spec.path)) : null,
     startedAt: change.start,
-    lastActivity: change.last,
-    sessionCount: change.sessions.length,
-    runCount: change.runs.length,
-    cost: change.cost,
+    sessionCount: sessions,
+    runCount: runs,
     graph: graphOf(pages, members, true, [change], 'Other changes', change.goal),
     runs: newestFirst(change.runs, runTime).flatMap((run) => showFacts(scope, storedFacts(run, names)) ?? []),
     sessions: shownSessions(pages, members).map((unit) => workRow(pages, unit)),
@@ -487,12 +480,12 @@ export function goalView(input: {
 }): GoalResponse | null {
   const { scope, names } = input;
   const pages = pagesOf(input.runs, input.sessions, scope, names);
-  const homes = goalHomes(pages.levels);
+  const { homes } = pages.levels;
   const goal = [...homes.keys()].find((name) => goalKey(name) === input.key);
-  if (!goal || !homes.get(goal)!.some((root) => shownRoot(scope, root))) return null;
+  if (!goal || !homes.get(goal)!.some((root) => showSession(scope, root))) return null;
   const startOf = (change: Change) => (change.start ? time(change.start) : Infinity);
   const changes = pages.levels.changes.filter((c) => c.goal === goal).sort((a, b) => startOf(a) - startOf(b));
-  const listed = changes.filter((c) => shownRoot(scope, c.home));
+  const listed = changes.filter((c) => showSession(scope, c.home));
   const loose = pages.levels.loose.filter((s) => s.merged.goal === goal);
   const looseRoots = loose.flatMap((s) => sessionRootOf(s.merged.project) ?? []);
   const members = new Set([...listed.flatMap((c) => c.sessions), ...loose].map((s) => s.key));
@@ -501,7 +494,7 @@ export function goalView(input: {
     key: input.key,
     name: maskText(scope, goal),
     projects: [...new Set([...changes.flatMap((c) => c.roots), ...looseRoots])]
-      .filter((root) => shownRoot(scope, root))
+      .filter((root) => showSession(scope, root))
       .flatMap((root) => rootName(scope, names, root) ?? [])
       .sort(),
     startedAt: earliest([...changes.map((c) => c.start), ...loose.map((s) => s.merged.start)]),
@@ -546,13 +539,14 @@ export function workView(input: {
   const periodChanges = changes.filter((change) =>
     [...change.runs, ...change.sessions].some((unit) => periodKeys.has(unit.key)),
   );
-  const isShown = (root: string) => shownRoot(scope, root);
+  const isShown = (root: string) => showSession(scope, root);
   const byLatest = <T>(items: T[], at: (item: T) => string | null) => newestFirst(items, (item) => time(at(item)));
 
+  const { filters } = period({ weeks: query.weeks, project: query.project }, input.now);
   const listed = periodChanges.filter(
     (change) =>
-      (!query.project || change.roots.some((root) => projectKey(root) === query.project)) &&
-      (!query.goal || (change.goal !== null && goalKey(change.goal) === query.goal)),
+      change.roots.some((root) => filters({ path: null, projectKey: projectKey(root) })) &&
+      inGoal(all, (change.runs[0] ?? change.sessions[0])!.key, query.goal),
   );
   const sections = new Map<string | null, ChangeRow[]>();
   for (const change of listed.filter((c) => isShown(c.home))) {

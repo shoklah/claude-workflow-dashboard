@@ -102,14 +102,11 @@ export function graphLayout(graph: SessionGraphData, labelled = false): GraphLay
     const { at, of } = order[i];
     const to = { x: b.x, y: mid(b) };
     const across = a.node.lane !== b.node.lane;
-    switch (sides[i]) {
-      case 'right':
-        return { from: { x: a.x + a.w, y: a.y + fan(a.h, at, of), ...(across && { lead: GX / 2 }) }, to, head: true, how, across };
-      case 'bottom':
-        return { from: { x: a.x + fan(a.w, at, of), y: a.y + a.h }, to, head: true, how, across };
-      case 'top':
-        return { from: { x: a.x + fan(a.w, at, of), y: a.y }, to, head: true, how, across };
-    }
+    const from =
+      sides[i] === 'right'
+        ? { x: a.x + a.w, y: a.y + fan(a.h, at, of), ...(across && { lead: GX / 2 }) }
+        : { x: a.x + fan(a.w, at, of), y: sides[i] === 'bottom' ? a.y + a.h : a.y };
+    return { from, to, head: true, how, across };
   });
   return {
     width: Math.max(0, ...boxes.map((b) => b.x + b.w)),

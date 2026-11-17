@@ -32,7 +32,6 @@ export type SessionRow = {
     at: string;
     kind: 'skill' | 'command' | 'run';
     name: string;
-    headline: string | null;
     outcome: string | null;
     neverLoaded: boolean;
     runKey: string | null;

@@ -1,4 +1,4 @@
-import { useId, useMemo, type CSSProperties } from 'react';
+import { useId, useMemo } from 'react';
 import { cn } from 'cn';
 import type { GraphNode, SessionGraphData } from '@cwd/shared';
 import { ChangeLink } from '../components/ChangeLink.tsx';
@@ -7,13 +7,12 @@ import { Line, Panel } from '../components/Panel.tsx';
 import { runName } from '../components/RunLink.tsx';
 import { SessionLink } from '../components/SessionLink.tsx';
 import { STAGE_LABELS, hiddenLabel } from '../lib/format.ts';
-import { BOX, pathOf } from '../runs/RunFlow.tsx';
+import { Arrowhead, BOX, at, pathOf } from '../runs/RunFlow.tsx';
 import { graphLayout, type GraphBox } from './graph.ts';
 
 /** A handoff's dashes, on its edges and in the legend. */
 const HANDOFF = '4 4';
 
-const at = ({ x, y, w, h }: { x: number; y: number; w: number; h: number }): CSSProperties => ({ left: x, top: y, width: w, height: h });
 
 /** Where a session of the other lane belongs, seen from a page of `label` ("change" or "goal"). */
 function elsewhereLabel(elsewhere: NonNullable<GraphNode['elsewhere']>, label: string): string {
@@ -99,9 +98,7 @@ export function SessionGraph({ graph, label }: { graph: SessionGraphData; label:
           <div className="relative" style={{ width, height }}>
             <svg aria-hidden className="absolute inset-0 overflow-visible text-muted-foreground" width={width} height={height}>
               <defs>
-                <marker id={`${id}-head`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                  <path d="M0 0 L8 4 L0 8 z" fill="currentColor" />
-                </marker>
+                <Arrowhead id={`${id}-head`} />
               </defs>
               {edges.map((edge, i) => (
                 <path

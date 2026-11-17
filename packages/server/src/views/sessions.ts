@@ -48,7 +48,6 @@ function timelineOf(
     outcome: null,
     neverLoaded: false,
     runKey: null,
-    headline: null,
   });
   return [
     ...(session.skills ?? []).flatMap((s) =>
@@ -61,7 +60,7 @@ function timelineOf(
     ),
     ...runs.flatMap(({ run, facts }) => {
       const at = run.merged.window?.start ?? session.start;
-      return at ? [{ ...item(at, 'run', facts.branch ?? ''), runKey: run.key, headline: facts.headline }] : [];
+      return at ? [{ ...item(at, 'run', facts.branch ?? ''), runKey: run.key }] : [];
     }),
   ].sort((a, b) => time(a.at) - time(b.at));
 }

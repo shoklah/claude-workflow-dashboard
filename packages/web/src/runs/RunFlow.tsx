@@ -8,7 +8,22 @@ import { layout, stuck, type Anchor, type Edge, type Placed, type Shape, type St
 type Pick = { selected: string | null; onSelect: (id: string | null) => void };
 type Of<K extends Placed['kind']> = Extract<Placed, { kind: K }>;
 
-const at = ({ x, y, w, h }: Placed): CSSProperties => ({ left: x, top: y, width: w, height: h });
+/** A box's place in the panel, as absolute CSS. */
+export const at = ({ x, y, w, h }: { x: number; y: number; w: number; h: number }): CSSProperties => ({
+  left: x,
+  top: y,
+  width: w,
+  height: h,
+});
+
+/** An edge's arrowhead, in its `className`'s ink. */
+export function Arrowhead({ id, className }: { id: string; className?: string }) {
+  return (
+    <marker id={id} className={className} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0 0 L8 4 L0 8 z" fill="currentColor" />
+    </marker>
+  );
+}
 
 /** A corner's radius on an elbow. */
 const ROUND = 8;
@@ -158,19 +173,7 @@ export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
                 ['stuck', 'text-warning-edge'],
               ] as const
             ).map(([tone, ink]) => (
-              <marker
-                key={tone}
-                id={`${id}-${tone}`}
-                className={ink}
-                viewBox="0 0 8 8"
-                refX="7"
-                refY="4"
-                markerWidth="5"
-                markerHeight="5"
-                orient="auto-start-reverse"
-              >
-                <path d="M0 0 L8 4 L0 8 z" fill="currentColor" />
-              </marker>
+              <Arrowhead key={tone} id={`${id}-${tone}`} className={ink} />
             ))}
             {edges.map(({ from, to, fade }, i) =>
               fade ? (

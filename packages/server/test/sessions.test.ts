@@ -257,9 +257,7 @@ describe('changes and goals, on report-work', () => {
     expect(row).toMatchObject({ change: OFFLINE_CHANGE, goal: goal('Offline sync') });
     const headline = 'Queue edits offline and replay them on reconnect';
     expect(row.holds).toEqual([expect.objectContaining({ runKey: OFFLINE_RUN, headline })]);
-    expect(row.timeline.filter((t) => t.kind === 'run')).toEqual([
-      expect.objectContaining({ runKey: OFFLINE_RUN, headline }),
-    ]);
+    expect(row.timeline.filter((t) => t.kind === 'run')).toEqual([expect.objectContaining({ runKey: OFFLINE_RUN })]);
     // A session in no change carries its own goal.
     expect(rowOf(await sessions(), S_6B1F)).toMatchObject({ change: null, goal: goal('Release checklist') });
   });

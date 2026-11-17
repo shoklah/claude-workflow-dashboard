@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowRight, ThumbsUp, TriangleAlert } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { parseTime, type RunPageResponse } from '@cwd/shared';
+import { closedFindings, foundFindings, parseTime, type RunPageResponse } from '@cwd/shared';
 import { ApiError, useLiveQuery } from '../api.ts';
 import { Lines, Num, PairCells, Text } from '../components/Num.tsx';
 import { ColumnHead, Details, Line, LINK, PageTitle, Pairs, Panel, ScrollTable, Section, State } from '../components/Panel.tsx';
@@ -22,13 +22,11 @@ import { StepDetail } from './StepDetail.tsx';
 import { StrengthsTable } from './StrengthsTable.tsx';
 import {
   capitalize,
-  closedFindings,
   countName,
   formatCompact,
   formatCost,
   formatMinutes,
   formatShare,
-  foundFindings,
   laterFixesLabel,
   modelLabel,
   pairsOf,

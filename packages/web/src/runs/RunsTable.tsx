@@ -1,11 +1,11 @@
 import { cn } from 'cn';
-import type { RunFacts, RunRow } from '@cwd/shared';
+import { closedFindings, foundFindings, type RunFacts, type RunRow } from '@cwd/shared';
 import { ChangeLink } from '../components/ChangeLink.tsx';
 import { EmptyRow, GroupHead, NUM, Num, SUB, TITLE, Text, Unknown, WRAP } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { closedFindings, formatDollars, foundFindings, pathLabel } from '../lib/format.ts';
+import { formatDollars, pathLabel } from '../lib/format.ts';
 
 const COLUMN_COUNT = 15;
 

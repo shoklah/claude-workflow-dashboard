@@ -26,12 +26,12 @@ export const twoRunSession: SessionRow = {
     { runKey: smallRun.key, project: 'harbor', branch: 'fix/retry', headline: null, path: 'small' },
   ],
   timeline: [
-    { at: '2026-11-10T09:07:00Z', kind: 'skill', name: 'brainstorming', outcome: 'wrote a file', neverLoaded: false, runKey: null, headline: null },
-    { at: '2026-11-10T09:31:00Z', kind: 'command', name: 'graphify', outcome: null, neverLoaded: false, runKey: null, headline: null },
-    { at: '2026-11-10T10:02:00Z', kind: 'command', name: 'grill-me', outcome: null, neverLoaded: true, runKey: null, headline: null },
-    { at: '2026-11-10T10:40:00Z', kind: 'run', name: 'feat/search', outcome: null, neverLoaded: false, runKey: fullRun.key, headline: fullRun.headline },
-    { at: '2026-11-10T11:12:00Z', kind: 'command', name: 'model', outcome: null, neverLoaded: false, runKey: null, headline: null },
-    { at: '2026-11-10T11:20:00Z', kind: 'run', name: 'fix/retry', outcome: null, neverLoaded: false, runKey: smallRun.key, headline: null },
+    { at: '2026-11-10T09:07:00Z', kind: 'skill', name: 'brainstorming', outcome: 'wrote a file', neverLoaded: false, runKey: null },
+    { at: '2026-11-10T09:31:00Z', kind: 'command', name: 'graphify', outcome: null, neverLoaded: false, runKey: null },
+    { at: '2026-11-10T10:02:00Z', kind: 'command', name: 'grill-me', outcome: null, neverLoaded: true, runKey: null },
+    { at: '2026-11-10T10:40:00Z', kind: 'run', name: 'feat/search', outcome: null, neverLoaded: false, runKey: fullRun.key },
+    { at: '2026-11-10T11:12:00Z', kind: 'command', name: 'model', outcome: null, neverLoaded: false, runKey: null },
+    { at: '2026-11-10T11:20:00Z', kind: 'run', name: 'fix/retry', outcome: null, neverLoaded: false, runKey: smallRun.key },
   ],
 };
 
@@ -52,7 +52,7 @@ export const otherSession: SessionRow = {
   change: null,
   goal: null,
   holds: [],
-  timeline: [{ at: '2026-11-08T18:05:00Z', kind: 'command', name: 'model', outcome: null, neverLoaded: false, runKey: null, headline: null }],
+  timeline: [{ at: '2026-11-08T18:05:00Z', kind: 'command', name: 'model', outcome: null, neverLoaded: false, runKey: null }],
 };
 
 /** A session with no command, no run and no warning. */
@@ -73,7 +73,7 @@ export const quietSession: SessionRow = {
   goal: null,
   holds: [],
   timeline: [
-    { at: '2026-11-06T11:32:00Z', kind: 'skill', name: 'systematic-debugging', outcome: 'ran', neverLoaded: false, runKey: null, headline: null },
+    { at: '2026-11-06T11:32:00Z', kind: 'skill', name: 'systematic-debugging', outcome: 'ran', neverLoaded: false, runKey: null },
   ],
 };
 
