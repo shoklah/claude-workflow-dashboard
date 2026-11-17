@@ -9,11 +9,9 @@ import {
 } from '@tanstack/react-table';
 import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { EmptyRow, Text, Unknown } from '../components/Num.tsx';
-import { SectionTitle, TERM } from '../components/Panel.tsx';
+import { SectionTitle, Term } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
-import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
 import { STEP_LABELS, appCallLabel, capitalize, categoryLabel, countName, taskLabel } from '../lib/format.ts';
 
 const features = tableFeatures({
@@ -82,14 +80,7 @@ const columnsOf = (labels: Record<string, string>) => helper.columns([
     cell: (c) => {
       if (c.getValue() === null) return <Unknown label="no app label" />;
       return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0} className={TERM}>
-              {capitalize(appCallLabel(c.row.original, labels))}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{c.row.original.labelReason}</TooltipContent>
-        </Tooltip>
+        <Term tip={c.row.original.labelReason}>{capitalize(appCallLabel(c.row.original, labels))}</Term>
       );
     },
   }),
@@ -164,14 +155,13 @@ export function FindingsTable({
           );
         })}
       </div>
-      {/* It scrolls sideways, so its container is a named tab stop for keyboard users. Its class replaces the
-          container's own, so it repeats the container's base classes. */}
+      {/* It scrolls sideways, so its container is a named tab stop for keyboard users. */}
       <Table
         containerProps={{
           tabIndex: 0,
           role: 'region',
           'aria-label': label,
-          className: cn('relative w-full overflow-x-auto', containerClassName),
+          className: containerClassName,
         }}
       >
         <TableHeader>

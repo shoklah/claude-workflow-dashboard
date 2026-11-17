@@ -140,8 +140,9 @@ test("at 1440 px the Strengths table's short columns take their content's width,
   await page.setViewportSize({ width: 1440, height: 900 });
   await openFullRun(page);
   const table = page.getByRole('region', { name: 'Strengths table' });
-  // Summary starts where the capture has it, about x = 535.
-  expect((await table.getByRole('columnheader', { name: 'Summary' }).boundingBox())!.x).toBeLessThan(600);
+  const width = async (name: string) => (await table.getByRole('columnheader', { name, exact: true }).boundingBox())!.width;
+  const short = (await Promise.all(['#', 'Step', 'Task', 'Category'].map(width))).reduce((sum, w) => sum + w, 0);
+  expect(await width('Summary')).toBeGreaterThan(short);
 });
 
 test('the schema 5 run page lists its strengths in the Strengths table', async ({ page }) => {

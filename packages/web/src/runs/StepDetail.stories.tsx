@@ -92,13 +92,15 @@ export const Fixed: Story = {
       'Fix round 2checked by fix-checker · Opus',
       'Ended',
     ]);
-    const f1 = within(rowOf(table, 'F1')).getAllByRole('cell');
-    await expect(f1.map((c) => c.textContent)).toEqual(['Found', 'Fixed', '', 'Fixed']);
+    const row1 = rowOf(table, 'F1');
+    const f1 = within(row1).getAllByRole('cell');
+    await expect(cells(row1)).toEqual(['Found', 'Fixed', '', 'Fixed']);
     await expect(f1[2].querySelector('[aria-hidden]')).not.toBeNull();
     const fixed = within(f1[1]).getByText('Fixed');
     await expect(fixed).not.toHaveClass(WARNING_INK);
-    const f2 = within(rowOf(table, 'F2')).getAllByRole('cell');
-    await expect(f2.map((c) => c.textContent)).toEqual(['Found', '', '', 'Deferred']);
+    const row2 = rowOf(table, 'F2');
+    const f2 = within(row2).getAllByRole('cell');
+    await expect(cells(row2)).toEqual(['Found', '', '', 'Deferred']);
     // The skipped rounds: a dashed rule across each.
     for (const cell of f2.slice(1, 3)) await expect(cell.querySelector('.border-dashed')).not.toBeNull();
   },

@@ -1,5 +1,5 @@
 import type { FindingRow, Outcome, StrengthRow, TimelineGroup, TimelineStep } from '@cwd/shared';
-import { STEP_LABELS, outcomeLabel } from '../lib/format.ts';
+import { STEP_LABELS, outcomeLabel, reviewerLabel } from '../lib/format.ts';
 
 /** One review with its fix rounds: a box of the graph. */
 export type Unit = {
@@ -15,6 +15,8 @@ export type Unit = {
 export type Stage = { kind: TimelineGroup['kind']; at: string | null; parallel: Unit[]; then: Unit[]; conflicts: number };
 
 const isRound = (s: TimelineStep) => s.step === 'fix_check' || s.step === 'final_fix_check';
+/** A unit of no task or wave, not a kit's. */
+const NOWHERE = { task: null, wave: null, kit: false };
 /** A kit's own step, as the server's `timeline` tells them apart. */
 const isKit = (s: TimelineStep) => s.step === 'kit_review' || s.kit != null;
 
@@ -53,15 +55,15 @@ export function stagesOf(timeline: TimelineGroup[]): Stage[] {
       case 'task':
         return side(g.tasks.flatMap((t) => taskUnits(t, null)));
       case 'plan':
-        return stage([], g.steps.map((s) => unitOf(s.step, STEP_LABELS[s.step], [s], { task: null, wave: null, kit: false })));
+        return stage([], g.steps.map((s) => unitOf(s.step, STEP_LABELS[s.step], [s], NOWHERE)));
       case 'simplify':
-        return stage([], g.steps.length ? [unitOf('simplify', STEP_LABELS.simplify, g.steps, { task: null, wave: null, kit: false })] : []);
+        return stage([], g.steps.length ? [unitOf('simplify', STEP_LABELS.simplify, g.steps, NOWHERE)] : []);
       case 'final': {
         const main = g.steps.filter((s) => !isKit(s));
         const kit = g.steps.filter(isKit);
         return side([
-          ...(main.length ? [unitOf('final', 'Final review', main, { task: null, wave: null, kit: false })] : []),
-          ...(kit.length ? [unitOf('kit', 'Kit review', kit, { task: null, wave: null, kit: true })] : []),
+          ...(main.length ? [unitOf('final', 'Final review', main, NOWHERE)] : []),
+          ...(kit.length ? [unitOf('kit', 'Kit review', kit, { ...NOWHERE, kit: true })] : []),
         ]);
       }
       default:
@@ -109,10 +111,12 @@ export type Placed = Rect &
     | { kind: 'pill'; end: 'start' | 'end'; at: string | null }
     | { kind: 'conflicts'; count: number }
     | { kind: 'chip'; unit: Unit; outcome: Outcome | 'none'; count: number }
+    // The loop's label, over its box.
     | { kind: 'arc'; unit: Unit }
-  ); // the loop's label, over its box
-/** `lead`: a straight run before the curve. `fade`: a straight run to or from the panel's side. */
+  );
+/** `lead`: a straight run before the curve. */
 export type Anchor = { x: number; y: number; lead?: number };
+/** `fade`: a straight run to or from the panel's side. */
 export type Edge = { from: Anchor; to: Anchor; fade?: 'out' | 'in'; head: boolean };
 export type Layout = { shape: Shape; width: number; height: number; rows: number; placed: Placed[]; edges: Edge[] };
 
@@ -181,7 +185,7 @@ const chipWidth = (outcome: Outcome | 'none', count: number) => `${outcomeLabel(
 
 /** The narrowest a box can be with its name, its reviewer and its exit chips whole, by the text estimate. */
 export function boxNeed(unit: Unit): number {
-  const text = [unit.name, unit.review?.agent ?? 'in the session'].map((t) => t.length * CHAR + BOX_PAD);
+  const text = [unit.name, reviewerLabel(unit.review)].map((t) => t.length * CHAR + BOX_PAD);
   const chips = leftOf(unit).map(([outcome, count]) => chipWidth(outcome, count) + CHIP_IN + SIDE_IN + 4);
   return Math.max(...text, ...chips);
 }
@@ -210,11 +214,12 @@ const conflictsOf = (count: number, x: number, y: number, row: number): Placed =
   row,
 });
 
-/** A unit's box with its loop's label over it and its exit chips under it, each chip no wider than the box allows. */
+/** A unit's box with its loop's label over it and its exit chips under it, each chip no wider than the box allows, in
+ * reading order: the box, its loop's label, its chips. */
 function block(unit: Unit, x: number, top: number, w: number, row: number): Placed[] {
   return [
-    ...(unit.rounds.length ? [{ kind: 'arc', unit, x: x + ARC_IN, y: top - LOOP, w: w - ARC_IN, h: LOOP, row } as const] : []),
     { kind: 'unit', unit, x, y: top, w, h: H, row },
+    ...(unit.rounds.length ? [{ kind: 'arc', unit, x: x + ARC_IN, y: top - LOOP, w: w - ARC_IN, h: LOOP, row } as const] : []),
     ...leftOf(unit).map(([outcome, count], i): Placed => ({
       kind: 'chip',
       unit,
@@ -272,6 +277,9 @@ function flat(ranks: Rank[], w = W, p = PILL): Layout {
   return { shape: 'flat', width, height, rows: 1, placed, edges: [...joined(layers), ...edges] };
 }
 
+/** Ranks' width at the default box and pill sizes, each with the gap after it. */
+const widthOf = (ranks: Rank[]) => ranks.reduce((sum, r) => sum + rankWidth(r) + GX, 0);
+
 /** Ranks in rows of at most `limit` wide, a merge never starting a row, so a wave's conflicts stay on its row. */
 function fill(ranks: Rank[], limit: number): Rank[][] {
   const groups: Rank[][] = [];
@@ -279,7 +287,6 @@ function fill(ranks: Rank[], limit: number): Rank[][] {
     if (r.merge && groups.length) groups.at(-1)!.push(r);
     else groups.push([r]);
   }
-  const widthOf = (g: Rank[]) => g.reduce((sum, r) => sum + rankWidth(r) + GX, 0);
   const rows: Rank[][] = [[]];
   let used = -GX;
   for (const g of groups) {
@@ -297,7 +304,10 @@ function fill(ranks: Rank[], limit: number): Rank[][] {
  * stub. A row's last edge runs to the panel's side and fades out, and fades back in at the left of the next row. */
 function wrapped(ranks: Rank[], avail: number): Layout {
   let rows = fill(ranks, avail - 2 * SIDE);
-  for (let limit = avail - 2 * SIDE - 1; limit > 0; limit--) {
+  // Any limit down to the widest row's width gives the same rows, so the next to try is just under it.
+  for (let limit = avail - 2 * SIDE; ; ) {
+    limit = Math.min(limit, Math.max(...rows.map(widthOf)) - GX) - 1;
+    if (limit <= 0) break;
     const tighter = fill(ranks, limit);
     if (tighter.length > rows.length) break;
     rows = tighter;

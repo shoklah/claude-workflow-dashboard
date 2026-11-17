@@ -3,7 +3,7 @@ import type { FindingRow } from '@cwd/shared';
 import { ArrowRight, X } from 'lucide-react';
 import { cn } from 'cn';
 import { Text } from '../components/Num.tsx';
-import { Section } from '../components/Panel.tsx';
+import { Line, ScrollTable, Section } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
 import {
   STEP_LABELS,
@@ -126,11 +126,11 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
       }
     >
       {findings.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{`${kind} ${byLabel(review)} found nothing.`}</p>
+        <Line muted>{`${kind} ${byLabel(review)} found nothing.`}</Line>
       ) : (
         <>
-          <div data-scroll-cue className="hidden overflow-x-auto md:block" tabIndex={0} role="region" aria-label={`${name} table`}>
-            <table aria-label={name} className="w-full border-collapse text-xs">
+          <div className="hidden md:block">
+            <ScrollTable label={name} className="text-xs">
               <thead>
                 <tr>
                   <Head title="Finding" />
@@ -182,7 +182,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ScrollTable>
           </div>
           <ul className="flex flex-col gap-3 md:hidden">
             {findings.map((f, i) => (

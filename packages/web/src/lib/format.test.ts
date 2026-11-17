@@ -14,6 +14,7 @@ import {
   laterFixesLabel,
   LATER_FIXES_TERM,
   stepBy,
+  reviewerLabel,
   byLabel,
   roundVerdictLabel,
   verdictLabel,
@@ -127,6 +128,14 @@ describe('stepBy', () => {
     expect(stepBy({ agent: 'simplify', model: null, effort: null })).toBe('simplify');
     expect(stepBy(null)).toBe('in the session');
     expect(stepBy({ agent: null, model: 'claude-opus-5-5', effort: 'high' })).toBe('in the session');
+  });
+});
+
+describe('reviewerLabel', () => {
+  it("names who ran a step by its agent alone, 'in the session' without one", () => {
+    expect(reviewerLabel({ agent: 'task-reviewer' })).toBe('task-reviewer');
+    expect(reviewerLabel({ agent: null })).toBe('in the session');
+    expect(reviewerLabel(null)).toBe('in the session');
   });
 });
 

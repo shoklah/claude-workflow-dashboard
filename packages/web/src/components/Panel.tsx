@@ -2,12 +2,27 @@ import { useId, type ReactNode, type Ref } from 'react';
 import { cn } from 'cn';
 import { WARNING_BORDER } from '../lib/format.ts';
 import { NUM } from './Num.tsx';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
 /** A link's underline: the disclosure's summary and every in-table link. */
 export const LINK = 'underline decoration-input underline-offset-4 hover:decoration-foreground';
 
 /** A tooltip term's dotted underline: a focusable name whose tooltip says more (a session's chip, the reporter's mark). */
 export const TERM = 'underline decoration-dotted underline-offset-4';
+
+/** A tooltip term: its words, focusable, with `TERM`'s underline (`className` adds to it), and its tooltip `tip`. */
+export function Term({ tip, className, children }: { tip: ReactNode; className?: string; children: ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className={cn(TERM, className)}>
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{tip}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 /** A page's title, directly on the backdrop in primary ink. */
 export function PageTitle({ children }: { children: ReactNode }) {
@@ -108,9 +123,31 @@ export function Details({ summary, children }: { summary: string; children: Reac
   );
 }
 
-/** A page's line on the backdrop (a summary sentence, what showing mode left out), in primary ink. */
-export function Line({ children }: { children: ReactNode }) {
-  return <p className="text-sm">{children}</p>;
+/** A page's line on the backdrop (a summary sentence, what showing mode left out), in primary ink; `muted` only on a
+ * panel (a panel's line when it has nothing to show). */
+export function Line({ muted = false, children }: { muted?: boolean; children: ReactNode }) {
+  return <p className={cn('text-sm', muted && 'text-muted-foreground')}>{children}</p>;
+}
+
+/** A plain table inside a panel, named `label`, in a focusable region named "<label> table" that scrolls sideways with
+ * the edge cue (`className` adds to the table). */
+export function ScrollTable({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  return (
+    <div data-scroll-cue className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${label} table`}>
+      <table aria-label={label} className={cn('w-full border-collapse text-sm', className)}>
+        {children}
+      </table>
+    </div>
+  );
+}
+
+/** A plain table's column head, muted; `num` for a numeric column. */
+export function ColumnHead({ num = false, children }: { num?: boolean; children: ReactNode }) {
+  return (
+    <th scope="col" className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
+      {children}
+    </th>
+  );
 }
 
 /** A region's loading, error or empty state: its panel with one line saying what is loading, what failed and what to

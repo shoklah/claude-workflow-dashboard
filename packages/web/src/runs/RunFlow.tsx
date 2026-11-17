@@ -1,8 +1,8 @@
-import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { cn } from 'cn';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, outcomeWarns, plural, roundsLabel } from '../lib/format.ts';
+import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, outcomeWarns, plural, reviewerLabel, roundsLabel } from '../lib/format.ts';
 import { layout, stuck, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
 
 type Pick = { selected: string | null; onSelect: (id: string | null) => void };
@@ -42,7 +42,8 @@ function exitsOf(box: Of<'unit'>, chips: Of<'chip'>[]): string[] {
 
 /** The loop's label: the agent that ran the checks and the round count, which a screen reader gets as words; a stuck
  * loop's also an icon, and words saying its last round left findings open. */
-function LoopLabel({ arc, unit }: { arc: Of<'arc'>; unit: Unit }) {
+function LoopLabel({ arc }: { arc: Of<'arc'> }) {
+  const { unit } = arc;
   const n = unit.rounds.length;
   const round = unit.rounds[0];
   const open = stuck(unit);
@@ -75,7 +76,7 @@ function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
       style={at(box)}
     >
       <span className="truncate text-sm font-semibold">{unit.name}</span>
-      <span className="truncate text-xs text-muted-foreground">{unit.review?.agent ?? 'in the session'}</span>
+      <span className="truncate text-xs text-muted-foreground">{reviewerLabel(unit.review)}</span>
       <span className="text-xs">
         Found <span className={cn('font-semibold tabular-nums', found === 0 && 'text-muted-foreground')}>{formatWhole(found)}</span>
       </span>
@@ -111,7 +112,7 @@ export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
     return () => observer.disconnect();
   }, []);
   const id = useId();
-  const { shape, width, height, placed, edges } = layout(stages, avail);
+  const { shape, width, height, placed, edges } = useMemo(() => layout(stages, avail), [stages, avail]);
   const boxes = placed.filter((p): p is Of<'unit'> => p.kind === 'unit');
   const chipsOf = (unit: Unit) => placed.filter((p): p is Of<'chip'> => p.kind === 'chip' && p.unit === unit);
   const arrow = (tone: string) => `url(#${id}-${tone})`;
@@ -202,20 +203,12 @@ export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
                   {plural(p.count, 'conflict')}
                 </span>
               );
-            case 'unit': {
-              const arc = placed.find((a): a is Of<'arc'> => a.kind === 'arc' && a.unit === p.unit);
-              return (
-                <div key={i} className="contents">
-                  <Box box={p} {...pick} />
-                  {arc && <LoopLabel arc={arc} unit={p.unit} />}
-                  {chipsOf(p.unit).map((chip) => (
-                    <Chip key={chip.outcome} chip={chip} />
-                  ))}
-                </div>
-              );
-            }
-            default:
-              return null;
+            case 'unit':
+              return <Box key={i} box={p} {...pick} />;
+            case 'arc':
+              return <LoopLabel key={i} arc={p} />;
+            case 'chip':
+              return <Chip key={i} chip={p} />;
           }
         })}
       </div>

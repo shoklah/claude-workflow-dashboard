@@ -126,10 +126,15 @@ export function outcomeLabel(outcome: Outcome | 'none' | null): string {
   return outcome == null || outcome === 'none' ? 'No outcome' : countName(outcome);
 }
 
+/** Who ran a step, by name only: its agent, or "in the session" without one (a flow box's reviewer). */
+export function reviewerLabel(step: { agent: string | null } | null): string {
+  return step?.agent || 'in the session';
+}
+
 /** Who ran a step: its agent, then its model (`modelLabel`) and effort, "task-reviewer · Opus 5.5, high"; "in the
  * session" without an agent. */
 export function stepBy(step: { agent: string | null; model: string | null; effort: string | null } | null): string {
-  if (!step?.agent) return 'in the session';
+  if (!step?.agent) return reviewerLabel(step);
   const model = modelLabel(step.model);
   return joined([step.agent, model && (step.effort ? `${model}, ${step.effort}` : model)]);
 }

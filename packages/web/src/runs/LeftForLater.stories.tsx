@@ -6,12 +6,13 @@ import { cells, expectNoJoined } from '../test/table.ts';
 import { leftFindings, runFull } from '../test/runs.ts';
 import { LeftForLater } from './LeftForLater.tsx';
 
-/** The step a finding came from, as the run page names its unit. */
-const from = (f: FindingRow): string | null => (f.task ? `Task ${f.task}` : STEP_LABELS[f.step]);
+/** Findings with the step each came from, as the run page names its unit. */
+const held = (findings: FindingRow[]) =>
+  findings.map((finding) => ({ finding, from: finding.task ? `Task ${finding.task}` : STEP_LABELS[finding.step] }));
 
 const meta = {
   component: LeftForLater,
-  args: { findings: leftFindings, from, laterFixes: runFull.laterFixes, step: null, beforeSteps: false },
+  args: { findings: held(leftFindings), laterFixes: runFull.laterFixes, step: null, beforeSteps: false },
 } satisfies Meta<typeof LeftForLater>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -48,7 +49,7 @@ export const Full: Story = {
 
 /** With a step selected: its title names it, and the run's later fixes aren't the step's, so they don't show. */
 export const Step: Story = {
-  args: { findings: leftFindings.filter((f) => f.task === 1), step: 'Task 1' },
+  args: { findings: held(leftFindings.filter((f) => f.task === 1)), step: 'Task 1' },
   play: async ({ canvas }) => {
     const panel = canvas.getByRole('region', { name: 'Left for later in Task 1' });
     await expect(within(panel).getAllByRole('row')).toHaveLength(2);
@@ -59,7 +60,7 @@ export const Step: Story = {
 
 /** Nothing left in the run: its one line, no table. */
 export const Nothing: Story = {
-  args: { findings: leftFindings.filter((f) => f.outcome === 'fixed'), laterFixes: [] },
+  args: { findings: held(leftFindings.filter((f) => f.outcome === 'fixed')), laterFixes: [] },
   play: async ({ canvas }) => {
     const panel = canvas.getByRole('region', { name: 'Left for later' });
     await expect(within(panel).getByText('Nothing left: every finding was closed in this run.')).toBeVisible();
@@ -94,7 +95,7 @@ export const Phone: Story = {
   parameters: { viewport: { options: { phone: { name: 'Phone', styles: { width: '375px', height: '812px' } } } } },
   globals: { viewport: { value: 'phone' } },
   args: {
-    findings: [{ ...leftFindings[1], summary: `Rename ${LONG}` }],
+    findings: held([{ ...leftFindings[1], summary: `Rename ${LONG}` }]),
     laterFixes: [{ date: '2026-11-10T10:14:00Z', subject: `fix:${LONG}` }],
   },
   play: async ({ canvas }) => {
@@ -105,14 +106,5 @@ export const Phone: Story = {
     await expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth);
     const subject = canvas.getByText(`fix:${LONG}`);
     await expect(subject.getBoundingClientRect().right).toBeLessThanOrEqual(panel.getBoundingClientRect().right);
-  },
-};
-
-/** A finding no unit holds shows its From as the dash, read out as "not known". */
-export const Unheld: Story = {
-  args: { findings: [leftFindings[1]], from: () => null },
-  play: async ({ canvas }) => {
-    const row = canvas.getAllByRole('row')[1];
-    await expect(cells(row)[2]).toBe('–not known');
   },
 };

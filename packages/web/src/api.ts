@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { ShowingRequest, StatusResponse } from '@cwd/shared';
 
 /** A GET the API answered with an error status, which the page can tell apart (a 404 is an unknown key). */
@@ -8,6 +8,12 @@ export class ApiError extends Error {
     super(`${path} answered ${status}`);
     this.status = status;
   }
+}
+
+/** The app's retries, as its query client's default: never for a 404, which a retry won't change, else three as
+ * TanStack's default. */
+export function retry(failures: number, error: Error): boolean {
+  return !(error instanceof ApiError && error.status === 404) && failures < 3;
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -28,17 +34,12 @@ export function useStatus() {
 /** A GET of the API whose key holds the last good import's time, so its data refetches in place when an import lands. */
 export function useLiveQuery<T>(path: string) {
   const status = useStatus();
-  // The client's own retries (three by default, none in the stories), but never for a 404, which a retry won't change.
-  const retry = useQueryClient().getDefaultOptions().queries?.retry ?? 3;
   return useQuery({
     queryKey: [path, status.data?.lastGoodImportAt ?? null],
     queryFn: () => getJson<T>(path),
     // Wait for the status, so the first fetch already has its key; a failed status still lets the page load.
     enabled: !status.isPending,
     placeholderData: keepPreviousData,
-    retry: (failures: number, error: Error) =>
-      !(error instanceof ApiError && error.status === 404) &&
-      (typeof retry === 'function' ? retry(failures, error) : typeof retry === 'number' ? failures < retry : retry),
   });
 }
 

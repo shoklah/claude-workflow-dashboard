@@ -1,5 +1,4 @@
 import type { StrengthRow } from '@cwd/shared';
-import { cn } from 'cn';
 import { Text } from '../components/Num.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { STEP_LABELS, STRENGTHS_SIDE, categoryLabel, taskLabel } from '../lib/format.ts';
@@ -16,14 +15,13 @@ export function StrengthsTable({
   categoryLabels: Record<string, string>;
 }) {
   return (
-    // It scrolls sideways on a narrow screen, so its container is a named tab stop. Its class replaces the container's
-    // own, so it repeats the container's base classes.
+    // It scrolls sideways on a narrow screen, so its container is a named tab stop.
     <Table
       containerProps={{
         tabIndex: 0,
         role: 'region',
         'aria-label': 'Strengths table',
-        className: cn('relative w-full overflow-x-auto', STRENGTHS_SIDE),
+        className: STRENGTHS_SIDE,
       }}
     >
       <TableHeader>

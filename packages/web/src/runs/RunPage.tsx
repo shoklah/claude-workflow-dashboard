@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowRight, ThumbsUp, TriangleAlert } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { parseTime, type RunPageResponse } from '@cwd/shared';
 import { ApiError, useLiveQuery } from '../api.ts';
-import { Lines, NUM, Num, PairCells, Text } from '../components/Num.tsx';
-import { Details, LINK, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
+import { Lines, Num, PairCells, Text } from '../components/Num.tsx';
+import { ColumnHead, Details, Line, LINK, PageTitle, Pairs, Panel, ScrollTable, Section, State } from '../components/Panel.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { TableCell } from '../components/ui/table.tsx';
 import { WarningText } from '../components/WarningText.tsx';
@@ -37,27 +37,13 @@ import {
   WARNING_INK,
 } from '../lib/format.ts';
 
-/** A fold panel's line when it has nothing to show. */
-function NoneText({ children }: { children: string }) {
-  return <p className="text-sm text-muted-foreground">{children}</p>;
-}
-
-/** A plain table's column head; `num` for a numeric column. */
-function Head({ num = false, children }: { num?: boolean; children: string }) {
-  return (
-    <th scope="col" className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
-      {children}
-    </th>
-  );
-}
-
 /** The main session's model and effort, each model's cost, the agents with each model and effort they ran on, and
  * the advisor's calls and notes. */
 function ModelsAndAdvisor({ run }: { run: RunPageResponse }) {
   const { main, models, agents, advisor } = run;
   return (
     <Panel title="Models and advisor">
-      {!main && models.length === 0 && agents.length === 0 && <NoneText>No model recorded.</NoneText>}
+      {!main && models.length === 0 && agents.length === 0 && <Line muted>No model recorded.</Line>}
       {main && (
         <Pairs
           pairs={[
@@ -68,31 +54,29 @@ function ModelsAndAdvisor({ run }: { run: RunPageResponse }) {
       )}
       {models.length > 0 && <Pairs names pairs={models.map((model) => [<Text value={modelLabel(model.model)} />, formatCost(model.cost)])} />}
       {agents.length > 0 && (
-        <div data-scroll-cue className="overflow-x-auto" tabIndex={0} role="region" aria-label="Agents table">
-          <table aria-label="Agents" className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <Head>Agent</Head>
-                <Head>Model</Head>
-                <Head>Effort</Head>
-                <Head num>Dispatches</Head>
-              </tr>
-            </thead>
-            <tbody>
-              {agents.map((agent) => {
-                const actual = pairsOf(agent.actual);
-                return (
-                  <Lines
-                    key={agent.name}
-                    name={agent.name}
-                    lines={Math.max(1, actual.length)}
-                    line={(i) => <PairCells pairs={actual} line={i} unset="not known" none="No dispatches" />}
-                  />
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ScrollTable label="Agents">
+          <thead>
+            <tr>
+              <ColumnHead>Agent</ColumnHead>
+              <ColumnHead>Model</ColumnHead>
+              <ColumnHead>Effort</ColumnHead>
+              <ColumnHead num>Dispatches</ColumnHead>
+            </tr>
+          </thead>
+          <tbody>
+            {agents.map((agent) => {
+              const actual = pairsOf(agent.actual);
+              return (
+                <Lines
+                  key={agent.name}
+                  name={agent.name}
+                  lines={Math.max(1, actual.length)}
+                  line={(i) => <PairCells pairs={actual} line={i} unset="not known" none="No dispatches" />}
+                />
+              );
+            })}
+          </tbody>
+        </ScrollTable>
       )}
       {advisor ? (
         <Pairs
@@ -102,7 +86,7 @@ function ModelsAndAdvisor({ run }: { run: RunPageResponse }) {
           ]}
         />
       ) : (
-        <NoneText>Advisor not consulted.</NoneText>
+        <Line muted>Advisor not consulted.</Line>
       )}
     </Panel>
   );
@@ -118,7 +102,7 @@ function Fold({ run }: { run: RunPageResponse }) {
           {phases.length > 0 ? (
             <Pairs pairs={phases.map((phase) => [phaseLabel(phase.name), <Num value={phase.cost} format={formatCost} />])} />
           ) : (
-            <NoneText>No cost by phase recorded.</NoneText>
+            <Line muted>No cost by phase recorded.</Line>
           )}
         </Panel>
         <ModelsAndAdvisor run={run} />
@@ -138,42 +122,40 @@ function Fold({ run }: { run: RunPageResponse }) {
               ]}
             />
           ) : (
-            <NoneText>No context facts for this run.</NoneText>
+            <Line muted>No context facts for this run.</Line>
           )}
         </Panel>
         <Panel title="Skills">
           {skills.length + offers.length > 0 ? (
-            <div data-scroll-cue className="overflow-x-auto" tabIndex={0} role="region" aria-label="Skills table">
-              <table aria-label="Skills" className="w-full border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <Head>Skill</Head>
-                    <Head>Loaded or offered</Head>
-                    <Head>Outcome</Head>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ...skills.map((skill) => [skill.name, 'Loaded', capitalize(skill.outcome)]),
-                    ...offers.map((offer) => [offer.skill, 'Offered', countName(offer.outcome)]),
-                  ].map(([name, use, outcome], i) => (
-                    <Lines
-                      key={i}
-                      name={name}
-                      lines={1}
-                      line={() => (
-                        <>
-                          <TableCell className="text-muted-foreground">{use}</TableCell>
-                          <TableCell className="text-muted-foreground">{outcome}</TableCell>
-                        </>
-                      )}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ScrollTable label="Skills">
+              <thead>
+                <tr>
+                  <ColumnHead>Skill</ColumnHead>
+                  <ColumnHead>Loaded or offered</ColumnHead>
+                  <ColumnHead>Outcome</ColumnHead>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ...skills.map((skill) => [skill.name, 'Loaded', capitalize(skill.outcome)]),
+                  ...offers.map((offer) => [offer.skill, 'Offered', countName(offer.outcome)]),
+                ].map(([name, use, outcome], i) => (
+                  <Lines
+                    key={i}
+                    name={name}
+                    lines={1}
+                    line={() => (
+                      <>
+                        <TableCell className="text-muted-foreground">{use}</TableCell>
+                        <TableCell className="text-muted-foreground">{outcome}</TableCell>
+                      </>
+                    )}
+                  />
+                ))}
+              </tbody>
+            </ScrollTable>
           ) : (
-            <NoneText>No skill loaded or offered.</NoneText>
+            <Line muted>No skill loaded or offered.</Line>
           )}
         </Panel>
       </div>
@@ -313,6 +295,9 @@ export function RunPage({ runKey }: { runKey: string }) {
   const [selection, setSelection] = useState<{ runKey: string; unit: string } | null>(null);
   const selected = selection?.runKey === runKey ? selection.unit : null;
   const select = (unit: string | null) => setSelection(unit === null ? null : { runKey, unit });
+  const timeline = run.data?.timeline;
+  const stages = useMemo(() => stagesOf(timeline ?? []), [timeline]);
+  const units = useMemo(() => unitsOf(stages), [stages]);
   if (run.isPending) return <State>Loading the run…</State>;
   if (run.error instanceof ApiError && run.error.status === 404) {
     return (
@@ -325,9 +310,7 @@ export function RunPage({ runKey }: { runKey: string }) {
     );
   }
   if (run.isError) return <State error>Couldn't load this run.</State>;
-  const { facts, timeline, findings, strengths, warnings, categoryLabels } = run.data;
-  const stages = stagesOf(timeline);
-  const units = unitsOf(stages);
+  const { facts, findings, strengths, warnings, categoryLabels } = run.data;
   const unit = units.find((u) => u.id === selected);
   // The run's strengths are numbered in order, so a strength keeps its number when a step filters them.
   const numbered = strengths.map((strength, i) => ({ ...strength, id: `S${i + 1}` }));
@@ -348,18 +331,18 @@ export function RunPage({ runKey }: { runKey: string }) {
       <div className="flex min-w-0 flex-col gap-6">
         <Panel title="Flow">
           {facts.beforeSteps ? (
-            <p className="text-sm text-muted-foreground">Recorded before steps were logged: there is no flow to draw.</p>
+            <Line muted>Recorded before steps were logged: there is no flow to draw.</Line>
           ) : (
-            <RunFlow stages={stages} selected={selected} onSelect={select} />
-          )}
-          {!facts.beforeSteps && (
-            <div className="border-t pt-3 text-sm">
-              {unit ? (
-                <StepDetail unit={unit} onClose={() => select(null)} />
-              ) : (
-                <p className="text-muted-foreground">Select a task or a review to see its rounds, and its findings below.</p>
-              )}
-            </div>
+            <>
+              <RunFlow stages={stages} selected={selected} onSelect={select} />
+              <div className="border-t pt-3 text-sm">
+                {unit ? (
+                  <StepDetail unit={unit} onClose={() => select(null)} />
+                ) : (
+                  <p className="text-muted-foreground">Select a task or a review to see its rounds, and its findings below.</p>
+                )}
+              </div>
+            </>
           )}
         </Panel>
         {problems.length > 0 ? (
@@ -396,9 +379,8 @@ export function RunPage({ runKey }: { runKey: string }) {
           </NoneLine>
         )}
         <LeftForLater
-          // The units' own findings, so each names the unit holding it.
-          findings={unit ? unit.findings : units.flatMap((u) => u.findings)}
-          from={(f) => units.find((u) => u.findings.includes(f))?.name ?? null}
+          // The units' own findings, each with the name of the unit holding it.
+          findings={(unit ? [unit] : units).flatMap((u) => u.findings.map((finding) => ({ finding, from: u.name })))}
           laterFixes={run.data.laterFixes}
           step={unit?.name ?? null}
           beforeSteps={facts.beforeSteps}
