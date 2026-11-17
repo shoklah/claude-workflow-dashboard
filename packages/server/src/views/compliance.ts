@@ -140,6 +140,7 @@ export function complianceView(input: {
         runKey: run?.unit.key ?? null,
         project: facts?.project ?? null,
         branch: facts?.branch ?? null,
+        headline: facts?.headline ?? null,
         step: toStepKind(w.stepKind) ?? null,
         isNew: isNew(w),
       },

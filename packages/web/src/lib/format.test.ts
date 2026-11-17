@@ -1,11 +1,9 @@
 import { describe, expect, it, test } from 'vitest';
-import { parseTime, type FindingRow } from '@cwd/shared';
+import { closedFindings, foundFindings, parseTime, type FindingRow } from '@cwd/shared';
 import {
   appCallLabel,
   taskLabel,
   cellShade,
-  closedFindings,
-  foundFindings,
   countLabel,
   countName,
   outcomeLabel,
@@ -47,6 +45,7 @@ import {
   modelLabel,
   splitPair,
   formatDollars,
+  formatCost,
   formatWhole,
   formatCompactFixed,
   formatLength,
@@ -472,6 +471,11 @@ test('splitPair gives a pair\'s two parts', () => {
 test('numbers under a header that names their unit', () => {
   expect(formatDollars(12.4)).toBe('12.40'); expect(formatDollars(1234.5)).toBe('1,234.50');
   expect(formatWhole(5759.4)).toBe('5,759'); expect(formatCompactFixed(2_000_000)).toBe('2.0M'); expect(formatCompactFixed(333_000)).toBe('333.0K');
+});
+test('formatCost and formatDollars round the same way, so a total agrees with its rows', () => {
+  expect(formatDollars(8.975)).toBe('8.98');
+  expect(formatCost(8.975)).toBe('$8.98');
+  expect(formatCost(1234.5)).toBe('$1,234.50');
 });
 test('formatLength uses the largest units that fit', () => {
   expect(formatLength(0)).toBe('0 min'); expect(formatLength(45)).toBe('45 min'); expect(formatLength(466.3)).toBe('7 h 46');

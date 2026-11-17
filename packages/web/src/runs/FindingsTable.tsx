@@ -19,8 +19,8 @@ const features = tableFeatures({
   filteredRowModel: createFilteredRowModel(),
   filterFns: { equalsString: filterFn_equalsString },
 });
-// A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
-type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
+// A finding, and with `run` its run's key, project, branch and headline, as the Findings page lists them.
+type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch' | 'headline'>>;
 
 const helper = createColumnHelper<typeof features, Row>();
 /** The finding columns, each category named by `labels`. */
@@ -90,7 +90,12 @@ const runColumn = helper.columns([
     id: 'run',
     header: 'Run',
     cell: (c) => (
-      <RunLink runKey={c.row.original.runKey ?? ''} branch={c.getValue()} className="font-medium" />
+      <RunLink
+        runKey={c.row.original.runKey ?? ''}
+        branch={c.getValue()}
+        title={c.row.original.headline ?? null}
+        className="font-medium"
+      />
     ),
   }),
   helper.accessor((f) => f.project ?? null, { id: 'project', header: 'Project', cell: (c) => <Text value={c.getValue()} /> }),

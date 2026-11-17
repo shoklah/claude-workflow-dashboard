@@ -14,7 +14,7 @@ test('the shell has no axe violations', async ({ page }) => {
 
 // Every page fits the viewport at a phone's, a tablet's and a desktop's width: what is wider (a table, a chart grid)
 // scrolls inside its own region, never the page, and a region that scrolls can take the keyboard's focus (axe).
-const PAGES = ['/', '/runs', '/findings', '/sessions', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks', '/nope'];
+const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/work/changes/6acb252ca65f81f8', '/work/goals/843fdb9f8959fb12', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks', '/nope'];
 
 for (const width of [375, 768, 1440]) {
   test(`no page scrolls sideways at ${width} px, and none has axe violations there`, async ({ page }) => {
@@ -55,16 +55,16 @@ test('an unknown address shows the not-found page inside the shell, with a way h
 test('Back returns to where the list was scrolled', async ({ page }) => {
   await pinClock(page);
   await page.setViewportSize({ width: 1440, height: 300 });
-  await page.goto('/runs', { waitUntil: 'networkidle' });
+  await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const last = page.getByRole('main').getByRole('link').last();
   await last.scrollIntoViewIfNeeded();
   const scrolled = await page.evaluate(() => window.scrollY);
   expect(scrolled).toBeGreaterThan(0);
   await last.click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeHidden();
+  await expect(page.getByRole('heading', { level: 1, name: 'Work' })).toBeHidden();
   await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolled);
 });
 
@@ -72,7 +72,7 @@ test('under reduced motion nothing animates, and a wide table still fades at its
   await pinClock(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto('/sessions', { waitUntil: 'networkidle' });
+  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Menu' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   // Every animation and transition on the page, the open dialog's included, ends at once (computed durations are in s).
@@ -110,7 +110,7 @@ test('a table that scrolls sideways fades at the edge hiding columns, and one th
   const cueEnd = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
   const mask = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto('/sessions', { waitUntil: 'networkidle' });
+  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
   expect(await cueEnd('Sessions')).toBe('48px');
   expect(await mask('Sessions')).toContain('100% - 48px');
   // The mask cuts what is drawn outside the box, so the keyboard's focus outline is drawn inside it.
@@ -140,15 +140,15 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   const pages = page.getByRole('dialog', { name: 'Pages' });
   await menu.click();
   await expect(pages.getByText('edward', { exact: true })).toBeVisible();
-  await expect(pages.getByRole('link')).toHaveCount(11);
+  await expect(pages.getByRole('link')).toHaveCount(10);
   await page.keyboard.press('Escape');
   await expect(pages).toBeHidden();
   await menu.click();
   await pages.getByRole('button', { name: 'Close' }).click();
   await expect(pages).toBeHidden();
   await menu.click();
-  await pages.getByRole('link', { name: 'Runs' }).click();
-  await expect(page).toHaveURL(/\/runs$/);
+  await pages.getByRole('link', { name: 'Work' }).click();
+  await expect(page).toHaveURL(/\/work$/);
   await expect(pages).toBeHidden();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeInViewport();
 });
@@ -200,7 +200,7 @@ test("the tab is named by the page's title and edward, and has its mark as icon"
 test('the first Tab reaches Skip to content, which moves the keyboard into the page without changing the address', async ({ page }) => {
   await pinClock(page);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/runs');
+  await page.goto('/work?view=runs');
   const skip = page.getByRole('link', { name: 'Skip to content' });
   await expect(skip).not.toBeInViewport();
   await page.keyboard.press('Tab');
@@ -210,7 +210,7 @@ test('the first Tab reaches Skip to content, which moves the keyboard into the p
   await expect(page.getByRole('main')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.locator('main :focus')).toHaveCount(1);
-  await expect(page).toHaveURL(/\/runs$/);
+  await expect(page).toHaveURL(/\/work\?view=runs$/);
 });
 
 test('a first load focuses nothing, and following a menu link focuses the new page\'s title', async ({ page }) => {
@@ -218,8 +218,8 @@ test('a first load focuses nothing, and following a menu link focuses the new pa
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/', { waitUntil: 'networkidle' });
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
-  await page.getByRole('complementary').getByRole('link', { name: 'Runs' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeFocused();
+  await page.getByRole('complementary').getByRole('link', { name: 'Work' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Work' })).toBeFocused();
 });
 
 test('following a link in the Menu dialog focuses the new page\'s title, and Escape returns to the Menu button', async ({ page }) => {

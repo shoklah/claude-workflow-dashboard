@@ -1,29 +1,40 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
 // paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
 // groups, step kinds, rules, unit figures and context weeks whose sums differ from the reporter's totals, the count of
-// skills, of models and of units whose phases differ from their models and advisor, and the leaks showing mode lets
-// through, each by route and kind. It prints no value from the data but those weeks' dates, and no skill or agent
+// skills, of models and of units whose phases differ from their models and advisor, whether the units' cost adds up
+// by change and by goal, the counts of units carrying each Work fact, and the leaks showing mode lets through, each by
+// route and kind. It prints no value from the data but those weeks' dates, and no skill or agent
 // name, since a project can name one. Usage:
 // `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadReport, modelsCost, PATHS, splitSessionId, type RunEntry, type RunsResponse, type SessionEntry } from '@cwd/shared';
+import {
+  loadReport,
+  modelsCost,
+  PATHS,
+  splitSessionId,
+  type RunEntry,
+  type RunsResponse,
+  type SessionEntry,
+  type WorkResponse,
+} from '@cwd/shared';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { importReport } from './db/import.ts';
 import { openDb } from './db/open.ts';
-import { listUnits, setSeenAt, setShowing } from './db/read.ts';
-import { projectKey, runKey, sessionKey } from './keys.ts';
+import { listUnits, setSeenAt, setShowing, type StoredUnit } from './db/read.ts';
+import { goalKey, projectKey, runKey, sessionKey } from './keys.ts';
 import { runReporter } from './reporter.ts';
 import { contextSums } from './views/context.ts';
 import { weekSums } from './views/home.ts';
 import { modelSums } from './views/models.ts';
-import { storedBranches, storedSessionRoots } from './views/runs.ts';
+import { storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
 import { forbiddenStrings, leaks } from './views/scope.ts';
 import { skillSums } from './views/skills.ts';
 import { cr6Of, ruleSums, stepSums, unitSums } from './views/steps.ts';
 import { runTime } from './views/weeks.ts';
+import { goalHomes, goalView, levels } from './views/work.ts';
 
 /** A JSON value's object keys, at any depth. */
 const objectKeys = (json: unknown): string[] =>
@@ -323,17 +334,57 @@ else {
   const db = openDb(join(dir, 'dashboard.sqlite'));
   try {
     importReport(db, loaded.report, result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown }, new Date());
+    const storedRuns = listUnits(db, 'run');
+    const storedSessions = listUnits(db, 'session');
+    const units = [...storedRuns, ...storedSessions];
+    const work = levels(storedRuns, storedSessions);
+
+    // Every stored unit's cost against the changes' plus the loose sessions', and against the goals' pages' plus No
+    // goal's, to the cent, so a unit counted twice or dropped shows; only the two sums are named.
+    const unitCost = (unit: StoredUnit<RunEntry | SessionEntry>) => modelsCost(unit.merged.models);
+    const names = storedNames(storedRuns);
+    const goalCost = (goal: string) =>
+      goalView({ runs: storedRuns, sessions: storedSessions, key: goalKey(goal), scope: null, names })?.cost;
+    const workSums = {
+      changes: sum([...work.changes.map((change) => change.cost), ...work.loose.map(unitCost)]),
+      goals: sum([
+        ...[...goalHomes(work).keys()].map(goalCost),
+        ...work.changes.filter((change) => !change.goal).map((change) => change.cost),
+        ...work.loose.filter((session) => !session.merged.goal).map(unitCost),
+      ]),
+    };
+    const unitsCost = cents(sum(units.map(unitCost)));
+    differLine(
+      'work',
+      '2 compared, ',
+      Object.entries(workSums)
+        .filter(([, cost]) => cents(cost) !== unitsCost)
+        .map(([name]) => name),
+    );
+    // How many stored units carry each Work fact, and the starters no stored session has, so a renamed or reshaped
+    // field shows as zeros.
+    const carrying = (list: StoredUnit<RunEntry | SessionEntry>[], fact: 'headline' | 'goal' | 'spec' | 'started_by') =>
+      list.filter((unit) => (unit.merged as Partial<Record<typeof fact, unknown>>)[fact] != null).length;
+    const sessionKeys = new Set(storedSessions.map((session) => session.key));
+    const starters = storedSessions.flatMap((session) => session.merged.started_by?.key ?? []);
+    console.log(
+      `work facts: ${carrying(storedRuns, 'headline')} headline, ${carrying(units, 'goal')} goal, ` +
+        `${carrying(units, 'spec')} spec, ${carrying(storedSessions, 'started_by')} started_by, ` +
+        `${starters.filter((key) => !sessionKeys.has(key)).length} starters not stored`,
+    );
+
     // Everything was seen before the import, so the home feed holds every run and warning.
     setSeenAt(db, new Date(0));
-    const branches = storedBranches(listUnits(db, 'run'));
+    const branches = storedBranches(storedRuns);
     const roots = [...branches.keys()].sort();
     const shown = roots.slice(0, 1);
     setShowing(db, shown.map(projectKey));
     const files = [...sessionEntries.map((s) => s.file), ...entries.map((run) => run.window?.transcript)];
     const sessionIds = files.flatMap((file) => splitSessionId(file ?? '').sessionId ?? []);
-    const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+    const sessionRoots = storedSessionRoots(storedSessions);
+    const homes = goalHomes(work);
     // The home folder too, so any path under it is a leak.
-    const strings = forbiddenStrings(roots, branches, shown, sessionIds, sessionRoots);
+    const strings = forbiddenStrings(roots, branches, shown, sessionIds, sessionRoots, homes);
     const forbidden = [...strings.forbidden, homedir()];
     const app = createApp({
       db,
@@ -366,9 +417,20 @@ else {
       '/api/context?weeks=52',
       '/api/spend?weeks=52',
     ];
+    // Work's listed goals and changes, each page fetched too.
+    const listed = (await get('/api/work?weeks=52')) as WorkResponse;
+    const changePages = listed.goals.flatMap((goal) => goal.rows.map((row) => `/api/work/changes/${row.key}`));
+    const goalPages = listed.goals.flatMap((goal) => (goal.key ? [`/api/work/goals/${goal.key}`] : []));
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
-    const routes = ['/api/runs?weeks=52', ...paths, ...pages.map(() => '/api/runs/:key')];
-    const bodies = [list, ...(await Promise.all([...paths, ...pages].map(get)))];
+    const routes = [
+      '/api/runs?weeks=52',
+      '/api/work?weeks=52',
+      ...paths,
+      ...pages.map(() => '/api/runs/:key'),
+      ...changePages.map(() => '/api/work/changes/:key'),
+      ...goalPages.map(() => '/api/work/goals/:key'),
+    ];
+    const bodies = [list, listed, ...(await Promise.all([...paths, ...pages, ...changePages, ...goalPages].map(get)))];
     // A leak's kinds of hidden string, never the string itself.
     const kindsOf = (s: string) => (s === homedir() ? ['home folder'] : (strings.kinds.get(s) ?? [])).join(', ');
     // A leak found as a whole word in no response (leaks' words) is counted apart, since it may be part of a key or a

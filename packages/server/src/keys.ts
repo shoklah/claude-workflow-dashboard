@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { RunEntry, SessionEntry } from '@cwd/shared';
+import { projectRoot, type RunEntry, type SessionEntry, type SpecRef } from '@cwd/shared';
 
 /** The first 16 hex characters of the text's SHA-256: a key that holds no path, for URLs and API responses. */
 export function hash(text: string): string {
@@ -24,4 +24,19 @@ export function sessionKey(s: SessionEntry): string {
 /** A project's key, from its root. */
 export function projectKey(root: string): string {
   return hash(root);
+}
+
+/** A goal's key, from its name; the reporter exports none. */
+export function goalKey(name: string): string {
+  return hash(name);
+}
+
+/**
+ * A change's key: from its spec's project root and path, else from its plan file under the run's root, else the run's
+ * own stored `key`; the reporter exports none.
+ */
+export function changeKey(spec: SpecRef | null, plan: string | null, root: string, key: string): string {
+  if (spec) return hash(`spec|${projectRoot(spec.project)}|${spec.path}`);
+  if (plan) return hash(`plan|${root}|${plan}`);
+  return key;
 }

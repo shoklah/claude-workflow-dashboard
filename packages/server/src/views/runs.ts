@@ -26,6 +26,7 @@ import { findingKey, type StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { projectKey } from '../keys.ts';
 import { maskText, showFacts, showSession, showWarning, type Scope } from './scope.ts';
+import { goalOptions, inGoal, levels, listedGoal, runChange } from './work.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -214,31 +215,40 @@ export function periodUnits(
 }
 
 /**
- * The runs in the query's period (period) that have a current run warning when it asks "has warnings", newest first,
- * and every stored run's project, by name. With a scope, only the shown projects' runs and projects, and `hidden`
- * counts the matching runs it left out.
+ * The runs in the query's period (period) that have a current run warning when it asks "has warnings" and whose
+ * change's goal (levels' goalOf) is the goal filter's, newest first, each with its change (runChange) and goal
+ * (listedGoal); every stored run's project, by name; and the Goal select's options over the runs finished in the
+ * period's weeks (goalOptions). With a scope, only the shown projects' runs and projects, and `hidden` counts the
+ * matching runs it left out.
  */
 export function runsList(
   runs: StoredUnit<RunEntry>[],
+  sessions: StoredUnit<SessionEntry>[],
   warnings: StoredWarning[],
   query: RunsQuery,
   now: Date,
   scope: Scope | null,
 ): RunsResponse {
   const names = storedNames(runs);
+  const work = levels(runs, sessions);
   const all = runs.map((run) => storedFacts(run, names));
   const rows = all.flatMap((row) => showFacts(scope, row) ?? []);
   const inPeriod = period(query, now).matches;
+  const inWeeks = period({ weeks: query.weeks }, now).matches;
   const warned = new Set(currentWarnings(runs, [], warnings).map((w) => w.key));
   const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
-  const matches = (row: RunFacts) => inPeriod(row) && (!query.warnings || warned.has(row.key));
+  const matches = (row: RunFacts) =>
+    inPeriod(row) && (!query.warnings || warned.has(row.key)) && inGoal(work, row.key, query.goal);
   const shown = rows.filter(matches);
   return {
-    runs: shown.sort((a, b) => finished(b) - finished(a)),
+    runs: shown
+      .sort((a, b) => finished(b) - finished(a))
+      .map((row) => ({ ...row, change: runChange(work, scope, row.key), goal: listedGoal(work, scope, row.key) })),
     projects: [...new Map(rows.filter((row) => row.project).map((row) => [row.projectKey, row.project]))]
       .map(([key, name]) => ({ key, name }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     hidden: all.filter(matches).length - shown.length,
+    goalOptions: goalOptions(work, scope, all.filter(inWeeks).map((row) => row.key)),
   };
 }
 

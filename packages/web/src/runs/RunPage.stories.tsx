@@ -45,7 +45,7 @@ export const Failed: Story = {
   },
 };
 
-/** A key no stored run has (or one showing mode hides) gets its own message, with the way back to Runs. */
+/** A key no stored run has (or one showing mode hides) gets its own message, with the way back to Work's Runs view. */
 export const Unknown: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: 404 });
@@ -53,7 +53,7 @@ export const Unknown: Story = {
   play: async ({ canvas }) => {
     const state = await canvas.findByText('No run with this key.', { exact: false });
     await expect(state.closest('.glass')).not.toBeNull();
-    await expect(within(state).getByRole('link', { name: 'Runs' })).toHaveAttribute('href', '/runs');
+    await expect(within(state).getByRole('link', { name: 'Runs in Work' })).toHaveAttribute('href', '/work?view=runs');
     await expect(canvas.queryByText("Couldn't load this run.")).toBeNull();
   },
 };
@@ -95,7 +95,11 @@ export const Empty: Story = {
     mockApi({ '/api/status': status, [`/api/runs/${oldRun.key}`]: runBeforeSteps });
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
+    // Without a headline the branch stays the title, and no change, goal or session is known.
     await expect(await canvas.findByRole('heading', { name: 'feat/import', level: 1 })).toBeVisible();
+    const terms = pairs(canvasElement.querySelector('dl')!).map(([term]) => term);
+    await expect(terms[0]).toBe('Project');
+    for (const term of ['Branch', 'Change', 'Goal', 'Session']) await expect(terms).not.toContain(term);
     const flow = canvas.getByRole('region', { name: 'Flow' });
     await expect(within(flow).getByText('Recorded before steps were logged: there is no flow to draw.')).toBeVisible();
     await expect(canvas.queryByRole('group', { name: "The run's flow" })).toBeNull();
@@ -129,9 +133,14 @@ export const Full: Story = {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await expect(await canvas.findByRole('heading', { name: 'feat/search', level: 1 })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 })).toBeVisible();
+    // With a headline as its title, the branch moves into the facts, beside its change, goal and session.
     await expect(pairs(canvasElement.querySelector('dl')!)).toEqual([
       ['Project', 'atlas'],
+      ['Branch', 'feat/search'],
+      ['Change', 'Plan full-text search'],
+      ['Goal', 'Findability'],
+      ['Session', 'Search page build'],
       ['Path', 'Full'],
       ['Stage', '1'],
       ['Time', '2 h 10'],
@@ -142,6 +151,13 @@ export const Full: Story = {
       ['Stops', '0'],
       ['Warnings', '1'],
     ]);
+    const header = within(canvasElement.querySelector('dl')!);
+    await expect(header.getByRole('link', { name: 'Plan full-text search' })).toHaveAttribute('href', `/work/changes/${fullRun.change!.key}`);
+    await expect(header.getByRole('link', { name: 'Findability' })).toHaveAttribute('href', `/work/goals/${fullRun.goal!.key}`);
+    await expect(header.getByRole('link', { name: 'Search page build' })).toHaveAttribute(
+      'href',
+      `/work?view=sessions&session=${runFull.session!.key}`,
+    );
     const flow = canvas.getByRole('region', { name: 'Flow' });
     await expect(within(flow).getByRole('group', { name: "The run's flow" })).toBeVisible();
 
@@ -276,7 +292,7 @@ export const OfferWithoutOutcome: Story = {
     });
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 });
     await openFold(canvasElement, (element) => userEvent.click(element));
     const skills = canvas.getByRole('region', { name: 'Skills' });
     await expect(tableRows(skills, 'Skills').at(-1)).toEqual(['graphify', 'Offered', '–not known']);
@@ -430,7 +446,7 @@ export const Chain: Story = {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 });
     const boxes = chain(canvasElement).getAllByRole('listitem');
     await expect(boxes.map((box) => box.textContent)).toEqual([
       `Plan run${formatDayTime(parseTime(planRun.finishedAt!))}`,
@@ -452,7 +468,7 @@ export const HandedOffTo: Story = {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runHandedOff });
   },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 });
     await expect(chain(canvasElement).getAllByRole('listitem')[2]).toHaveTextContent(/^Handed off to Search page polish/);
     await expect(chain(canvasElement).getByText('Search page polish')).not.toHaveClass('text-muted-foreground');
   },
@@ -471,7 +487,7 @@ export const UntitledSessions: Story = {
     });
   },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 });
     const boxes = chain(canvasElement).getAllByRole('listitem');
     await expect(boxes[1]).toHaveTextContent('This run, fullin session no title 0f1e2d3c');
     await expect(boxes[2]).toHaveTextContent(/^Handed off to no title/);
@@ -487,7 +503,7 @@ export const Stopped: Story = {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runStopped });
   },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 });
     const stops = [...canvasElement.querySelector('dl')!.querySelectorAll('dt')].find((dt) => dt.textContent === 'Stops')!;
     await expect(stops.nextElementSibling).toHaveTextContent('1');
     await expect(stops.nextElementSibling!.querySelector(`.${WARNING_INK}`)).not.toBeNull();
@@ -500,10 +516,13 @@ export const Alone: Story = {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runAlone });
   },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByRole('heading', { name: 'feat/search', level: 1 });
+    await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 });
     const facts = Object.fromEntries(pairs(canvasElement.querySelector('dl')!));
     await expect(facts['Time']).toBe('–not known');
     await expect(facts['Est. cost']).toBe('–not known');
+    // Its session isn't known, so the header names none.
+    await expect(facts['Change']).toBe('Plan full-text search');
+    await expect(facts).not.toHaveProperty('Session');
     const flow = within(canvas.getByRole('group', { name: "The run's flow" }));
     await expect(flow.getByText('Started').parentElement).toHaveTextContent(/^Started$/);
     await expect(flow.getByText('Record written').parentElement).toHaveTextContent(/^Record written$/);

@@ -3,7 +3,7 @@ import { fullRun, smallRun } from './runs.ts';
 
 // Invented answers of GET /api/sessions for the Sessions page's stories.
 
-export const sessionsEmpty: SessionsResponse = { sessions: [], hidden: 0 };
+export const sessionsEmpty: SessionsResponse = { sessions: [], hidden: 0, goalOptions: [] };
 
 /** A session whose transcript holds two runs, with a /grill-me whose skill never loaded. */
 export const twoRunSession: SessionRow = {
@@ -19,9 +19,11 @@ export const twoRunSession: SessionRow = {
   cost: 1.05,
   startup: true,
   warnings: 1,
+  change: fullRun.change,
+  goal: fullRun.goal,
   holds: [
-    { runKey: fullRun.key, project: 'atlas', branch: 'feat/search', path: 'full' },
-    { runKey: smallRun.key, project: 'harbor', branch: 'fix/retry', path: 'small' },
+    { runKey: fullRun.key, project: 'atlas', branch: 'feat/search', headline: fullRun.headline, path: 'full' },
+    { runKey: smallRun.key, project: 'harbor', branch: 'fix/retry', headline: null, path: 'small' },
   ],
   timeline: [
     { at: '2026-11-10T09:07:00Z', kind: 'skill', name: 'brainstorming', outcome: 'wrote a file', neverLoaded: false, runKey: null },
@@ -47,6 +49,8 @@ export const otherSession: SessionRow = {
   cost: 0.12,
   startup: false,
   warnings: 1,
+  change: null,
+  goal: null,
   holds: [],
   timeline: [{ at: '2026-11-08T18:05:00Z', kind: 'command', name: 'model', outcome: null, neverLoaded: false, runKey: null }],
 };
@@ -65,6 +69,8 @@ export const quietSession: SessionRow = {
   cost: 2.4,
   startup: true,
   warnings: 0,
+  change: null,
+  goal: null,
   holds: [],
   timeline: [
     { at: '2026-11-06T11:32:00Z', kind: 'skill', name: 'systematic-debugging', outcome: 'ran', neverLoaded: false, runKey: null },
@@ -85,6 +91,8 @@ export const longSession: SessionRow = {
   cost: 0.12,
   startup: true,
   warnings: 0,
+  change: null,
+  goal: null,
   holds: [],
   timeline: [],
 };
@@ -106,6 +114,8 @@ export const twoModelSession: SessionRow = {
   cost: 0.41,
   startup: null,
   warnings: 0,
+  change: null,
+  goal: null,
   holds: [],
   timeline: [],
 };
@@ -113,6 +123,7 @@ export const twoModelSession: SessionRow = {
 export const sessionsFull: SessionsResponse = {
   sessions: [twoRunSession, otherSession, quietSession, longSession, twoModelSession],
   hidden: 0,
+  goalOptions: [fullRun.goal!],
 };
 
 /** Showing mode on: no session ID, and two sessions in other projects left out. */
@@ -126,4 +137,5 @@ export const sessionsHidden: SessionsResponse = {
     },
   ],
   hidden: 2,
+  goalOptions: [],
 };

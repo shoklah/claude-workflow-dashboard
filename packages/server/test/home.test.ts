@@ -13,8 +13,9 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setSeenAt, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
 import { weekSums } from '../src/views/home.ts';
-import { storedSessionRoots } from '../src/views/runs.ts';
+import { storedBranches, storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { goalHomes, levels } from '../src/views/work.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -238,6 +239,7 @@ describe('the feed', () => {
       runKey: expect.stringMatching(/^[0-9a-f]{16}$/),
       project: 'lantern-notes',
       branch: '<img src=x onerror=alert(1)>',
+      headline: null,
       path: 'small',
       text: null,
       sessionId: null,
@@ -255,6 +257,39 @@ describe('the feed', () => {
     expect(feed.filter((item) => item.type === 'warning' && item.runKey === null)).toEqual([
       expect.objectContaining({ text: 'WARN: session a session: startup guidelines missing', sessionId: null }),
     ]);
+  });
+  test("a run's item carries its headline, masked with showing on, and nothing leaks", async () => {
+    // report-work's offline-sync full run.
+    const offline = '97d6367dec7d9739';
+    const lantern = '/Users/example/Work/lantern-notes';
+    const plain = dbWith(fixture('report-work'));
+    setSeenAt(plain, new Date(0));
+    const item = (await home(plain)).feed.find((i) => i.type === 'run' && i.runKey === offline);
+    expect(item?.headline).toBe('Queue edits offline and replay them on reconnect');
+
+    const raw = fixture('report-work');
+    raw.runs.find((r: any) => r.key === offline).headline = 'Queue edits as tidepool-api does';
+    const db = dbWith(raw);
+    setSeenAt(db, new Date(0));
+    setShowing(db, [projectKey(lantern)]);
+    const body = await home(db);
+    const masked = body.feed.filter((i) => i.runKey === offline);
+    expect(masked.map((i) => i.headline)).toEqual(masked.map(() => 'Queue edits as another project does'));
+    expect(masked.length).toBeGreaterThan(0);
+
+    const runs = listUnits(db, 'run');
+    const sessions = listUnits(db, 'session');
+    const branches = storedBranches(runs);
+    const sessionIds = sessions.flatMap((s) => s.merged.file.match(/[0-9a-f]{8}-[0-9a-f-]{27}/) ?? []);
+    const strings = forbiddenStrings(
+      [...branches.keys()],
+      branches,
+      [lantern],
+      sessionIds,
+      storedSessionRoots(sessions),
+      goalHomes(levels(runs, sessions)),
+    );
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
   });
 });
 

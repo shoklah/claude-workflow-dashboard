@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
-import { HTML_TEXT, runsEmpty, runsFull, runsHidden, runsWarned } from '../test/runs.ts';
+import { HTML_TEXT, fullRun, runsEmpty, runsFull, runsHidden, runsWarned } from '../test/runs.ts';
 import { RunsPage } from './RunsPage.tsx';
 
 const meta = { component: RunsPage } satisfies Meta<typeof RunsPage>;
@@ -45,16 +45,17 @@ export const Empty: Story = {
   },
 };
 
-/** Full: the last 4 weeks by default, with every path and project to choose from. */
+/** Full: the last 4 weeks by default, with every path, project and goal to choose from; a view of the Work page, so it
+ * has no page title of its own. */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': runsFull });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('link', { name: 'feat/search' })).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: fullRun.headline! })).toBeVisible();
     // The two header rows, then one row per run.
     await expect(canvas.getAllByRole('row')).toHaveLength(5);
-    await expect(canvas.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
+    await expect(canvas.queryByRole('heading', { level: 1 })).toBeNull();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     const paths = canvas.getByRole('combobox', { name: 'Path' });
     await expect([...paths.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', 'Small', 'Full', 'Plan']);
@@ -65,6 +66,8 @@ export const Full: Story = {
       'harbor',
       'quarry',
     ]);
+    const goals = canvas.getByRole('combobox', { name: 'Goal' });
+    await expect([...goals.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', fullRun.goal!.name]);
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
   },
 };
@@ -75,7 +78,7 @@ export const HiddenRuns: Story = {
     mockApi({ '/api/status': status, '/api/runs?weeks=4': runsHidden });
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('link', { name: 'feat/search' })).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: fullRun.headline! })).toBeVisible();
     const line = canvas.getByText('+ 2 runs in other projects, counted in totals and charts only');
     await expect(line).toBeVisible();
     // On the backdrop, in primary ink.
@@ -93,12 +96,12 @@ export const HasWarnings: Story = {
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Has warnings' }));
     await expect(fetch).toHaveBeenCalledWith('/api/runs?weeks=4&warnings=1');
     await expect(await canvas.findAllByRole('row')).toHaveLength(3);
-    await expect(canvas.getByRole('link', { name: 'feat/search' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: fullRun.headline! })).toBeVisible();
     await expect(canvas.queryByRole('link', { name: HTML_TEXT })).toBeNull();
   },
 };
 
-/** The path, project and period filters go to the API as query params. */
+/** The path, project, period and goal filters go to the API as query params. */
 export const Filters: Story = {
   beforeEach: () => {
     mockApi({
@@ -107,6 +110,7 @@ export const Filters: Story = {
       '/api/runs?path=full&weeks=4': runsWarned,
       '/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=4': runsWarned,
       '/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12': runsWarned,
+      [`/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12&goal=${fullRun.goal!.key}`]: runsWarned,
     });
   },
   play: async ({ canvas, userEvent }) => {
@@ -115,5 +119,7 @@ export const Filters: Story = {
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Project' }), 'atlas');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Period' }), '12');
     await expect(fetch).toHaveBeenCalledWith('/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12');
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Goal' }), fullRun.goal!.name);
+    await expect(fetch).toHaveBeenCalledWith(`/api/runs?path=full&project=1a2b3c4d5e6f7081&weeks=12&goal=${fullRun.goal!.key}`);
   },
 };

@@ -153,7 +153,14 @@ test("maskText masks a hidden project's name and path inside a shown project's t
 });
 
 test('maskText replaces only whole words', () => {
-  const scope = { shown: new Set<string>(), names: new Map<string, string>(), kept: [], hidden: ['api'], branches: [] };
+  const scope = {
+    shown: new Set<string>(),
+    names: new Map<string, string>(),
+    kept: [],
+    hidden: ['api'],
+    branches: [],
+    goals: [],
+  };
   expect(maskText(scope, 'rapid api')).toBe('rapid another project');
   expect(maskText(scope, 'rapid-api')).toBe('rapid-another project');
 });
@@ -163,6 +170,19 @@ test("maskText masks a hidden name that '-' joins to other words", () => {
   expect(maskText(scope, 'bump tidepool-api-client to 2')).toBe('bump another project-client to 2');
   // A Claude Code transcript folder, as trimPaths leaves it.
   expect(maskText(scope, 'folder -Users-example-Work-tidepool-api')).toBe('folder -Users-example-Work-another project');
+});
+
+test('maskText writes a hidden goal name "another goal"; a goal with one shown home is not hidden', () => {
+  const goals = new Map([
+    ['Ship search', [TIDEPOOL]],
+    ['Shared cleanup', [TIDEPOOL, WORK]],
+  ]);
+  const scope = scopeOf([projectKey(WORK)], BRANCHES, {}, [], goals)!;
+  expect(scope.goals).toEqual(['Ship search']);
+  expect(maskText(scope, 'toward SHIP SEARCH and Shared cleanup')).toBe('toward another goal and Shared cleanup');
+  const { forbidden, kinds } = forbiddenStrings(ROOTS, BRANCHES, [WORK], [], [], goals);
+  expect(kinds.get('Ship search')).toEqual(['goal name']);
+  expect(forbidden).not.toContain('Shared cleanup');
 });
 
 test('maskText turns a session file into "a session"', () => {

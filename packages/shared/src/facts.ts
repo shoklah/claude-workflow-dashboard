@@ -7,6 +7,7 @@ export type RunFacts = {
   projectKey: string;
   project: string;
   branch: string | null;
+  headline: string | null;
   path: Path | null;
   stage: string | null;
   startedAt: string | null;
@@ -48,6 +49,17 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   const match = SESSION_FILE.exec(text);
   if (!match) return { text, sessionId: null };
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
+}
+
+/** A run's findings, every one; null for a record from before steps, which has no findings to count. */
+export function foundFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
+  return run.beforeSteps ? null : run.findings.total;
+}
+
+/** A run's closed findings: acted on + not acted on, the findings with an outcome other than open; null for a record
+ * from before steps, which has no findings to count. */
+export function closedFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
+  return run.beforeSteps ? null : run.findings.actedOn + run.findings.notActedOn;
 }
 
 // A sum of known values: null until one is known.
@@ -107,6 +119,8 @@ export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
     // project: the last segment of record.project, so no path leaves the backend.
     project: (record?.project ?? '').split('/').filter(Boolean).at(-1) ?? '',
     branch: record?.branch ?? null,
+    // headline: the run's one-line title.
+    headline: run.headline ?? null,
     path,
     stage: record?.stage ?? null,
     startedAt: record?.started ?? null,

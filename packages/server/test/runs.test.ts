@@ -15,13 +15,14 @@ import { fixture, reportFixtures } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { projectKey, runKey, sessionKey } from '../src/keys.ts';
+import { changeKey, goalKey, projectKey, runKey, sessionKey } from '../src/keys.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { labelInputs, saveBatch } from '../src/db/labels.ts';
-import { runView, skillOutcomeLabel, storedSessionRoots } from '../src/views/runs.ts';
+import { runView, skillOutcomeLabel, storedBranches, storedSessionRoots } from '../src/views/runs.ts';
 import { modelSums } from '../src/views/models.ts';
 import { runPageView } from '../src/views/run.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { goalHomes, levels } from '../src/views/work.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -499,12 +500,14 @@ describe("the run's surroundings", () => {
   });
 
   test('names the session whose file is the run\'s transcript, with no session ID under a scope', async () => {
+    const key = sessionKey(v7.sessions.find((s: any) => s.file.includes('5a9d3f12')));
     expect((await run(WEBHOOKS_V7)).session).toEqual({
+      key,
       title: 'Offline sync plan',
       sessionId: '5a9d3f12-6e8b-4c7a-9f2d-3b1e0c8a4d56',
     });
     setShowing(db, [projectKey(TIDEPOOL), projectKey(LANTERN)]);
-    expect((await run(WEBHOOKS_V7)).session).toEqual({ title: 'Offline sync plan', sessionId: null });
+    expect((await run(WEBHOOKS_V7)).session).toEqual({ key, title: 'Offline sync plan', sessionId: null });
   });
 
   test("the session is null when it isn't shown or isn't stored", async () => {
@@ -654,7 +657,11 @@ describe("the run's surroundings", () => {
     expect(body.skills[0].name).toBe('another project');
     expect(body.models.at(-1)).toEqual({ model: 'another project', cost: 0.2 });
     expect(body.laterFixes[0].subject).toBe('fix: as another project does on another branch');
-    expect(body.session).toEqual({ title: "Port another project' sync to tidepool-api", sessionId: null });
+    expect(body.session).toEqual({
+      key: sessionKey(v7.sessions[3]),
+      title: "Port another project' sync to tidepool-api",
+      sessionId: null,
+    });
     expect(body.handoffTo).toEqual({ title: 'Handed on from another project', sessionId: null });
     expect(body.phases.at(-1)).toEqual({ name: 'another project', cost: 0.1 });
     expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
@@ -816,4 +823,108 @@ test("a run's context holds its calls, tool results and sweeps, null without a w
     sweeps: { inline: 2, delegated: 3 },
   });
   expect((await run(rateLimits!)).context).toBeNull();
+});
+
+describe('titles, changes and goals', () => {
+  // report-work's units, by their stored keys.
+  const LANTERN = '/Users/example/Work/lantern-notes';
+  const OFFLINE_RUN = '97d6367dec7d9739';
+  const WEBHOOKS_RUN = '2e10cc2ee4d14576';
+  const TIDY_RUN = 'db2cf90d5739f4d0';
+  const S_7D1E = '60851c0c8aec995e';
+  const OFFLINE_CHANGE = changeKey(
+    { project: LANTERN, path: 'docs/superpowers/specs/2026-11-05-offline-sync-design.md' },
+    null,
+    '',
+    '',
+  );
+  const OFFLINE_GOAL = { key: goalKey('Offline sync'), name: 'Offline sync' };
+
+  beforeEach(() => {
+    db.$client.close();
+    db = dbWith('report-work');
+  });
+
+  const rowOf = (body: RunsResponse, key: string) => body.runs.find((r) => r.key === key)!;
+
+  /** What a showing-mode response of the test's database may not hold, with lantern-notes shown. */
+  function forbidden() {
+    const runs = listUnits(db, 'run');
+    const sessions = listUnits(db, 'session');
+    const branches = storedBranches(runs);
+    const sessionIds = [
+      ...new Set(
+        JSON.stringify(sessions.map((s) => s.merged.file)).match(
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g,
+        ),
+      ),
+    ];
+    const strings = forbiddenStrings(
+      [...branches.keys()],
+      branches,
+      [LANTERN],
+      sessionIds,
+      storedSessionRoots(sessions),
+      goalHomes(levels(runs, sessions)),
+    );
+    expect(strings.forbidden).toEqual(expect.arrayContaining(['tidepool-api', 'Webhooks']));
+    return { forbidden: [...strings.forbidden, '/Users/example'], shown: strings.shown };
+  }
+
+  test("the offline-sync full run's row carries its headline, change and goal", async () => {
+    expect(rowOf(await runs(), OFFLINE_RUN)).toMatchObject({
+      headline: 'Queue edits offline and replay them on reconnect',
+      change: { key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay' },
+      goal: OFFLINE_GOAL,
+    });
+  });
+
+  test("a run that is a change of its own with no spec has no change, and its own goal", async () => {
+    expect(rowOf(await runs(), TIDY_RUN)).toMatchObject({ change: null, goal: OFFLINE_GOAL });
+  });
+
+  test("goal filters the runs by their change's goal, and goalOptions names the period's goals", async () => {
+    const body = await runs(`?goal=${goalKey('Webhooks')}`);
+    expect(body.runs.map((r) => r.key)).toEqual([WEBHOOKS_RUN]);
+    expect((await runs()).goalOptions).toEqual(
+      [OFFLINE_GOAL, { key: goalKey('Webhooks'), name: 'Webhooks' }],
+    );
+  });
+
+  test("the run page carries the run's change, goal and session key", async () => {
+    const body = await run(OFFLINE_RUN);
+    expect(body.facts.headline).toBe('Queue edits offline and replay them on reconnect');
+    expect(body.change).toEqual({ key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay' });
+    expect(body.goal).toEqual(OFFLINE_GOAL);
+    expect(body.session).toEqual({
+      key: S_7D1E,
+      title: 'Offline sync build',
+      sessionId: '7d1e4b90-3c2a-4f6e-8b5d-1a9c0e2f6b47',
+    });
+  });
+
+  test('with showing on, headlines and goal names are masked, hidden goals are no option, and nothing leaks', async () => {
+    db.$client.close();
+    db = dbWith('report-work', (raw) => {
+      const offline = raw.runs.find((r: any) => r.record.path === 'full' && r.record.branch === 'feature/offline-sync');
+      offline.headline = 'Queue edits as tidepool-api does';
+      for (const unit of [...raw.runs, ...raw.sessions]) {
+        if (unit.goal === 'Offline sync') unit.goal = 'Offline sync like tidepool-api';
+      }
+    });
+    setShowing(db, [projectKey(LANTERN)]);
+    const list = await runs();
+    expect(rowOf(list, OFFLINE_RUN)).toMatchObject({
+      headline: 'Queue edits as another project does',
+      goal: { key: goalKey('Offline sync like tidepool-api'), name: 'Offline sync like another project' },
+    });
+    expect(list.goalOptions.map((g) => g.name)).toEqual(['Offline sync like another project']);
+    const page = await run(OFFLINE_RUN);
+    expect(page.facts.headline).toBe('Queue edits as another project does');
+    expect(page.goal?.name).toBe('Offline sync like another project');
+    expect(page.session).toMatchObject({ key: S_7D1E, sessionId: null });
+    const { forbidden: hidden, shown } = forbidden();
+    expect(leaks(list, hidden, shown)).toEqual([]);
+    expect(leaks(page, hidden, shown)).toEqual([]);
+  });
 });

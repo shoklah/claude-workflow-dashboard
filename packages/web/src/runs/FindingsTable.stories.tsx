@@ -207,6 +207,7 @@ export const WithRun: Story = {
       runKey: fullRun.key,
       project: fullRun.project,
       branch: fullRun.branch,
+      headline: fullRun.headline,
     })),
     categoryLabels: runFull.categoryLabels,
     run: true,
@@ -215,10 +216,10 @@ export const WithRun: Story = {
     const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
     await expect(headers.slice(0, 3)).toEqual(['Run', 'Project', '#']);
     await expect(headers).toEqual(expect.arrayContaining(['Category', 'Labelled by', 'Valid', 'App']));
-    const links = canvas.getAllByRole('link', { name: 'feat/search' });
+    const links = canvas.getAllByRole('link', { name: 'Search every note by title and body' });
     await expect(links).toHaveLength(6);
     await expect(links[0]).toHaveAttribute('href', `/runs/${fullRun.key}`);
-    await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill('feat/search'));
+    await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill('Search every note by title and body'));
     await expect(column(canvasElement, 'Project')).toEqual(Array(6).fill('atlas'));
     await plain(canvasElement);
   },

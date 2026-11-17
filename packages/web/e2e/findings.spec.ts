@@ -22,8 +22,8 @@ test('the findings page lists a cell’s findings, says the labeller is off and 
   await page.getByRole('button', { name: /^Correctness, week of Nov 8: [1-9]/ }).click();
   const list = page.getByRole('region', { name: 'Findings', exact: true });
   await expect(list.getByText('Retry loop never gives up after the third failure')).toBeVisible();
-  await list.getByRole('link', { name: 'feature/offline-sync' }).first().click();
-  await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
+  await list.getByRole('link', { name: 'Queue edits offline and replay them on reconnect' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Queue edits offline and replay them on reconnect', level: 1 })).toBeVisible();
 });
 
 test('the selected cell’s findings have no axe violations', async ({ page }) => {

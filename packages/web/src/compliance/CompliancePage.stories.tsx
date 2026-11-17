@@ -109,7 +109,7 @@ export const Full: Story = {
     ]);
     const rows = table.getAllByRole('row').slice(1);
     await expect(rows).toHaveLength(1);
-    await expect(table.getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(table.getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(within(rows[0]).getByText('atlas')).toBeVisible();
     await expect(within(rows[0]).getByText('New')).toBeVisible();
     // The "WARN:" prefix and the run's own "branch (date):" lead are gone: the Run column already names the run.
