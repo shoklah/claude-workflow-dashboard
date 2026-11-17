@@ -1,6 +1,6 @@
 # Work: goals, changes and the session graph
 
-Status: draft, awaiting the owner's approval. Path: Full (new facts in the import's schema, new views, routes and pages, showing mode, `check:real`, fixtures, two routes redirected). Captures: `docs/design/2026-11-17-work/`, rendered on the real components with invented data, on the throwaway branch `claude/activity-mock` at `1e0bf75` (the Work and goal captures re-rendered after the grilling; the goal page's mocked Sessions table shows only the columns its mock data has), cut from `main` at `855395e` (the side menu and the run page redesign are both merged).
+Status: approved by the owner on 2026-11-17, after the grilling. The dashboard's plan waits until the reporter exports change requests 1 to 4. Path: Full (new facts in the import's schema, new views, routes and pages, showing mode, `check:real`, fixtures, two routes redirected). Captures: `docs/design/2026-11-17-work/`, rendered on the real components with invented data, on the throwaway branch `claude/activity-mock` at `1e0bf75` (the Work and goal captures re-rendered after the grilling; the goal page's mocked Sessions table shows only the columns its mock data has), cut from `main` at `855395e` (the side menu and the run page redesign are both merged).
 
 ## Intent
 
