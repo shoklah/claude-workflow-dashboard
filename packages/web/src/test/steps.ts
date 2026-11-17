@@ -2,8 +2,6 @@ import { STEP_KINDS, type StepRow, type StepsResponse } from '@cwd/shared';
 
 // Invented answers of GET /api/steps for the Steps and rules page's stories.
 
-const NO_TOKENS = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
-
 /** A step kind's row with nothing run. */
 function idle(step: StepRow['step']): StepRow {
   return {
@@ -15,7 +13,7 @@ function idle(step: StepRow['step']): StepRow {
     declined: 0,
     deferred: 0,
     openOrToOwner: 0,
-    tokens: step === 'simplify' ? null : NO_TOKENS,
+    tokens: null,
     cost: null,
   };
 }

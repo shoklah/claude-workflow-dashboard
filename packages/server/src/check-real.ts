@@ -165,7 +165,6 @@ else {
                 { deferred: out('deferred'), open: out('open', 'to_owner') },
               ) ||
               !sameCounts(row.counts, want.counts) ||
-              (row.tokens === null) !== (want.tokens == null) ||
               !sameCounts(row.tokens, want.tokens) ||
               cents(row.cost ?? 0) !== cents(want.cost ?? 0)
             );
