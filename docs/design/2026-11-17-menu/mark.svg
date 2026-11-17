@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- edward's mark as mocked: an outline eye in the current ink, its pupil two of the backdrop's orbs (pink, teal). -->
+  <path d="M2 12c2.6-4.6 6-7 10-7s7.4 2.4 10 7c-2.6 4.6-6 7-10 7s-7.4-2.4-10-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="10.6" cy="11" r="3.6" fill="#ff3cac"/>
+  <circle cx="13.4" cy="13" r="3.6" fill="#00d2b8" opacity=".9"/>
+</svg>

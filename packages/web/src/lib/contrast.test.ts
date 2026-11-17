@@ -67,6 +67,8 @@ function mode(name: string, tokens: Record<string, string>) {
     band: panel.map((p) => over(colour('secondary'), p)),
     hover: panel.map((p) => over(colour('accent'), p)),
     noticeBar: backdropColours.map((b) => over(colour('notice'), b)),
+    // Showing mode's bar at the rail's foot: the notice over a panel.
+    noticeOnPanel: panel.map((p) => over(colour('notice'), p)),
     foreground: colour('foreground'),
     mutedForeground: colour('muted-foreground'),
     warningInk: colour('warning-ink'),
@@ -95,6 +97,7 @@ for (const mode of [light, dark]) {
     for (const ink of [mode.foreground, mode.mutedForeground, mode.warningInk]) expect(worst(ink, mode[surface])).toBeGreaterThanOrEqual(4.5);
   });
   test(`${mode.name}: notice ink on the notice bar over every backdrop colour`, () => expect(worst(mode.noticeInk, mode.noticeBar)).toBeGreaterThanOrEqual(4.5));
+  test(`${mode.name}: notice ink on the notice bar over every panel surface`, () => expect(worst(mode.noticeInk, mode.noticeOnPanel)).toBeGreaterThanOrEqual(4.5));
   // The zero step only over the panel: heatmap rows don't hover and its cells are never in the header band.
   test.each(['zero', '1', '2', '3', '4', '5'])(`${mode.name}: shade step %s's ink`, (step) => {
     const shade = mode.colour(`shade-${step}`);
