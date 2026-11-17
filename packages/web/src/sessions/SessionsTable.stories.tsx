@@ -1,11 +1,18 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { fullRun, smallRun } from '../test/runs.ts';
 import { sessionsFull } from '../test/sessions.ts';
-import { expectColgroups, expectNoJoined } from '../test/table.ts';
+import { expectNoJoined } from '../test/table.ts';
 import { SessionsTable } from './SessionsTable.tsx';
 
-const meta = { component: SessionsTable } satisfies Meta<typeof SessionsTable>;
+/** The list in a box 1000 px wide, so its container is past the fold. */
+const wide: Decorator = (Story) => (
+  <div style={{ width: 1000 }}>
+    <Story />
+  </div>
+);
+
+const meta = { component: SessionsTable, decorators: [wide] } satisfies Meta<typeof SessionsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -15,6 +22,16 @@ function cells(table: Element): string[][] {
     [...tr.querySelectorAll(':scope > td')].map((td) => td.textContent ?? ''),
   );
 }
+
+/** The opened row under a toggle. */
+const openedRow = (toggle: HTMLElement) => toggle.closest('tr')!.nextElementSibling as HTMLElement;
+/** An opened row's visible terms. */
+const terms = (row: HTMLElement) =>
+  [...row.querySelectorAll<HTMLElement>('dt')].filter((el) => el.checkVisibility()).map((el) => el.textContent);
+/** An opened row's visible value for a term. */
+const fact = (row: HTMLElement, term: string) =>
+  [...row.querySelectorAll<HTMLElement>('dt')].find((el) => el.checkVisibility() && el.textContent === term)!
+    .nextElementSibling as HTMLElement;
 
 export const Empty: Story = {
   args: { sessions: [] },
@@ -26,36 +43,27 @@ export const Empty: Story = {
   },
 };
 
-/** Full: a row of counts per session; a session's name opens its timeline, a small table of its own. */
+/** Full: a session's first glance; its title opens its facts, then its timeline, a small table of its own. */
 export const Full: Story = {
   args: { sessions: sessionsFull.sessions },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await expectColgroups(canvasElement);
-    const headers = canvas.getAllByRole('columnheader').map((th) => th.textContent);
-    await expect(headers).toEqual([
+    const headers = canvas.getAllByRole('columnheader');
+    await expect(headers.map((th) => th.textContent)).toEqual([
       'Session',
-      'ID',
       'Project',
       'Started',
       'Length',
-      'Model',
-      'Effort',
       'Est. cost ($)',
-      'Skills',
-      'Commands',
-      'Runs',
-      'Startup',
       'Warnings',
-      'Typed',
-      'Never loaded',
     ]);
-    for (const name of ['Length', 'Est. cost ($)', 'Skills', 'Typed', 'Never loaded', 'Runs', 'Warnings']) {
+    for (const th of headers) await expect(th).toBeVisible();
+    for (const name of ['Length', 'Est. cost ($)', 'Warnings']) {
       await expect(canvas.getByRole('columnheader', { name })).toHaveClass('text-right', 'tabular-nums');
     }
 
-    const rows = canvas.getAllByRole('row').slice(2);
+    const rows = canvas.getAllByRole('row').slice(1);
     await expect(rows).toHaveLength(5);
-    const [two, other, , long, twoModels] = rows.map((row) => within(row));
+    const [two, other, quiet, long] = rows.map((row) => within(row));
 
     // Lengths adapt to their size, right-aligned.
     for (const [row, length] of [
@@ -65,33 +73,38 @@ export const Full: Story = {
     ] as const) {
       await expect(row.getByText(length).closest('td')).toHaveClass('text-right', 'tabular-nums');
     }
-    await expect(two.getByText('7d1e4b2a')).toBeVisible();
     await expect(two.getByText('1.05')).toBeVisible();
     await expect(other.getByText('Other project')).toBeVisible();
-
-    // Two models: one per line in Model, their efforts beside them in Effort.
-    const [, , , , , model, effort] = twoModels.getAllByRole('cell');
-    await expect([...model.children].map((line) => line.textContent)).toEqual(['Opus 5.5', 'Sonnet 5.5']);
-    await expect([...effort.children].map((line) => line.textContent)).toEqual(['high', '–not known']);
-
-    // Counts: skills, commands typed, never loaded, runs; Startup in words, Missing and a non-zero Never loaded orange.
-    const twoCells = cells(canvasElement.querySelector('table')!).at(0)!;
-    await expect(twoCells.slice(8)).toEqual(['1', '3', '1', '2', 'Loaded', '1']);
-    await expect(two.getByText('Loaded')).not.toHaveClass('text-warning-ink');
-    const neverLoaded = two.getAllByRole('cell')[10];
-    await expect(neverLoaded).toHaveClass('text-warning-ink');
-    await expect(other.getAllByRole('cell')[10]).not.toHaveClass('text-warning-ink');
-    await expect(other.getByText('Missing').closest('td')).toHaveClass('text-warning-ink');
+    // A non-zero Warnings count is orange.
+    await expect(two.getAllByRole('cell')[5].firstElementChild).toHaveClass('text-warning-ink');
+    await expect(quiet.getAllByRole('cell')[5].firstElementChild).not.toHaveClass('text-warning-ink');
     await expectNoJoined(canvasElement);
 
-    // Closed, a row shows no timeline; its name is the toggle.
+    // Closed, a row shows no facts or timeline; its title is the toggle.
     await expect(canvas.queryByRole('table', { name: 'Timeline of Plan the search index' })).toBeNull();
     const toggle = canvas.getByRole('button', { name: 'Plan the search index' });
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(toggle);
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-    // Open, the detail row holds the timeline as a small table: one value per cell, times on the 24-hour clock.
+    // Open: its facts, in words and counts, Startup in words and a non-zero Never loaded orange.
+    const opened = openedRow(toggle);
+    await expect(terms(opened)).toEqual(['ID', 'Model', 'Effort', 'Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup']);
+    await expect(within(fact(opened, 'ID')).getByText('7d1e4b2a')).toBeVisible();
+    await expect(fact(opened, 'Model').textContent).toBe('Opus 5.5');
+    await expect(fact(opened, 'Effort').textContent).toBe('medium');
+    await expect(['Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup'].map((t) => fact(opened, t).textContent)).toEqual([
+      '1',
+      '3',
+      '1',
+      '2',
+      'Loaded',
+    ]);
+    await expect(fact(opened, 'Never loaded').firstElementChild).toHaveClass('text-warning-ink');
+    await expect(fact(opened, 'Startup').firstElementChild).not.toHaveClass('text-warning-ink');
+
+    // Then the timeline as a small table in its own scrolling region: one value per cell, times on the 24-hour clock.
+    await expect(canvas.getByRole('region', { name: 'Timeline of Plan the search index table' })).toBeVisible();
     const timeline = canvas.getByRole('table', { name: 'Timeline of Plan the search index' });
     const inTimeline = within(timeline);
     await expect(inTimeline.getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Time', 'What', 'Name', 'Outcome']);
@@ -106,9 +119,26 @@ export const Full: Story = {
     await expect(lines[3].slice(1, 3)).toEqual(['Run started', 'feat/search']);
     await expect(inTimeline.getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
     await expect(inTimeline.getByRole('link', { name: 'fix/retry' })).toHaveAttribute('href', `/runs/${smallRun.key}`);
+    await expectNoJoined(canvasElement);
 
     await userEvent.click(toggle);
     await expect(canvas.queryByRole('table', { name: 'Timeline of Plan the search index' })).toBeNull();
+
+    // Missing startup is orange, a zero Never loaded isn't.
+    const otherToggle = canvas.getByRole('button', { name: 'no title' });
+    await userEvent.click(otherToggle);
+    const otherOpened = openedRow(otherToggle);
+    await expect(fact(otherOpened, 'Startup').firstElementChild).toHaveClass('text-warning-ink');
+    await expect(fact(otherOpened, 'Startup').textContent).toBe('Missing');
+    await expect(fact(otherOpened, 'Never loaded').firstElementChild).not.toHaveClass('text-warning-ink');
+
+    // Two models: one per line in Model, their efforts beside them in Effort; an unknown startup is left out.
+    const twoModels = canvas.getByRole('button', { name: 'Sketch the retry backoff' });
+    await userEvent.click(twoModels);
+    const twoOpened = openedRow(twoModels);
+    await expect([...fact(twoOpened, 'Model').children].map((line) => line.textContent)).toEqual(['Opus 5.5', 'Sonnet 5.5']);
+    await expect([...fact(twoOpened, 'Effort').children].map((line) => line.textContent)).toEqual(['high', '–not known']);
+    await expect(terms(twoOpened)).not.toContain('Startup');
   },
 };
 
