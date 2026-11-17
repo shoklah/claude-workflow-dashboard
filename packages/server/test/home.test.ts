@@ -96,6 +96,8 @@ describe('week numbers', () => {
       for (const m of Object.values<{ cost: number | null }>(run.models ?? {})) m.cost = null;
     }
     const { thisWeek } = await home(dbWith(raw));
+    // The week holds runs, so its null cost is theirs, not an empty week's.
+    expect(thisWeek.runs).toMatchObject({ plan: 1, full: 1 });
     expect(thisWeek.cost).toBeNull();
     expect(thisWeek.costPerRun).toBeNull();
   });
