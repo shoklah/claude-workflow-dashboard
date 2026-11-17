@@ -54,6 +54,6 @@
 
 - [ ] **Step 5: Invented web data.** `packages/web/src/test/steps.ts`: `idle()`'s `tokens` becomes `null` (remove `NO_TOKENS` if nothing else uses it). `StepsPage.stories.tsx:67`'s `'0.0'` becomes `DASH`. Run `pnpm -r typecheck && pnpm vitest run`. Expected: PASS.
 
-- [ ] **Step 6: Screens.** In the background, `pnpm test:screens --update-snapshots --workers=1 e2e/steps.screens.ts`, then the full `pnpm test:screens` as the check. Expected: PASS both; the Steps baselines change (Final fix-check's and Kit review's tokens read the dash, light and dark).
+- [ ] **Step 6: Screens.** In the background, `pnpm test:screens --update-snapshots --workers=1 e2e/steps.screens.ts`, then `pnpm test:screens --workers=1 e2e/steps.screens.ts` again as the check (no other page reads `stepSums`; CI runs every screen). Expected: PASS both; the Steps baselines change (Final fix-check's and Kit review's tokens read the dash, light and dark).
 
 - [ ] **Step 7: Commit** `fix: a step kind's tokens stay unknown until a dispatch carries models (F17)`, with the Steps baselines.
