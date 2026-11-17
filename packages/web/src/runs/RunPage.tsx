@@ -3,9 +3,9 @@ import { ArrowRight, ThumbsUp, TriangleAlert } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { parseTime, type RunPageResponse } from '@cwd/shared';
-import { useLiveQuery } from '../api.ts';
-import { Num, Text } from '../components/Num.tsx';
-import { LINK, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
+import { ApiError, useLiveQuery } from '../api.ts';
+import { Lines, NUM, Num, Text } from '../components/Num.tsx';
+import { Details, LINK, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -17,6 +17,7 @@ import { StepDetail } from './StepDetail.tsx';
 import { StrengthsTable } from './StrengthsTable.tsx';
 import {
   closedFindings,
+  countName,
   formatCompact,
   formatCost,
   formatMinutes,
@@ -25,19 +26,160 @@ import {
   laterFixesLabel,
   modelLabel,
   pathLabel,
+  phaseLabel,
   PROBLEMS_INK,
   PROBLEMS_SIDE,
   STRENGTHS_INK,
+  splitPair,
   STRENGTHS_SIDE,
   WARNING_INK,
 } from '../lib/format.ts';
 
-/** A titled section of the side panel, its `none` line when it has nothing to show. */
-function SideSection({ title, none, children }: { title: string; none: string; children: ReactNode }) {
+/** A fold panel's line when it has nothing to show. */
+function NoneText({ children }: { children: string }) {
+  return <p className="text-sm text-muted-foreground">{children}</p>;
+}
+
+/** A plain table's column head; `num` for a numeric column. */
+function Head({ num = false, children }: { num?: boolean; children: string }) {
   return (
-    <Section title={title} className="gap-1.5 border-b pb-4 last:border-0 last:pb-0">
-      {children || <p className="text-sm text-muted-foreground">{none}</p>}
-    </Section>
+    <th scope="col" className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
+      {children}
+    </th>
+  );
+}
+
+/** The main session's model and effort, each model's cost, the agents with each model and effort they ran on, and
+ * the advisor's calls and notes. */
+function ModelsAndAdvisor({ run }: { run: RunPageResponse }) {
+  const { main, models, agents, advisor } = run;
+  return (
+    <Panel title="Models and advisor">
+      {!main && models.length === 0 && agents.length === 0 && <NoneText>No model recorded.</NoneText>}
+      {main && (
+        <Pairs
+          pairs={[
+            ['Main session model', <Text value={modelLabel(main.model)} />],
+            ['Main session effort', <Text value={main.effort} />],
+          ]}
+        />
+      )}
+      {models.length > 0 && <Pairs names pairs={models.map((model) => [<Text value={modelLabel(model.model)} />, formatCost(model.cost)])} />}
+      {agents.length > 0 && (
+        <table aria-label="Agents" className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <Head>Agent</Head>
+              <Head>Model</Head>
+              <Head>Effort</Head>
+              <Head num>Dispatches</Head>
+            </tr>
+          </thead>
+          <tbody>
+            {agents.map((agent) => {
+              const pairs = Object.entries(agent.actual).map(([pair, count]) => ({ ...splitPair(pair), count }));
+              return (
+                <Lines
+                  key={agent.name}
+                  name={agent.name}
+                  lines={pairs.length}
+                  line={(i) => (
+                    <>
+                      <td className="px-2 py-1.5">
+                        <Text value={pairs[i].model} unknown="not known" />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <Text value={pairs[i].effort} unknown="not known" />
+                      </td>
+                      <td className={cn('px-2 py-1.5', NUM)}>
+                        <Num value={pairs[i].count} />
+                      </td>
+                    </>
+                  )}
+                />
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+      {advisor ? (
+        <Pairs
+          pairs={[
+            ['Advisor calls', <Num value={advisor.calls} />],
+            ['Advisor notes', <Num value={advisor.notes} />],
+          ]}
+        />
+      ) : (
+        <NoneText>Advisor not consulted.</NoneText>
+      )}
+    </Panel>
+  );
+}
+
+/** The run's cost, models, context and skills, folded: four panels, in two columns on a wide screen. */
+function Fold({ run }: { run: RunPageResponse }) {
+  const { phases, context, skills, offers } = run;
+  return (
+    <Details summary="Cost, context and skills">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Est. cost by phase">
+          {phases.length > 0 ? (
+            <Pairs pairs={phases.map((phase) => [phaseLabel(phase.name), <Num value={phase.cost} format={formatCost} />])} />
+          ) : (
+            <NoneText>No cost by phase recorded.</NoneText>
+          )}
+        </Panel>
+        <ModelsAndAdvisor run={run} />
+        <Panel title="Context">
+          {context ? (
+            <Pairs
+              pairs={[
+                ['Calls', <Num value={context.calls} />],
+                ['Median tokens', <Num value={context.medianTokens} format={formatCompact} />],
+                ['Largest tokens', <Num value={context.maxTokens} format={formatCompact} />],
+                ['Calls past the cap', <Num value={context.callsOverCap} />],
+                ['Handed off', context.handoff ? <Time iso={context.handoff} /> : <span className="text-muted-foreground">no</span>],
+                ['Tool results (characters)', formatCompact(context.toolCharacters)],
+                ['Read share', <Num value={context.readShare} format={formatShare} />],
+                ['Sweeps inline', <Num value={context.sweeps.inline} />],
+                ['Sweeps delegated', <Num value={context.sweeps.delegated} />],
+              ]}
+            />
+          ) : (
+            <NoneText>No context facts for this run.</NoneText>
+          )}
+        </Panel>
+        <Panel title="Skills">
+          {skills.length + offers.length > 0 ? (
+            <table aria-label="Skills" className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <Head>Skill</Head>
+                  <Head>Loaded or offered</Head>
+                  <Head>Outcome</Head>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ...skills.map((skill) => [skill.name, 'Loaded', skill.outcome]),
+                  ...offers.map((offer) => [offer.skill, 'Offered', countName(offer.outcome)]),
+                ].map(([name, use, outcome], i) => (
+                  <tr key={i} className="border-t align-top">
+                    <th scope="row" className="px-2 py-1.5 text-left font-normal break-words">
+                      {name}
+                    </th>
+                    <td className="px-2 py-1.5 text-muted-foreground">{use}</td>
+                    <td className="px-2 py-1.5 text-muted-foreground">{outcome}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <NoneText>No skill loaded or offered.</NoneText>
+          )}
+        </Panel>
+      </div>
+    </Details>
   );
 }
 
@@ -164,7 +306,8 @@ function Header({ run }: { run: RunPageResponse }) {
 
 /**
  * One run: its branch and facts, the run drawn as a graph with its problems and the reviewers' strengths in two tables
- * that follow the selected step, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
+ * that follow the selected step, what it left for later, its warnings, and its cost, models, context and skills folded.
+ * A key no shown run has gets its own message.
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunPageResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
@@ -173,8 +316,18 @@ export function RunPage({ runKey }: { runKey: string }) {
   const selected = selection?.runKey === runKey ? selection.unit : null;
   const select = (unit: string | null) => setSelection(unit === null ? null : { runKey, unit });
   if (run.isPending) return <State>Loading the run…</State>;
+  if (run.error instanceof ApiError && run.error.status === 404) {
+    return (
+      <State error>
+        {'No run with this key. '}
+        <Link to="/runs" className={LINK}>
+          Runs
+        </Link>
+      </State>
+    );
+  }
   if (run.isError) return <State error>Couldn't load this run.</State>;
-  const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
+  const { facts, timeline, findings, strengths, warnings, categoryLabels } = run.data;
   const stages = stagesOf(timeline);
   const units = unitsOf(stages);
   const unit = units.find((u) => u.id === selected);
@@ -194,114 +347,76 @@ export function RunPage({ runKey }: { runKey: string }) {
     <div className="flex flex-col gap-4">
       <PageTitle>{facts.branch ?? 'Run'}</PageTitle>
       <Header run={run.data} />
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
-          <Panel title="Flow">
-            {facts.beforeSteps ? (
-              <p className="text-sm text-muted-foreground">Recorded before steps were logged: there is no flow to draw.</p>
-            ) : (
-              <RunFlow stages={stages} selected={selected} onSelect={select} />
-            )}
-            {!facts.beforeSteps && (
-              <div className="border-t pt-3 text-sm">
-                {unit ? (
-                  <StepDetail unit={unit} onClose={() => select(null)} />
-                ) : (
-                  <p className="text-muted-foreground">Select a task or a review to see its rounds, and its findings below.</p>
-                )}
-              </div>
-            )}
-          </Panel>
-          {problems.length > 0 ? (
-            <FindingsTable
-              // Keyed by the selection, so a filter set on one step resets with it.
-              key={unit?.id ?? 'run'}
-              findings={problems}
-              categoryLabels={categoryLabels}
-              heading={problemsTitle}
-              label="Problems table"
-              skip={['step']}
-              containerClassName={PROBLEMS_SIDE}
-            />
+      <div className="flex min-w-0 flex-col gap-6">
+        <Panel title="Flow">
+          {facts.beforeSteps ? (
+            <p className="text-sm text-muted-foreground">Recorded before steps were logged: there is no flow to draw.</p>
           ) : (
-            <NoneLine title={problemsTitle} side={PROBLEMS_SIDE}>
-              {facts.beforeSteps
-                ? 'Recorded before findings were logged: this run has none to list.'
-                : unit
-                  ? `${unit.name} found no problem.`
-                  : 'The reviews found no problem in this run.'}
-            </NoneLine>
+            <RunFlow stages={stages} selected={selected} onSelect={select} />
           )}
-          {praised.length > 0 ? (
-            <Section title={strengthsTitle}>
-              <StrengthsTable strengths={praised} categoryLabels={categoryLabels} />
-            </Section>
-          ) : (
-            <NoneLine title={strengthsTitle} side={STRENGTHS_SIDE}>
-              {facts.beforeSteps
-                ? 'Recorded before strengths were logged: this run has none to list.'
-                : unit
-                  ? `The reviewers named no strength in ${unit.name}.`
-                  : 'The reviewers named no strength in this run.'}
-            </NoneLine>
+          {!facts.beforeSteps && (
+            <div className="border-t pt-3 text-sm">
+              {unit ? (
+                <StepDetail unit={unit} onClose={() => select(null)} />
+              ) : (
+                <p className="text-muted-foreground">Select a task or a review to see its rounds, and its findings below.</p>
+              )}
+            </div>
           )}
-          <LeftForLater
-            // The units' own findings, so each names the unit holding it.
-            findings={unit ? unit.findings : units.flatMap((u) => u.findings)}
-            from={(f) => units.find((u) => u.findings.includes(f))?.name ?? null}
-            laterFixes={run.data.laterFixes}
-            step={unit?.name ?? null}
-            beforeSteps={facts.beforeSteps}
-          />
-        </div>
-        <Panel className="gap-4 lg:w-80 lg:flex-none">
-          <SideSection title="Skills" none="No skill loaded.">
-            {skills.length > 0 && <Pairs names pairs={skills.map((skill) => [skill.name, skill.outcome])} />}
-          </SideSection>
-          <SideSection title="Models" none="No model recorded.">
-            {models.length > 0 && (
-              <Pairs names pairs={models.map((model) => [<Text value={modelLabel(model.model)} />, formatCost(model.cost)])} />
-            )}
-          </SideSection>
-          <SideSection title="Advisor" none="Not consulted.">
-            {advisor && (
-              <Pairs
-                pairs={[
-                  ['Calls', <Num value={advisor.calls} />],
-                  ['Notes', <Num value={advisor.notes} />],
-                ]}
-              />
-            )}
-          </SideSection>
-          <SideSection title="Context" none="No context facts for this run.">
-            {context && (
-              <Pairs
-                pairs={[
-                  ['Calls', <Num value={context.calls} />],
-                  ['Median tokens', <Num value={context.medianTokens} format={formatCompact} />],
-                  ['Largest tokens', <Num value={context.maxTokens} format={formatCompact} />],
-                  ['Calls past the cap', <Num value={context.callsOverCap} />],
-                  ['Handed off', context.handoff ? <Time iso={context.handoff} /> : <span className="text-muted-foreground">no</span>],
-                  ['Tool results (characters)', formatCompact(context.toolCharacters)],
-                  ['Read share', <Num value={context.readShare} format={formatShare} />],
-                  ['Sweeps inline', <Num value={context.sweeps.inline} />],
-                  ['Sweeps delegated', <Num value={context.sweeps.delegated} />],
-                ]}
-              />
-            )}
-          </SideSection>
-          <SideSection title="Warnings" none="No warnings.">
-            {warnings.length > 0 && (
-              <ul className="flex flex-col gap-2 text-sm">
-                {warnings.map((warning, i) => (
-                  <li key={i} className="flex flex-col gap-0.5">
-                    <WarningText text={warning.text} sessionId={warning.sessionId} branch={facts.branch} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </SideSection>
         </Panel>
+        {problems.length > 0 ? (
+          <FindingsTable
+            // Keyed by the selection, so a filter set on one step resets with it.
+            key={unit?.id ?? 'run'}
+            findings={problems}
+            categoryLabels={categoryLabels}
+            heading={problemsTitle}
+            label="Problems table"
+            skip={['step']}
+            containerClassName={PROBLEMS_SIDE}
+          />
+        ) : (
+          <NoneLine title={problemsTitle} side={PROBLEMS_SIDE}>
+            {facts.beforeSteps
+              ? 'Recorded before findings were logged: this run has none to list.'
+              : unit
+                ? `${unit.name} found no problem.`
+                : 'The reviews found no problem in this run.'}
+          </NoneLine>
+        )}
+        {praised.length > 0 ? (
+          <Section title={strengthsTitle}>
+            <StrengthsTable strengths={praised} categoryLabels={categoryLabels} />
+          </Section>
+        ) : (
+          <NoneLine title={strengthsTitle} side={STRENGTHS_SIDE}>
+            {facts.beforeSteps
+              ? 'Recorded before strengths were logged: this run has none to list.'
+              : unit
+                ? `The reviewers named no strength in ${unit.name}.`
+                : 'The reviewers named no strength in this run.'}
+          </NoneLine>
+        )}
+        <LeftForLater
+          // The units' own findings, so each names the unit holding it.
+          findings={unit ? unit.findings : units.flatMap((u) => u.findings)}
+          from={(f) => units.find((u) => u.findings.includes(f))?.name ?? null}
+          laterFixes={run.data.laterFixes}
+          step={unit?.name ?? null}
+          beforeSteps={facts.beforeSteps}
+        />
+        {warnings.length > 0 && (
+          <Panel title="Warnings">
+            <ul className="flex flex-col gap-2 text-sm">
+              {warnings.map((warning, i) => (
+                <li key={i} className="flex flex-col gap-0.5">
+                  <WarningText text={warning.text} sessionId={warning.sessionId} branch={facts.branch} />
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
+        <Fold run={run.data} />
       </div>
     </div>
   );

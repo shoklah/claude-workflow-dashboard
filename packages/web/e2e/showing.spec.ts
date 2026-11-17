@@ -54,3 +54,15 @@ test('showing lantern-notes hides tidepool-api from the pages', async ({ page })
   await expect(feed.getByText(/tidepool-api/)).toHaveCount(0);
   await expectNoSessionId(page);
 });
+
+test("a hidden run's page says no run has its key", async ({ page, request }) => {
+  const runs = await (await request.get('/api/runs?weeks=52')).json();
+  const lantern = runs.projects.find((p: { name: string }) => p.name === 'lantern-notes').key;
+  const hidden = runs.runs.find((r: { project: string }) => r.project === 'tidepool-api').key;
+  const response = await request.post('/api/showing', { data: { projects: [lantern] }, headers: { 'X-Dashboard-Refresh': '1' } });
+  expect(response.status()).toBe(204);
+
+  await page.goto(`/runs/${hidden}`);
+  await expect(page.getByText('No run with this key.')).toBeVisible();
+  await expectNoSessionId(page);
+});

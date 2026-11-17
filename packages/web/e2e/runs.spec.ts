@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
+import { settled } from './settled.ts';
 
 // dev:fixtures' data: report-full, then report-later, which adds a Small run whose branch is HTML, then report-v6
 // and report-v7, which adds each unit's context.
@@ -34,6 +35,41 @@ test("the Full run's page has no sideways scroll at 375 px", async ({ page }) =>
   await page.setViewportSize({ width: 375, height: 812 });
   await openFullRun(page);
   await expect(page.getByRole('group', { name: "The run's flow" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test('an unknown run key says so at once', async ({ page }) => {
+  await page.goto('/runs/0000000000000000');
+  // A 404 isn't retried, so the message shows within the default timeout.
+  await expect(page.getByText('No run with this key.')).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Runs', exact: true })).toHaveAttribute('href', '/runs');
+});
+
+test("at 1440 px the fold's panels sit in two columns once opened, and pass axe", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openFullRun(page);
+  const fold = page.locator('details').filter({ hasText: 'Cost, context and skills' });
+  await fold.locator('summary').click();
+  const names = ['Est. cost by phase', 'Models and advisor', 'Context', 'Skills'];
+  const boxes = await Promise.all(names.map((name) => page.getByRole('region', { name, exact: true }).boundingBox()));
+  const [cost, models, context, skills] = boxes.map((box) => box!);
+  expect(models.x).toBeGreaterThan(cost.x + cost.width);
+  expect(models.y).toBe(cost.y);
+  expect(context.x).toBe(cost.x);
+  expect(skills.x).toBe(models.x);
+  expect(context.y).toBeGreaterThan(cost.y);
+  await settled(fold);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("at 375 px the fold's panels stack in one column, with no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await openFullRun(page);
+  await page.locator('details').filter({ hasText: 'Cost, context and skills' }).locator('summary').click();
+  const cost = (await page.getByRole('region', { name: 'Est. cost by phase', exact: true }).boundingBox())!;
+  const models = (await page.getByRole('region', { name: 'Models and advisor', exact: true }).boundingBox())!;
+  expect(models.x).toBe(cost.x);
+  expect(models.y).toBeGreaterThan(cost.y + cost.height);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

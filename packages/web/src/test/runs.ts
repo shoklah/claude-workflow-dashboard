@@ -283,7 +283,7 @@ export const runAlone: RunPageResponse = {
   laterFixes: [],
 };
 
-/** A Small run: Simplify and a final review that found nothing. */
+/** A Small run: Simplify and a final review that found nothing, and no warnings. */
 export const runSmall: RunPageResponse = {
   ...runFull,
   facts: { ...smallRun, findings: NO_FINDINGS },
@@ -295,6 +295,7 @@ export const runSmall: RunPageResponse = {
   ],
   findings: [],
   strengths: [],
+  warnings: [],
 };
 
 export const planRun: RunFacts = {

@@ -36,7 +36,7 @@ export const Loading: Story = {
 
 export const Failed: Story = {
   beforeEach: () => {
-    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: 404 });
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: 500 });
   },
   play: async ({ canvas }) => {
     const state = await canvas.findByText("Couldn't load this run.");
@@ -44,6 +44,28 @@ export const Failed: Story = {
     await expect(state.closest('.glass')).not.toBeNull();
   },
 };
+
+/** A key no stored run has (or one showing mode hides) gets its own message, with the way back to Runs. */
+export const Unknown: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: 404 });
+  },
+  play: async ({ canvas }) => {
+    const state = await canvas.findByText('No run with this key.', { exact: false });
+    await expect(state.closest('.glass')).not.toBeNull();
+    await expect(within(state).getByRole('link', { name: 'Runs' })).toHaveAttribute('href', '/runs');
+    await expect(canvas.queryByText("Couldn't load this run.")).toBeNull();
+  },
+};
+
+/** Opens the "Cost, context and skills" disclosure, closed until then. */
+async function openFold(canvasElement: HTMLElement, click: (element: Element) => Promise<void>): Promise<void> {
+  const fold = canvasElement.querySelector('details')!;
+  await expect(fold.querySelector('summary')).toHaveTextContent('Cost, context and skills');
+  await expect(fold).not.toHaveAttribute('open');
+  await click(fold.querySelector('summary')!);
+  await expect(fold).toHaveAttribute('open');
+}
 
 /** A zero time, cost or token count shows muted, as every zero does. */
 export const Zeros: Story = {
@@ -57,44 +79,53 @@ export const Zeros: Story = {
       },
     });
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await expect(await canvas.findByText('0 min')).toHaveClass('text-muted-foreground');
     await expect(canvas.getByText('$0.00')).toHaveClass('text-muted-foreground');
+    await openFold(canvasElement, (summary) => userEvent.click(summary));
     await expect(within(canvas.getByRole('region', { name: 'Context' })).getByText('0')).toHaveClass('text-muted-foreground');
   },
 };
 
-/** Empty: a record from before steps, with no skills, models, advisor notes, context or warnings: each says so. */
+/** Empty: a record from before steps, with no phases, models, advisor notes, context, skills or warnings: each fold
+ * panel says so, and there is no Warnings panel. */
 export const Empty: Story = {
   args: { runKey: oldRun.key },
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${oldRun.key}`]: runBeforeSteps });
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await expect(await canvas.findByRole('heading', { name: 'feat/import', level: 1 })).toBeVisible();
     const flow = canvas.getByRole('region', { name: 'Flow' });
     await expect(within(flow).getByText('Recorded before steps were logged: there is no flow to draw.')).toBeVisible();
     await expect(canvas.queryByRole('group', { name: "The run's flow" })).toBeNull();
     await expect(canvas.queryByText(HINT)).toBeNull();
-    const none = {
-      Skills: 'No skill loaded.',
-      Models: 'No model recorded.',
-      Advisor: 'Not consulted.',
-      Context: 'No context facts for this run.',
-      Warnings: 'No warnings.',
-    };
-    for (const [name, text] of Object.entries(none)) {
-      await expect(within(canvas.getByRole('region', { name })).getByText(text)).toBeVisible();
+    await expect(canvas.queryByRole('region', { name: 'Warnings' })).toBeNull();
+    await openFold(canvasElement, (summary) => userEvent.click(summary));
+    const none: [string, string[]][] = [
+      ['Est. cost by phase', ['No cost by phase recorded.']],
+      ['Models and advisor', ['No model recorded.', 'Advisor not consulted.']],
+      ['Context', ['No context facts for this run.']],
+      ['Skills', ['No skill loaded or offered.']],
+    ];
+    for (const [name, texts] of none) {
+      for (const text of texts) await expect(within(canvas.getByRole('region', { name })).getByText(text)).toBeVisible();
     }
   },
 };
 
-/** Full: the branch as title, the header's facts as terms, the run's flow, and the run's side panel as labelled pairs. */
+/** The rows of the plain table named `name` inside `region`, each its cells' texts, its row header first. */
+function tableRows(region: HTMLElement, name: string): (string | null)[][] {
+  return [...within(region).getByRole('table', { name }).querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent));
+}
+
+/** Full: the branch as title, the header's facts as terms, the run's flow, no side panel, its warnings in a panel, and
+ * its cost, models, context and skills in four panels inside the closed fold. */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
   },
-  play: async ({ canvas, canvasElement }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await expect(await canvas.findByRole('heading', { name: 'feat/search', level: 1 })).toBeVisible();
     await expect(pairs(canvasElement.querySelector('dl')!)).toEqual([
       ['Project', 'atlas'],
@@ -111,26 +142,42 @@ export const Full: Story = {
     const flow = canvas.getByRole('region', { name: 'Flow' });
     await expect(within(flow).getByRole('group', { name: "The run's flow" })).toBeVisible();
 
-    await expect(pairs(canvas.getByRole('region', { name: 'Skills' }))).toEqual([
-      ['subagent-driven-development', 'ran'],
-      ['simplify', 'applied 1, skipped 0'],
+    // No side panel: the old Models and Advisor regions are gone, and the fold is closed.
+    await expect(canvas.queryByRole('region', { name: 'Models' })).toBeNull();
+    await expect(canvas.queryByRole('region', { name: 'Advisor' })).toBeNull();
+    await openFold(canvasElement, (summary) => userEvent.click(summary));
+
+    await expect(pairs(canvas.getByRole('region', { name: 'Est. cost by phase' }))).toEqual([
+      ['Plan writing', '$1.10'],
+      ['Implement', '$3.40'],
+      ['Task review', '$1.60'],
+      ['Final review', '$1.00'],
     ]);
-    // A model shows by its name, never its id.
-    await expect(pairs(canvas.getByRole('region', { name: 'Models' }))).toEqual([
+    const models = canvas.getByRole('region', { name: 'Models and advisor' });
+    const [main, costs, advice] = [...models.querySelectorAll('dl')];
+    await expect(pairs(main)).toEqual([
+      ['Main session model', 'Opus 5.5'],
+      ['Main session effort', 'medium'],
+    ]);
+    // A model shows by its name, never its id, its name in primary ink and its cost muted.
+    await expect(pairs(costs)).toEqual([
       ['Opus 5.5', '$5.20'],
       ['Fable 5.1', '$1.90'],
     ]);
-    // A skill's and a model's name in primary ink, the outcome and cost muted; Advisor's terms muted as labels.
-    for (const name of ['Skills', 'Models']) {
-      for (const dt of canvas.getByRole('region', { name }).querySelectorAll('dt')) {
-        await expect(dt).not.toHaveClass('text-muted-foreground');
-        await expect(dt.nextElementSibling).toHaveClass('text-muted-foreground');
-      }
+    for (const dt of costs.querySelectorAll('dt')) {
+      await expect(dt).not.toHaveClass('text-muted-foreground');
+      await expect(dt.nextElementSibling).toHaveClass('text-muted-foreground');
     }
-    await expect(canvas.getByRole('region', { name: 'Advisor' }).querySelector('dt')).toHaveClass('text-muted-foreground');
-    await expect(pairs(canvas.getByRole('region', { name: 'Advisor' }))).toEqual([
-      ['Calls', '3'],
-      ['Notes', '3'],
+    const agents = within(models).getByRole('table', { name: 'Agents' });
+    await expect([...agents.querySelectorAll('thead th')].map((th) => th.textContent)).toEqual(['Agent', 'Model', 'Effort', 'Dispatches']);
+    await expect(tableRows(models, 'Agents')).toEqual([
+      ['final-reviewer', 'Opus 5.5', 'high', '1'],
+      ['implementer', 'Opus 5.5', 'medium', '4'],
+      ['task-reviewer', 'Opus 5.5', 'high', '5'],
+    ]);
+    await expect(pairs(advice)).toEqual([
+      ['Advisor calls', '3'],
+      ['Advisor notes', '3'],
     ]);
     await expect(pairs(canvas.getByRole('region', { name: 'Context' }))).toEqual([
       ['Calls', '214'],
@@ -142,6 +189,12 @@ export const Full: Story = {
       ['Read share', '44%'],
       ['Sweeps inline', '1'],
       ['Sweeps delegated', '4'],
+    ]);
+    await expect(tableRows(canvas.getByRole('region', { name: 'Skills' }), 'Skills')).toEqual([
+      ['subagent-driven-development', 'Loaded', 'ran'],
+      ['simplify', 'Loaded', 'applied 1, skipped 0'],
+      ['graphify', 'Offered', 'Accepted'],
+      ['session-summary', 'Offered', 'Skipped'],
     ]);
     const warnings = within(canvas.getByRole('region', { name: 'Warnings' }));
     await expect(warnings.getByText('0f1e2d3c')).toBeVisible();
@@ -303,6 +356,8 @@ export const Small: Story = {
     await expect(within(problems).getByText('The reviews found no problem in this run.')).toBeVisible();
     const strengths = canvas.getByRole('region', { name: 'Strengths (0)' });
     await expect(within(strengths).getByText('The reviewers named no strength in this run.')).toBeVisible();
+    // No warnings, so no Warnings panel.
+    await expect(canvas.queryByRole('region', { name: 'Warnings' })).toBeNull();
   },
 };
 
