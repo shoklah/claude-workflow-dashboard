@@ -2,12 +2,12 @@ import { useState, type ReactNode } from 'react';
 import type { RunPageResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
-import { Option, Options } from '../components/Option.tsx';
 import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { FindingsTable } from './FindingsTable.tsx';
-import { RunTimeline } from './RunTimeline.tsx';
+import { stagesOf } from './flow.ts';
+import { RunFlow } from './RunFlow.tsx';
 import {
   categoryLabel,
   closedFindings,
@@ -50,12 +50,12 @@ function Header({ run }: { run: RunPageResponse['facts'] }) {
 }
 
 /**
- * One run: its branch and facts, the untimed timeline with a switch to every finding in one table and the reviewers'
- * strengths under it, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
+ * One run: its branch and facts, the run drawn as a graph with every finding in one table and the reviewers' strengths
+ * under it, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunPageResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
-  const [view, setView] = useState<'timeline' | 'findings'>('timeline');
+  const [selected, setSelected] = useState<string | null>(null);
   if (run.isPending) return <State>Loading the run…</State>;
   if (run.isError) return <State error>Couldn't load this run.</State>;
   const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
@@ -65,40 +65,31 @@ export function RunPage({ runKey }: { runKey: string }) {
       <Header run={facts} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <Options label="View">
-            <Option pressed={view === 'timeline'} onClick={() => setView('timeline')}>
-              Timeline
-            </Option>
-            <Option pressed={view === 'findings'} onClick={() => setView('findings')}>
-              Findings
-            </Option>
-          </Options>
-          {view === 'timeline' ? (
-            <Panel>
-              <RunTimeline timeline={timeline} beforeSteps={facts.beforeSteps} />
-            </Panel>
-          ) : (
-            <>
-              <FindingsTable findings={findings} categoryLabels={categoryLabels} />
-              <Panel title="Strengths" className="text-sm">
-                {strengths.length === 0 ? (
-                  <p className="text-muted-foreground">No strengths recorded.</p>
-                ) : (
-                  <ul className="flex flex-col gap-1">
-                    {strengths.map((strength, i) => (
-                      <li key={i} className="flex flex-wrap items-baseline gap-x-2">
-                        {categoryLabel(strength.category, categoryLabels)}
-                        <span>
-                          <Text value={strength.summary} />
-                        </span>
-                        <span className="text-muted-foreground">{strengthWhere(strength)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Panel>
-            </>
-          )}
+          <Panel title="Flow">
+            {facts.beforeSteps ? (
+              <p className="text-sm text-muted-foreground">Recorded before steps were logged: there is no flow to draw.</p>
+            ) : (
+              <RunFlow stages={stagesOf(timeline)} selected={selected} onSelect={setSelected} />
+            )}
+          </Panel>
+          <FindingsTable findings={findings} categoryLabels={categoryLabels} />
+          <Panel title="Strengths" className="text-sm">
+            {strengths.length === 0 ? (
+              <p className="text-muted-foreground">No strengths recorded.</p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {strengths.map((strength, i) => (
+                  <li key={i} className="flex flex-wrap items-baseline gap-x-2">
+                    {categoryLabel(strength.category, categoryLabels)}
+                    <span>
+                      <Text value={strength.summary} />
+                    </span>
+                    <span className="text-muted-foreground">{strengthWhere(strength)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
         </div>
         <Panel className="gap-4 lg:w-80 lg:flex-none">
           <SideSection title="Skills" none="No skill loaded.">

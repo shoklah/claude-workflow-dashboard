@@ -15,6 +15,6 @@ test('the run page matches its screenshot', async ({ page }) => {
   await page.goto('/runs');
   const row = page.getByRole('row').filter({ hasText: 'feature/offline-sync' }).filter({ hasText: 'Full' });
   await row.getByRole('link').click();
-  await expect(page.getByText('Wave A')).toBeVisible();
+  await expect(page.getByRole('group', { name: "The run's flow" })).toBeVisible();
   await expect(page.getByRole('main')).toHaveScreenshot('run.png');
 });

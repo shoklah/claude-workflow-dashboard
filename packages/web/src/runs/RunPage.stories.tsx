@@ -70,7 +70,9 @@ export const Empty: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('heading', { name: 'feat/import', level: 1 })).toBeVisible();
-    await expect(canvas.getByText(/recorded before steps were logged/i)).toBeVisible();
+    const flow = canvas.getByRole('region', { name: 'Flow' });
+    await expect(within(flow).getByText('Recorded before steps were logged: there is no flow to draw.')).toBeVisible();
+    await expect(canvas.queryByRole('group', { name: "The run's flow" })).toBeNull();
     const none = {
       Skills: 'No skill loaded.',
       Models: 'No model recorded.',
@@ -84,7 +86,7 @@ export const Empty: Story = {
   },
 };
 
-/** Full: the branch as title, the header's facts as terms, the timeline, and the run's side panel as labelled pairs. */
+/** Full: the branch as title, the header's facts as terms, the run's flow, and the run's side panel as labelled pairs. */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
@@ -101,9 +103,8 @@ export const Full: Story = {
       ['Closed', '5'],
       ['Warnings', '1'],
     ]);
-    const view = canvas.getByRole('group', { name: 'View' });
-    await expect(within(view).getByRole('button', { name: 'Timeline' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(within(view).getByRole('button', { name: 'Findings' })).toHaveAttribute('aria-pressed', 'false');
+    const flow = canvas.getByRole('region', { name: 'Flow' });
+    await expect(within(flow).getByRole('group', { name: "The run's flow" })).toBeVisible();
 
     await expect(pairs(canvas.getByRole('region', { name: 'Skills' }))).toEqual([
       ['subagent-driven-development', 'ran'],
@@ -142,7 +143,10 @@ export const Full: Story = {
     await expect(warnings.getByRole('button', { name: 'Copy session ID' })).toBeVisible();
     // The run's own "branch (date):" lead is gone: the page already names the run.
     await expect(warnings.getByText('Final review without simplify: final_review at step 4')).toBeVisible();
-    await expect(canvasElement.textContent).not.toContain(' · ');
+    // The strengths list, now on the page without a switch, still joins a strength's step and task until its table
+    // replaces it.
+    const strengths = canvas.getByRole('region', { name: 'Strengths' }).textContent!;
+    await expect(canvasElement.textContent!.replace(strengths, '')).not.toContain(' · ');
   },
 };
 
@@ -151,9 +155,8 @@ export const Strengths: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
   },
-  play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'Findings' }));
-    const strengths = canvas.getByRole('region', { name: 'Strengths' });
+  play: async ({ canvas }) => {
+    const strengths = await canvas.findByRole('region', { name: 'Strengths' });
     await expect([...strengths.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
       'Reuse and duplicationNew page reuses the shared table and format helpersTask review · task 3',
       'TestsEach view tested on both fixtures, null facts includedFinal review',
@@ -169,9 +172,8 @@ export const StrengthWithoutSummary: Story = {
       [`/api/runs/${fullRun.key}`]: { ...runFull, strengths: [{ ...runFull.strengths[0], summary: null }] },
     });
   },
-  play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'Findings' }));
-    const strengths = canvas.getByRole('region', { name: 'Strengths' });
+  play: async ({ canvas }) => {
+    const strengths = await canvas.findByRole('region', { name: 'Strengths' });
     await expect(within(strengths).getByText('not known')).toHaveClass('sr-only');
   },
 };
@@ -182,28 +184,7 @@ export const NoStrengths: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${oldRun.key}`]: runBeforeSteps });
   },
-  play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'Findings' }));
-    await expect(within(canvas.getByRole('region', { name: 'Strengths' })).getByText('No strengths recorded.')).toBeVisible();
-  },
-};
-
-/** The switch moves between the timeline and every finding in one table. */
-export const Toggle: Story = {
-  beforeEach: () => {
-    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
-  },
-  play: async ({ canvas, userEvent }) => {
-    await expect(await canvas.findByText('Started')).toBeVisible();
-    await expect(canvas.queryByRole('table')).toBeNull();
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Findings' }));
-    await expect(canvas.getByRole('button', { name: 'Findings' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(canvas.getByRole('table')).toBeVisible();
-    await expect(canvas.queryByText('Started')).toBeNull();
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Timeline' }));
-    await expect(canvas.getByText('Started')).toBeVisible();
-    await expect(canvas.queryByRole('table')).toBeNull();
+  play: async ({ canvas }) => {
+    await expect(within(await canvas.findByRole('region', { name: 'Strengths' })).getByText('No strengths recorded.')).toBeVisible();
   },
 };
