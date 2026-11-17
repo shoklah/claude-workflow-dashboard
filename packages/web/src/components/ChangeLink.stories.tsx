@@ -23,3 +23,11 @@ export const MarkupTitle: Story = {
     await expect(canvasElement.querySelector('b')).toBeNull();
   },
 };
+
+/** A change with no title (no headline, spec or branch): the dash, read out as "no branch", as RunLink's. */
+export const NoTitle: Story = {
+  args: { title: '' },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('link', { name: /no branch/ })).toHaveAttribute('href', '/work/changes/c0ffee12');
+  },
+};
