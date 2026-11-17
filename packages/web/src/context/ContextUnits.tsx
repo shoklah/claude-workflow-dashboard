@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { cn } from 'cn';
-import type { ContextUnit } from '@cwd/shared';
-import { EmptyRow, GroupHead, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { parseTime, type ContextUnit } from '@cwd/shared';
+import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
+import { Num, Unknown } from '../components/Num.tsx';
 import { Line, Section } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   WARNING_INK,
@@ -17,18 +17,60 @@ import {
   sessionName,
 } from '../lib/format.ts';
 
-const COLUMN_COUNT = 14;
+/** A session's name as plain text (its row's toggle; its ID stays off the row), null for a run, whose name is its link. */
+const sessionText = (u: ContextUnit) => (u.run ? null : sessionName(u.session?.title ?? null));
 
-/** A run's branch as its link to its page, a session's name alone (its ID stays off the row). */
-function UnitName({ unit }: { unit: ContextUnit }) {
-  if (unit.run) {
-    return (
-      <RunLink runKey={unit.run.key} branch={unit.run.branch} />
-    );
-  }
-  const title = unit.session?.title ?? null;
-  return <span className={cn(!title && 'font-normal text-muted-foreground')}>{sessionName(title)}</span>;
-}
+/** The first glance: which ran past the cap; Kind, When, Largest and Read share fold into the opened row when narrow. */
+const COLUMNS: ListColumn<ContextUnit>[] = [
+  {
+    id: 'name',
+    header: 'Name',
+    wide: true,
+    value: (u) => (u.run ? u.run.branch : (u.session?.title ?? null)),
+    cell: (u) => (u.run ? <RunLink runKey={u.run.key} branch={u.run.branch} /> : sessionText(u)),
+    text: sessionText,
+  },
+  { id: 'kind', header: 'Kind', fold: true, value: (u) => u.kind, cell: (u) => capitalize(u.kind) },
+  {
+    id: 'when',
+    header: 'When',
+    fold: true,
+    value: (u) => (u.at === null ? null : parseTime(u.at).getTime()),
+    cell: (u) => (u.at === null ? <Unknown /> : <Time iso={u.at} />),
+  },
+  {
+    id: 'over',
+    header: 'Past the cap',
+    num: true,
+    value: (u) => u.callsOverCap,
+    cell: (u) => (
+      <span className={cn(u.callsOverCap > 0 && WARNING_INK)}>
+        <Num value={u.callsOverCap} />
+      </span>
+    ),
+  },
+  {
+    id: 'largest',
+    header: 'Largest',
+    num: true,
+    fold: true,
+    value: (u) => u.maxTokens,
+    cell: (u) => <Num value={u.maxTokens} format={formatCompactFixed} />,
+  },
+  { id: 'read', header: 'Read share', fold: true, value: (u) => u.readShare, cell: (u) => <ShareBar share={u.readShare} /> },
+];
+
+/** The opened row's facts, one not known (a handoff when there is none) left out. */
+const FACTS: ListFact<ContextUnit>[] = [
+  ['Project', (u) => (u.run ? u.run.project : projectLabel(u.session?.project ?? null))],
+  ['Calls', (u) => <Num value={u.calls} />],
+  ['Median tokens per call', (u) => (u.medianTokens === null ? null : <Num value={u.medianTokens} format={formatCompactFixed} />)],
+  ['Handed off', (u) => (u.handoff === null ? null : <Time iso={u.handoff} />)],
+  ['To session', (u) => (u.handedOffTo === null ? null : sessionName(u.handedOffTo.title))],
+  ['Its ID', (u) => (u.handedOffTo?.sessionId ? <SessionChip id={u.handedOffTo.sessionId} /> : null)],
+  ['Sweeps inline', (u) => <Num value={u.sweeps.inline} />],
+  ['Sweeps delegated', (u) => <Num value={u.sweeps.delegated} />],
+];
 
 /**
  * The Context page's runs and sessions, in the API's order (most calls past the cap first): over the cap only, or all
@@ -48,100 +90,15 @@ export function ContextUnits({
 }) {
   return (
     <Section title="Runs and sessions" aside={children}>
-      <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Runs and sessions table' }}>
-        <TableHeader>
-          <TableRow>
-            <TableHead rowSpan={2}>Name</TableHead>
-            <TableHead rowSpan={2}>Kind</TableHead>
-            <TableHead rowSpan={2}>Project</TableHead>
-            <TableHead rowSpan={2}>When</TableHead>
-            <TableHead rowSpan={2} className={NUM}>
-              Calls
-            </TableHead>
-            <GroupHead span={2}>Context (tokens)</GroupHead>
-            <TableHead rowSpan={2} className={NUM}>
-              Calls past the cap
-            </TableHead>
-            <GroupHead span={3}>Handoff</GroupHead>
-            <TableHead rowSpan={2}>Read share</TableHead>
-            <GroupHead span={2}>Sweeps</GroupHead>
-          </TableRow>
-          <TableRow>
-            <TableHead className={cn(SUB, NUM)}>Median per call</TableHead>
-            <TableHead className={cn(SUB, NUM)}>Largest</TableHead>
-            <TableHead className={SUB}>At</TableHead>
-            <TableHead className={SUB}>To session</TableHead>
-            <TableHead className={SUB}>ID</TableHead>
-            <TableHead className={cn(SUB, NUM)}>Inline</TableHead>
-            <TableHead className={cn(SUB, NUM)}>Delegated</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {units.length === 0 && (
-            <EmptyRow columns={COLUMN_COUNT}>
-              {over
-                ? 'No runs or sessions past the cap in this period.'
-                : 'No runs or sessions with context in this period.'}
-            </EmptyRow>
-          )}
-          {units.map((unit) => (
-            <TableRow key={unit.key}>
-              <TableCell className="font-medium">
-                <UnitName unit={unit} />
-              </TableCell>
-              <TableCell className="text-muted-foreground">{capitalize(unit.kind)}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {unit.run ? <Text value={unit.run.project} /> : projectLabel(unit.session?.project ?? null)}
-              </TableCell>
-              <TableCell className="text-muted-foreground tabular-nums">
-                {unit.at === null ? <Unknown /> : <Time iso={unit.at} />}
-              </TableCell>
-              <TableCell className={NUM}>
-                <Num value={unit.calls} />
-              </TableCell>
-              <TableCell className={NUM}>
-                <Num value={unit.medianTokens} format={formatCompactFixed} />
-              </TableCell>
-              <TableCell className={NUM}>
-                <Num value={unit.maxTokens} format={formatCompactFixed} />
-              </TableCell>
-              <TableCell className={cn(NUM, unit.callsOverCap > 0 && WARNING_INK)}>
-                <Num value={unit.callsOverCap} />
-              </TableCell>
-              <TableCell className="text-muted-foreground tabular-nums">
-                {unit.handoff === null ? <Unknown label="no handoff" /> : <Time iso={unit.handoff} />}
-              </TableCell>
-              <TableCell>
-                {unit.handedOffTo === null ? (
-                  <Unknown label="no handoff" />
-                ) : (
-                  <span className={cn(!unit.handedOffTo.title && 'text-muted-foreground')}>
-                    {sessionName(unit.handedOffTo.title)}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {unit.handedOffTo === null ? (
-                  <Unknown label="no handoff" />
-                ) : unit.handedOffTo.sessionId === null ? (
-                  <Unknown label="hidden while showing" />
-                ) : (
-                  <SessionChip id={unit.handedOffTo.sessionId} />
-                )}
-              </TableCell>
-              <TableCell>
-                <ShareBar share={unit.readShare} />
-              </TableCell>
-              <TableCell className={NUM}>
-                <Num value={unit.sweeps.inline} />
-              </TableCell>
-              <TableCell className={NUM}>
-                <Num value={unit.sweeps.delegated} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataList
+        rows={units}
+        rowKey={(u) => u.key}
+        name={(u) => (u.run ? (u.run.branch ?? 'no branch') : sessionName(u.session?.title ?? null))}
+        columns={COLUMNS}
+        facts={FACTS}
+        label="Runs and sessions table"
+        empty={over ? 'No runs or sessions past the cap in this period.' : 'No runs or sessions with context in this period.'}
+      />
       {hidden > 0 && <Line>{hiddenLabel(hidden, 'row')}</Line>}
     </Section>
   );

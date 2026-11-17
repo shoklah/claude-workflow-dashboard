@@ -127,7 +127,7 @@ export const Full: Story = {
     await expectNoJoined(rows[0].closest('table')!);
 
     const units = within(canvas.getByRole('region', { name: 'Runs and sessions' })).getAllByRole('row');
-    await expect(units[2]).toHaveTextContent('Refactor the sync queue');
+    await expect(units[1]).toHaveTextContent('Refactor the sync queue');
 
     const group = canvas.getByRole('group', { name: 'Show' });
     await expect(group).toHaveTextContent(/^Show/);
@@ -138,7 +138,7 @@ export const Full: Story = {
     await expect(fetch).toHaveBeenCalledWith(ALL);
     await expect(
       await within(canvas.getByRole('region', { name: 'Runs and sessions' })).findAllByRole('row'),
-    ).toHaveLength(6);
+    ).toHaveLength(5);
   },
 };
 
