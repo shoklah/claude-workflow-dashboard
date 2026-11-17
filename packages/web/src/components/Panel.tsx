@@ -24,9 +24,18 @@ export function Term({ tip, className, children }: { tip: ReactNode; className?:
   );
 }
 
-/** A page's title, directly on the backdrop in primary ink. */
-export function PageTitle({ children }: { children: ReactNode }) {
-  return <h1 className="text-page-title">{children}</h1>;
+/**
+ * A page's title, directly on the backdrop in primary ink. It names the browser's tab too ("Sessions - edward"), so the
+ * two never disagree: React puts the `title` in the document's head, ahead of `index.html`'s "edward", which shows again
+ * once no page title is drawn (a run's page while it loads).
+ */
+export function PageTitle({ children }: { children: string }) {
+  return (
+    <>
+      <title>{`${children} - edward`}</title>
+      <h1 tabIndex={-1} className="text-page-title outline-none">{children}</h1>
+    </>
+  );
 }
 
 /** A section's title. */

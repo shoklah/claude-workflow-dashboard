@@ -69,7 +69,9 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** The menu under 768 px: one button in the header row that opens the pages' links in a dialog, closed by following one. */
+/** The menu under 768 px: one button in the header row that opens the pages' links in a dialog, closed by following one.
+ * Once the Shell has moved the focus into the page (a link to a new page), it leaves it there; otherwise (Escape, Close,
+ * a link to the page already shown) it returns the focus to the button. */
 export function MenuButton() {
   const [open, setOpen] = useState(false);
   return (
@@ -80,7 +82,11 @@ export function MenuButton() {
           Menu
         </Button>
       </DialogTrigger>
-      <DialogContent className="top-2 left-2 max-h-[calc(100dvh-1rem)] max-w-64 translate-x-0 translate-y-0 overflow-y-auto rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (document.getElementById('main')?.contains(document.activeElement)) event.preventDefault();
+        }}
+        className="top-2 left-2 max-h-[calc(100dvh-1rem)] max-w-64 translate-x-0 translate-y-0 overflow-y-auto rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
         <DialogHeader className="text-left">
           <DialogTitle className="sr-only">Pages</DialogTitle>
           <Brand />
