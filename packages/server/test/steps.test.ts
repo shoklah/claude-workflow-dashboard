@@ -57,6 +57,7 @@ async function steps(query = ''): Promise<StepsResponse> {
 }
 
 const board = fixture('report-v5').totals.scoreboard;
+const NO_TOKENS = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
 
 /** A step row as the reporter's scoreboard row for its kind reads, with the static page's outcome columns. */
 function scoreRow(kind: string) {
@@ -87,7 +88,7 @@ function expectScoreboard(rows: StepsResponse['steps']): void {
       expect(tokens).toBeNull();
     } else {
       expect(cost ?? 0).toBeCloseTo(board[row.step].cost, 2);
-      expect(tokens ?? { input: 0, output: 0, cache_read: 0, cache_write: 0 }).toEqual(board[row.step].tokens);
+      expect(tokens ?? NO_TOKENS).toEqual(board[row.step].tokens);
     }
   }
 }
@@ -109,7 +110,7 @@ test("a step kind's tokens are null until a dispatch carries models, and its cos
   const planSimplify = (rows: StepRow[]) => rows.find((r) => r.step === 'plan_simplify')!;
   expect(planSimplify(stepSums([{ schema: 2, dispatches: [unpriced] }]))).toMatchObject({
     cost: null,
-    tokens: { input: 10, output: 0, cache_read: 0, cache_write: 0 },
+    tokens: { ...NO_TOKENS, input: 10 },
   });
   const rows = stepSums([{ schema: 2, dispatches: [unpriced, priced] }]);
   expect(planSimplify(rows)).toMatchObject({ cost: 1.25, tokens: { input: 15 } });
@@ -123,7 +124,7 @@ test("a step kind's tokens are null until a dispatch carries models, and its cos
   // A dispatch without models leaves its kind's tokens unknown; an empty models map makes them known zeros.
   const bare = stepSums([{ schema: 2, dispatches: [{ kind: 'plan_review' }, { kind: 'task_review', models: {} }] }]);
   expect(bare.find((r) => r.step === 'plan_review')!.tokens).toBeNull();
-  expect(bare.find((r) => r.step === 'task_review')!.tokens).toEqual({ input: 0, output: 0, cache_read: 0, cache_write: 0 });
+  expect(bare.find((r) => r.step === 'task_review')!.tokens).toEqual(NO_TOKENS);
 });
 
 test("ruleSums over every stored run equals the scoreboard's rules and the offers' totals", () => {
