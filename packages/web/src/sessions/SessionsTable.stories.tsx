@@ -1,20 +1,13 @@
-import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { fullRun, smallRun } from '../test/runs.ts';
 import { otherSession, sessionsFull, twoRunSession } from '../test/sessions.ts';
-import { expectNoJoined } from '../test/table.ts';
+import { expectNoJoined, visibleFact, visibleTerms, width } from '../test/table.ts';
 import { SessionsTable } from './SessionsTable.tsx';
 
-/** The list in a box 1000 px wide, so its container is past the fold. */
-const wide: Decorator = (Story) => (
-  <div style={{ width: 1000 }}>
-    <Story />
-  </div>
-);
-
-const meta = { component: SessionsTable, decorators: [wide] } satisfies Meta<typeof SessionsTable>;
+const meta = { component: SessionsTable, decorators: [width(1000)] } satisfies Meta<typeof SessionsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -30,13 +23,6 @@ function cells(table: Element): string[][] {
 
 /** The opened row under a toggle. */
 const openedRow = (toggle: HTMLElement) => toggle.closest('tr')!.nextElementSibling as HTMLElement;
-/** An opened row's visible terms. */
-const terms = (row: HTMLElement) =>
-  [...row.querySelectorAll<HTMLElement>('dt')].filter((el) => el.checkVisibility()).map((el) => el.textContent);
-/** An opened row's visible value for a term. */
-const fact = (row: HTMLElement, term: string) =>
-  [...row.querySelectorAll<HTMLElement>('dt')].find((el) => el.checkVisibility() && el.textContent === term)!
-    .nextElementSibling as HTMLElement;
 
 export const Empty: Story = {
   args: { sessions: [] },
@@ -94,19 +80,19 @@ export const Full: Story = {
 
     // Open: its facts, in words and counts, Startup in words and a non-zero Never loaded orange.
     const opened = openedRow(toggle);
-    await expect(terms(opened)).toEqual(['ID', 'Model', 'Effort', 'Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup']);
-    await expect(within(fact(opened, 'ID')).getByText('7d1e4b2a')).toBeVisible();
-    await expect(fact(opened, 'Model').textContent).toBe('Opus 5.5');
-    await expect(fact(opened, 'Effort').textContent).toBe('medium');
-    await expect(['Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup'].map((t) => fact(opened, t).textContent)).toEqual([
+    await expect(visibleTerms(opened)).toEqual(['ID', 'Model', 'Effort', 'Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup']);
+    await expect(within(visibleFact(opened, 'ID')).getByText('7d1e4b2a')).toBeVisible();
+    await expect(visibleFact(opened, 'Model').textContent).toBe('Opus 5.5');
+    await expect(visibleFact(opened, 'Effort').textContent).toBe('medium');
+    await expect(['Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup'].map((t) => visibleFact(opened, t).textContent)).toEqual([
       '1',
       '3',
       '1',
       '2',
       'Loaded',
     ]);
-    await expect(fact(opened, 'Never loaded').firstElementChild).toHaveClass('text-warning-ink');
-    await expect(fact(opened, 'Startup').firstElementChild).not.toHaveClass('text-warning-ink');
+    await expect(visibleFact(opened, 'Never loaded').firstElementChild).toHaveClass('text-warning-ink');
+    await expect(visibleFact(opened, 'Startup').firstElementChild).not.toHaveClass('text-warning-ink');
 
     // Then the timeline as a small table in its own scrolling region: one value per cell, times on the 24-hour clock.
     await expect(canvas.getByRole('region', { name: `${TIMELINE} table` })).toBeVisible();
@@ -136,17 +122,17 @@ export const Full: Story = {
     const otherToggle = canvas.getByRole('button', { name: 'no title' });
     await userEvent.click(otherToggle);
     const otherOpened = openedRow(otherToggle);
-    await expect(fact(otherOpened, 'Startup').firstElementChild).toHaveClass('text-warning-ink');
-    await expect(fact(otherOpened, 'Startup').textContent).toBe('Missing');
-    await expect(fact(otherOpened, 'Never loaded').firstElementChild).not.toHaveClass('text-warning-ink');
+    await expect(visibleFact(otherOpened, 'Startup').firstElementChild).toHaveClass('text-warning-ink');
+    await expect(visibleFact(otherOpened, 'Startup').textContent).toBe('Missing');
+    await expect(visibleFact(otherOpened, 'Never loaded').firstElementChild).not.toHaveClass('text-warning-ink');
 
     // Two models: one per line in Model, their efforts beside them in Effort; an unknown startup is left out.
     const twoModels = canvas.getByRole('button', { name: 'Sketch the retry backoff' });
     await userEvent.click(twoModels);
     const twoOpened = openedRow(twoModels);
-    await expect([...fact(twoOpened, 'Model').children].map((line) => line.textContent)).toEqual(['Opus 5.5', 'Sonnet 5.5']);
-    await expect([...fact(twoOpened, 'Effort').children].map((line) => line.textContent)).toEqual(['high', '–not known']);
-    await expect(terms(twoOpened)).not.toContain('Startup');
+    await expect([...visibleFact(twoOpened, 'Model').children].map((line) => line.textContent)).toEqual(['Opus 5.5', 'Sonnet 5.5']);
+    await expect([...visibleFact(twoOpened, 'Effort').children].map((line) => line.textContent)).toEqual(['high', '–not known']);
+    await expect(visibleTerms(twoOpened)).not.toContain('Startup');
   },
 };
 

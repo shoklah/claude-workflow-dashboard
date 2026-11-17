@@ -1,26 +1,13 @@
-import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { HTML_TEXT, fullRun, oldRun, smallRun } from '../test/runs.ts';
-import { cells, expectNoJoined } from '../test/table.ts';
+import { cells, expectNoJoined, visibleTerms, visibleValues, width } from '../test/table.ts';
 import { RunsTable } from './RunsTable.tsx';
 
 const meta = { component: RunsTable } satisfies Meta<typeof RunsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The list in a box of a set width. */
-const width =
-  (px: number): Decorator =>
-  (Story) => (
-    <div style={{ width: px }}>
-      <Story />
-    </div>
-  );
-
-/** The visible elements of one tag in a row, as text. */
-const visible = (row: HTMLElement, tag: string) =>
-  [...row.querySelectorAll<HTMLElement>(tag)].filter((el) => el.checkVisibility()).map((el) => el.textContent);
-const visibleTerms = (row: HTMLElement) => visible(row, 'dt');
 
 const EMPTY = 'No runs in this period. A run shows here once its record is written and imported.';
 
@@ -75,7 +62,7 @@ export const Full: Story = {
     await userEvent.click(canvas.getByRole('button', { name: `Details of ${HTML_TEXT}` }));
     const opened = canvas.getAllByRole('row')[2];
     await expect(visibleTerms(opened)).toEqual(['Time (min)', 'Tasks', 'Waves', 'Closed findings', 'Stops']);
-    await expect(visible(opened, 'dd')).toEqual(['25', '1', '0', '1', '0']);
+    await expect(visibleValues(opened)).toEqual(['25', '1', '0', '1', '0']);
 
     // A record from before steps knows none of them, so its opened row lists none.
     await userEvent.click(canvas.getByRole('button', { name: 'Details of feat/import' }));

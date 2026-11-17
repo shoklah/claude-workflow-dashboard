@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { Num } from './Num.tsx';
+import { visibleTerms, visibleValues, width } from '../test/table.ts';
 import { DataList, type ListColumn, type ListFact } from './DataList.tsx';
 
 /** An invented item. */
@@ -38,24 +39,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The list in a box of a set width. */
-const width =
-  (px: number): Decorator =>
-  (Story) => (
-    <div style={{ width: px }}>
-      <Story />
-    </div>
-  );
-
 const bodyRows = (el: HTMLElement) => [...el.querySelectorAll<HTMLElement>('tbody > tr')];
 /** The text of each body row's cell in column `i`. */
 const column = (el: HTMLElement, i: number) => bodyRows(el).map((tr) => tr.querySelectorAll('td')[i]?.textContent ?? '');
-/** The opened row's visible terms. */
-const visibleTerms = (row: HTMLElement) => visible(row, 'dt');
-/** The opened row's visible values. */
-const visibleValues = (row: HTMLElement) => visible(row, 'dd');
-const visible = (row: HTMLElement, tag: string) =>
-  [...row.querySelectorAll<HTMLElement>(tag)].filter((el) => el.checkVisibility()).map((el) => el.textContent);
 
 /** Empty: the list's own empty line in its one row, and no pages. */
 export const Empty: Story = {

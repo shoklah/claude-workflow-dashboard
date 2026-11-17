@@ -1,8 +1,8 @@
-import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { contextFull, contextHidden } from '../test/context.ts';
 import { ContextUnits } from './ContextUnits.tsx';
-import { expectNoJoined } from '../test/table.ts';
+import { expectNoJoined, visibleTerms, visibleValues, width } from '../test/table.ts';
 
 const meta = {
   component: ContextUnits,
@@ -11,18 +11,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The list in a box of a set width. */
-const width =
-  (px: number): Decorator =>
-  (Story) => (
-    <div style={{ width: px }}>
-      <Story />
-    </div>
-  );
-
-/** An opened row's visible terms (`dt`) or values (`dd`). */
-const visible = (row: HTMLElement, tag: string) =>
-  [...row.querySelectorAll<HTMLElement>(tag)].filter((el) => el.checkVisibility()).map((el) => el.textContent);
 
 /** Empty: no unit past the cap. */
 export const Empty: Story = {
@@ -69,18 +57,18 @@ export const Full: Story = {
 
     await userEvent.click(region.getByRole('button', { name: 'Details of feat/search' }));
     const opened = region.getAllByRole('row')[3];
-    await expect(visible(opened, 'dt')).toEqual([
+    await expect(visibleTerms(opened)).toEqual([
       'Project',
       'Calls',
       'Median tokens per call',
       'Sweeps inline',
       'Sweeps delegated',
     ]);
-    await expect(visible(opened, 'dd')).toEqual(['atlas', '268', '281.0K', '4', '1']);
+    await expect(visibleValues(opened)).toEqual(['atlas', '268', '281.0K', '4', '1']);
 
     await userEvent.click(region.getByRole('button', { name: 'Plan the offline sync' }));
     const handedOff = region.getAllByRole('row').at(-1)!;
-    await expect(visible(handedOff, 'dt')).toEqual([
+    await expect(visibleTerms(handedOff)).toEqual([
       'Project',
       'Calls',
       'Median tokens per call',
@@ -90,7 +78,7 @@ export const Full: Story = {
       'Sweeps inline',
       'Sweeps delegated',
     ]);
-    await expect(visible(handedOff, 'dd')[4]).toBe('Plan the offline sync, part 2');
+    await expect(visibleValues(handedOff)[4]).toBe('Plan the offline sync, part 2');
     await expect(
       within(handedOff).getAllByRole('button', { name: 'Copy session ID', hidden: true }).filter((b) => b.checkVisibility()),
     ).toHaveLength(1);
@@ -111,7 +99,7 @@ export const Narrow: Story = {
       await expect(region.getByText(name).closest('th')).not.toBeVisible();
     await userEvent.click(region.getByRole('button', { name: 'Refactor the sync queue' }));
     const opened = region.getAllByRole('row')[2];
-    await expect(visible(opened, 'dt').slice(0, 5)).toEqual(['Kind', 'When', 'Largest', 'Read share', 'Project']);
+    await expect(visibleTerms(opened).slice(0, 5)).toEqual(['Kind', 'When', 'Largest', 'Read share', 'Project']);
   },
 };
 
