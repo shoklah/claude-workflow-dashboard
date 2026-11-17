@@ -72,6 +72,23 @@ describe('loadReport', () => {
     expect(windowless).toMatchObject({ context: null, tool_results: null, sweeps: null });
   });
 
+  test('reads the runs’ headline, goal and spec and the sessions’ starter of the work fixture', () => {
+    const result = loadReport(fixture('report-work'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { report } = result;
+    const full = report.runs.find((r) => r.record?.date === '2026-11-10T16:45:00Z')!;
+    expect(full.headline).toBe('Queue edits offline and replay them on reconnect');
+    expect(full.goal).toBe('Offline sync');
+    expect(full.spec).toEqual({
+      project: '/Users/example/Work/lantern-notes',
+      path: 'docs/superpowers/specs/2026-11-05-offline-sync-design.md',
+    });
+    const build = report.sessions.find((s) => s.file.endsWith('/7d1e4b90-3c2a-4f6e-8b5d-1a9c0e2f6b47.jsonl'))!;
+    // 52e8f40878fa827a is session 5a9d…'s reporter key; a shared test can't import the server's sessionKey.
+    expect(build.started_by).toEqual({ key: '52e8f40878fa827a', how: 'started' });
+  });
+
   test('accepts a failing-test entry whose task isn’t a number, as the raw record a session wrote', () => {
     const json = fixture('report-v5');
     const run = json.runs.find((r: { schema: number }) => r.schema === 5);

@@ -85,6 +85,22 @@ describe('mergeKnown', () => {
     });
   });
 
+  const spec = { project: '/Users/example/Work/lantern-notes', path: 'docs/superpowers/specs/2026-11-05-offline-sync-design.md' };
+
+  test("a read transcript's null goal and spec replace the stored ones", () => {
+    const merged = mergeKnown(
+      { goal: 'Offline sync', spec, tool_results: toolResults },
+      { goal: null, spec: null, tool_results: zero },
+    ) as Record<string, unknown>;
+    expect(merged.goal).toBeNull();
+    expect(merged.spec).toBeNull();
+  });
+
+  test('an unread transcript keeps the stored goal and spec', () => {
+    const prev = { goal: 'Offline sync', spec, tool_results: toolResults };
+    expect(mergeKnown(prev, { goal: null, spec: null, tool_results: null })).toEqual(prev);
+  });
+
   test('the three context facts null keep the stored ones', () => {
     const prev = { context, tool_results: toolResults, sweeps: { inline: 0, delegated: 1 } };
     expect(mergeKnown(prev, { context: null, tool_results: null, sweeps: null })).toEqual(prev);

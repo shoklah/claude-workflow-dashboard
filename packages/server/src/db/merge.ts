@@ -21,12 +21,13 @@ const COUNT_MAPS: Whole = {
  * The known facts after a new export: a null or missing value in `next` keeps the value in `prev`, since the
  * reporter's null means it couldn't read the fact, not that the fact changed. Objects merge key by key, but the
  * count maps in `COUNT_MAPS` and any other non-null value in `next`, arrays included, replace. A version whose
- * `tool_results` isn't null read the transcript, so its `context` replaces the stored one, null included.
+ * `tool_results` isn't null read the transcript, so its `context`, `goal` and `spec` replace the stored ones, null
+ * included.
  */
 export function mergeKnown(prev: unknown, next: unknown): unknown {
   const merged = merge(prev, next, COUNT_MAPS);
   if (!isObject(merged) || !isObject(next) || next.tool_results == null) return merged;
-  return { ...merged, context: next.context ?? null };
+  return { ...merged, context: next.context ?? null, goal: next.goal, spec: next.spec };
 }
 
 function merge(prev: unknown, next: unknown, whole: Whole | true): unknown {
