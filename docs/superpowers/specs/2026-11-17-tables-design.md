@@ -64,7 +64,7 @@ The question every list answers: which items are here, and which one do I want t
 
 ### The first glance and the opened row (`tables-run-*`, `tables-findings-*`, `tables-runs-*`, `tables-sessions-*`, `tables-context-*`, `tables-compliance-*`)
 
-A list is one glass table container. Its first column starts with the row's toggle: a chevron, then the row's name. When the name is plain text (a finding's or strength's id, a session's title) the toggle is `RowToggle`, the name underlined as its link. When the first cell is already a link (a run's branch through `RunLink`), the chevron is a button of its own before it, named "Details of <name>", so a link never sits inside a button.
+A list is one glass table container. Its first column that doesn't fold (the findings' # on the Findings page, after Run) starts with the row's toggle: a chevron, then the row's name. When the name is plain text (a finding's or strength's id, a session's title) the toggle is `RowToggle`, the name underlined as its link. When the first cell is already a link (a run's branch through `RunLink`), the chevron is a button of its own before it, named "Details of <name>", so a link never sits inside a button.
 
 The opened row is one full-width row under it, indented to the name, holding the row's facts as `Pairs text`, empty ones left out, at most 3xl wide. Sessions add the session's timeline under the pairs, in a box that scrolls on its own, so the timeline never widens the table. Rows open and close independently, any number at once: a set, as the findings do in the mock. Strengths, which open one at a time in the mock, follow the same rule.
 
