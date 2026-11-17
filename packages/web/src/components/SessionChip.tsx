@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 /**
  * A session by its name, with its full ID in a tooltip on hover and focus and a button that copies it (decision 31).
  * The name is the ID's first 8 characters until the reporter gives sessions a title (CR9). `copy={false}` leaves the
- * button out (the Sessions table, so it fits its panel at 1440 px).
+ * button out.
  */
 export function SessionChip({ id, copy = true }: { id: string; copy?: boolean }) {
   const [copied, setCopied] = useState(false);
