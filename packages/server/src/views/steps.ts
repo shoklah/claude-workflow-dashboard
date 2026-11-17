@@ -27,7 +27,8 @@ const byKey = <T>(record: Record<string, T>) =>
 /**
  * One row per step kind, as the reporter's scoreboard: each logged step adds to its kind, and a schema 1 run adds its
  * final review from `final_findings`, and its simplify when `simplify.ran` is agents or inline. Tokens and cost come
- * from the dispatches of that kind with `models`; simplify's are null, since no dispatch tells its spend.
+ * from the dispatches of that kind with `models`, the cost null until one of the kind's dispatched models has a
+ * price; simplify's are null, since no dispatch tells its spend.
  */
 export function stepSums(runs: RunEntry[]): StepRow[] {
   const rows = new Map<StepKind, StepRow>(
@@ -43,7 +44,7 @@ export function stepSums(runs: RunEntry[]): StepRow[] {
         deferred: 0,
         openOrToOwner: 0,
         tokens: step === 'simplify' ? null : zeros(TOKENS),
-        cost: step === 'simplify' ? null : 0,
+        cost: null,
       },
     ]),
   );
@@ -80,7 +81,7 @@ export function stepSums(runs: RunEntry[]): StepRow[] {
       for (const m of Object.values(dispatch.models)) {
         for (const label of TOKENS) row.tokens[label] += m[label] ?? 0;
         // A model the reporter has no price for adds tokens only.
-        row.cost! += m.cost ?? 0;
+        if (m.cost != null) row.cost = (row.cost ?? 0) + m.cost;
       }
     }
   }

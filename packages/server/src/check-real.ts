@@ -167,7 +167,7 @@ else {
               !sameCounts(row.counts, want.counts) ||
               (row.tokens === null) !== (want.tokens == null) ||
               !sameCounts(row.tokens, want.tokens) ||
-              cents(row.cost) !== cents(want.cost)
+              (cents(row.cost) ?? 0) !== (cents(want.cost) ?? 0)
             );
           })
           .map((row) => row.step)

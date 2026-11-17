@@ -81,8 +81,9 @@ function expectScoreboard(rows: StepsResponse['steps']): void {
     const { cost, ...rest } = row;
     expect(rest).toEqual(scoreRow(row.step));
     // Costs to the cent: the reporter's are float sums.
-    if (board[row.step].cost === null) expect(cost).toBeNull();
-    else expect(cost).toBeCloseTo(board[row.step].cost, 2);
+    // The reporter writes 0.0 where no dispatched model has a price, and the dashboard null.
+    if (row.step === 'simplify') expect(cost).toBeNull();
+    else expect(cost ?? 0).toBeCloseTo(board[row.step].cost, 2);
   }
 }
 
@@ -95,6 +96,18 @@ const rules = {
 
 test("stepSums over every stored run equals the reporter's scoreboard, per step kind", () => {
   expectScoreboard(stepSums(listUnits(db, 'run').map((unit) => unit.merged)));
+});
+
+test("a step kind's cost is null until one of its dispatched models has a price, then the priced ones' sum", () => {
+  const unpriced = { kind: 'plan_simplify', models: { a: { input: 10, cost: null } } };
+  const priced = { kind: 'plan_simplify', models: { b: { input: 5, cost: 1.25 } } };
+  const row = (dispatches: (typeof unpriced | typeof priced)[]) =>
+    stepSums([{ schema: 2, dispatches }]).find((r) => r.step === 'plan_simplify')!;
+  expect(row([unpriced])).toMatchObject({ cost: null, tokens: { input: 10 } });
+  expect(row([unpriced, priced])).toMatchObject({ cost: 1.25, tokens: { input: 15 } });
+  for (const r of stepSums([{ schema: 2, dispatches: [unpriced, priced] }])) {
+    if (r.step !== 'plan_simplify' && r.step !== 'simplify') expect(r.cost).toBeNull();
+  }
 });
 
 test("ruleSums over every stored run equals the scoreboard's rules and the offers' totals", () => {
