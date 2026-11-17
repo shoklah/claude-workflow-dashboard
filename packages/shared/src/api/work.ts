@@ -7,13 +7,13 @@ export type WorkStep = 'design' | 'plan' | 'implementation';
 export type WorkQuery = FindingsQuery & { goal?: string };
 
 /**
- * A change as the Changes view lists it: its key, title, home project's name, its other projects (the shown ones by
- * name, every one in the count), path, stage, last activity and whole totals, units outside the period included.
+ * A change as the Changes view lists it: its key, title, home project's name (null for "other project", a root no
+ * stored run has), its other projects (the shown, named ones by name, every one in the count), path, stage, last activity and whole totals, units outside the period included.
  */
 export type ChangeRow = {
   key: string;
   title: string;
-  project: string;
+  project: string | null;
   otherProjects: string[];
   otherCount: number;
   path: 'full' | 'small';

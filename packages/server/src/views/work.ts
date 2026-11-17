@@ -172,12 +172,15 @@ export function levels(runs: StoredUnit<RunEntry>[], sessions: StoredUnit<Sessio
   };
 }
 
-/** Each goal's name with its changes' home roots, for showing mode's hidden goal names (scopeOf, forbiddenStrings). */
+/** Each goal's name with its changes' home roots and its loose sessions' roots (sessionRootOf), for showing mode's
+ * hidden goal names (scopeOf, forbiddenStrings). */
 export function goalHomes(levels: Levels): Map<string, string[]> {
   const homes = new Map<string, string[]>();
-  for (const { goal, home } of levels.changes) {
-    if (goal) homes.set(goal, [...new Set([...(homes.get(goal) ?? []), home])]);
-  }
+  const add = (goal: string | null | undefined, root: string | null) => {
+    if (goal && root) homes.set(goal, [...new Set([...(homes.get(goal) ?? []), root])]);
+  };
+  for (const { goal, home } of levels.changes) add(goal, home);
+  for (const { merged } of levels.loose) add(merged.goal, sessionRootOf(merged.project));
   return homes;
 }
 
@@ -207,7 +210,8 @@ export function workView(input: {
     [...change.runs, ...change.sessions].some((unit) => periodKeys.has(unit.key)),
   );
   const isShown = (root: string) => !scope || scope.shown.has(projectKey(root));
-  const nameOf = (root: string) => scope?.names.get(projectKey(root)) ?? names.get(root) ?? '';
+  // A root no stored run has is "other project" (null), as sessionFacts names a session's.
+  const nameOf = (root: string) => scope?.names.get(projectKey(root)) ?? names.get(root) ?? null;
   const byLatest = <T>(items: T[], at: (item: T) => string | null) => newestFirst(items, (item) => time(at(item)));
 
   const listed = periodChanges.filter(
@@ -224,7 +228,7 @@ export function workView(input: {
         key: change.key,
         title: maskText(scope, change.title),
         project: nameOf(change.home),
-        otherProjects: others.filter(isShown).map(nameOf),
+        otherProjects: others.filter(isShown).flatMap((root) => nameOf(root) ?? []),
         otherCount: others.length,
         path: change.path,
         stage: change.stage,

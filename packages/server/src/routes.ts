@@ -1,6 +1,5 @@
 import type { Context, Hono } from 'hono';
 import {
-  projectNames,
   toPath,
   toSpendUnits,
   toStepKind,
@@ -291,7 +290,8 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const query: WorkQuery = { ...periodQuery(c), goal: c.req.query('goal') || undefined };
     const runs = listUnits(deps.db, 'run');
     const sessions = listUnits(deps.db, 'session');
-    const names = projectNames([...runs.map(rootOf), ...storedSessionRoots(sessions)]);
-    return c.json(workView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions), names }));
+    return c.json(
+      workView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions), names: storedNames(runs) }),
+    );
   });
 }

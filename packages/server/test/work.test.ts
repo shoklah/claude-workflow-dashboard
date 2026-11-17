@@ -10,7 +10,7 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing, type StoredUnit } from '../src/db/read.ts';
 import { changeKey, goalKey, hash, projectKey } from '../src/keys.ts';
 import { storedBranches, storedSessionRoots } from '../src/views/runs.ts';
-import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { forbiddenStrings, leaks, maskText, scopeOf } from '../src/views/scope.ts';
 import { goalHomes, levels, stepOf } from '../src/views/work.ts';
 
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -18,6 +18,7 @@ const LANTERN = '/Users/example/Work/lantern-notes';
 const TIDEPOOL = '/Users/example/Work/tidepool-api';
 const OFFLINE_SPEC = { project: LANTERN, path: 'docs/superpowers/specs/2026-11-05-offline-sync-design.md' };
 const OFFLINE_PLAN = 'docs/superpowers/plans/2026-11-08-offline-sync.md';
+const SCRATCH = '/Users/example/Scratch/lantern';
 const WEBHOOKS_SPEC = { project: TIDEPOOL, path: 'docs/superpowers/specs/2026-11-11-webhooks-design.md' };
 const WEBHOOKS_PLAN = 'docs/superpowers/plans/2026-11-11-webhooks.md';
 
@@ -210,10 +211,16 @@ describe('stepOf', () => {
   });
 });
 
-/** GET /api/work on a fresh database holding `name`, showing `showing`'s roots when given. */
-async function work(query: string, showing?: string[], name = 'report-work'): Promise<WorkResponse> {
+/** GET /api/work on a fresh database holding `name` after `change`, showing `showing`'s roots when given. */
+async function work(
+  query: string,
+  showing?: string[],
+  name = 'report-work',
+  change: (raw: any) => void = () => {},
+): Promise<WorkResponse> {
   const db = openDb(join(dir, `dashboard-${count++}.sqlite`));
   const raw = fixture(name);
+  change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
   if (!loaded.ok) throw new Error(`${name} does not load`);
   importReport(db, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
@@ -289,6 +296,23 @@ describe('workView', () => {
     });
   });
 
+  test("projects are named as the other views name them: a run's root by storedNames, a session-only root not at all", async () => {
+    // A session root whose folder name a run's root shares names no project, so the run's root keeps its plain name.
+    const body = await work('?weeks=4', undefined, 'report-work', (raw) => {
+      sessionOf(raw, S_2E8D).project = '/Users/example/Scratch/lantern-notes';
+    });
+    const offline = rowOf(body, OFFLINE_CHANGE);
+    expect(offline.project).toBe('lantern-notes');
+    expect(offline.otherProjects).toEqual([]);
+    expect(offline.otherCount).toBe(1);
+    // A design-only change at home in a session-only root reads "other project" (null), as sessionFacts gives it.
+    const design = await work('?weeks=4', undefined, 'report-work', (raw) => {
+      sessionOf(raw, S_6B1F).spec = { project: SCRATCH, path: 'docs/superpowers/specs/2026-11-05-release-design.md' };
+    });
+    const row = rowOf(design, changeKey({ project: SCRATCH, path: 'docs/superpowers/specs/2026-11-05-release-design.md' }, null, '', ''));
+    expect(row.project).toBeNull();
+  });
+
   test("a section's totals are the sums of its rows", async () => {
     for (const section of (await work('?weeks=4')).goals) {
       const sum = (pick: (r: (typeof section.rows)[number]) => number | null) =>
@@ -354,15 +378,28 @@ describe('workView', () => {
     expect(strings.forbidden).toContain('Webhooks');
     expect(strings.kinds.get('Webhooks')).toEqual(['goal name']);
     expect(strings.forbidden).not.toContain('Offline sync');
+    // A goal held only by a loose session in a hidden root is hidden too.
+    expect(strings.kinds.get('Release checklist')).toEqual(['goal name']);
+    const scope = scopeOf([projectKey(LANTERN)], branches, {}, storedSessionRoots(sessions), goalHomes(levels(runs, sessions)))!;
+    expect(maskText(scope, 'Release checklist and Offline sync')).toBe('another goal and Offline sync');
+    const scratchShown = forbiddenStrings(
+      [...branches.keys()],
+      branches,
+      [LANTERN, SCRATCH],
+      [],
+      storedSessionRoots(sessions),
+      goalHomes(levels(runs, sessions)),
+    );
+    expect(scratchShown.forbidden).not.toContain('Release checklist');
     expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
   });
 });
 
 describe('goalHomes', () => {
-  test("each goal's changes' home roots", () => {
+  test("each goal's changes' home roots and its loose sessions' roots", () => {
     const homes = goalHomes(levelsOf('report-work'));
     expect(homes.get('Webhooks')).toEqual([TIDEPOOL]);
     expect(homes.get('Offline sync')).toEqual([LANTERN]);
-    expect(homes.has('Release checklist')).toBe(false);
+    expect(homes.get('Release checklist')).toEqual([SCRATCH]);
   });
 });
