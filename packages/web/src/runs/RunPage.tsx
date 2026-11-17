@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { RunPageResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
@@ -60,13 +60,6 @@ export function RunPage({ runKey }: { runKey: string }) {
   const [selection, setSelection] = useState<{ runKey: string; unit: string } | null>(null);
   const selected = selection?.runKey === runKey ? selection.unit : null;
   const select = (unit: string | null) => setSelection(unit === null ? null : { runKey, unit });
-  const detail = useRef<HTMLDivElement>(null);
-  // A step's detail opening off screen scrolls into view (instant under reduced motion); closing doesn't scroll.
-  useEffect(() => {
-    if (selected === null) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    detail.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'instant' : 'smooth' });
-  }, [selected]);
   if (run.isPending) return <State>Loading the run…</State>;
   if (run.isError) return <State error>Couldn't load this run.</State>;
   const { facts, timeline, findings, strengths, skills, models, advisor, context, warnings, categoryLabels } = run.data;
@@ -87,9 +80,7 @@ export function RunPage({ runKey }: { runKey: string }) {
             {!facts.beforeSteps && (
               <div className="border-t pt-3 text-sm">
                 {unit ? (
-                  <div ref={detail} className="scroll-my-4">
-                    <StepDetail unit={unit} onClose={() => select(null)} />
-                  </div>
+                  <StepDetail unit={unit} onClose={() => select(null)} />
                 ) : (
                   <p className="text-muted-foreground">Select a task or a review to see its rounds, and its findings below.</p>
                 )}

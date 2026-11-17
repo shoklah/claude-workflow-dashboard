@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, type ReactNode, type Ref } from 'react';
 import { cn } from 'cn';
 import { WARNING_BORDER } from '../lib/format.ts';
 import { NUM } from './Num.tsx';
@@ -23,16 +23,16 @@ export function SectionTitle({ id, children }: { id?: string; children: ReactNod
   );
 }
 
-type SectionProps = { title?: string; aside?: ReactNode; className?: string; children: ReactNode };
+type SectionProps = { title?: string; aside?: ReactNode; titleRef?: Ref<HTMLDivElement>; className?: string; children: ReactNode };
 
 /** A section without glass, a region labelled by its title when it has one, the title and `aside` (a switch, a count)
- * in a row above its content. */
-export function Section({ title, aside, className, children }: SectionProps) {
+ * in a row above its content (`titleRef` reaches that row). */
+export function Section({ title, aside, titleRef, className, children }: SectionProps) {
   const titleId = useId();
   return (
     <section aria-labelledby={title ? titleId : undefined} className={cn('flex flex-col gap-3', className)}>
       {(title || aside) && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div ref={titleRef} className="flex flex-wrap items-center gap-3">
           {title && <SectionTitle id={titleId}>{title}</SectionTitle>}
           {aside}
         </div>

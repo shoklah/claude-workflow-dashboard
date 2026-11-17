@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { FindingRow } from '@cwd/shared';
 import { ArrowRight, X } from 'lucide-react';
 import { cn } from 'cn';
@@ -12,6 +12,7 @@ import {
   byLabel,
   countName,
   outcomeLabel,
+  outcomeWarns,
   roundVerdictLabel,
   stepBy,
   verdictLabel,
@@ -35,7 +36,7 @@ function Dot({ verdict }: { verdict?: string }) {
           ? 'bg-foreground'
           : verdict === 'fixed'
             ? 'border-2 border-success-edge bg-success-edge'
-            : 'border-2 border-warning-edge',
+            : cn('border-2', WARNING_BORDER),
       )}
     />
   );
@@ -54,7 +55,7 @@ function Ended({ finding }: { finding: FindingRow }) {
     <span
       className={cn(
         'w-fit rounded-control border px-2.5 py-0.5 whitespace-nowrap',
-        (outcome === 'open' || outcome === 'none') && cn(WARNING_BORDER, WARNING_INK),
+        outcomeWarns(outcome) && cn(WARNING_BORDER, WARNING_INK),
         (outcome === 'fixed' || outcome === 'applied') && 'border-success-edge',
         (outcome === 'ruled' || outcome === 'declined') && 'text-muted-foreground',
       )}
@@ -84,7 +85,17 @@ function Head({ title, by }: { title: string; by?: string }) {
   return (
     <th scope="col" className="px-2 pb-2 text-left align-bottom font-normal">
       <span className="block text-sm font-semibold">{title}</span>
-      {by && <span className="text-muted-foreground">{by}</span>}
+      {by && (
+        // Word by word, each whole, so an agent's name never breaks at its hyphen.
+        <span className="text-muted-foreground">
+          {by.split(' ').map((word, i) => (
+            <span key={i}>
+              {i > 0 && ' '}
+              <span className="whitespace-nowrap">{word}</span>
+            </span>
+          ))}
+        </span>
+      )}
     </th>
   );
 }
@@ -97,9 +108,17 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
   const { name, review, rounds, findings } = unit;
   const kind = review ? STEP_LABELS[review.step] : name;
   const columns = Math.max(rounds.length, ...findings.map((f) => f.verdicts.length));
+  const titleRow = useRef<HTMLDivElement>(null);
+  // A step's detail opening, or showing another step, brings its title row into view if it isn't (instant under
+  // reduced motion); closing it doesn't scroll.
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    titleRow.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'instant' : 'smooth' });
+  }, [unit.id]);
   return (
     <Section
       title={name}
+      titleRef={titleRow}
       aside={
         <Button size="sm" variant="outline" className="ml-auto" aria-label={`Close ${name}`} onClick={onClose}>
           <X aria-hidden /> Close
@@ -110,7 +129,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
         <p className="text-sm text-muted-foreground">{`${kind} ${byLabel(review)} found nothing.`}</p>
       ) : (
         <>
-          <div className="hidden overflow-x-auto md:block" tabIndex={0} role="region" aria-label={`${name} table`}>
+          <div data-scroll-cue className="hidden overflow-x-auto md:block" tabIndex={0} role="region" aria-label={`${name} table`}>
             <table aria-label={name} className="w-full border-collapse text-xs">
               <thead>
                 <tr>
@@ -125,7 +144,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
               <tbody>
                 {findings.map((f, i) => (
                   <tr key={i} className="border-t">
-                    <th scope="row" className="max-w-64 px-2 py-2 text-left align-top font-normal">
+                    <th scope="row" className="max-w-64 min-w-48 px-2 py-2 text-left align-top font-normal">
                       <Finding finding={f} />
                     </th>
                     <td className="py-2 align-top">
@@ -154,7 +173,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
                         </td>
                       );
                     })}
-                    <td className="px-2 py-2 align-top">
+                    <td className="min-w-40 px-2 py-2 align-top">
                       <span className="flex flex-col gap-1">
                         <Ended finding={f} />
                         {f.reason && <span className="text-muted-foreground">{f.reason}</span>}

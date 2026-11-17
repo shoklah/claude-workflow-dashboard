@@ -48,6 +48,28 @@ export const Stuck: Story = {
   },
 };
 
+/** In a narrow panel the table keeps its Finding column readable and its agents' names whole, and scrolls sideways in
+ * its own region, its edge fading where columns are hidden. */
+export const Narrow: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 520 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const region = canvas.getByRole('region', { name: 'Wave A check table' });
+    await expect(region.scrollWidth).toBeGreaterThan(region.clientWidth);
+    await expect(getComputedStyle(region).animationName).toBe('scroll-cue');
+    const table = within(region).getByRole('table', { name: 'Wave A check' });
+    await expect(within(table).getByRole('rowheader').getBoundingClientRect().width).toBeGreaterThanOrEqual(192);
+    for (const agent of [...within(table).getAllByText('fix-checker'), within(table).getByText('task-reviewer')]) {
+      await expect(agent).toHaveClass('whitespace-nowrap');
+    }
+  },
+};
+
 /** A unit with two fix rounds: F1 fixed in round 1, F2 deferred without a round. */
 const twoRounds: Unit = {
   ...task1,

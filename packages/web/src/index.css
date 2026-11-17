@@ -266,14 +266,15 @@
   [data-slot='table-container'] {
     @apply glass;
     }
-  /* The cue's mask cuts what is drawn outside the box, so a scrolling table's focus outline is drawn inside it. */
-  [data-slot='table-container']:focus-visible {
+  /* The cue's mask cuts what is drawn outside the box, so a scrolling table's focus outline is drawn inside it. A plain
+     table's scrolling region inside a panel (`data-scroll-cue`) takes the same cue and outline, without the glass. */
+  [data-slot='table-container']:focus-visible, [data-scroll-cue]:focus-visible {
     @apply outline-2 -outline-offset-2 outline-ring;
     }
   /* The cue on a table that scrolls sideways: its edge fades where more columns are hidden. The scroll timeline is
      inactive on a table that fits, so the animation, and with it the mask, doesn't apply. */
   @supports (animation-timeline: scroll()) {
-    [data-slot='table-container'] {
+    [data-slot='table-container'], [data-scroll-cue] {
       animation: scroll-cue linear both;
       animation-timeline: scroll(self inline);
       }

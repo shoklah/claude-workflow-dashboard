@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, spyOn, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
@@ -163,11 +163,18 @@ export const SelectStep: Story = {
     const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
     await expect(flow.getByText(HINT)).toBeVisible();
     const task1 = flow.getByRole('button', { name: /^Task 1(?!\d)/ });
+    const scroll = spyOn(HTMLElement.prototype, 'scrollIntoView');
     await userEvent.click(task1);
     await expect(flow.queryByText(HINT)).toBeNull();
     const detail = flow.getByRole('region', { name: 'Task 1' });
-    await expect(within(detail).getByRole('heading', { name: 'Task 1' })).toBeVisible();
+    const heading = within(detail).getByRole('heading', { name: 'Task 1' });
+    await expect(heading).toBeVisible();
+    // Only the title row is brought into view, never the whole detail.
+    await expect(scroll).toHaveBeenCalledTimes(1);
+    await expect(scroll.mock.contexts[0]).toBe(heading.parentElement);
     await userEvent.click(within(detail).getByRole('button', { name: 'Close Task 1' }));
+    // Closing doesn't scroll.
+    await expect(scroll).toHaveBeenCalledTimes(1);
     await expect(flow.getByText(HINT)).toBeVisible();
     await expect(flow.queryByRole('region', { name: 'Task 1' })).toBeNull();
     await expect(task1).toHaveAttribute('aria-pressed', 'false');

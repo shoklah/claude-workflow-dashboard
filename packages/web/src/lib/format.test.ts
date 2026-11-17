@@ -9,6 +9,7 @@ import {
   countLabel,
   countName,
   outcomeLabel,
+  outcomeWarns,
   roundsLabel,
   stepBy,
   byLabel,
@@ -140,6 +141,15 @@ describe('verdictLabel', () => {
     expect(verdictLabel('fixed')).toBe('Fixed');
     expect(verdictLabel('not_proportionate')).toBe('Not proportionate');
     expect(verdictLabel('later')).toBe('Later');
+  });
+});
+
+describe('outcomeWarns', () => {
+  it('takes the warning ink for Open and No outcome only', () => {
+    expect(outcomeWarns('open')).toBe(true);
+    expect(outcomeWarns('none')).toBe(true);
+    expect(outcomeWarns(null)).toBe(true);
+    for (const outcome of ['fixed', 'applied', 'ruled', 'declined', 'deferred', 'to_owner'] as const) expect(outcomeWarns(outcome)).toBe(false);
   });
 });
 

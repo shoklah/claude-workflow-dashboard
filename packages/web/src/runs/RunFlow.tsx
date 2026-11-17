@@ -2,7 +2,7 @@ import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 're
 import { CircleAlert } from 'lucide-react';
 import { cn } from 'cn';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, plural, roundsLabel } from '../lib/format.ts';
+import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, outcomeWarns, plural, roundsLabel } from '../lib/format.ts';
 import { layout, stuck, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
 
 type Pick = { selected: string | null; onSelect: (id: string | null) => void };
@@ -86,11 +86,10 @@ function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
 /** A chip for what a step left with one outcome: Open and No outcome in the warning ink, the others muted. */
 function Chip({ chip }: { chip: Of<'chip'> }) {
   const text = `${outcomeLabel(chip.outcome)} ${formatWhole(chip.count)}`;
-  const warn = chip.outcome === 'open' || chip.outcome === 'none';
   return (
     <span
       title={text}
-      className={cn('absolute truncate rounded-control border border-dashed px-1 py-px text-xs', warn ? WARNING_INK : 'text-muted-foreground')}
+      className={cn('absolute truncate rounded-control border border-dashed px-1 py-px text-xs', outcomeWarns(chip.outcome) ? WARNING_INK : 'text-muted-foreground')}
       style={at(chip)}
     >
       {text}

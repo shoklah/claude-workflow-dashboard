@@ -149,6 +149,11 @@ export function roundVerdictLabel(round: number, verdict: string): string {
   return `Round ${round}: ${verdictLabel(verdict).toLowerCase()}`;
 }
 
+/** A finding's outcome takes the warning ink: Open and No outcome, on the graph's chips and the step detail's alike. */
+export function outcomeWarns(outcome: Outcome | 'none' | null): boolean {
+  return outcome == null || outcome === 'none' || outcome === 'open';
+}
+
 /** A count line's counts as lines, each its name (`countName`) and its number; null when the counts aren't known. */
 export function countLines(counts: Record<string, number | null> | null): [string, number | null][] | null {
   return counts && Object.entries(counts).map(([key, n]) => [countName(key), n]);
