@@ -8,6 +8,7 @@ import {
   foundFindings,
   countLabel,
   countName,
+  outcomeLabel,
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
@@ -85,6 +86,14 @@ describe('countName', () => {
     expect(countName('important')).toBe('Important');
     expect(countName('unneeded')).toBe('Not required');
     expect(countName('couldnt_run')).toBe("Couldn't run");
+  });
+});
+
+describe('outcomeLabel', () => {
+  it("names an outcome as a count key, and none as 'No outcome'", () => {
+    expect(outcomeLabel('to_owner')).toBe('To owner');
+    expect(outcomeLabel('none')).toBe('No outcome');
+    expect(outcomeLabel(null)).toBe('No outcome');
   });
 });
 

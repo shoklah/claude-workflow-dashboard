@@ -1,5 +1,5 @@
 import type { FindingRow, Outcome, StrengthRow, TimelineGroup, TimelineStep } from '@cwd/shared';
-import { STEP_LABELS, countName } from '../lib/format.ts';
+import { STEP_LABELS, outcomeLabel } from '../lib/format.ts';
 
 /** One review with its fix rounds: a box of the graph. */
 export type Unit = {
@@ -147,6 +147,8 @@ const SIDE_IN = 10;
 /** A chip's estimated width: its text at the box's small size, and its padding. */
 const CHAR = 6;
 const CHIP_PAD = 12;
+/** The narrowest a box gets lying flat, before the graph stands up. */
+const NARROW = 96;
 /** Most boxes on one upright line. */
 const LINE = 3;
 
@@ -177,7 +179,7 @@ const joined = (layers: Layer[]): Edge[] =>
 const blockHeight = (u: Unit) => LOOP + H + leftOf(u).length * EXIT;
 const rankHeight = (r: Rank) =>
   r.merge ? MERGE_H : r.pill ? PILL_H : r.units.reduce((sum, u) => sum + blockHeight(u), 0) + (r.units.length - 1) * GY;
-const rankWidth = (r: Rank) => (r.merge ? MERGE : r.pill ? PILL : W);
+const rankWidth = (r: Rank, w = W) => (r.merge ? MERGE : r.pill ? PILL : w);
 const pillOf = (s: Stage, x: number, y: number, row: number): Placed => ({
   kind: 'pill',
   end: s.kind === 'start' ? 'start' : 'end',
@@ -210,7 +212,7 @@ function block(unit: Unit, x: number, top: number, w: number, row: number): Plac
       count,
       x: x + CHIP_IN,
       y: top + H + i * EXIT + 4,
-      w: Math.min(`${outcome === 'none' ? 'No outcome' : countName(outcome)} ${count}`.length * CHAR + CHIP_PAD, w - CHIP_IN - SIDE_IN),
+      w: Math.min(`${outcomeLabel(outcome)} ${count}`.length * CHAR + CHIP_PAD, w - CHIP_IN - SIDE_IN - 4),
       h: EXIT - 4,
       row,
     })),
@@ -218,9 +220,9 @@ function block(unit: Unit, x: number, top: number, w: number, row: number): Plac
 }
 
 /** One row of ranks from (x0, y0), left to right, a rank's units stacked, every rank centred on the row's height. */
-function row(ranks: Rank[], x0: number, y0: number, index: number) {
+function row(ranks: Rank[], x0: number, y0: number, index: number, w = W) {
   const height = Math.max(...ranks.map(rankHeight), PILL_H);
-  const width = ranks.reduce((sum, r) => sum + rankWidth(r), 0) + (ranks.length - 1) * GX;
+  const width = ranks.reduce((sum, r) => sum + rankWidth(r, w), 0) + (ranks.length - 1) * GX;
   const mid = y0 + height / 2;
   const placed: Placed[] = [];
   const layers: Layer[] = [];
@@ -241,21 +243,21 @@ function row(ranks: Rank[], x0: number, y0: number, index: number) {
       const layer: Layer = { ins: [], outs: [] };
       for (const u of r.units) {
         const top = y + LOOP;
-        placed.push(...block(u, x, top, W, index));
+        placed.push(...block(u, x, top, w, index));
         layer.ins.push({ at: { x, y: top + H / 2 }, head: true });
-        layer.outs.push({ x: x + W, y: top + H / 2 });
+        layer.outs.push({ x: x + w, y: top + H / 2 });
         y += blockHeight(u) + GY;
       }
       layers.push(layer);
     }
-    x += rankWidth(r) + GX;
+    x += rankWidth(r, w) + GX;
   }
   return { placed, layers, edges, width, height, mid };
 }
 
-/** Lying flat: one row. */
-function flat(ranks: Rank[]): Layout {
-  const { placed, layers, edges, width, height } = row(ranks, 0, 0, 0);
+/** Lying flat: one row, its boxes `w` wide. */
+function flat(ranks: Rank[], w = W): Layout {
+  const { placed, layers, edges, width, height } = row(ranks, 0, 0, 0, w);
   return { shape: 'flat', width, height, rows: 1, placed, edges: [...joined(layers), ...edges] };
 }
 
@@ -402,10 +404,15 @@ function upright(ranks: Rank[], avail: number): Layout {
 }
 
 /** The run's graph by the panel's width: flat when it fits (or before the panel is measured), wrapped when four boxes
- * fit a row, upright below that, so it never scrolls sideways. */
+ * fit a row, below that flat with narrower boxes when they stay `NARROW` wide, else upright, so it never scrolls
+ * sideways. */
 export function layout(stages: Stage[], avail: number | null): Layout {
   const ranks = ranksOf(stages);
   const lying = flat(ranks);
   if (avail === null || lying.width <= avail) return lying;
-  return avail >= WRAP_MIN ? wrapped(ranks, avail) : upright(ranks, avail);
+  if (avail >= WRAP_MIN) return wrapped(ranks, avail);
+  // Too narrow to wrap: a short graph still lies flat with its boxes narrowed, down to `NARROW`.
+  const boxes = ranks.filter((r) => r.units.length).length;
+  const w = Math.floor((avail - (lying.width - boxes * W)) / boxes);
+  return w >= NARROW ? flat(ranks, w) : upright(ranks, avail);
 }

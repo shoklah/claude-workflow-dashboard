@@ -167,7 +167,7 @@ describe('layout', () => {
   });
 
   describe('flat', () => {
-    it.each([['runSmall', 720], ['runSmall', 1392], ['runPlan', 720], ['runPlan', 1392]] as const)('lies %s flat at %i', (name, at) => {
+    it.each([['runSmall', 504], ['runSmall', 720], ['runSmall', 1392], ['runPlan', 504], ['runPlan', 720], ['runPlan', 1392]] as const)('lies %s flat at %i', (name, at) => {
       const result = layout(stagesOf(STORIES[name].timeline), at);
       expect(result.shape).toBe('flat');
       expect(result.rows).toBe(1);
@@ -247,6 +247,7 @@ describe('layout', () => {
       const boxes = new Map(result.placed.flatMap((p) => (p.kind === 'unit' ? [[p.unit.id, p] as const] : [])));
       expect(new Set(['t1', 't2', 't3'].map((id) => boxes.get(id)!.y)).size).toBe(1);
       expect(result.placed.every((p) => p.x >= 0 && p.x + p.w <= at)).toBe(true);
+      expect(clear(result)).toBe(true);
     });
 
     it('stands a wave of three kit-reviewed tasks in lines of at most three, each task beside its kit review', () => {

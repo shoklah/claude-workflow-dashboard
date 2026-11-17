@@ -1,4 +1,4 @@
-import { parseTime, toStepKind, type Area, type Path, type FindingRow, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type Path, type FindingRow, type Outcome, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -119,6 +119,11 @@ export const COUNT_LABELS: Record<string, string> = { couldnt_run: "Couldn't run
  * `unneeded` as "Not required". */
 export function countName(key: string): string {
   return COUNT_LABELS[key] ?? capitalize(countLabel(key));
+}
+
+/** A finding's outcome on screen: its count name, "No outcome" when it has none. */
+export function outcomeLabel(outcome: Outcome | 'none' | null): string {
+  return outcome == null || outcome === 'none' ? 'No outcome' : countName(outcome);
 }
 
 /** A count line's counts as lines, each its name (`countName`) and its number; null when the counts aren't known. */
