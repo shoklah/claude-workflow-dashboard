@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn } from 'storybook/test';
+import { expect, fn, within } from 'storybook/test';
 import { Menu, MenuButton } from './Menu.tsx';
 
 const meta = { component: Menu, args: { onNavigate: fn() } } satisfies Meta<typeof Menu>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The menu holds no data, so it has one state: the built pages' entries only, later ones hidden. */
+/** The menu holds no data, so it has one state: the built pages' entries in their sections, each with one icon. */
 export const Default: Story = {
   play: async ({ canvas }) => {
     const links = await canvas.findAllByRole('link');
-    await expect(links.map((link) => link.textContent)).toEqual(['Home', 'Runs', 'Findings', 'Sessions', 'Context', 'Compliance', 'Steps and rules', 'Skills', 'Models and advisor', 'Spend', 'Weeks']);
+    await expect(links.map((link) => link.textContent)).toEqual(['Home', 'Weeks', 'Runs', 'Sessions', 'Findings', 'Context', 'Spend', 'Compliance', 'Steps and rules', 'Skills', 'Models and advisor']);
     await expect(canvas.getByRole('link', { name: 'Skills' })).toHaveAttribute('href', '/skills');
     await expect(canvas.getByRole('link', { name: 'Models and advisor' })).toHaveAttribute('href', '/models');
     await expect(canvas.getByRole('link', { name: 'Findings' })).toHaveAttribute('href', '/findings');
@@ -22,6 +22,15 @@ export const Default: Story = {
     await expect(canvas.getByRole('link', { name: 'Spend' })).toHaveAttribute('href', '/spend');
     await expect(canvas.getByRole('link', { name: 'Weeks' })).toHaveAttribute('href', '/weeks');
     await expect(canvas.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
+    await expect(canvas.getAllByRole('group')).toHaveLength(3);
+    await expect(within(canvas.getByRole('group', { name: 'Activity' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Runs', 'Sessions', 'Findings']);
+    await expect(within(canvas.getByRole('group', { name: 'Usage and cost' })).getAllByRole('link')).toHaveLength(2);
+    await expect(within(canvas.getByRole('group', { name: 'Workflow' })).getAllByRole('link')).toHaveLength(4);
+    for (const link of links) {
+      const icons = link.querySelectorAll('svg');
+      await expect(icons).toHaveLength(1);
+      await expect(icons[0]).toHaveAttribute('aria-hidden', 'true');
+    }
   },
 };
 

@@ -37,7 +37,7 @@ test('showing lantern-notes hides tidepool-api from the pages', async ({ page })
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await dialog.getByRole('button', { name: 'Start showing' }).click();
-  await expect(page.getByText('Showing: lantern-notes')).toBeVisible();
+  await expect(page.getByRole('complementary').getByText('Showing: lantern-notes')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   // Runs: no tidepool-api row, and the line counting the runs it hides.
@@ -48,9 +48,30 @@ test('showing lantern-notes hides tidepool-api from the pages', async ({ page })
 
   // Home: the feed holds no tidepool-api item.
   await page.goto('/');
-  await expect(page.getByText('Showing: lantern-notes')).toBeVisible();
+  await expect(page.getByRole('complementary').getByText('Showing: lantern-notes')).toBeVisible();
   const feed = page.getByRole('region', { name: 'Since you last looked', exact: true });
   await expect(feed.getByText(/lantern-notes/).first()).toBeVisible();
   await expect(feed.getByText(/tidepool-api/)).toHaveCount(0);
   await expectNoSessionId(page);
+});
+
+test('in a short window the brand and the foot stay and the menu scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 600 });
+  await page.goto('/runs');
+  const rail = page.getByRole('complementary');
+  await rail.getByRole('switch', { name: 'Showing mode' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
+  await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
+  await dialog.getByRole('button', { name: 'Start showing' }).click();
+  await expect(rail.getByText('Showing: lantern-notes')).toBeInViewport();
+  await expect(rail.getByRole('button', { name: 'Stop showing' })).toBeInViewport();
+  await expect(rail.getByRole('button', { name: 'Refresh' })).toBeInViewport();
+  await expect(rail.getByText('edward', { exact: true })).toBeInViewport();
+  const last = rail.getByRole('link', { name: 'Models and advisor' });
+  await expect(last).not.toBeInViewport();
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
+  await expect(rail.getByRole('button', { name: 'Refresh' })).toBeInViewport();
+  // The rail never grows past the window: the page isn't made taller to fit it.
+  expect(Math.round((await rail.boundingBox())!.height)).toBe(600 - 24);
 });
