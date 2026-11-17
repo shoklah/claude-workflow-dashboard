@@ -245,3 +245,14 @@ test("a link that changes only the address's query leaves the focus where it was
   await expect(page.getByRole('rowheader', { name: 'Simplify record differs' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).not.toBeFocused();
 });
+
+test("a Menu dialog link to the page already shown returns the focus to the Menu button", async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/spend');
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await menu.click();
+  await page.getByRole('dialog', { name: 'Pages' }).getByRole('link', { name: 'Spend' }).click();
+  await expect(page.getByRole('dialog', { name: 'Pages' })).toBeHidden();
+  await expect(menu).toBeFocused();
+});
