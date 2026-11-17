@@ -24,6 +24,7 @@ import { forbiddenStrings, leaks } from './views/scope.ts';
 import { skillSums } from './views/skills.ts';
 import { cr6Of, ruleSums, stepSums, unitSums } from './views/steps.ts';
 import { runTime } from './views/weeks.ts';
+import { goalHomes, levels } from './views/work.ts';
 
 /** A JSON value's object keys, at any depth. */
 const objectKeys = (json: unknown): string[] =>
@@ -331,9 +332,11 @@ else {
     setShowing(db, shown.map(projectKey));
     const files = [...sessionEntries.map((s) => s.file), ...entries.map((run) => run.window?.transcript)];
     const sessionIds = files.flatMap((file) => splitSessionId(file ?? '').sessionId ?? []);
-    const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+    const storedSessions = listUnits(db, 'session');
+    const sessionRoots = storedSessionRoots(storedSessions);
+    const homes = goalHomes(levels(listUnits(db, 'run'), storedSessions));
     // The home folder too, so any path under it is a leak.
-    const strings = forbiddenStrings(roots, branches, shown, sessionIds, sessionRoots);
+    const strings = forbiddenStrings(roots, branches, shown, sessionIds, sessionRoots, homes);
     const forbidden = [...strings.forbidden, homedir()];
     const app = createApp({
       db,

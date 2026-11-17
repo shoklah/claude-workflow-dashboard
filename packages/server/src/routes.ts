@@ -1,5 +1,6 @@
 import type { Context, Hono } from 'hono';
 import {
+  projectNames,
   toPath,
   toSpendUnits,
   toStepKind,
@@ -12,6 +13,7 @@ import {
   type RunsQuery,
   type SessionsQuery,
   type SpendQuery,
+  type WorkQuery,
 } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { activeList, labellable } from './categories.ts';
@@ -44,6 +46,7 @@ import { spendView } from './views/spend.ts';
 import { statusView } from './views/status.ts';
 import { stepsView } from './views/steps.ts';
 import { weeksView } from './views/weeks.ts';
+import { goalHomes, levels, workView } from './views/work.ts';
 
 /** The answer to any method but POST on a POST-only route. */
 function postOnly(c: Context): Response {
@@ -71,8 +74,15 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   const scopeFor = (runs?: StoredUnit<RunEntry>[], sessions?: StoredUnit<SessionEntry>[]): Scope | null => {
     const showing = getShowing(deps.db);
     if (!showing) return null;
-    const branches = storedBranches(runs ?? listUnits(deps.db, 'run'));
-    return scopeOf(showing, branches, deps.aliases, storedSessionRoots(sessions ?? listUnits(deps.db, 'session')));
+    const allRuns = runs ?? listUnits(deps.db, 'run');
+    const allSessions = sessions ?? listUnits(deps.db, 'session');
+    return scopeOf(
+      showing,
+      storedBranches(allRuns),
+      deps.aliases,
+      storedSessionRoots(allSessions),
+      goalHomes(levels(allRuns, allSessions)),
+    );
   };
 
   // Task 4: the import's status, the refresh and "mark all seen".
@@ -274,5 +284,14 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const runs = listUnits(deps.db, 'run');
     const sessions = listUnits(deps.db, 'session');
     return c.json(spendView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions) }));
+  });
+
+  // Work page, task 3: the Changes view, the period's changes by goal.
+  app.get('/api/work', (c) => {
+    const query: WorkQuery = { ...periodQuery(c), goal: c.req.query('goal') || undefined };
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    const names = projectNames([...runs.map(rootOf), ...storedSessionRoots(sessions)]);
+    return c.json(workView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions), names }));
   });
 }

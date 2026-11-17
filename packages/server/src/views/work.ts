@@ -6,14 +6,20 @@ import {
   projectRoot,
   runFacts,
   sessionRootOf,
+  weekOf,
+  type ChangeRow,
+  type GoalSection,
   type RunEntry,
   type SessionEntry,
   type SpecRef,
+  type WorkQuery,
+  type WorkResponse,
   type WorkStep,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { changeKey } from '../keys.ts';
-import { rootOf } from './runs.ts';
+import { changeKey, goalKey, projectKey } from '../keys.ts';
+import { periodStoredUnits, rootOf } from './runs.ts';
+import { maskText, type Scope } from './scope.ts';
 import { heldRuns } from './sessions.ts';
 
 /**
@@ -163,5 +169,100 @@ export function levels(runs: StoredUnit<RunEntry>[], sessions: StoredUnit<Sessio
     changeOf,
     loose,
     goalOf: (unitKey) => (changeOf.has(unitKey) ? changeOf.get(unitKey)!.goal : (looseGoals.get(unitKey) ?? null)),
+  };
+}
+
+/** Each goal's name with its changes' home roots, for showing mode's hidden goal names (scopeOf, forbiddenStrings). */
+export function goalHomes(levels: Levels): Map<string, string[]> {
+  const homes = new Map<string, string[]>();
+  for (const { goal, home } of levels.changes) {
+    if (goal) homes.set(goal, [...new Set([...(homes.get(goal) ?? []), home])]);
+  }
+  return homes;
+}
+
+/**
+ * The Changes view: the changes with a unit in the query's period (periodStoredUnits over its weeks alone), any of whose
+ * roots is the project filter's and whose goal is the goal filter's, by goal, each section's rows and the sections
+ * most recently active first, "No goal" last. A row's numbers are its change's whole numbers, and a section's the sums
+ * of its rows; a section is open when one of its changes was last active this week. `looseSessions` counts the
+ * period's sessions in no change. With a scope, a change is listed only when its home is shown, named by the scope,
+ * its hidden projects only in `otherCount`, its title and goal masked (maskText); `hidden` counts the changes it left
+ * out.
+ */
+export function workView(input: {
+  runs: StoredUnit<RunEntry>[];
+  sessions: StoredUnit<SessionEntry>[];
+  query: WorkQuery;
+  now: Date;
+  scope: Scope | null;
+  names: Map<string, string>;
+}): WorkResponse {
+  const { query, scope, names } = input;
+  const { changes, changeOf } = levels(input.runs, input.sessions);
+  const inPeriod = periodStoredUnits(input.runs, input.sessions, { weeks: query.weeks }, input.now);
+  const thisWeek = inPeriod.weeks.at(-1);
+  const periodKeys = new Set([...inPeriod.runs, ...inPeriod.sessions].map((unit) => unit.key));
+  const periodChanges = changes.filter((change) =>
+    [...change.runs, ...change.sessions].some((unit) => periodKeys.has(unit.key)),
+  );
+  const isShown = (root: string) => !scope || scope.shown.has(projectKey(root));
+  const nameOf = (root: string) => scope?.names.get(projectKey(root)) ?? names.get(root) ?? '';
+  const byLatest = <T>(items: T[], at: (item: T) => string | null) => newestFirst(items, (item) => time(at(item)));
+
+  const listed = periodChanges.filter(
+    (change) =>
+      (!query.project || change.roots.some((root) => projectKey(root) === query.project)) &&
+      (!query.goal || (change.goal !== null && goalKey(change.goal) === query.goal)),
+  );
+  const sections = new Map<string | null, ChangeRow[]>();
+  for (const change of listed.filter((c) => isShown(c.home))) {
+    const others = change.roots.filter((root) => root !== change.home);
+    sections.set(change.goal, [
+      ...(sections.get(change.goal) ?? []),
+      {
+        key: change.key,
+        title: maskText(scope, change.title),
+        project: nameOf(change.home),
+        otherProjects: others.filter(isShown).map(nameOf),
+        otherCount: others.length,
+        path: change.path,
+        stage: change.stage,
+        lastActivity: change.last,
+        runs: change.runs.length,
+        sessions: change.sessions.length,
+        findings: change.findings,
+        cost: change.cost,
+      },
+    ]);
+  }
+
+  const goals: GoalSection[] = [...sections].map(([goal, rows]) => ({
+    key: goal === null ? null : goalKey(goal),
+    name: maskText(scope, goal),
+    open: rows.some((row) => !!row.lastActivity && weekOf(parseTime(row.lastActivity)) === thisWeek),
+    changes: rows.length,
+    runs: rows.reduce((sum, row) => sum + row.runs, 0),
+    sessions: rows.reduce((sum, row) => sum + row.sessions, 0),
+    cost: rows.reduce<number | null>((sum, row) => addKnown(sum, row.cost), null),
+    lastActivity: latest(rows.map((row) => row.lastActivity)),
+    rows: byLatest(rows, (row) => row.lastActivity),
+  }));
+  const goalNames = [...new Set(periodChanges.filter((c) => isShown(c.home)).flatMap((c) => c.goal ?? []))];
+
+  return {
+    goals: [
+      ...byLatest(
+        goals.filter((g) => g.key !== null),
+        (g) => g.lastActivity,
+      ),
+      ...goals.filter((g) => g.key === null),
+    ],
+    looseSessions: inPeriod.sessions.filter((session) => !changeOf.has(session.key)).length,
+    anyGoal: [...input.runs, ...input.sessions].some((unit) => !!unit.merged.goal),
+    goalOptions: goalNames
+      .map((name) => ({ key: goalKey(name), name: maskText(scope, name) }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    hidden: listed.filter((change) => !isShown(change.home)).length,
   };
 }

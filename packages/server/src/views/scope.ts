@@ -5,8 +5,8 @@ import { trimPaths } from '../text.ts';
 /**
  * Showing mode's scope: the shown project keys, each one's display name (its alias, else its folder name), the shown
  * folder names (`kept`, kept whole where they hold a hidden name), and the folder names of every other root, runs' and
- * sessions' alike, and the hidden runs' branches, minus any string a shown project also has (as forbiddenStrings),
- * since those reveal nothing.
+ * sessions' alike, the hidden runs' branches and the goal names none of whose changes' homes is shown, minus any
+ * string a shown project also has (as forbiddenStrings), since those reveal nothing.
  */
 export type Scope = {
   shown: Set<string>;
@@ -14,6 +14,7 @@ export type Scope = {
   kept: string[];
   hidden: string[];
   branches: string[];
+  goals: string[];
 };
 
 // A session ID, bare or as its `<uuid>.jsonl` file.
@@ -31,14 +32,15 @@ function asWords(strings: string[]): string {
 }
 
 /**
- * The scope of showing mode's picked keys over the stored runs' branches by root and the stored sessions' roots; null
- * while showing mode is off.
+ * The scope of showing mode's picked keys over the stored runs' branches by root, the stored sessions' roots and each
+ * goal's changes' homes (goalHomes in views/work.ts); null while showing mode is off.
  */
 export function scopeOf(
   showing: string[] | null,
   branches: Map<string, string[]>,
   aliases: Record<string, string>,
   sessionRoots: string[],
+  goalHomes: Map<string, string[]> = new Map(),
 ): Scope | null {
   if (showing === null) return null;
   const roots = [...branches.keys()];
@@ -46,7 +48,7 @@ export function scopeOf(
   const shownRoots = roots.filter(isShown);
   const hiddenRoots = roots.filter((root) => !isShown(root));
   const names = projectNames(shownRoots, aliases);
-  const strings = forbiddenStrings(roots, branches, shownRoots, [], sessionRoots);
+  const strings = forbiddenStrings(roots, branches, shownRoots, [], sessionRoots, goalHomes);
   const forbidden = new Set(strings.forbidden);
   const hiddenOnly = (strings: string[]) => [...new Set(strings)].filter((s) => forbidden.has(s));
   return {
@@ -55,13 +57,14 @@ export function scopeOf(
     kept: strings.shown,
     hidden: hiddenOnly([...hiddenRoots, ...sessionRoots].map(folderName)),
     branches: hiddenOnly(hiddenRoots.flatMap((root) => branches.get(root) ?? [])),
+    goals: hiddenOnly([...goalHomes.keys()]),
   };
 }
 
 /**
  * A text as showing mode lets it out: its paths trimmed (trimPaths), each session ID, bare or as `<uuid>.jsonl`,
- * written "a session", and each whole-word hidden branch and project name, in any case, written "another branch" and
- * "another project", unless it is part of a whole-word shown folder name (kept), which stays as it is. A word holds
+ * written "a session", and each whole-word hidden branch, project name and goal name, in any case, written "another
+ * branch", "another project" and "another goal", unless it is part of a whole-word shown folder name (kept), which stays as it is. A word holds
  * letters, digits and `_`, so `-` ends one, as in a transcript folder's `-Users-me-Work-<name>`. With no scope, or no
  * text, the text as it is.
  */
@@ -71,6 +74,7 @@ export function maskText<T extends string | null | undefined>(scope: Scope | nul
   // By lower case, a mask wins over a kept string, and a branch's over a name's.
   const masks = new Map<string, string | null>([
     ...scope.kept.map((word): [string, null] => [word.toLowerCase(), null]),
+    ...scope.goals.map((word): [string, string] => [word.toLowerCase(), 'another goal']),
     ...scope.hidden.map((word): [string, string] => [word.toLowerCase(), 'another project']),
     ...scope.branches.map((word): [string, string] => [word.toLowerCase(), 'another branch']),
   ]);
@@ -138,9 +142,10 @@ function textsOf(value: unknown): string[] {
 
 /**
  * What no showing-mode response may hold (`forbidden`): the hidden roots, runs' and sessions' alike, their folder
- * names and their branches (by root), minus any string a shown root or a shown run also has, plus the session IDs.
- * `shown` is the shown roots' folder names, which may hold a forbidden string without revealing it. `kinds` names what
- * each forbidden string is (a project path, a project folder name, a branch, a session ID), for check:real's lines.
+ * names and their branches (by root), and the goal names none of whose homes (goalHomes) is shown, minus any string a
+ * shown root or a shown run also has, plus the session IDs. `shown` is the shown roots' folder names, which may hold a
+ * forbidden string without revealing it. `kinds` names what each forbidden string is (a project path, a project
+ * folder name, a branch, a goal name, a session ID), for check:real's lines.
  */
 export function forbiddenStrings(
   roots: string[],
@@ -148,6 +153,7 @@ export function forbiddenStrings(
   shownRoots: string[],
   sessionIds: string[],
   sessionRoots: string[],
+  goalHomes: Map<string, string[]> = new Map(),
 ): { forbidden: string[]; shown: string[]; kinds: Map<string, string[]> } {
   const strings = (root: string): [string, string][] => [
     [root, 'project path'],
@@ -157,6 +163,9 @@ export function forbiddenStrings(
   const shown = new Set(shownRoots.flatMap(strings).map(([s]) => s));
   const hidden = [
     ...[...roots, ...sessionRoots].filter((root) => !shownRoots.includes(root)).flatMap(strings),
+    ...[...goalHomes]
+      .filter(([, homes]) => !homes.some((home) => shownRoots.includes(home)))
+      .map(([goal]): [string, string] => [goal, 'goal name']),
     ...sessionIds.map((id): [string, string] => [id, 'session ID']),
   ].filter(([s, kind]) => s && (kind === 'session ID' || !shown.has(s)));
   const kinds = new Map<string, string[]>();
