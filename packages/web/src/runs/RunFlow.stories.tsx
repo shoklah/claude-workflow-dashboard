@@ -79,11 +79,13 @@ export const Full: Story = {
     await expect(args.onSelect).toHaveBeenCalledWith('t1');
 
     const check = flow.getByRole('button', { name: /^Wave A check/ });
-    const rounds = flow.getByText('3 rounds');
+    // A stuck loop says so by an icon and, to a screen reader, in words, not by its colour alone.
+    const rounds = flow.getByText('3 rounds, the last left findings open');
     await expect(rounds).toHaveClass('sr-only');
     const label = rounds.parentElement!;
     await expect(label).toHaveTextContent('fix-checker');
     await expect(label).toHaveClass(WARNING_INK);
+    await expect(label.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
     await expect(before(check, label)).toBe(true);
     const ruled = flow.getByText('Ruled 1');
     await expect(ruled).toBeVisible();
@@ -94,7 +96,9 @@ export const Full: Story = {
     await expect(before(flow.getByRole('button', { name: /^Task 4(?!\d)/ }), conflicts)).toBe(true);
     await chipsWhole(group);
     // A loop that left nothing is not in the warning ink.
-    await expect(flow.getByText('1 round').parentElement).not.toHaveClass(WARNING_INK);
+    const clean = flow.getAllByText('1 round')[0].parentElement!;
+    await expect(clean).not.toHaveClass(WARNING_INK);
+    await expect(clean.querySelector('svg')).toBeNull();
   },
 };
 

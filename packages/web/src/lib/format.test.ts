@@ -9,6 +9,7 @@ import {
   countLabel,
   countName,
   outcomeLabel,
+  roundsLabel,
   FAMILY_LABELS,
   KIND_LABELS,
   kindLabel,
@@ -86,6 +87,13 @@ describe('countName', () => {
     expect(countName('important')).toBe('Important');
     expect(countName('unneeded')).toBe('Not required');
     expect(countName('couldnt_run')).toBe("Couldn't run");
+  });
+});
+
+describe('roundsLabel', () => {
+  it("reads a loop's rounds, and says so when the last left findings open", () => {
+    expect(roundsLabel(1, false)).toBe('1 round');
+    expect(roundsLabel(3, true)).toBe('3 rounds, the last left findings open');
   });
 });
 

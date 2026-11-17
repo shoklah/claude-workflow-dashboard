@@ -1,7 +1,8 @@
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { cn } from 'cn';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, plural } from '../lib/format.ts';
+import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, plural, roundsLabel } from '../lib/format.ts';
 import { layout, stuck, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
 
 type Pick = { selected: string | null; onSelect: (id: string | null) => void };
@@ -39,13 +40,16 @@ function exitsOf(box: Of<'unit'>, chips: Of<'chip'>[]): string[] {
   });
 }
 
-/** The loop's label: the agent that ran the checks and the round count, which a screen reader gets as words. */
+/** The loop's label: the agent that ran the checks and the round count, which a screen reader gets as words; a stuck
+ * loop's also an icon, and words saying its last round left findings open. */
 function LoopLabel({ arc, unit }: { arc: Of<'arc'>; unit: Unit }) {
   const n = unit.rounds.length;
   const round = unit.rounds[0];
+  const open = stuck(unit);
   return (
-    <span className={cn('absolute truncate text-center text-xs', stuck(unit) && WARNING_INK)} style={{ ...at(arc), height: undefined }}>
-      {round.agent ?? STEP_LABELS[round.step]} <span className="sr-only">{plural(n, 'round')}</span>
+    <span className={cn('absolute truncate text-center text-xs', open && WARNING_INK)} style={{ ...at(arc), height: undefined }}>
+      {open && <CircleAlert aria-hidden className="mr-1 inline size-3 align-middle" />}
+      {round.agent ?? STEP_LABELS[round.step]} <span className="sr-only">{roundsLabel(n, open)}</span>
       <span aria-hidden className="font-semibold tabular-nums">
         ×{formatWhole(n)}
       </span>

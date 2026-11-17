@@ -123,12 +123,14 @@ const H = 68;
 const GX = 22;
 const GY = 12;
 const GV = 26;
-const GH = 10;
+const GH = 8;
 /** The band over a box for its loop, and each exit chip's line under it. */
 const LOOP = 42;
 const EXIT = 24;
 const PILL = 118;
 const PILL_H = 44;
+/** The narrowest a pill gets: "Record written" at the small size, and its padding. */
+const PILL_NARROW = 110;
 /** The conflicts' rank, and its label's height. */
 const MERGE = 84;
 const MERGE_H = 24;
@@ -144,11 +146,10 @@ const MARGIN = 16;
 const ARC_IN = 16;
 const CHIP_IN = 22;
 const SIDE_IN = 10;
-/** A chip's estimated width: its text at the box's small size, and its padding. */
+/** Text's estimated width: 6 px a character, a chip's padding, and a box's padding with its border. */
 const CHAR = 6;
 const CHIP_PAD = 12;
-/** The narrowest a box gets lying flat, before the graph stands up. */
-const NARROW = 96;
+const BOX_PAD = 22;
 /** Most boxes on one upright line. */
 const LINE = 3;
 
@@ -176,17 +177,26 @@ function ranksOf(stages: Stage[]): Rank[] {
 const joined = (layers: Layer[]): Edge[] =>
   layers.slice(1).flatMap((layer, i) => layers[i].outs.flatMap((from) => layer.ins.map(({ at, head }) => ({ from, to: at, head }))));
 
+const chipWidth = (outcome: Outcome | 'none', count: number) => `${outcomeLabel(outcome)} ${count}`.length * CHAR + CHIP_PAD;
+
+/** The narrowest a box can be with its name, its reviewer and its exit chips whole, by the text estimate. */
+export function boxNeed(unit: Unit): number {
+  const text = [unit.name, unit.review?.agent ?? 'in the session'].map((t) => t.length * CHAR + BOX_PAD);
+  const chips = leftOf(unit).map(([outcome, count]) => chipWidth(outcome, count) + CHIP_IN + SIDE_IN + 4);
+  return Math.max(...text, ...chips);
+}
+
 const blockHeight = (u: Unit) => LOOP + H + leftOf(u).length * EXIT;
 const rankHeight = (r: Rank) =>
   r.merge ? MERGE_H : r.pill ? PILL_H : r.units.reduce((sum, u) => sum + blockHeight(u), 0) + (r.units.length - 1) * GY;
-const rankWidth = (r: Rank, w = W) => (r.merge ? MERGE : r.pill ? PILL : w);
-const pillOf = (s: Stage, x: number, y: number, row: number): Placed => ({
+const rankWidth = (r: Rank, w = W, p = PILL) => (r.merge ? MERGE : r.pill ? p : w);
+const pillOf = (s: Stage, x: number, y: number, row: number, p = PILL): Placed => ({
   kind: 'pill',
   end: s.kind === 'start' ? 'start' : 'end',
   at: s.at,
   x,
   y,
-  w: PILL,
+  w: p,
   h: PILL_H,
   row,
 });
@@ -212,17 +222,18 @@ function block(unit: Unit, x: number, top: number, w: number, row: number): Plac
       count,
       x: x + CHIP_IN,
       y: top + H + i * EXIT + 4,
-      w: Math.min(`${outcomeLabel(outcome)} ${count}`.length * CHAR + CHIP_PAD, w - CHIP_IN - SIDE_IN - 4),
+      w: Math.min(chipWidth(outcome, count), w - CHIP_IN - SIDE_IN - 4),
       h: EXIT - 4,
       row,
     })),
   ];
 }
 
-/** One row of ranks from (x0, y0), left to right, a rank's units stacked, every rank centred on the row's height. */
-function row(ranks: Rank[], x0: number, y0: number, index: number, w = W) {
+/** One row of ranks from (x0, y0), left to right, a rank's units stacked, every rank centred on the row's height; its
+ * boxes `w` wide and its pills `p`. */
+function row(ranks: Rank[], x0: number, y0: number, index: number, w = W, p = PILL) {
   const height = Math.max(...ranks.map(rankHeight), PILL_H);
-  const width = ranks.reduce((sum, r) => sum + rankWidth(r, w), 0) + (ranks.length - 1) * GX;
+  const width = ranks.reduce((sum, r) => sum + rankWidth(r, w, p), 0) + (ranks.length - 1) * GX;
   const mid = y0 + height / 2;
   const placed: Placed[] = [];
   const layers: Layer[] = [];
@@ -237,8 +248,8 @@ function row(ranks: Rank[], x0: number, y0: number, index: number, w = W) {
       layers.push({ ins: [{ at: from, head: false }], outs: [to] });
       edges.push({ from, to, head: false });
     } else if (r.pill) {
-      placed.push(pillOf(r.pill, x, y, index));
-      layers.push({ ins: [{ at: { x, y: y + PILL_H / 2 }, head: true }], outs: [{ x: x + PILL, y: y + PILL_H / 2 }] });
+      placed.push(pillOf(r.pill, x, y, index, p));
+      layers.push({ ins: [{ at: { x, y: y + PILL_H / 2 }, head: true }], outs: [{ x: x + p, y: y + PILL_H / 2 }] });
     } else {
       const layer: Layer = { ins: [], outs: [] };
       for (const u of r.units) {
@@ -250,14 +261,14 @@ function row(ranks: Rank[], x0: number, y0: number, index: number, w = W) {
       }
       layers.push(layer);
     }
-    x += rankWidth(r, w) + GX;
+    x += rankWidth(r, w, p) + GX;
   }
   return { placed, layers, edges, width, height, mid };
 }
 
-/** Lying flat: one row, its boxes `w` wide. */
-function flat(ranks: Rank[], w = W): Layout {
-  const { placed, layers, edges, width, height } = row(ranks, 0, 0, 0, w);
+/** Lying flat: one row, its boxes `w` wide and its pills `p`. */
+function flat(ranks: Rank[], w = W, p = PILL): Layout {
+  const { placed, layers, edges, width, height } = row(ranks, 0, 0, 0, w, p);
   return { shape: 'flat', width, height, rows: 1, placed, edges: [...joined(layers), ...edges] };
 }
 
@@ -404,15 +415,21 @@ function upright(ranks: Rank[], avail: number): Layout {
 }
 
 /** The run's graph by the panel's width: flat when it fits (or before the panel is measured), wrapped when four boxes
- * fit a row, below that flat with narrower boxes when they stay `NARROW` wide, else upright, so it never scrolls
- * sideways. */
+ * fit a row, below that flat with narrower pills, then narrower boxes, while every box keeps its `boxNeed`, else
+ * upright, so it never scrolls sideways. */
 export function layout(stages: Stage[], avail: number | null): Layout {
   const ranks = ranksOf(stages);
   const lying = flat(ranks);
   if (avail === null || lying.width <= avail) return lying;
   if (avail >= WRAP_MIN) return wrapped(ranks, avail);
-  // Too narrow to wrap: a short graph still lies flat with its boxes narrowed, down to `NARROW`.
+  // Too narrow to wrap: a short graph still lies flat, its pills giving up width first, down to their text's.
+  const pills = ranks.filter((r) => r.pill).length;
+  const p = pills ? Math.max(PILL_NARROW, PILL - Math.ceil((lying.width - avail) / pills)) : PILL;
+  const thinner = flat(ranks, W, p);
+  if (thinner.width <= avail) return thinner;
+  // Then its boxes, down to the widest box's need.
+  const units = ranks.flatMap((r) => r.units);
   const boxes = ranks.filter((r) => r.units.length).length;
-  const w = Math.floor((avail - (lying.width - boxes * W)) / boxes);
-  return w >= NARROW ? flat(ranks, w) : upright(ranks, avail);
+  const w = Math.floor((avail - (thinner.width - boxes * W)) / boxes);
+  return units.every((u) => boxNeed(u) <= w) ? flat(ranks, w, p) : upright(ranks, avail);
 }

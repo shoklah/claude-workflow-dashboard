@@ -302,6 +302,11 @@ export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
+/** A fix loop's rounds as a screen reader hears them, saying when the last left findings open. */
+export function roundsLabel(count: number, open: boolean): string {
+  return open ? `${plural(count, 'round')}, the last left findings open` : plural(count, 'round');
+}
+
 /** A step box's warnings link's name, since a list of links reads it alone: "1 warning on Final review". */
 export function stepWarningsLabel(count: number, step: StepKind): string {
   return `${plural(count, 'warning')} on ${STEP_LABELS[step]}`;
