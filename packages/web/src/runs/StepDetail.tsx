@@ -19,6 +19,10 @@ import {
 } from '../lib/format.ts';
 import type { Unit } from './flow.ts';
 
+/** A finding's line: the Ended chip and every mark cell are this tall, so rules, dots and chip share a middle, a skipped
+ * round's lone rule too. */
+const MARK_LINE = 'min-h-5.5';
+
 /** A rule joining two marks, hidden from assistive tech: solid between marks, dashed across what a finding skipped and
  * from its last mark on. */
 function Rule({ dashed = false }: { dashed?: boolean }) {
@@ -54,7 +58,8 @@ function Ended({ finding }: { finding: FindingRow }) {
   return (
     <span
       className={cn(
-        'w-fit rounded-control border px-2.5 py-0.5 whitespace-nowrap',
+        'flex w-fit items-center rounded-control border px-2.5 whitespace-nowrap',
+        MARK_LINE,
         outcomeWarns(outcome) && cn(WARNING_BORDER, WARNING_INK),
         (outcome === 'fixed' || outcome === 'applied') && 'border-success-edge',
         (outcome === 'ruled' || outcome === 'declined') && 'text-muted-foreground',
@@ -148,7 +153,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
                       <Finding finding={f} />
                     </th>
                     <td className="py-2 align-top">
-                      <span className="flex items-center gap-1.5">
+                      <span className={cn('flex items-center gap-1.5', MARK_LINE)}>
                         <Dot />
                         <span>Found</span>
                         <Rule dashed={f.verdicts.length === 0} />
@@ -158,7 +163,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
                       const verdict = f.verdicts[r];
                       return (
                         <td key={r} className="py-2 align-top">
-                          <span className="flex items-center gap-1.5">
+                          <span className={cn('flex items-center gap-1.5', MARK_LINE)}>
                             {verdict === undefined ? (
                               <Rule dashed />
                             ) : (

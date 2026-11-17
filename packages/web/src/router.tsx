@@ -4,6 +4,7 @@ import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { ContextPage } from './context/ContextPage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
 import { HomePage } from './home/HomePage.tsx';
+import { ErrorPage, NotFoundPage } from './layout/ErrorPages.tsx';
 import { Shell } from './layout/Shell.tsx';
 import { ModelsPage } from './models/ModelsPage.tsx';
 import { RunPage } from './runs/RunPage.tsx';
@@ -137,6 +138,9 @@ const changeRoute = createRoute({
 });
 
 export const router = createRouter({
+  // Inside the shell: an address no route answers, and a page that crashed while drawing.
+  defaultNotFoundComponent: NotFoundPage,
+  defaultErrorComponent: ErrorPage,
   routeTree: rootRoute.addChildren([
     homeRoute,
     runsRoute,

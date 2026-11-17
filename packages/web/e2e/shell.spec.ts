@@ -14,11 +14,11 @@ test('the shell has no axe violations', async ({ page }) => {
 
 // Every page fits the viewport at a phone's, a tablet's and a desktop's width: what is wider (a table, a chart grid)
 // scrolls inside its own region, never the page, and a region that scrolls can take the keyboard's focus (axe).
-const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/work/changes/6acb252ca65f81f8', '/work/goals/843fdb9f8959fb12', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks'];
+const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/work/changes/6acb252ca65f81f8', '/work/goals/843fdb9f8959fb12', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks', '/nope'];
 
 for (const width of [375, 768, 1440]) {
   test(`no page scrolls sideways at ${width} px, and none has axe violations there`, async ({ page }) => {
-    // Fourteen pages, each loaded and checked by axe.
+    // Every page and one run's page, each loaded and checked by axe.
     test.slow();
     await pinClock(page);
     await page.setViewportSize({ width, height: 900 });
@@ -42,6 +42,68 @@ for (const width of [375, 768, 1440]) {
     expect(failures).toEqual([]);
   });
 }
+
+test('an unknown address shows the not-found page inside the shell, with a way home', async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/nope');
+  await expect(page.getByRole('heading', { level: 1, name: 'Not found' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main' }).first()).toBeAttached();
+  await page.getByRole('main').getByRole('link', { name: 'Home' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+});
+
+test('Back returns to where the list was scrolled', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 300 });
+  await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const last = page.getByRole('main').getByRole('link').last();
+  await last.scrollIntoViewIfNeeded();
+  const scrolled = await page.evaluate(() => window.scrollY);
+  expect(scrolled).toBeGreaterThan(0);
+  await last.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Work' })).toBeHidden();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolled);
+});
+
+test('under reduced motion nothing animates, and a wide table still fades at its edge', async ({ page }) => {
+  await pinClock(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  // Every animation and transition on the page, the open dialog's included, ends at once (computed durations are in s).
+  const moving = await page.evaluate(() =>
+    [...document.querySelectorAll('*')].flatMap((el) => {
+      const style = getComputedStyle(el);
+      const longest = Math.max(...`${style.animationDuration},${style.transitionDuration}`.split(',').map(parseFloat));
+      return longest > 0.00001 ? [`${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}: ${longest} s`.slice(0, 80)] : [];
+    }));
+  expect(moving).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  // The edge cue is a scroll-driven animation: it follows the table's scroll, not the clock, so it stays.
+  const cueEnd = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
+  expect(cueEnd).toBe('48px');
+});
+
+test("the browser's bar takes the backdrop's colour, and follows the system's light and dark", async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/');
+  const colours: string[] = [];
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme });
+    await expect(page.locator('html')).toHaveClass(colorScheme === 'dark' ? /\bdark\b/ : /^(?!.*\bdark\b)/);
+    const background = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--background').trim());
+    expect(background).toMatch(/^#[0-9a-f]{6}$/i);
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', background);
+    colours.push(background);
+  }
+  expect(colours[0]).not.toBe(colours[1]);
+});
 
 test('a table that scrolls sideways fades at the edge hiding columns, and one that fits does not', async ({ page }) => {
   await pinClock(page);
@@ -125,12 +187,72 @@ test('on a short phone the Menu dialog scrolls to its last link', async ({ page 
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
-test('the tab is named edward and has its mark as icon', async ({ page }) => {
+test("the tab is named by the page's title and edward, and has its mark as icon", async ({ page }) => {
   await pinClock(page);
   await page.goto('/');
-  await expect(page).toHaveTitle('edward');
+  await expect(page).toHaveTitle('Home - edward');
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg');
   const icon = await page.request.get('/favicon.svg');
   expect(icon.headers()['content-type']).toContain('image/svg+xml');
   expect(await icon.text()).toContain('<svg');
+});
+
+test('the first Tab reaches Skip to content, which moves the keyboard into the page without changing the address', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/work?view=runs');
+  const skip = page.getByRole('link', { name: 'Skip to content' });
+  await expect(skip).not.toBeInViewport();
+  await page.keyboard.press('Tab');
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('main')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('main :focus')).toHaveCount(1);
+  await expect(page).toHaveURL(/\/work\?view=runs$/);
+});
+
+test('a first load focuses nothing, and following a menu link focuses the new page\'s title', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/', { waitUntil: 'networkidle' });
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  await page.getByRole('complementary').getByRole('link', { name: 'Work' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Work' })).toBeFocused();
+});
+
+test('following a link in the Menu dialog focuses the new page\'s title, and Escape returns to the Menu button', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/');
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await menu.click();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await page.getByRole('dialog', { name: 'Pages' }).getByRole('link', { name: 'Spend' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Spend' })).toBeFocused();
+});
+
+test("a link that changes only the address's query leaves the focus where it was", async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/compliance?step=final_review');
+  const clear = page.getByRole('link', { name: 'Clear the step filter' });
+  await clear.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/compliance$/);
+  await expect(page.getByRole('rowheader', { name: 'Simplify record differs' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).not.toBeFocused();
+});
+
+test("a Menu dialog link to the page already shown returns the focus to the Menu button", async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/spend');
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await menu.click();
+  await page.getByRole('dialog', { name: 'Pages' }).getByRole('link', { name: 'Spend' }).click();
+  await expect(page.getByRole('dialog', { name: 'Pages' })).toBeHidden();
+  await expect(menu).toBeFocused();
 });

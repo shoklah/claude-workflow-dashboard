@@ -106,6 +106,27 @@ export const Fixed: Story = {
   },
 };
 
+/** A rect's vertical centre. */
+const middle = (el: Element) => {
+  const { top, height } = el.getBoundingClientRect();
+  return top + height / 2;
+};
+
+/** Every rule and dot of a finding's line sits on the Ended chip's middle, a skipped round's lone dashed rule too. */
+export const Aligned: Story = {
+  args: { unit: twoRounds },
+  play: async ({ canvas }) => {
+    const table = canvas.getByRole('table', { name: 'Task 1' });
+    for (const [id, outcome] of [['F1', 'Fixed'], ['F2', 'Deferred']]) {
+      const row = rowOf(table, id);
+      const chip = middle(within(row).getAllByText(outcome).at(-1)!);
+      const marks = row.querySelectorAll('td [aria-hidden]');
+      await expect(marks.length).toBeGreaterThan(0);
+      for (const mark of marks) await expect(Math.abs(middle(mark) - chip)).toBeLessThanOrEqual(0.5);
+    }
+  },
+};
+
 /** "Fixed, not proportionate" counts as open: in the warning ink, like "Still open". */
 export const NotProportionate: Story = {
   args: {
