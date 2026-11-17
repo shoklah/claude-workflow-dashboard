@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { LinkProps } from '@tanstack/react-router';
 import {
@@ -69,9 +69,12 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** The menu under 768 px: one button in the header row that opens the pages' links in a dialog, closed by following one. */
+/** The menu under 768 px: one button in the header row that opens the pages' links in a dialog, closed by following one.
+ * Closed by a link, it leaves the focus where the Shell put it (the new page's title); closed otherwise, it returns the
+ * focus to the button. */
 export function MenuButton() {
   const [open, setOpen] = useState(false);
+  const navigated = useRef(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -80,13 +83,18 @@ export function MenuButton() {
           Menu
         </Button>
       </DialogTrigger>
-      <DialogContent className="top-2 left-2 max-h-[calc(100dvh-1rem)] max-w-64 translate-x-0 translate-y-0 overflow-y-auto rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (navigated.current) event.preventDefault();
+          navigated.current = false;
+        }}
+        className="top-2 left-2 max-h-[calc(100dvh-1rem)] max-w-64 translate-x-0 translate-y-0 overflow-y-auto rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
         <DialogHeader className="text-left">
           <DialogTitle className="sr-only">Pages</DialogTitle>
           <Brand />
           <DialogDescription className="sr-only">Go to a page of the dashboard.</DialogDescription>
         </DialogHeader>
-        <Menu onNavigate={() => setOpen(false)} />
+        <Menu onNavigate={() => { navigated.current = true; setOpen(false); }} />
       </DialogContent>
     </Dialog>
   );

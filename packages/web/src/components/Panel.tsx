@@ -33,7 +33,7 @@ export function PageTitle({ children }: { children: string }) {
   return (
     <>
       <title>{`${children} - edward`}</title>
-      <h1 className="text-page-title">{children}</h1>
+      <h1 tabIndex={-1} className="text-page-title outline-none">{children}</h1>
     </>
   );
 }

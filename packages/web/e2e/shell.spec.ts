@@ -196,3 +196,52 @@ test("the tab is named by the page's title and edward, and has its mark as icon"
   expect(icon.headers()['content-type']).toContain('image/svg+xml');
   expect(await icon.text()).toContain('<svg');
 });
+
+test('the first Tab reaches Skip to content, which moves the keyboard into the page without changing the address', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/runs');
+  const skip = page.getByRole('link', { name: 'Skip to content' });
+  await expect(skip).not.toBeInViewport();
+  await page.keyboard.press('Tab');
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('main')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('main :focus')).toHaveCount(1);
+  await expect(page).toHaveURL(/\/runs$/);
+});
+
+test('a first load focuses nothing, and following a menu link focuses the new page\'s title', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/', { waitUntil: 'networkidle' });
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  await page.getByRole('complementary').getByRole('link', { name: 'Runs' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeFocused();
+});
+
+test('following a link in the Menu dialog focuses the new page\'s title, and Escape returns to the Menu button', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto('/');
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await menu.click();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await page.getByRole('dialog', { name: 'Pages' }).getByRole('link', { name: 'Spend' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Spend' })).toBeFocused();
+});
+
+test("a link that changes only the address's query leaves the focus where it was", async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/compliance?step=final_review');
+  const clear = page.getByRole('link', { name: 'Clear the step filter' });
+  await clear.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/compliance$/);
+  await expect(page.getByRole('rowheader', { name: 'Simplify record differs' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).not.toBeFocused();
+});
