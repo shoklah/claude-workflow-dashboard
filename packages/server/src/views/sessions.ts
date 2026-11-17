@@ -97,6 +97,16 @@ export function shownSession(
   return { title, sessionId };
 }
 
+/** The runs each session holds, by its transcript file: the runs whose window is in that transcript. */
+export function heldRuns(runs: StoredUnit<RunEntry>[]): Map<string, StoredUnit<RunEntry>[]> {
+  const byTranscript = new Map<string, StoredUnit<RunEntry>[]>();
+  for (const run of runs) {
+    const file = run.merged.window?.transcript;
+    if (file) byTranscript.set(file, [...(byTranscript.get(file) ?? []), run]);
+  }
+  return byTranscript;
+}
+
 /**
  * The Sessions page: the sessions that started in the query's period (periodSessions), newest start first. The
  * project filter keeps a session whose root is that project's (a session in no stored run's root is "other project",
@@ -121,11 +131,7 @@ export function sessionsView(input: {
   const runRoots = new Set(input.runs.map(rootOf));
   const warned = new Map<string, number>();
   for (const w of currentWarnings([], input.sessions, input.warnings)) warned.set(w.key, (warned.get(w.key) ?? 0) + 1);
-  const byTranscript = new Map<string, StoredUnit<RunEntry>[]>();
-  for (const run of input.runs) {
-    const file = run.merged.window?.transcript;
-    if (file) byTranscript.set(file, [...(byTranscript.get(file) ?? []), run]);
-  }
+  const byTranscript = heldRuns(input.runs);
   const sessions: SessionRow[] = [];
   let hidden = 0;
 

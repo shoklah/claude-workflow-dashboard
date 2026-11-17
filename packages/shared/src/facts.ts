@@ -50,6 +50,17 @@ export function splitSessionId(text: string): { text: string; sessionId: string 
   return { text: text.replace(match[0], '{session}'), sessionId: match[1] };
 }
 
+/** A run's findings, every one; null for a record from before steps, which has no findings to count. */
+export function foundFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
+  return run.beforeSteps ? null : run.findings.total;
+}
+
+/** A run's closed findings: acted on + not acted on, the findings with an outcome other than open; null for a record
+ * from before steps, which has no findings to count. */
+export function closedFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
+  return run.beforeSteps ? null : run.findings.actedOn + run.findings.notActedOn;
+}
+
 // A sum of known values: null until one is known.
 export const addKnown = (sum: number | null, value: number | null | undefined) => (value == null ? sum : (sum ?? 0) + value);
 

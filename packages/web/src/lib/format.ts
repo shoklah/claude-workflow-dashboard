@@ -1,4 +1,4 @@
-import { parseTime, toStepKind, type Area, type Path, type FindingRow, type Outcome, type RunFacts, type SpendGroup, type StepKind } from '@cwd/shared';
+import { parseTime, toStepKind, type Area, type Path, type FindingRow, type Outcome, type SpendGroup, type StepKind } from '@cwd/shared';
 
 /** Shown where a fact is missing (null, or a record from before steps). */
 export const NONE = '–';
@@ -269,16 +269,7 @@ export function joined(parts: (string | null)[]): string {
   return parts.filter(Boolean).join(' · ');
 }
 
-/** A run's findings, every one; null for a record from before steps, which has no findings to count. */
-export function foundFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
-  return run.beforeSteps ? null : run.findings.total;
-}
-
-/** A run's closed findings: acted on + not acted on, the findings with an outcome other than open; null for a record
- * from before steps, which has no findings to count. */
-export function closedFindings(run: Pick<RunFacts, 'findings' | 'beforeSteps'>): number | null {
-  return run.beforeSteps ? null : run.findings.actedOn + run.findings.notActedOn;
-}
+export { closedFindings, foundFindings } from '@cwd/shared';
 
 /** A skill or command on Home's skills and commands: a command with its slash, "/model", a skill bare. */
 export function usageName(row: { name: string; kind: 'skill' | 'command' }): string {
