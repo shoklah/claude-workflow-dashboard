@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { cn } from 'cn';
 import type { FindingsQuery, ModelsResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { EmptyRow, GroupHead, Lines, NUM, Num, SUB, Text, Unknown } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, Lines, NUM, Num, PairCells, SUB, Text, Unknown } from '../components/Num.tsx';
 import { PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -13,6 +13,7 @@ import {
   formatDollars,
   formatShare,
   formatTokens,
+  pairsOf,
   pathLabel,
   splitPair,
   total,
@@ -27,36 +28,6 @@ const AGENTS_COLUMN_COUNT = 8;
 const ROLES_COLUMN_COUNT = 3;
 const FAILED_COLUMN_COUNT = 2;
 const WEEKS_COLUMN_COUNT = 5;
-
-type Pair = { model: string | null; effort: string | null; count: number };
-const pairsOf = (counts: Record<string, number>): Pair[] =>
-  Object.entries(counts).map(([pair, count]) => ({ ...splitPair(pair), count }));
-
-/** One side of a line: a model, its effort and how many ran so; past the list's end an empty cell, or `none` on the
- * first line of an empty list. */
-function PairCells({ pairs, line, unset, none }: { pairs: Pair[]; line: number; unset: string; none: string }) {
-  const pair = pairs[line];
-  if (!pair) {
-    return (
-      <TableCell colSpan={3} className="text-muted-foreground">
-        {line === 0 && none}
-      </TableCell>
-    );
-  }
-  return (
-    <>
-      <TableCell>
-        <Text value={pair.model} unknown={unset} />
-      </TableCell>
-      <TableCell>
-        <Text value={pair.effort} unknown={unset} />
-      </TableCell>
-      <TableCell className={NUM}>
-        <Num value={pair.count} />
-      </TableCell>
-    </>
-  );
-}
 
 /** The Models and advisor tables: agents, main sessions, the advisor's facts and its weeks; one value per cell. */
 function ModelsTables({ response }: { response: ModelsResponse }) {

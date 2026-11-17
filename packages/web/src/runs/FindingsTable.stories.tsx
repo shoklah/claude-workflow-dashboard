@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { NONE } from '../lib/format.ts';
+import { NONE, PROBLEMS_SIDE } from '../lib/format.ts';
 import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
@@ -221,5 +221,31 @@ export const WithRun: Story = {
     await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill('feat/search'));
     await expect(column(canvasElement, 'Project')).toEqual(Array(6).fill('atlas'));
     await plain(canvasElement);
+  },
+};
+
+/** On the run page: its heading starts the filter row, Severity and Outcome beside it and no Step select (the graph is
+ * the step filter); the container, named "Problems table", carries the problems' amber side. */
+export const RunPageProblems: Story = {
+  args: {
+    findings: runFull.findings,
+    categoryLabels: runFull.categoryLabels,
+    heading: 'Problems (6)',
+    label: 'Problems table',
+    skip: ['step'],
+    containerClassName: PROBLEMS_SIDE,
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.queryByRole('combobox', { name: 'Step' })).toBeNull();
+    // A region named by its heading, which starts the filter row.
+    await expect(canvas.getByRole('region', { name: 'Problems (6)' })).toBeVisible();
+    const row = canvas.getByRole('heading', { name: 'Problems (6)' }).parentElement!;
+    await expect(within(row).getByRole('combobox', { name: 'Severity' })).toBeVisible();
+    await expect(within(row).getByRole('combobox', { name: 'Outcome' })).toBeVisible();
+    const region = canvas.getByRole('region', { name: 'Problems table' });
+    await expect(region).toHaveAttribute('tabindex', '0');
+    await expect(region).toHaveClass('border-l-4', 'border-l-notice-edge', 'overflow-x-auto');
+    // The Step column stays: only its select goes.
+    await expect(canvas.getByRole('columnheader', { name: 'Step' })).toBeVisible();
   },
 };

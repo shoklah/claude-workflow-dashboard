@@ -84,6 +84,19 @@ export function sessionFacts(
   };
 }
 
+/** A stored session as another page names it: sessionFacts' title and session ID while showSession holds of its
+ * project, else null, as for a session that isn't stored. */
+export function shownSession(
+  session: SessionEntry | undefined,
+  runRoots: Set<string>,
+  names: Map<string, string>,
+  scope: Scope | null,
+): { title: string | null; sessionId: string | null } | null {
+  if (!session || !showSession(scope, session.project)) return null;
+  const { title, sessionId } = sessionFacts(session, runRoots, names, scope);
+  return { title, sessionId };
+}
+
 /**
  * The Sessions page: the sessions that started in the query's period (periodSessions), newest start first. The
  * project filter keeps a session whose root is that project's (a session in no stored run's root is "other project",

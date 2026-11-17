@@ -148,6 +148,7 @@ Do:
 - Let the backdrop be the one bold element; keep panels calm.
 - Put every data region on a panel, and every number in tabular figures.
 - Use tinted, see-through panels and the coloured glow of the orbs: they are this project's look, not a template's.
+- Show, don't tell. Text that explains how to read a screen is allowed only after checking that it is necessary, not redundant with what is drawn, and not covering for a design gap.
 
 Don't:
 - Glow text, gradient-fill text or add neon edges: the glass is the effect, and more of it fights the data.

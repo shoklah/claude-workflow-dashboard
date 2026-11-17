@@ -27,8 +27,10 @@ export function groupOf(phase: string): SpendGroup {
   return GROUPS.find((group) => SPEND_GROUPS[group].includes(phase)) ?? 'unattributed';
 }
 
-/** Whether a SPEND_GROUPS entry holds the phase name. */
-const isKnown = (phase: string) => GROUPS.some((group) => SPEND_GROUPS[group].includes(phase));
+/** A phase's name as a view shows it: a name SPEND_GROUPS holds as it is, any other masked (maskText). */
+export function maskPhase(scope: Scope | null, phase: string): string {
+  return GROUPS.some((group) => SPEND_GROUPS[group].includes(phase)) ? phase : maskText(scope, phase);
+}
 
 type PhaseCell = { byModel: Record<string, number | null>; advisor: { calls: number; cost: number } };
 
@@ -113,7 +115,7 @@ export function spendView(input: {
   const all = emptyCell();
   for (const week of units.weeks) {
     for (const [name, cell] of Object.entries(sums.get(week)?.phases ?? {})) {
-      addCell((phases[isKnown(name) ? name : maskText(scope, name)] ??= emptyCell()), cell);
+      addCell((phases[maskPhase(scope, name)] ??= emptyCell()), cell);
       addCell(all, cell);
     }
   }

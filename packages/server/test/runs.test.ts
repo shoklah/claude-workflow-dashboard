@@ -4,20 +4,23 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   loadReport,
+  modelsCost,
   projectRoot,
   type HomeResponse,
   type Relevance,
-  type RunResponse,
+  type RunPageResponse,
   type RunsResponse,
 } from '@cwd/shared';
 import { fixture, reportFixtures } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { projectKey, runKey } from '../src/keys.ts';
+import { projectKey, runKey, sessionKey } from '../src/keys.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { labelInputs, saveBatch } from '../src/db/labels.ts';
 import { runView, skillOutcomeLabel, storedSessionRoots } from '../src/views/runs.ts';
+import { modelSums } from '../src/views/models.ts';
+import { runPageView } from '../src/views/run.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
@@ -72,7 +75,7 @@ async function runs(query = ''): Promise<RunsResponse> {
   return res.json();
 }
 
-async function run(key: string): Promise<RunResponse> {
+async function run(key: string): Promise<RunPageResponse> {
   const res = await get(`/api/runs/${encodeURIComponent(key)}`);
   expect(res.status).toBe(200);
   return res.json();
@@ -198,6 +201,102 @@ test("a kit's review and fix-check with no task or wave sit in the final review 
     'final_fix_check',
     'kit_review',
     'fix_check',
+  ]);
+});
+
+test("a step's model and effort are its dispatch's, else its own", async () => {
+  const { timeline: full } = await run(FULL);
+  // The Full run's steps are tied to no dispatch: the step's own alias.
+  expect(full[1].tasks[0].steps[0]).toMatchObject({ step: 'task_review', model: 'opus', effort: 'high' });
+  db.$client.close();
+  db = dbWith('report-v7', (raw) => {
+    // A tied dispatch whose model is null, as when its transcript is missing, leaves the step's own alias.
+    raw.runs[5].dispatches.find((d: any) => d.step === 2).model = null;
+  });
+  const webhooks = runKey(fixture('report-v7').runs[5]) as string;
+  const steps = (await run(webhooks)).timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]);
+  const task1 = steps.filter((s) => s.step === 'task_review' || s.step === 'fix_check');
+  expect(task1[0]).toMatchObject({ step: 'task_review', model: 'claude-opus-5-5', effort: 'high' });
+  expect(task1[1]).toMatchObject({ step: 'fix_check', model: 'opus', effort: 'high' });
+  expect(steps.find((s) => s.step === 'simplify')).toMatchObject({ model: null, effort: null });
+});
+
+test('a wave group carries its conflicts', async () => {
+  expect((await run(FULL)).timeline.map((g) => g.conflicts)).toEqual([null, 0, 1, null, null, null]);
+});
+
+/** report-full with the Full run's waves A (tasks 1 and 2) and B (task 4), and `extra` waves after them. */
+const regrouped = (...extra: { wave: string; tasks: number[] }[]) =>
+  dbWith('report-full', (raw) => {
+    raw.runs[4].waves = [{ wave: 'A', tasks: [1, 2] }, { wave: 'B', tasks: [4] }, ...extra];
+  });
+
+test("groups follow the run's order", async () => {
+  db.$client.close();
+  db = regrouped();
+  expect((await run(FULL)).timeline.map((g) => g.label)).toEqual([
+    'Start',
+    'Wave A',
+    'Task 3',
+    'Wave B',
+    'Simplify',
+    'Final review',
+    'End',
+  ]);
+});
+
+test('a wave with no step comes after the groups that have one', async () => {
+  db.$client.close();
+  db = regrouped({ wave: 'C', tasks: [9] });
+  expect((await run(FULL)).timeline.map((g) => g.label)).toEqual([
+    'Start',
+    'Wave A',
+    'Task 3',
+    'Wave B',
+    'Wave C',
+    'Simplify',
+    'Final review',
+    'End',
+  ]);
+});
+
+test("a step naming a wave the record doesn't list gets that wave's group", async () => {
+  db.$client.close();
+  db = dbWith('report-full', (raw) =>
+    raw.runs[4].steps.push({
+      step: 'task_review',
+      task: null,
+      wave: 'C',
+      round: 0,
+      agent: 'task-reviewer',
+      counts: { minor: 1 },
+      findings: [{ id: 'F13', severity: 'minor', summary: 'An invented finding' }],
+    }),
+  );
+  const { timeline, findings } = await run(FULL);
+  const waveC = timeline.find((g) => g.label === 'Wave C')!;
+  expect(waveC).toMatchObject({ kind: 'wave', tasks: [], conflicts: null });
+  expect(waveC.steps.map((s) => s.findings.map((f) => f.id))).toEqual([['F13']]);
+  const grouped = timeline.flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)]).flatMap((s) => s.findings);
+  for (const f of findings) expect(grouped.map((g) => g.id)).toContain(f.id);
+});
+
+test("a kit's step carries its kit", async () => {
+  db.$client.close();
+  db = dbWith('report-full', (raw) =>
+    raw.runs[4].steps.push({ step: 'kit_review', kit: 'ui', task: 2, round: 0, agent: 'kit-reviewer', counts: {}, findings: [] }),
+  );
+  const task2 = (await run(FULL)).timeline[1].tasks.find((t) => t.task === 2)!;
+  expect(task2.steps.find((s) => s.step === 'kit_review')).toMatchObject({ kit: 'ui', agent: 'kit-reviewer' });
+});
+
+test('a strength carries its wave', async () => {
+  db.$client.close();
+  db = dbWith('report-full', (raw) => {
+    raw.runs[4].steps[4].strengths = [{ category: 'tests', summary: 'An invented strength' }];
+  });
+  expect((await run(FULL)).strengths).toEqual([
+    { step: 'task_review', task: null, wave: 'A', round: 0, category: 'tests', summary: 'An invented strength' },
   ]);
 });
 
@@ -350,13 +449,13 @@ test("a run's strengths list each review step's, with its step, task and round",
   db.$client.close();
   db = dbWith('report-v5');
   expect((await run(WEBHOOKS)).strengths).toEqual([
-    { step: 'task_review', task: 1, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
-    { step: 'final_review', task: null, round: 0, category: 'security_privacy', summary: 'The signing secret never reaches a log' },
+    { step: 'task_review', task: 1, wave: null, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
+    { step: 'final_review', task: null, wave: null, round: 0, category: 'security_privacy', summary: 'The signing secret never reaches a log' },
   ]);
   expect((await run(FULL)).strengths).toEqual([]);
 });
 
-test("with showing on, the run page holds no hidden project's name, path or branch, its strengths' included", async () => {
+test("with showing on, the run page holds no hidden project's name, path or branch, its strengths' and kit steps' included", async () => {
   const raw = fixture('report-v5');
   const branches = new Map<string, string[]>();
   for (const r of raw.runs) {
@@ -372,20 +471,203 @@ test("with showing on, the run page holds no hidden project's name, path or bran
     // A strength that names the hidden lantern-notes, its branch and a path in it.
     raw.runs[5].steps[1].strengths[0].summary =
       'As lantern-notes does on feature/offline-sync in /Users/example/Work/lantern-notes/src/retry.ts';
+    // A kit's step whose kit, agent and tied dispatch's model name the hidden lantern-notes.
+    const index = raw.runs[5].steps.push({
+      step: 'kit_review', kit: 'lantern-notes', task: 2, round: 0, agent: 'lantern-notes', counts: {}, findings: [],
+    }) - 1;
+    raw.runs[5].dispatches.push({ agent: 'kit-reviewer', model: 'lantern-notes', effort: 'high', step: index });
   });
   setShowing(db, [projectKey(TIDEPOOL)]);
   const body = await run(WEBHOOKS);
   expect(body.strengths[0].summary).toBe('As another project does on another branch in retry.ts');
+  const kitStep = body.timeline.flatMap((g) => g.tasks.flatMap((t) => t.steps)).find((s) => s.step === 'kit_review');
+  expect(kitStep).toMatchObject({ kit: 'another project', agent: 'another project', model: 'another project' });
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+});
+
+describe("the run's surroundings", () => {
+  // report-v7's runs: the Plan and Full feature/offline-sync runs on lantern-notes, feature/webhooks on tidepool-api,
+  // and a small run whose transcript no stored session has.
+  const v7 = fixture('report-v7');
+  const [, , , PLAN_V7, FULL_V7, WEBHOOKS_V7, UNHELD] = v7.runs.map(runKey) as string[];
+  const TIDEPOOL = '/Users/example/Work/tidepool-api';
+  const LANTERN = '/Users/example/Work/lantern-notes';
+
+  beforeEach(() => {
+    db.$client.close();
+    db = dbWith('report-v7');
+  });
+
+  test('names the session whose file is the run\'s transcript, with no session ID under a scope', async () => {
+    expect((await run(WEBHOOKS_V7)).session).toEqual({
+      title: 'Offline sync plan',
+      sessionId: '5a9d3f12-6e8b-4c7a-9f2d-3b1e0c8a4d56',
+    });
+    setShowing(db, [projectKey(TIDEPOOL), projectKey(LANTERN)]);
+    expect((await run(WEBHOOKS_V7)).session).toEqual({ title: 'Offline sync plan', sessionId: null });
+  });
+
+  test("the session is null when it isn't shown or isn't stored", async () => {
+    expect((await run(UNHELD)).session).toBeNull();
+    // The webhooks run's session is lantern-notes'.
+    setShowing(db, [projectKey(TIDEPOOL)]);
+    expect((await run(WEBHOOKS_V7)).session).toBeNull();
+  });
+
+  test('handoffTo is null on every fixture as exported', async () => {
+    for (const name of reportFixtures().filter((n) => n !== 'report-shape')) {
+      db.$client.close();
+      db = dbWith(name);
+      for (const entry of fixture(name).runs) expect((await run(runKey(entry) as string)).handoffTo).toBeNull();
+    }
+  });
+
+  test('handoffTo names the stored session whose key is the handoff_to, null when its project is hidden', async () => {
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => (raw.runs[5].context.handoff_to = sessionKey(raw.sessions[3])));
+    expect((await run(WEBHOOKS_V7)).handoffTo).toEqual({
+      title: "Port lantern-notes' sync to tidepool-api",
+      sessionId: '2e8d5b13-9c4f-4a7e-b6d1-8f0a3c5e9b72',
+    });
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => (raw.runs[5].context.handoff_to = sessionKey(raw.sessions[1])));
+    setShowing(db, [projectKey(TIDEPOOL)]);
+    expect((await run(WEBHOOKS_V7)).handoffTo).toBeNull();
+  });
+
+  test("related lists the other runs of the run's project and branch", async () => {
+    expect((await run(FULL_V7)).related).toEqual([{ key: PLAN_V7, path: 'plan', finishedAt: '2026-11-08T09:30:00Z' }]);
+    expect((await run(WEBHOOKS_V7)).related).toEqual([]);
+  });
+
+  test('related comes in the order the runs finished, a run with no finish time last', async () => {
+    let keys: string[] = [];
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => {
+      // The first three runs and the webhooks run join feature/offline-sync on lantern-notes, finishing out of their
+      // fixture order.
+      for (const i of [0, 1, 2, 5]) Object.assign(raw.runs[i].record, { project: LANTERN, branch: 'feature/offline-sync' });
+      raw.runs[0].record.date = '2026-11-11T00:00:00Z';
+      raw.runs[1].record.date = '2026-11-13T00:00:00Z';
+      raw.runs[2].record.date = '2026-11-09T00:00:00Z';
+      keys = raw.runs.map(runKey) as string[];
+    });
+    const expected = [keys[3], keys[2], keys[0], keys[5], keys[1]];
+    // Neither the fixture's order nor the keys' gives this one.
+    expect(expected).not.toEqual([keys[0], keys[1], keys[2], keys[3], keys[5]]);
+    expect(expected).not.toEqual([...expected].sort());
+    expect((await run(keys[4])).related.map((r) => r.key)).toEqual(expected);
+    // A stored run always has its record's date (no key without one), so the view is given one that lost it: it goes last.
+    const stored = listUnits(db, 'run');
+    const undated = stored.find((u) => u.key === keys[2])!;
+    undated.merged.record!.date = null;
+    const view = runPageView({
+      run: stored.find((u) => u.key === keys[4])!,
+      runs: stored,
+      sessions: [],
+      warnings: [],
+      names: new Map(),
+      scope: null,
+      labels: new Map(),
+      list: null,
+    });
+    expect(view!.related.map((r) => r.key)).toEqual([keys[3], keys[0], keys[5], keys[1], keys[2]]);
+  });
+
+  test('a run with no branch has no related run, though another run of its project has none either', async () => {
+    let keys: string[] = [];
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => {
+      // The small chore run and the last small run, both lantern-notes', lose their branches.
+      raw.runs[2].record.branch = null;
+      raw.runs[6].record.branch = null;
+      keys = raw.runs.map(runKey) as string[];
+    });
+    expect((await run(keys[2])).related).toEqual([]);
+  });
+
+  test("lists the run's offers", async () => {
+    expect((await run(WEBHOOKS_V7)).offers).toEqual([
+      { skill: 'graphify', outcome: 'accepted' },
+      { skill: 'session-summary', outcome: 'skipped' },
+    ]);
+    expect((await run(FULL_V7)).offers).toEqual([]);
+  });
+
+  test('lists later fixes with no sha', async () => {
+    const body = await run(FULL_V7);
+    expect(body.laterFixes).toEqual([{ date: '2026-11-11T14:02:33+01:00', subject: 'fix: conflict banner loses focus after retry' }]);
+    expect(JSON.stringify(body)).not.toContain('"sha"');
+    expect(JSON.stringify(body)).not.toContain('9c4e1a7');
+  });
+
+  test("agents are modelSums' rows for the run", async () => {
+    const entry = listUnits(db, 'run').find((u) => u.key === WEBHOOKS_V7)!.merged;
+    const expected = Object.entries(modelSums([entry]).agents)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, row]) => ({ name, actual: row.actual }));
+    expect(expected.length).toBeGreaterThan(1);
+    expect((await run(WEBHOOKS_V7)).agents).toEqual(expected);
+  });
+
+  test("main and phases are the run's main session and each phase's cost", async () => {
+    const body = await run(FULL_V7);
+    expect(body.main).toEqual({ model: 'claude-opus-5-5', effort: 'medium' });
+    expect(body.phases[0]).toEqual({ name: 'design', cost: 1.6 });
+    expect(body.phases).toEqual(v7.runs[4].phases.map((p: any) => ({ name: p.name, cost: modelsCost(p.models) })));
+  });
+
+  test("with showing on, the run's surroundings hold no hidden project's name", async () => {
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => {
+      const r = raw.runs[5];
+      // Two agents that mask alike, and a dispatch's model and effort, naming the hidden lantern-notes.
+      Object.assign(r.dispatches[0], { agent: 'lantern-notes', model: 'lantern-notes', effort: 'lantern-notes' });
+      r.dispatches[2].agent = 'LANTERN-NOTES';
+      r.main.model = 'lantern-notes';
+      r.offers[0].skill = 'lantern-notes';
+      // A loaded skill and a model id naming the hidden lantern-notes.
+      r.skills[0].name = 'lantern-notes';
+      r.models['lantern-notes'] = { cost: 0.2 };
+      r.later_fixes = [{ sha: '1a2b3c4', date: '2026-11-13T10:00:00Z', subject: 'fix: as lantern-notes does on feature/offline-sync' }];
+      r.phases.push({ name: 'lantern-notes', models: { 'claude-opus-5-5': { cost: 0.1 } } });
+      // The run's session is tidepool-api's, titled after lantern-notes, and it hands off to another such session.
+      r.window.transcript = raw.sessions[3].file;
+      Object.assign(raw.sessions[4], { project: TIDEPOOL, title: 'Handed on from lantern-notes' });
+      r.context.handoff_to = sessionKey(raw.sessions[4]);
+    });
+    const branches = new Map<string, string[]>();
+    for (const r of v7.runs) {
+      const root = projectRoot(r.record.project);
+      branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
+    }
+    const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+    const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], sessionRoots);
+    expect(strings.forbidden).toContain('lantern-notes');
+    setShowing(db, [projectKey(TIDEPOOL)]);
+    const body = await run(WEBHOOKS_V7);
+    expect(body.agents.filter((a) => a.name === 'another project')).toEqual([
+      { name: 'another project', actual: { 'another project/another project': 1, 'claude-opus-5-5/high': 1 } },
+    ]);
+    expect(body.main).toEqual({ model: 'another project', effort: 'high' });
+    expect(body.offers[0]).toEqual({ skill: 'another project', outcome: 'accepted' });
+    expect(body.skills[0].name).toBe('another project');
+    expect(body.models.at(-1)).toEqual({ model: 'another project', cost: 0.2 });
+    expect(body.laterFixes[0].subject).toBe('fix: as another project does on another branch');
+    expect(body.session).toEqual({ title: "Port another project' sync to tidepool-api", sessionId: null });
+    expect(body.handoffTo).toEqual({ title: 'Handed on from another project', sessionId: null });
+    expect(body.phases.at(-1)).toEqual({ name: 'another project', cost: 0.1 });
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  });
 });
 
 test('a schema 1 run has empty groups and beforeSteps', async () => {
   const view = await run(RATE_LIMITS);
   expect(view.facts.beforeSteps).toBe(true);
   expect(view.timeline).toEqual([
-    { kind: 'start', label: 'Start', at: '2026-10-06T13:05:00Z', tasks: [], steps: [] },
-    { kind: 'final', label: 'Final review', at: null, tasks: [], steps: [] },
-    { kind: 'end', label: 'End', at: '2026-10-06T15:20:00Z', tasks: [], steps: [] },
+    { kind: 'start', label: 'Start', at: '2026-10-06T13:05:00Z', conflicts: null, tasks: [], steps: [] },
+    { kind: 'final', label: 'Final review', at: null, conflicts: null, tasks: [], steps: [] },
+    { kind: 'end', label: 'End', at: '2026-10-06T15:20:00Z', conflicts: null, tasks: [], steps: [] },
   ]);
   expect(view.findings).toEqual([]);
   expect(view).toMatchObject({ skills: [], models: [], advisor: null, warnings: [] });

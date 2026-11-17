@@ -1,7 +1,7 @@
 import { cloneElement, isValidElement, type ComponentProps, type ReactNode } from 'react';
 import { cn } from 'cn';
 import { TableCell, TableHead, TableRow } from './ui/table.tsx';
-import { formatWhole, NONE } from '../lib/format.ts';
+import { formatWhole, NONE, type Pair } from '../lib/format.ts';
 
 /** A numeric column's alignment, for its header and its cells. */
 export const NUM = 'text-right tabular-nums';
@@ -118,4 +118,30 @@ export function Lines({
       {i === 0 && after.map((cell, j) => spanning(cell, j, lines))}
     </TableRow>
   ));
+}
+
+/** One side of a line: a model, its effort and how many ran so; past the list's end an empty cell, or `none` on the
+ * first line of an empty list. */
+export function PairCells({ pairs, line, unset, none }: { pairs: Pair[]; line: number; unset: string; none: string }) {
+  const pair = pairs[line];
+  if (!pair) {
+    return (
+      <TableCell colSpan={3} className="text-muted-foreground">
+        {line === 0 && none}
+      </TableCell>
+    );
+  }
+  return (
+    <>
+      <TableCell>
+        <Text value={pair.model} unknown={unset} />
+      </TableCell>
+      <TableCell>
+        <Text value={pair.effort} unknown={unset} />
+      </TableCell>
+      <TableCell className={NUM}>
+        <Num value={pair.count} />
+      </TableCell>
+    </>
+  );
 }
