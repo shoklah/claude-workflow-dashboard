@@ -43,7 +43,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 
 ## Code conventions
 
-- The app is edward: lower-case as a wordmark, "Edward" in prose. The `@cwd` package scope, the data folder (`loadConfig`'s default in `packages/server/src/config.ts`) and the launchd label (`LABEL` in `packages/server/src/agent.ts`) keep the project's first name.
+- The app is edward: lower-case as a wordmark, "Edward" in prose. The `@cwd` package scope (its initials), the data folder (`loadConfig`'s default in `packages/server/src/config.ts`) and the launchd label (`LABEL` in `packages/server/src/agent.ts`) keep the project's first name.
 - The data is personal (project paths, branch names, session IDs, costs, finding text): never commit real data, never put it in fixtures, never publish it publicly. Fixtures are invented.
 - `workflow-report.py` is the only parser of the run log and the transcripts: when the dashboard needs a new fact, it goes to the workflow repo as a change request, never parsed here.
 - This repo never edits the workflow repo or the template; they are a reference and the data source.
