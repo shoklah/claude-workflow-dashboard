@@ -196,6 +196,10 @@ describe('check:real', () => {
     for (const key of fixture('report-v7').runs.map((run: any) => run.key)) expect(`${stdout}${stderr}`).not.toContain(key);
   });
 
+  test("reads an unpriced week's null cost as the reporter's 0", () => {
+    expect(checkReal(['cat', fixturePath('report-projects')]).stdout).toContain('weeks: 4 compared, 0 differ\n');
+  });
+
   test('prints phases: not in the export from an export with no phases', () => {
     expect(checkReal(['cat', fixturePath('report-v6')]).stdout).toContain('\nphases: not in the export\nshowing: pass\n');
   });

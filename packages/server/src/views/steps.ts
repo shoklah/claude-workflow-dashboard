@@ -1,4 +1,5 @@
 import {
+  addKnown,
   STEP_KINDS,
   toStepKind,
   type AdvisorFacts,
@@ -11,7 +12,6 @@ import {
   type StepsResponse,
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
-import { addKnown } from './home.ts';
 import { addCount, periodUnits } from './runs.ts';
 import { maskOffers, maskText, type Scope } from './scope.ts';
 
