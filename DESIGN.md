@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Workflow dashboard
+name: edward
 description: >-
   A night-glass dashboard for reading a coding workflow's runs, findings and spend. Tinted glass panels, with a sheen and a bright edge, float over a
   vivid night gradient lit by soft colour orbs; type is white, numbers line up, and colour carries data or state, never
@@ -51,6 +51,7 @@ typography:
   body: { size: 14px, weight: 400, leading: 1.5 }
   table: { size: 14px, weight: 400, head-weight: 600 }
   small: { size: 12px, weight: 500 }
+  wordmark: { size: 20px, weight: 300, ward-weight: 700, tracking: tight }
 rounded:
   base: 0.875rem
   panel: 1.25rem
@@ -74,7 +75,7 @@ components:
   notice: amber glass bar with an amber edge
 ---
 
-# Workflow dashboard
+# edward
 
 ## Overview
 
@@ -94,6 +95,8 @@ Dark is the look. Light mode is its daylight pair: the same panels, radii, type 
 
 **Status.** Warning edges use the serious orange `#ec835a` in both modes; warning text is `#ffc8ab` dark / `#a8461c` light. In the feed, each item's status is a swatch beside its word: a new warning's in the warning orange, a finished run's in green, `#34d399` dark / `#15803d` light. The import notice and showing-mode bar are amber glass: `rgb(250 178 25 / 0.14)` with an `#fab219` edge and `#ffe2a8` ink in dark; `#fff4e0`, `#d97706` and `#5a2d00` in light. Destructive is `#ff6b81` / `#d03b3b`.
 
+The mark, and only the mark, uses two of the backdrop's orb colours (pink and teal), the same in both modes.
+
 ## Typography
 
 One family, **Outfit** (open licence, variable weight), bundled with the app so it works offline. It is geometric and rounded like the glass, and it has tabular figures, which every number column needs (Sora, rendered in the direction step, lacks them). Numbers are always set with `tabular-nums`.
@@ -105,6 +108,7 @@ One family, **Outfit** (open licence, variable weight), bundled with the app so 
 | Body, table cells | 14px | 400 | 0 |
 | Table header | 14px | 600 | 0 |
 | Small, captions | 12px | 500 | 0 |
+| Wordmark | 20px | 300, "ward" in 700 | tight |
 
 The page and section title sizes are the tokens `text-page-title` and `text-section-title` (size, line height, tracking and weight in one utility).
 

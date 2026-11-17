@@ -87,3 +87,13 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   await expect(pages).toBeHidden();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeInViewport();
 });
+
+test('the tab is named edward and has its mark as icon', async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/');
+  await expect(page).toHaveTitle('edward');
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg');
+  const icon = await page.request.get('/favicon.svg');
+  expect(icon.headers()['content-type']).toContain('image/svg+xml');
+  expect(await icon.text()).toContain('<svg');
+});
