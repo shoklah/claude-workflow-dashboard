@@ -234,16 +234,19 @@ export function listedChange(
   return change && showSession(scope, change.home) ? { key: change.key, title: maskText(scope, change.title) } : null;
 }
 
-/** A unit's goal (goalOf) as Work lists it: null when it has none or, with a scope, when none of the goal's homes
- * (goalHomes) is shown. */
+/** A unit's goal as Work lists it: its change's goal while that change is listed (its home shown), else a loose
+ * session's own goal while showSession holds; null otherwise, its name masked (maskText). */
 export function listedGoal(
   levels: Levels,
   scope: Scope | null,
   unitKey: string,
 ): { key: string; name: string } | null {
-  const goal = levels.goalOf(unitKey);
-  if (!goal || !(levels.homes.get(goal) ?? []).some((root) => showSession(scope, root))) return null;
-  return { key: goalKey(goal), name: maskText(scope, goal) };
+  const change = levels.changeOf.get(unitKey);
+  const loose = change ? null : levels.loose.find((s) => s.key === unitKey)?.merged;
+  const goal = change
+    ? showSession(scope, change.home) && change.goal
+    : loose && showSession(scope, loose.project) && loose.goal;
+  return goal ? { key: goalKey(goal), name: maskText(scope, goal) } : null;
 }
 
 /** A run's change as the Runs view and the run page show it: listedChange, null for a change of that one run with no
@@ -259,23 +262,14 @@ export function inGoal(levels: Levels, unitKey: string, goal: string | undefined
   return !goal || (own !== null && goalKey(own) === goal);
 }
 
-/** The Goal select's options over the given units: each one's change's goal while that change's home is shown, else a
- * loose session's own goal while showSession holds, once each by key, its name masked (maskText), by name. */
+/** The Goal select's options over the given units: each one's listedGoal, once each by key, by name. */
 export function goalOptions(
   levels: Levels,
   scope: Scope | null,
   unitKeys: string[],
 ): { key: string; name: string }[] {
-  const loose = new Map(levels.loose.map((s) => [s.key, s.merged]));
-  const names = unitKeys.flatMap((key) => {
-    const change = levels.changeOf.get(key);
-    if (change) return change.goal && showSession(scope, change.home) ? [change.goal] : [];
-    const session = loose.get(key);
-    return session?.goal && showSession(scope, session.project) ? [session.goal] : [];
-  });
-  return [...new Set(names)]
-    .map((name) => ({ key: goalKey(name), name: maskText(scope, name) }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const goals = new Map(unitKeys.flatMap((key) => listedGoal(levels, scope, key) ?? []).map((g) => [g.key, g]));
+  return [...goals.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

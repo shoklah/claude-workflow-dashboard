@@ -418,6 +418,27 @@ describe('workView', () => {
   });
 });
 
+describe('a shown unit of an unlisted change', () => {
+  // Webhooks gets a second change at home in lantern-notes (the <img…> run's), and tidy-imports, run in lantern-notes,
+  // joins the webhooks change, at home in tidepool-api.
+  const split = (raw: any) => {
+    runOf(raw, IMG_RUN).goal = 'Webhooks';
+    runOf(raw, TIDY_RUN).spec = WEBHOOKS_SPEC;
+    runOf(raw, TIDY_RUN).goal = 'Webhooks';
+  };
+
+  test('shows no change or goal, though another change of its goal is listed', async () => {
+    const { body } = await api('/api/runs?weeks=4', [LANTERN], 'report-work', split);
+    const row = (key: string) => body.runs.find((r: { key: string }) => r.key === key);
+    expect(row(IMG_RUN).goal).toEqual({ key: goalKey('Webhooks'), name: 'Webhooks' });
+    expect(row(TIDY_RUN)).toMatchObject({ change: null, goal: null });
+    expect((await api(`/api/runs/${TIDY_RUN}`, [LANTERN], 'report-work', split)).body).toMatchObject({
+      change: null,
+      goal: null,
+    });
+  });
+});
+
 describe('goalHomes', () => {
   test("each goal's changes' home roots and its loose sessions' roots", () => {
     const homes = goalHomes(levelsOf('report-work'));
