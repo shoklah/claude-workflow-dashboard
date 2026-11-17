@@ -63,7 +63,7 @@ export function emptyWeek(): WeekRow {
 }
 
 // A sum of known values: null until one is known.
-const addKnown = (sum: number | null, value: number | null | undefined) => (value == null ? sum : (sum ?? 0) + value);
+export const addKnown = (sum: number | null, value: number | null | undefined) => (value == null ? sum : (sum ?? 0) + value);
 
 /**
  * Per week start date, over the runs with a date, as the reporter's week_rows: `runs`, the runs by path; `tasks`,

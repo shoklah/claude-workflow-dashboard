@@ -38,16 +38,17 @@ type LabelOf = (
   finding: Finding,
 ) => Pick<FindingRow, 'category' | 'validity' | 'judge' | 'relevance' | 'labelReason' | 'appCategory' | 'appRelevance'>;
 
-/** What a skill's outcome says, never the outcome itself: a string other than 'ran' is a file path. */
+/** What a skill's outcome says, never the outcome itself: a string other than 'ran' is a file path, and a counted
+ * outcome (an object of numbers) is 'found something' when any count isn't 0, else 'found nothing'. */
 export function skillOutcomeLabel(outcome: unknown): string {
   if (outcome === 'ran') return 'ran';
   if (typeof outcome === 'string') return 'wrote a file';
   if (outcome === true) return 'record written';
   if (outcome === false) return 'no record';
   if (Array.isArray(outcome)) return `${outcome.length} results`;
-  if (typeof outcome === 'object' && outcome !== null && 'applied' in outcome && 'skipped' in outcome) {
-    const { applied, skipped } = outcome;
-    if (typeof applied === 'number' && typeof skipped === 'number') return `applied ${applied}, skipped ${skipped}`;
+  if (typeof outcome === 'object' && outcome !== null) {
+    const counts = Object.values(outcome);
+    if (counts.every((n) => typeof n === 'number')) return counts.some((n) => n !== 0) ? 'found something' : 'found nothing';
   }
   return '–';
 }

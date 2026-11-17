@@ -1,6 +1,6 @@
-# claude-workflow-dashboard
+# edward
 
-A live, local dashboard for a Claude Code agentic workflow. It runs the workflow's reporter, `workflow-report.py --json --changed-since <cursor>`, on start, whenever the workflow's run log changes, every 15 minutes when a session transcript changed, and on the page's refresh button, keeps every import in a local SQLite database, and shows what the reporter says: runs by path, the findings each review step raised and acted on, warnings, and estimated spend, week by week.
+Edward is a live, local dashboard for a Claude Code agentic workflow. It runs the workflow's reporter, `workflow-report.py --json --changed-since <cursor>`, on start, whenever the workflow's run log changes, every 15 minutes when a session transcript changed, and on the page's refresh button, keeps every import in a local SQLite database, and shows what the reporter says: runs by path, the findings each review step raised and acted on, warnings, and estimated spend, week by week.
 
 ![The home page on invented data](packages/web/e2e/home.screens.ts-snapshots/home-screens-linux.png)
 
@@ -27,7 +27,7 @@ pnpm agent:install
 
 ## The data folder
 
-Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/`, created with mode `0700`:
+Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` (the project's first name, which the launchd agent keeps too), created with mode `0700`:
 
 - `dashboard.sqlite`: the imports and what was read from them.
 - `logs/`: the agent's `out.log` and `err.log`.

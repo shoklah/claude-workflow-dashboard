@@ -13,7 +13,7 @@ export const skillsFull: SkillsResponse = {
       name: 'simplify',
       runs: 5,
       last: '2026-11-09T16:02:00Z',
-      outcomes: { 'applied 2, skipped 1': 3, 'applied 0, skipped 0': 2 },
+      outcomes: { 'found something': 3, 'found nothing': 2 },
       missing: 1,
     },
     { name: 'requesting-code-review', runs: 0, last: null, outcomes: {}, missing: 3 },
