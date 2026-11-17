@@ -1,6 +1,6 @@
 # The side menu: sections, a full-height rail, the controls and a name
 
-Status: for the owner's approval. Captures: `docs/design/2026-11-17-menu/`. Written against `main` at `7f89636` (the UI slice's part 2 is merged).
+Status: approved by the owner, 2026-11-17. Captures: `docs/design/2026-11-17-menu/`. Written against `main` at `7f89636` (the UI slice's part 2 is merged).
 
 ## Intent
 
