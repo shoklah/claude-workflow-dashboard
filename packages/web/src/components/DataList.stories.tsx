@@ -256,3 +256,58 @@ export const FoldedFirst: Story = {
     await expect(visibleTerms(opened)[0]).toBe('When');
   },
 };
+
+/** Folded columns its only details: the toggle shows only while they fold, and opens to them. */
+export const FoldOnly: Story = {
+  args: { facts: [] },
+  render: (args) => (
+    <div className="flex flex-col gap-6">
+      <div data-testid="narrow" style={{ width: 375 }}>
+        <DataList {...args} />
+      </div>
+      <div data-testid="wide" style={{ width: 1000 }}>
+        <DataList {...args} />
+      </div>
+    </div>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const wide = within(canvas.getByTestId('wide'));
+    await expect(wide.queryAllByRole('button', { expanded: false })).toHaveLength(0);
+    await expect(wide.getAllByText('Item 1').filter((el) => el.checkVisibility())).toHaveLength(1);
+    const narrow = within(canvas.getByTestId('narrow'));
+    const toggle = narrow.getByRole('button', { name: 'Item 1' });
+    await expect(toggle).toBeVisible();
+    await userEvent.click(toggle);
+    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    await expect(visibleTerms(opened)).toEqual(['When']);
+  },
+};
+
+/** A refetch with fewer rows from a later page never paints that page: the first render shows page 1. */
+export const NoStalePage: Story = {
+  render: function Render(args) {
+    const [rows, setRows] = useState(ROWS);
+    return (
+      <>
+        <button type="button" onClick={() => setTimeout(() => setRows(ROWS.slice(0, 15)))}>
+          Fifteen rows later
+        </button>
+        <DataList {...args} rows={rows} />
+      </>
+    );
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const nav = within(canvas.getByRole('navigation', { name: 'Items pages' }));
+    await userEvent.click(nav.getByRole('button', { name: 'Next' }));
+    await userEvent.click(nav.getByRole('button', { name: 'Next' }));
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => {
+      seen.push(`${bodyRows(canvasElement).length} ${canvasElement.querySelector('nav span')?.textContent ?? ''}`);
+    });
+    observer.observe(canvasElement, { subtree: true, childList: true, characterData: true });
+    await userEvent.click(canvas.getByRole('button', { name: 'Fifteen rows later' }));
+    await expect(nav.getByText('1–10 of 15')).toBeVisible();
+    observer.disconnect();
+    await expect(seen.filter((s) => !s.endsWith('1–10 of 15') && !s.endsWith('21–24 of 24'))).toEqual([]);
+  },
+};

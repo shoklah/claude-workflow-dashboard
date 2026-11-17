@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   createColumnHelper,
@@ -11,6 +11,7 @@ import {
   useTable,
   type PaginationState,
   type RowData,
+  type SortingState,
 } from '@tanstack/react-table';
 import { cn } from 'cn';
 import { EmptyRow, NUM } from './Num.tsx';
@@ -93,17 +94,28 @@ export function DataList<T extends RowData>({
       }),
     );
   }, [columns, rows]);
+  // The page and the sort are this list's state, so a new key sequence or a sort goes back to page 1 in the same
+  // render, never painting a stale page; a new array of the same rows keeps the page.
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const keys = rows.map(rowKey).join('\n');
+  const [seenKeys, setSeenKeys] = useState(keys);
+  if (keys !== seenKeys) {
+    setSeenKeys(keys);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }
   const table = useTable({
     features,
     columns: defs,
     data: rows,
-    // A new array of the same rows keeps the page; new rows or a new sort go back to page 1 (below).
+    state: { pagination, sorting },
+    onPaginationChange: setPagination,
+    onSortingChange: (sort) => {
+      setSorting(sort);
+      setPagination((p) => ({ ...p, pageIndex: 0 }));
+    },
     autoResetPageIndex: false,
-    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
   });
-  const keys = rows.map(rowKey).join('\n');
-  const sorting = table.state.sorting;
-  useEffect(() => table.setPageIndex(0), [keys, sorting]);
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const toggle = (key: string) =>
     setOpen((was) => {
@@ -114,6 +126,8 @@ export function DataList<T extends RowData>({
   const folded = columns.filter((c) => c.fold);
   const opens = facts.length > 0 || extra !== undefined || folded.length > 0;
   const toggleColumn = columns.find((c) => !c.fold);
+  // With nothing to open but its folded columns, a row opens only while they fold.
+  const foldOnly = facts.length === 0 && extra === undefined;
   return (
     <div className="@container flex flex-col gap-3">
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': label, className, ...{ 'data-list': '' } }}>
@@ -146,10 +160,17 @@ export function DataList<T extends RowData>({
             const toggleCell = (c: ListColumn<T>) => {
               const text = c.text?.(r) ?? null;
               if (text !== null) {
-                return (
+                const rowToggle = (
                   <RowToggle open={isOpen} onToggle={() => toggle(key)}>
                     {text}
                   </RowToggle>
+                );
+                if (!foldOnly) return rowToggle;
+                return (
+                  <>
+                    <span className="hidden @3xl:inline">{c.cell(r)}</span>
+                    <div className="@3xl:hidden">{rowToggle}</div>
+                  </>
                 );
               }
               const Chevron = isOpen ? ChevronDown : ChevronRight;
@@ -160,7 +181,7 @@ export function DataList<T extends RowData>({
                     aria-expanded={isOpen}
                     aria-label={`Details of ${name(r)}`}
                     onClick={() => toggle(key)}
-                    className="mt-0.5 rounded-sm"
+                    className={cn('mt-0.5 rounded-sm', foldOnly && '@3xl:hidden')}
                   >
                     <Chevron aria-hidden className="size-4 text-muted-foreground" />
                   </button>
@@ -181,7 +202,7 @@ export function DataList<T extends RowData>({
                   ))}
                 </TableRow>
                 {isOpen && (
-                  <TableRow className="hover:bg-transparent">
+                  <TableRow className={cn('hover:bg-transparent', foldOnly && '@3xl:hidden')}>
                     <TableCell colSpan={columns.length} className="pt-0 pb-4 pl-8 whitespace-normal">
                       <div className="flex max-w-3xl flex-col gap-3">
                         {narrowPairs.length > 0 && <Pairs text pairs={narrowPairs} className="@3xl:hidden" />}
