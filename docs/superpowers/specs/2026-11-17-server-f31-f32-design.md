@@ -31,7 +31,7 @@ Each screen cell holds one known value, and an unknown one shows as the dash. Tw
 ## Anti-goals
 
 - check:real must not report a step difference that isn't there: the reporter's scoreboard writes 0.0 where the
-  dashboard now writes null, so check:real reads a null step cost as 0 against it.
+  dashboard now writes null, so check:real reads a null cost as 0 on both sides (simplify's is null on both).
 
 ## Approaches
 
@@ -47,7 +47,18 @@ For F31 there was one sensible way, the owner's: null until a priced model, as `
 - The labels are "found something" and "found nothing" (my call: they match the Steps page's "Found something" and
   stay true when only `skipped` is above 0, where "applied" would not).
 - A dict outcome is "counted" when every value is a number; one with any other value stays "–", as an unknown shape
-  does today.
+  does today. An empty dict `{}` is "found nothing", as the reporter's `any({}.values())` is false.
+
+## UI (the ui kit's points)
+
+- **Question:** unchanged per screen; only one cell's text changes.
+- **Screens changed:** `/steps` (a step kind's cost cell reads the dash), `/runs/97d6367dec7d9739` (the invented Full
+  run's skills), `/skills` (simplify's outcome lines), `/sessions` (a simplify load's outcome in the timeline).
+- **States and widths:** unchanged (empty, loading, error; 375, 768 and 1440 px).
+- **Components:** existing only: `Num`/`Unknown` for the cost cell, `Lines` on Skills, the run page's skills `Pairs`,
+  the Sessions timeline.
+- **Mockup:** none rendered (my call): a text-only change on existing components; the kit reviewer's reference is
+  this spec and the current screen baselines.
 
 ## Left to the builder
 
