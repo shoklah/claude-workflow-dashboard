@@ -698,6 +698,30 @@ describe('the change and goal pages in showing mode', () => {
     expect(leaks(goal, forbidden, shown)).toEqual([]);
   });
 
+  test("a goal's page leaves out a session of its change that Work doesn't list, and counts it", async () => {
+    const release = { project: TIDEPOOL, path: 'docs/superpowers/specs/2026-11-05-release-design.md' };
+    const moved = (raw: any) => {
+      sessionOf(raw, S_6B1F).spec = release;
+      sessionOf(raw, S_6B1F).goal = 'Offline sync';
+      sessionOf(raw, S_6B1F).project = LANTERN;
+    };
+    const all = (await goalPage('Offline sync', undefined, moved)).body as GoalResponse;
+    expect(all.graph.nodes.map((n) => n.key)).toContain(S_6B1F);
+    const { status, body } = await goalPage('Offline sync', [LANTERN], moved);
+    expect(status).toBe(200);
+    const goal = body as GoalResponse;
+    expect(goal.graph.nodes.map((n) => n.key)).toEqual([S_7D1E]);
+    expect(goal.graph.lanes.map((l) => l.kind)).toEqual(['change']);
+    // 6b1f…, of the unlisted release change, and 2e8d…, in tidepool-api.
+    expect(goal.graph.hidden).toBe(2);
+    expect(goal.sessions.map((s) => s.key)).toEqual([S_7D1E]);
+    expect(goal.changes.map((c) => c.key)).toEqual([TIDY_RUN, OFFLINE_CHANGE]);
+    expect(goal).toMatchObject({ changeCount: 3, runCount: 3, sessionCount: 3, findings: all.findings });
+    expect(goal.cost).toBeCloseTo(all.cost!, 6);
+    const { forbidden, shown } = forbiddenFor([LANTERN]);
+    expect(leaks(goal, forbidden, shown)).toEqual([]);
+  });
+
   test("tidepool-api shown: offline sync is missing, and a starter that isn't shown is named by nothing", async () => {
     expect((await changePage(OFFLINE_CHANGE, [TIDEPOOL])).status).toBe(404);
     expect((await goalPage('Offline sync', [TIDEPOOL])).status).toBe(404);

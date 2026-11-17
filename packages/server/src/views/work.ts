@@ -348,8 +348,8 @@ function elsewhereOf(pages: Pages, key: string, goal: string | null): GraphNode[
  * The session graph of a page's `members`, with the sessions linked to them (by an edge from a member, or with
  * `either` into one too): a member in one of `changes` (listed, in lane order) sits in its change's lane, a member in
  * no change in No change, any other in the other lane titled `other`, saying where it belongs (elsewhereOf). Lanes
- * without a box are left out; with a scope, the sessions showSession doesn't hold are left out with their edges and
- * counted in `hidden`.
+ * without a box are left out; with a scope, the sessions showSession doesn't hold and those in `left` are left out with
+ * their edges and counted in `hidden`.
  */
 function graphOf(
   pages: Pages,
@@ -358,12 +358,13 @@ function graphOf(
   changes: Change[],
   other: string,
   goal: string | null,
+  left: Set<string> = new Set(),
 ): SessionGraphData {
   const linked = pages.edges
     .filter((edge) => members.has(edge.from) || (either && members.has(edge.to)))
     .flatMap((edge) => [edge.from, edge.to]);
-  const all = new Set([...members, ...linked]);
-  const nodes = shownSessions(pages, all);
+  const all = new Set([...members, ...linked, ...left]);
+  const nodes = shownSessions(pages, all).filter((s) => !left.has(s.key));
   const hidden = pages.dated.filter((s) => all.has(s.key)).length - nodes.length;
   const laneOf = (key: string): { key: string | null; title: string; kind: 'change' | 'none' | 'other' } => {
     const change = pages.levels.changeOf.get(key);
@@ -442,7 +443,8 @@ export function changeView(input: {
  * A goal's page: its facts and whole totals (its changes', plus its sessions in no change), its graph (a lane per
  * listed change with a box, in order of the change's start, then No change, then "Other goals" for the sessions its
  * sessions started), its listed changes in that order and its shown dated sessions; null for an unknown key or, with
- * a scope, a goal none of whose homes (goalHomes) is shown.
+ * a scope, a goal none of whose homes (goalHomes) is shown. A session of a change Work doesn't list is left out of
+ * the graph (counted in its `hidden`) and the Sessions table, as one in a hidden project, and counts in the totals.
  */
 export function goalView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -461,7 +463,8 @@ export function goalView(input: {
   const listed = changes.filter((c) => shownRoot(scope, c.home));
   const loose = pages.levels.loose.filter((s) => s.merged.goal === goal);
   const looseRoots = loose.flatMap((s) => sessionRootOf(s.merged.project) ?? []);
-  const members = new Set([...changes.flatMap((c) => c.sessions), ...loose].map((s) => s.key));
+  const members = new Set([...listed.flatMap((c) => c.sessions), ...loose].map((s) => s.key));
+  const unlisted = new Set(changes.filter((c) => !listed.includes(c)).flatMap((c) => c.sessions.map((s) => s.key)));
   return {
     key: input.key,
     name: maskText(scope, goal),
@@ -479,7 +482,7 @@ export function goalView(input: {
       (sum, cost) => addKnown(sum, cost),
       null,
     ),
-    graph: graphOf(pages, members, false, listed, 'Other goals', goal),
+    graph: graphOf(pages, members, false, listed, 'Other goals', goal, unlisted),
     changes: listed.map((change) => changeRow(change, scope, names)),
     sessions: shownSessions(pages, members).map((unit) => workRow(pages, unit)),
   };
