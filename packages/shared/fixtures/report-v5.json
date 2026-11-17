@@ -2883,6 +2883,36 @@
               "cost": 1.755
             }
           }
+        },
+        {
+          "kind": "final_review",
+          "id": "9d2e41c07ab35f18",
+          "time": "2026-11-12T07:06:02.117Z",
+          "end": "2026-11-12T07:28:40.506Z",
+          "step": null,
+          "agent": "final-reviewer",
+          "description": "Final review (pair)",
+          "requested_model": "fable",
+          "requested_effort": "high",
+          "model": "claude-fable-5-1",
+          "effort": "high",
+          "skills": [],
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 2,
+            "unneeded": 0
+          },
+          "models": {
+            "claude-fable-5-1": {
+              "input": 15000,
+              "output": 10000,
+              "cache_read": 800000,
+              "cache_write": 50000,
+              "cost": 1.5
+            }
+          },
+          "pair": true
         }
       ],
       "skills": [
@@ -3596,10 +3626,12 @@
         },
         "final-reviewer": {
           "requested": {
-            "-/xhigh": 2
+            "-/xhigh": 2,
+            "fable/high": 1
           },
           "actual": {
-            "claude-fable-5-1/xhigh": 2
+            "claude-fable-5-1/xhigh": 2,
+            "claude-fable-5-1/high": 1
           },
           "mismatches": 0
         },

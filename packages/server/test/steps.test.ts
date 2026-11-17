@@ -126,6 +126,12 @@ test("a step kind's tokens are null until a dispatch carries models, and its cos
   expect(bare.find((r) => r.step === 'task_review')!.tokens).toEqual(NO_TOKENS);
 });
 
+test("a final review pair's second half adds no tokens or cost, as the reporter's scoreboard skips it", () => {
+  const models = { a: { input: 7, cost: 2 } };
+  const rows = stepSums([{ schema: 2, dispatches: [{ kind: 'final_review', models, pair: true }] }]);
+  expect(rows.find((r) => r.step === 'final_review')).toMatchObject({ tokens: null, cost: null });
+});
+
 test("ruleSums over every stored run equals the scoreboard's rules and the offers' totals", () => {
   expect(ruleSums(listUnits(db, 'run').map((unit) => unit.merged))).toEqual(rules);
 });

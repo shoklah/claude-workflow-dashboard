@@ -78,7 +78,8 @@ export function stepSums(runs: RunEntry[]): StepRow[] {
     for (const dispatch of run.dispatches ?? []) {
       const kind = toStepKind(dispatch.kind);
       const row = kind && rows.get(kind);
-      if (!row || row.step === 'simplify' || !dispatch.models) continue;
+      // A pair's second half isn't counted, as the reporter's scoreboard leaves it out.
+      if (!row || row.step === 'simplify' || !dispatch.models || dispatch.pair) continue;
       const tokens = (row.tokens ??= zeros(TOKENS));
       for (const m of Object.values(dispatch.models)) {
         for (const label of TOKENS) tokens[label] += m[label] ?? 0;

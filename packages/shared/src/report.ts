@@ -144,6 +144,8 @@ const DispatchSchema = z.object({
   models: ModelsSchema,
   // The index, in the run's exported `steps`, of the step the reporter tied this dispatch to; null when it tied none.
   step: num,
+  // Whether this dispatch is a final review pair's second half, which the reporter's scoreboard leaves out.
+  pair: bool,
 });
 
 const SpecRefSchema = z.object({ project: z.string(), path: z.string() });
