@@ -457,18 +457,11 @@ test("a run's strengths list each review step's, with its step, task and round",
 });
 
 test("with showing on, the run page holds no hidden project's name, path or branch, its strengths' and kit steps' included", async () => {
-  const raw = fixture('report-v5');
-  const branches = new Map<string, string[]>();
-  for (const r of raw.runs) {
-    const root = projectRoot(r.record.project);
-    branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
-  }
   const TIDEPOOL = '/Users/example/Work/tidepool-api';
-  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
-  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], sessionRoots);
-  expect(strings.forbidden).toContain('lantern-notes');
   db.$client.close();
   db = dbWith('report-v5', (raw) => {
+    // A hidden lantern-notes run on the branch most projects have, so no response field may be named `main`.
+    raw.runs[2].record.branch = 'main';
     // A strength that names the hidden lantern-notes, its branch and a path in it.
     raw.runs[5].steps[1].strengths[0].summary =
       'As lantern-notes does on feature/offline-sync in /Users/example/Work/lantern-notes/src/retry.ts';
@@ -478,33 +471,16 @@ test("with showing on, the run page holds no hidden project's name, path or bran
     }) - 1;
     raw.runs[5].dispatches.push({ agent: 'kit-reviewer', model: 'lantern-notes', effort: 'high', step: index });
   });
+  const branches = storedBranches(listUnits(db, 'run'));
+  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], sessionRoots);
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['lantern-notes', 'main']));
   setShowing(db, [projectKey(TIDEPOOL)]);
   const body = await run(WEBHOOKS);
   expect(body.strengths[0].summary).toBe('As another project does on another branch in retry.ts');
   const kitStep = body.timeline.flatMap((g) => g.tasks.flatMap((t) => t.steps)).find((s) => s.step === 'kit_review');
   expect(kitStep).toMatchObject({ kit: 'another project', agent: 'another project', model: 'another project' });
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
-});
-
-test('with showing on, the run page has no field named after a hidden branch named main', async () => {
-  db.$client.close();
-  // A hidden lantern-notes run on the branch most projects have.
-  const change = (raw: any) => {
-    raw.runs.find((r: any) => r.record.project.endsWith('lantern-notes')).record.branch = 'main';
-  };
-  db = dbWith('report-v5', change);
-  const raw = fixture('report-v5');
-  change(raw);
-  const branches = new Map<string, string[]>();
-  for (const r of raw.runs) {
-    const root = projectRoot(r.record.project);
-    branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
-  }
-  const TIDEPOOL = '/Users/example/Work/tidepool-api';
-  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], storedSessionRoots(listUnits(db, 'session')));
-  expect(strings.forbidden).toContain('main');
-  setShowing(db, [projectKey(TIDEPOOL)]);
-  expect(leaks(await run(WEBHOOKS), strings.forbidden, strings.shown)).toEqual([]);
 });
 
 describe("the run's surroundings", () => {
