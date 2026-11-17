@@ -1,6 +1,8 @@
 import type { Relevance } from '../categories.ts';
 import type { ContextFacts, RunFacts } from '../facts.ts';
 import type { Outcome, Path, StepKind } from '../report.ts';
+import type { AgentModels } from './models.ts';
+import type { SessionRow } from './sessions.ts';
 
 /** `GET /api/runs`'s query: `path`, `project` (a project's key), `weeks` (default 4) and `warnings=1`. */
 export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings: boolean };
@@ -93,4 +95,19 @@ export type RunResponse = {
   context: RunContext | null;
   warnings: { text: string; sessionId: string | null }[];
   categoryLabels: Record<string, string>;
+};
+
+/** `GET /api/runs/:key`: the run as `runView` builds it, with what surrounds it: the session whose file is its
+ * transcript and the one it handed off to (null when not stored or not shown), the other runs of its project and branch,
+ * its offers, its later fixes (no sha), its agents as modelSums names them, its main session's model and effort, and
+ * its phases' costs. */
+export type RunPageResponse = RunResponse & {
+  session: Pick<SessionRow, 'title' | 'sessionId'> | null;
+  handoffTo: Pick<SessionRow, 'title' | 'sessionId'> | null;
+  related: { key: string; path: Path | null; finishedAt: string | null }[];
+  offers: { skill: string; outcome: string }[];
+  laterFixes: { date: string | null; subject: string }[];
+  agents: Pick<AgentModels, 'name' | 'actual'>[];
+  main: { model: string | null; effort: string | null } | null;
+  phases: { name: string; cost: number | null }[];
 };

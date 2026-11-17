@@ -40,6 +40,22 @@ export function modelSums(runs: RunEntry[]): ModelSums {
   return sums;
 }
 
+/** A run with its dispatches' agents, models and efforts and its main session's model and effort masked (maskText). */
+export function maskModels(scope: Scope | null, run: RunEntry): RunEntry {
+  return {
+    ...run,
+    dispatches: run.dispatches?.map((d) => ({
+      ...d,
+      agent: maskText(scope, d.agent),
+      requested_model: maskText(scope, d.requested_model),
+      requested_effort: maskText(scope, d.requested_effort),
+      model: maskText(scope, d.model),
+      effort: maskText(scope, d.effort),
+    })),
+    main: run.main && { model: maskText(scope, run.main.model), effort: maskText(scope, run.main.effort) },
+  };
+}
+
 /**
  * The Models and advisor page: modelSums over the stored runs in the query's period (period), the advisor's facts
  * over its runs and sessions (periodUnits, unitSums), with the reporter's all-time figures from `totals`, the last good
@@ -58,18 +74,7 @@ export function modelsView(input: {
   scope: Scope | null;
 }): ModelsResponse {
   const { weeks, runs: inPeriod, sessions } = periodUnits(input.runs, input.sessions, input.query, input.now);
-  const runs = inPeriod.map((run) => ({
-      ...run,
-      dispatches: run.dispatches?.map((d) => ({
-        ...d,
-        agent: maskText(input.scope, d.agent),
-        requested_model: maskText(input.scope, d.requested_model),
-        requested_effort: maskText(input.scope, d.requested_effort),
-        model: maskText(input.scope, d.model),
-        effort: maskText(input.scope, d.effort),
-      })),
-      main: run.main && { model: maskText(input.scope, run.main.model), effort: maskText(input.scope, run.main.effort) },
-    }));
+  const runs = inPeriod.map((run) => maskModels(input.scope, run));
   const sums = modelSums(runs);
   const totals = reporterTotals(input.totals);
   const mismatches: Record<string, number> = {};

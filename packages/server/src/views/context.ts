@@ -12,7 +12,7 @@ import {
 import type { StoredUnit } from '../db/read.ts';
 import { addCount, periodStoredUnits, unitWeeks, rootOf, storedFacts, storedNames } from './runs.ts';
 import { showFacts, showSession, type Scope } from './scope.ts';
-import { sessionFacts } from './sessions.ts';
+import { sessionFacts, shownSession } from './sessions.ts';
 
 /** The context cap the Context page draws: the app's default until the reporter exports its own (CR14). */
 export const CONTEXT_CAP = 300_000;
@@ -83,12 +83,11 @@ export function contextView(input: {
   ): ContextUnit => {
     const context = entry.context!;
     const next = context.handoff_to ? byKey.get(context.handoff_to) : undefined;
-    const shownNext = next && showSession(scope, next.project) ? sessionFacts(next, runRoots, names, scope) : null;
     return {
       ...fields,
       ...contextFacts(entry)!,
       overCap: !!context.over_cap,
-      handedOffTo: shownNext && { title: shownNext.title, sessionId: shownNext.sessionId },
+      handedOffTo: shownSession(next, runRoots, names, scope),
     };
   };
 

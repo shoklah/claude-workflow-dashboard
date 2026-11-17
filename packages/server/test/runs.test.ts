@@ -4,20 +4,22 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   loadReport,
+  modelsCost,
   projectRoot,
   type HomeResponse,
   type Relevance,
-  type RunResponse,
+  type RunPageResponse,
   type RunsResponse,
 } from '@cwd/shared';
 import { fixture, reportFixtures } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { projectKey, runKey } from '../src/keys.ts';
+import { projectKey, runKey, sessionKey } from '../src/keys.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { labelInputs, saveBatch } from '../src/db/labels.ts';
 import { runView, skillOutcomeLabel, storedSessionRoots } from '../src/views/runs.ts';
+import { modelSums } from '../src/views/models.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';
 
 const PORT = 4317;
@@ -72,7 +74,7 @@ async function runs(query = ''): Promise<RunsResponse> {
   return res.json();
 }
 
-async function run(key: string): Promise<RunResponse> {
+async function run(key: string): Promise<RunPageResponse> {
   const res = await get(`/api/runs/${encodeURIComponent(key)}`);
   expect(res.status).toBe(200);
   return res.json();
@@ -480,6 +482,131 @@ test("with showing on, the run page holds no hidden project's name, path or bran
   const kitStep = body.timeline.flatMap((g) => g.tasks.flatMap((t) => t.steps)).find((s) => s.step === 'kit_review');
   expect(kitStep).toMatchObject({ kit: 'another project', agent: 'another project', model: 'another project' });
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+});
+
+describe("the run's surroundings", () => {
+  // report-v7's runs: the Plan and Full feature/offline-sync runs on lantern-notes, feature/webhooks on tidepool-api,
+  // and a small run whose transcript no stored session has.
+  const v7 = fixture('report-v7');
+  const [, , , PLAN_V7, FULL_V7, WEBHOOKS_V7, UNHELD] = v7.runs.map(runKey) as string[];
+  const TIDEPOOL = '/Users/example/Work/tidepool-api';
+  const LANTERN = '/Users/example/Work/lantern-notes';
+
+  beforeEach(() => {
+    db.$client.close();
+    db = dbWith('report-v7');
+  });
+
+  test('names the session whose file is the run\'s transcript, with no session ID under a scope', async () => {
+    expect((await run(WEBHOOKS_V7)).session).toEqual({
+      title: 'Offline sync plan',
+      sessionId: '5a9d3f12-6e8b-4c7a-9f2d-3b1e0c8a4d56',
+    });
+    setShowing(db, [projectKey(TIDEPOOL), projectKey(LANTERN)]);
+    expect((await run(WEBHOOKS_V7)).session).toEqual({ title: 'Offline sync plan', sessionId: null });
+  });
+
+  test("the session is null when it isn't shown or isn't stored", async () => {
+    expect((await run(UNHELD)).session).toBeNull();
+    // The webhooks run's session is lantern-notes'.
+    setShowing(db, [projectKey(TIDEPOOL)]);
+    expect((await run(WEBHOOKS_V7)).session).toBeNull();
+  });
+
+  test('handoffTo is null on every fixture as exported', async () => {
+    for (const name of reportFixtures().filter((n) => n !== 'report-shape')) {
+      db.$client.close();
+      db = dbWith(name);
+      for (const entry of fixture(name).runs) expect((await run(runKey(entry) as string)).handoffTo).toBeNull();
+    }
+  });
+
+  test('handoffTo names the stored session whose key is the handoff_to, null when its project is hidden', async () => {
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => (raw.runs[5].context.handoff_to = sessionKey(raw.sessions[3])));
+    expect((await run(WEBHOOKS_V7)).handoffTo).toEqual({
+      title: "Port lantern-notes' sync to tidepool-api",
+      sessionId: '2e8d5b13-9c4f-4a7e-b6d1-8f0a3c5e9b72',
+    });
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => (raw.runs[5].context.handoff_to = sessionKey(raw.sessions[1])));
+    setShowing(db, [projectKey(TIDEPOOL)]);
+    expect((await run(WEBHOOKS_V7)).handoffTo).toBeNull();
+  });
+
+  test("related lists the other runs of the run's project and branch", async () => {
+    expect((await run(FULL_V7)).related).toEqual([{ key: PLAN_V7, path: 'plan', finishedAt: '2026-11-08T09:30:00Z' }]);
+    expect((await run(WEBHOOKS_V7)).related).toEqual([]);
+  });
+
+  test("lists the run's offers", async () => {
+    expect((await run(WEBHOOKS_V7)).offers).toEqual([
+      { skill: 'graphify', outcome: 'accepted' },
+      { skill: 'session-summary', outcome: 'skipped' },
+    ]);
+    expect((await run(FULL_V7)).offers).toEqual([]);
+  });
+
+  test('lists later fixes with no sha', async () => {
+    const body = await run(FULL_V7);
+    expect(body.laterFixes).toEqual([{ date: '2026-11-11T14:02:33+01:00', subject: 'fix: conflict banner loses focus after retry' }]);
+    expect(JSON.stringify(body)).not.toContain('"sha"');
+    expect(JSON.stringify(body)).not.toContain('9c4e1a7');
+  });
+
+  test("agents are modelSums' rows for the run", async () => {
+    const entry = listUnits(db, 'run').find((u) => u.key === WEBHOOKS_V7)!.merged;
+    const expected = Object.entries(modelSums([entry]).agents)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, row]) => ({ name, actual: row.actual }));
+    expect(expected.length).toBeGreaterThan(1);
+    expect((await run(WEBHOOKS_V7)).agents).toEqual(expected);
+  });
+
+  test("main and phases are the run's main session and each phase's cost", async () => {
+    const body = await run(FULL_V7);
+    expect(body.main).toEqual({ model: 'claude-opus-5-5', effort: 'medium' });
+    expect(body.phases[0]).toEqual({ name: 'design', cost: 1.6 });
+    expect(body.phases).toEqual(v7.runs[4].phases.map((p: any) => ({ name: p.name, cost: modelsCost(p.models) })));
+  });
+
+  test("with showing on, the run's surroundings hold no hidden project's name", async () => {
+    db.$client.close();
+    db = dbWith('report-v7', (raw) => {
+      const r = raw.runs[5];
+      // Two agents that mask alike, and a dispatch's model and effort, naming the hidden lantern-notes.
+      Object.assign(r.dispatches[0], { agent: 'lantern-notes', model: 'lantern-notes', effort: 'lantern-notes' });
+      r.dispatches[2].agent = 'LANTERN-NOTES';
+      r.main.model = 'lantern-notes';
+      r.offers[0].skill = 'lantern-notes';
+      r.later_fixes = [{ sha: '1a2b3c4', date: '2026-11-13T10:00:00Z', subject: 'fix: as lantern-notes does on feature/offline-sync' }];
+      r.phases.push({ name: 'lantern-notes', models: { 'claude-opus-5-5': { cost: 0.1 } } });
+      // The run's session is tidepool-api's, titled after lantern-notes, and it hands off to another such session.
+      r.window.transcript = raw.sessions[3].file;
+      Object.assign(raw.sessions[4], { project: TIDEPOOL, title: 'Handed on from lantern-notes' });
+      r.context.handoff_to = sessionKey(raw.sessions[4]);
+    });
+    const branches = new Map<string, string[]>();
+    for (const r of v7.runs) {
+      const root = projectRoot(r.record.project);
+      branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
+    }
+    const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+    const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], sessionRoots);
+    expect(strings.forbidden).toContain('lantern-notes');
+    setShowing(db, [projectKey(TIDEPOOL)]);
+    const body = await run(WEBHOOKS_V7);
+    expect(body.agents.filter((a) => a.name === 'another project')).toEqual([
+      { name: 'another project', actual: { 'another project/another project': 1, 'claude-opus-5-5/high': 1 } },
+    ]);
+    expect(body.main).toEqual({ model: 'another project', effort: 'high' });
+    expect(body.offers[0]).toEqual({ skill: 'another project', outcome: 'accepted' });
+    expect(body.laterFixes[0].subject).toBe('fix: as another project does on another branch');
+    expect(body.session).toEqual({ title: "Port another project' sync to tidepool-api", sessionId: null });
+    expect(body.handoffTo).toEqual({ title: 'Handed on from another project', sessionId: null });
+    expect(body.phases.at(-1)).toEqual({ name: 'another project', cost: 0.1 });
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  });
 });
 
 test('a schema 1 run has empty groups and beforeSteps', async () => {

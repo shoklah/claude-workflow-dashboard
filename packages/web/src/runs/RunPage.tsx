@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import type { RunResponse } from '@cwd/shared';
+import type { RunPageResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { Num, Text } from '../components/Num.tsx';
 import { Option, Options } from '../components/Option.tsx';
@@ -31,7 +31,7 @@ function SideSection({ title, none, children }: { title: string; none: string; c
 }
 
 /** The run's facts, each a term over its value. */
-function Header({ run }: { run: RunResponse['facts'] }) {
+function Header({ run }: { run: RunPageResponse['facts'] }) {
   const facts: [string, ReactNode][] = [
     ['Project', <Text value={run.project} />],
     ['Path', <Text value={pathLabel(run.path)} />],
@@ -54,7 +54,7 @@ function Header({ run }: { run: RunResponse['facts'] }) {
  * strengths under it, and its skills, models, advisor notes, context and warnings for the run as a whole (decision 30).
  */
 export function RunPage({ runKey }: { runKey: string }) {
-  const run = useLiveQuery<RunResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
+  const run = useLiveQuery<RunPageResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
   const [view, setView] = useState<'timeline' | 'findings'>('timeline');
   if (run.isPending) return <State>Loading the run…</State>;
   if (run.isError) return <State error>Couldn't load this run.</State>;

@@ -1,4 +1,4 @@
-import type { FindingRow, RunFacts, RunResponse, RunsResponse, TimelineStep } from '@cwd/shared';
+import type { FindingRow, RunFacts, RunPageResponse, RunsResponse, TimelineStep } from '@cwd/shared';
 
 // Invented runs for the Runs list's and the run page's stories.
 
@@ -142,7 +142,7 @@ function step(s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineSt
   return { round: 0, agent: null, model: null, effort: null, kit: null, counts: {}, findings: [], ...s };
 }
 
-export const runFull: RunResponse = {
+export const runFull: RunPageResponse = {
   facts: fullRun,
   timeline: [
     { kind: 'start', label: 'Start', at: fullRun.startedAt, conflicts: null, tasks: [], steps: [] },
@@ -201,10 +201,30 @@ export const runFull: RunResponse = {
     { text: 'session {session}: final-reviewer ran on another model than its pin', sessionId: '0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e' },
     { text: 'WARN: feat/search (2026-11-10): final review without simplify: final_review at step 4', sessionId: null },
   ],
+  session: { title: 'Search page build', sessionId: '0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e' },
+  handoffTo: null,
+  related: [{ key: 'd4e5f60718293a4b', path: 'plan', finishedAt: '2026-11-08T16:05:00Z' }],
+  offers: [
+    { skill: 'graphify', outcome: 'accepted' },
+    { skill: 'session-summary', outcome: 'skipped' },
+  ],
+  laterFixes: [{ date: '2026-11-10T10:14:00Z', subject: 'fix: search keeps the last page on exact multiples' }],
+  agents: [
+    { name: 'final-reviewer', actual: { 'claude-opus-5-5/high': 1 } },
+    { name: 'implementer', actual: { 'claude-opus-5-5/medium': 4 } },
+    { name: 'task-reviewer', actual: { 'claude-opus-5-5/high': 5 } },
+  ],
+  main: { model: 'claude-opus-5-5', effort: 'medium' },
+  phases: [
+    { name: 'plan_writing', cost: 1.1 },
+    { name: 'implement', cost: 3.4 },
+    { name: 'task_review', cost: 1.6 },
+    { name: 'final_review', cost: 1.0 },
+  ],
 };
 
 /** The before-steps run: its timeline is start, an empty final review, end, as the API gives it. */
-export const runBeforeSteps: RunResponse = {
+export const runBeforeSteps: RunPageResponse = {
   facts: oldRun,
   timeline: [
     { kind: 'start', label: 'Start', at: null, conflicts: null, tasks: [], steps: [] },
@@ -219,4 +239,12 @@ export const runBeforeSteps: RunResponse = {
   context: null,
   categoryLabels,
   warnings: [],
+  session: null,
+  handoffTo: null,
+  related: [],
+  offers: [],
+  laterFixes: [],
+  agents: [],
+  main: null,
+  phases: [],
 };
