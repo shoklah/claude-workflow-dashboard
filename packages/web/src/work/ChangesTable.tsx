@@ -14,6 +14,10 @@ import {
   projectLabel,
 } from '../lib/format.ts';
 
+/** The minimum widths a goal's page lines up its Changes and Sessions lists by, the one above the other: Stage over
+ * Step, Last activity over Started, Findings over Length (the cost columns already match). */
+export const ALIGNED = { stage: 'min-w-29', time: 'min-w-28', count: 'min-w-22' };
+
 const COLUMNS: ListColumn<ChangeRow>[] = [
   {
     id: 'change',
@@ -40,15 +44,16 @@ const COLUMNS: ListColumn<ChangeRow>[] = [
     ),
   },
   { id: 'path', header: 'Path', fold: true, value: (c) => pathLabel(c.path), cell: (c) => pathLabel(c.path) },
-  { id: 'stage', header: 'Stage', value: (c) => STAGE_LABELS[c.stage], cell: (c) => STAGE_LABELS[c.stage] },
+  { id: 'stage', header: 'Stage', width: ALIGNED.stage, value: (c) => STAGE_LABELS[c.stage], cell: (c) => STAGE_LABELS[c.stage] },
   {
     id: 'activity',
     header: 'Last activity',
     fold: true,
+    width: ALIGNED.time,
     value: (c) => (c.lastActivity === null ? null : parseTime(c.lastActivity).getTime()),
     cell: (c) => (c.lastActivity ? <Time iso={c.lastActivity} /> : <Unknown />),
   },
-  { id: 'findings', header: 'Findings', num: true, value: (c) => c.findings, cell: (c) => <Num value={c.findings} /> },
+  { id: 'findings', header: 'Findings', num: true, width: ALIGNED.count, value: (c) => c.findings, cell: (c) => <Num value={c.findings} /> },
   {
     id: 'cost',
     header: 'Est. cost ($)',

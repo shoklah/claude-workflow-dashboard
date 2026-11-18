@@ -94,6 +94,13 @@ export const Full: Story = {
       'Session',
       'Step',
     ]);
+    // The Sessions list lines up under the Changes list: Step under Stage, Started under Last activity, Length under
+    // Findings.
+    const left = (table: HTMLElement, name: string) =>
+      Math.round(within(table).getByRole('columnheader', { name }).getBoundingClientRect().left);
+    for (const [above, below] of [['Stage', 'Step'], ['Last activity', 'Started'], ['Findings', 'Length']])
+      await expect(left(sessions, below)).toBe(left(changes, above));
+
     // A session opens to its change; one in no change leaves the fact out.
     const toggles = within(sessions).getAllByRole('button', { name: /^Details of / });
     await userEvent.click(toggles[0]);

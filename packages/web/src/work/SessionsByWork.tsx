@@ -6,6 +6,7 @@ import { SessionLink } from '../components/SessionLink.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { STAGE_LABELS, formatDollars, formatLength, sessionName } from '../lib/format.ts';
 import { CHANGE_FACT } from '../runs/RunsTable.tsx';
+import { ALIGNED } from './ChangesTable.tsx';
 import { MODEL_FACT } from '../sessions/SessionsTable.tsx';
 
 /** Who started a session: the starter's title, "Another session" when showing mode hides it or it isn't stored, else the dash read
@@ -24,15 +25,16 @@ const COLUMNS: ListColumn<WorkSessionRow>[] = [
     value: (s) => sessionName(s.title),
     cell: (s) => <SessionLink sessionKey={s.key} title={s.title} />,
   },
-  { id: 'step', header: 'Step', value: (s) => STAGE_LABELS[s.step], cell: (s) => STAGE_LABELS[s.step] },
+  { id: 'step', header: 'Step', width: ALIGNED.stage, value: (s) => STAGE_LABELS[s.step], cell: (s) => STAGE_LABELS[s.step] },
   {
     id: 'started',
     header: 'Started',
     fold: true,
+    width: ALIGNED.time,
     value: (s) => parseTime(s.start).getTime(),
     cell: (s) => <Time iso={s.start} />,
   },
-  { id: 'length', header: 'Length', num: true, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },
+  { id: 'length', header: 'Length', num: true, width: ALIGNED.count, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },
   {
     id: 'cost',
     header: 'Est. cost ($)',
