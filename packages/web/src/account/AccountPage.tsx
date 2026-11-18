@@ -1,28 +1,47 @@
 import { useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Trash2 } from 'lucide-react';
 import { parseTime, type AccountResponse } from '@cwd/shared';
-import { signOut, useLiveQuery } from '../api.ts';
+import { deleteAccount, signOut, useLiveQuery, useStatus } from '../api.ts';
 import { Pairs, PageTitle, Section, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog.tsx';
 import { formatDay } from '../lib/format.ts';
 import { CollectorPanel } from './CollectorPanel.tsx';
+import { LabellerPanel } from './LabellerPanel.tsx';
+import { ShownProjectsPanel } from './ShownProjectsPanel.tsx';
+import { ViewersPanel } from './ViewersPanel.tsx';
 
-/** Hosted mode's Account page: the collector's panel, then who is signed in and since when, with Sign out. */
+/**
+ * Hosted mode's Account page: the Collector, Labeller, Viewers and Shown projects panels, then who is signed in and
+ * since when, with Sign out and Delete account (behind a confirming dialog). While viewing another account the panels
+ * are left out, as every control that POSTs is, and only Sign out stays.
+ */
 export function AccountPage() {
   const account = useLiveQuery<AccountResponse>('/api/account');
+  const viewing = useStatus().data?.account?.viewing;
   const data = account.data;
-  const [signOutFailed, setSignOutFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
-  // Ends the session, then loads the sign-in page afresh, so no cached data of the account stays in the page; a failure
-  // shows in fixed words.
-  async function leave() {
-    setSignOutFailed(false);
+  // Ends the session (signing out, or deleting the account), then loads the sign-in page afresh, so no cached data of
+  // the account stays in the page; a failure shows as `failure`, never the error's text.
+  async function leave(post: () => Promise<void>, failure: string) {
+    setFailed(null);
+    setConfirming(false);
     setLeaving(true);
     try {
-      await signOut();
+      await post();
     } catch {
-      setSignOutFailed(true);
+      setFailed(failure);
       setLeaving(false);
       return;
     }
@@ -35,9 +54,14 @@ export function AccountPage() {
       {account.isError && <State error>Couldn't load your account. Reload the page to try again.</State>}
       {data && (
         <>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <CollectorPanel account={data} />
-          </div>
+          {!viewing && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <CollectorPanel account={data} />
+              <LabellerPanel account={data} />
+              <ViewersPanel account={data} />
+              <ShownProjectsPanel />
+            </div>
+          )}
           <Section title="Your account">
             <Pairs
               inline="beside"
@@ -47,13 +71,40 @@ export function AccountPage() {
                 ['Account since', formatDay(parseTime(data.createdAt))],
               ]}
             />
-            <div>
-              <Button variant="outline" onClick={leave} disabled={leaving}>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => leave(signOut, "Couldn't sign out. Try again.")} disabled={leaving}>
                 <LogOut aria-hidden />
                 Sign out
               </Button>
+              {!viewing && (
+                <Button variant="destructive" onClick={() => setConfirming(true)} disabled={leaving}>
+                  <Trash2 aria-hidden />
+                  Delete account
+                </Button>
+              )}
             </div>
-            {signOutFailed && <State error>Couldn't sign out. Try again.</State>}
+            {failed && <State error>{failed}</State>}
+            <Dialog open={confirming} onOpenChange={setConfirming}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete your account?</DialogTitle>
+                  <DialogDescription>
+                    Your dashboard's data, collector tokens, viewers and Anthropic key are deleted. It can't be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button
+                    variant="destructive"
+                    onClick={() => leave(deleteAccount, "Couldn't delete your account. Try again.")}
+                  >
+                    Delete account
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Section>
         </>
       )}

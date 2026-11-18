@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import type { ShowingRequest, StatusResponse, TokenResponse } from '@cwd/shared';
+import type { LabellerRequest, ShowingRequest, StatusResponse, TokenResponse } from '@cwd/shared';
 
 /** A GET the API answered with an error status, which the page can tell apart (a 404 is an unknown key). */
 export class ApiError extends Error {
@@ -90,6 +90,33 @@ export async function revokeToken(id: number): Promise<void> {
 /** Forgets the machine that feeds the account, so the next collect may come from another. */
 export async function resetCollector(): Promise<void> {
   await post('/api/account/reset-collector');
+}
+
+/** Keeps these projects, by key, as the list showing mode and viewers show; showing mode stays as it is, and an empty
+ * list turns it off. */
+export async function saveShownProjects(projects: string[]): Promise<void> {
+  await post('/api/showing/projects', { projects } satisfies ShowingRequest);
+}
+
+/** Sets the account's labeller (hosted mode): its model and daily max, and its Anthropic key (absent keeps the stored
+ * one, null removes it). */
+export async function saveLabeller(labeller: LabellerRequest): Promise<void> {
+  await post('/api/account/labeller', labeller);
+}
+
+/** Grants a GitHub login a read-only view of the account. */
+export async function addViewer(login: string): Promise<void> {
+  await post('/api/account/viewers', { login });
+}
+
+/** Takes back a viewer's grant, by login. */
+export async function removeViewer(login: string): Promise<void> {
+  await post(`/api/account/viewers/${encodeURIComponent(login)}/remove`);
+}
+
+/** Deletes the caller's account and its data, and ends the session. */
+export async function deleteAccount(): Promise<void> {
+  await post('/api/account/delete');
 }
 
 /** Ends the session (hosted mode). */

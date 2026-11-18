@@ -300,10 +300,10 @@
     }
 }
 
-/* Every button is a pill (DESIGN.md), and no call site sets its radius. Unlayered, so it wins over the generated
-   Button's `rounded-md` utilities; matched by its variant and size, since a Radix trigger's `asChild` (the Menu
-   button) replaces its `data-slot`. */
-[data-variant][data-size] {
+/* Every button and text field is a pill (DESIGN.md), as `select` is, and no call site sets its radius. Unlayered, so
+   it wins over the generated Button's and Input's `rounded-md` utilities; a button matched by its variant and size,
+   since a Radix trigger's `asChild` (the Menu button) replaces its `data-slot`. */
+[data-variant][data-size], [data-slot='input'] {
   border-radius: var(--radius-control);
 }
 

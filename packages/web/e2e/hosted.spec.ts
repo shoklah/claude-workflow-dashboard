@@ -90,6 +90,55 @@ test('/account: a token created shows once and adds a row, and revoking it remov
   await expect(collector.getByText('No tokens. Create one for your collector.')).toBeVisible();
 });
 
+test('/account: setting a key shows Set, and removing it brings the field back', async ({ page }) => {
+  await openAccount(page);
+  const labeller = page.getByRole('region', { name: 'Labeller', exact: true });
+  await labeller.getByLabel('Anthropic key').fill('sk-ant-invented-e2e');
+  await labeller.getByRole('button', { name: 'Save' }).click();
+  await expect(labeller.getByText('Set', { exact: true })).toBeVisible();
+  await expect(labeller.getByText('No key: findings stay unlabelled.')).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await labeller.getByRole('button', { name: 'Remove' }).click();
+  await expect(labeller.getByLabel('Anthropic key')).toBeVisible();
+  await expect(labeller.getByText('No key: findings stay unlabelled.')).toBeVisible();
+});
+
+test('/account: adding a viewer adds its row, and removing it empties the table', async ({ page }) => {
+  await openAccount(page);
+  const viewers = page.getByRole('region', { name: 'Viewers', exact: true });
+  const table = viewers.getByRole('table', { name: 'Viewers' });
+  await expect(table.getByText('No viewers.')).toBeVisible();
+  await viewers.getByRole('textbox', { name: 'GitHub login' }).fill('jules-b');
+  await viewers.getByRole('button', { name: 'Add viewer' }).click();
+  await expect(table.getByRole('row').filter({ hasText: 'jules-b' })).toHaveCount(1);
+  await page.waitForLoadState('networkidle');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await table.getByRole('button', { name: 'Remove' }).click();
+  await expect(table.getByText('No viewers.')).toBeVisible();
+});
+
+test('/account: saving shown projects keeps them ticked and showing mode off', async ({ page }) => {
+  await openAccount(page);
+  const shown = page.getByRole('region', { name: 'Shown projects', exact: true });
+  const first = shown.getByRole('checkbox').first();
+  await expect(first).not.toBeChecked();
+  await first.check();
+  await shown.getByRole('button', { name: 'Save' }).click();
+  await page.waitForLoadState('networkidle');
+  await page.reload();
+  await expect(shown.getByRole('checkbox').first()).toBeChecked();
+  const rail = page.getByRole('complementary');
+  await expect(rail.getByRole('switch', { name: 'Showing mode' })).not.toBeChecked();
+  await expect(rail.getByText(/^Showing:/)).toHaveCount(0);
+  // Empties the kept list again, as the fixtures left it.
+  await shown.getByRole('checkbox').first().uncheck();
+  await shown.getByRole('button', { name: 'Save' }).click();
+  await page.waitForLoadState('networkidle');
+  await page.reload();
+  await expect(shown.getByRole('checkbox').first()).not.toBeChecked();
+});
+
 test('Sign out lands on the sign-in page, and a page then redirects there', async ({ page }) => {
   await openAccount(page);
   await page.getByRole('button', { name: 'Sign out' }).click();

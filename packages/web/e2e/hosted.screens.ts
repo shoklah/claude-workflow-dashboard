@@ -25,6 +25,7 @@ for (const width of [1440, 375]) {
     await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
     await page.goto('/account');
     await expect(page.getByText('No tokens. Create one for your collector.')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Shown projects' }).getByRole('checkbox').first()).toBeVisible();
     await expect(page).toHaveScreenshot(`account-${width}.png`);
   });
 }

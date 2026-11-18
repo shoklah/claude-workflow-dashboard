@@ -3,7 +3,7 @@ import type { AccountResponse, ShowingResponse, StatusResponse } from '@cwd/shar
 // Invented answers of GET /api/account (hosted mode) for the Account page's stories, and of the status and showing
 // mode for a caller who may view another account.
 
-/** A machine feeds the account; two tokens, the older never used. */
+/** A machine feeds the account; two tokens, the older never used; two viewers; a key set. */
 export const accountFull: AccountResponse = {
   login: 'rowan-k',
   createdAt: '2026-10-02T09:00:00.000Z',
@@ -13,11 +13,11 @@ export const accountFull: AccountResponse = {
     { id: 2, createdAt: '2026-11-12T09:14:00.000Z', lastUsedAt: '2026-11-18T00:41:00.000Z' },
     { id: 1, createdAt: '2026-10-30T18:02:00.000Z', lastUsedAt: null },
   ],
-  viewers: [],
+  viewers: ['jules-b', 'sam-okafor'],
   labeller: { keySet: true, model: 'claude-haiku-5-5', dailyMax: 500 },
 };
 
-/** A new account: no collect, no machine, no tokens. */
+/** A new account: no collect, no machine, no tokens, no viewers, no key. */
 export const accountEmpty: AccountResponse = {
   login: 'rowan-k',
   createdAt: '2026-10-02T09:00:00.000Z',
@@ -49,4 +49,19 @@ export const viewingStatus: StatusResponse = {
 export const viewedShowing: ShowingResponse = {
   on: true,
   projects: [{ key: '1a2b3c4d5e6f7081', name: 'lantern-notes', picked: true }],
+};
+
+/** `/api/showing` on the caller's own dashboard, showing mode off: two projects, both kept as shown. */
+export const ownShowing: ShowingResponse = {
+  on: false,
+  projects: [
+    { key: '1a2b3c4d5e6f7081', name: 'lantern-notes', picked: true },
+    { key: '2b3c4d5e6f708192', name: 'tidepool-api', picked: true },
+  ],
+};
+
+/** The same, with none kept. */
+export const ownShowingNone: ShowingResponse = {
+  on: false,
+  projects: ownShowing.projects.map((project) => ({ ...project, picked: false })),
 };

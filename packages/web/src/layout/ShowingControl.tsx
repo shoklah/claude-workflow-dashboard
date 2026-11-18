@@ -16,6 +16,35 @@ import {
 import { Switch } from '../components/ui/switch.tsx';
 import { NOTICE } from '../lib/format.ts';
 
+/** A list of projects to tick, by name, `picked` holding the ticked keys: showing mode's picker and the Account page's
+ * Shown projects alike. */
+export function ProjectPicks({
+  projects,
+  picked,
+  onChange,
+}: {
+  projects: { key: string; name: string }[];
+  picked: string[];
+  onChange: (picked: string[]) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1 text-sm">
+      {projects.map((project) => (
+        <label key={project.key} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={picked.includes(project.key)}
+            onChange={(e) =>
+              onChange(e.target.checked ? [...picked, project.key] : picked.filter((key) => key !== project.key))
+            }
+          />
+          {project.name}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Showing mode: while off, a switch that opens the project picker; while on, an orange bar naming what it shows. With
  * `stacked` (the rail's foot), the bar is a column: the names wrapping over a full-width "Stop showing". While
@@ -68,20 +97,7 @@ export function ShowingControl({ stacked, viewing }: { stacked?: boolean; viewin
               counts only in totals and charts. Paths and session IDs are never sent while this is on.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-1 text-sm">
-            {showing.data?.projects.map((project) => (
-              <label key={project.key} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={picked.includes(project.key)}
-                  onChange={(e) =>
-                    setPicked(e.target.checked ? [...picked, project.key] : picked.filter((key) => key !== project.key))
-                  }
-                />
-                {project.name}
-              </label>
-            ))}
-          </div>
+          <ProjectPicks projects={showing.data?.projects ?? []} picked={picked} onChange={setPicked} />
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
