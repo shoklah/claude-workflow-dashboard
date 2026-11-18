@@ -505,10 +505,11 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     app.all('/api/account/delete', postOnly);
 
     // Slice 2b, task 3: the caller's labeller, its Anthropic key stored only sealed (setLabeller); an absent key keeps
-    // the stored one, null removes it.
+    // the stored one, null removes it; a key is stored trimmed, and a blank one refused.
     app.post('/api/account/labeller', async (c) => {
       const body = await c.req.json().catch(() => null);
-      const { key, model, dailyMax } = body ?? {};
+      const { model, dailyMax } = body ?? {};
+      const key = typeof body?.key === 'string' ? body.key.trim() : body?.key;
       const keyOk = key === undefined || key === null || (typeof key === 'string' && key.length > 0);
       const maxOk = Number.isInteger(dailyMax) && dailyMax >= 1 && dailyMax <= 10000;
       if (!keyOk || !LABELLER_MODELS.includes(model) || !maxOk) return c.body(null, 400);

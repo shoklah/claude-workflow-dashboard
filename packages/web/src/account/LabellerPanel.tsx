@@ -12,7 +12,8 @@ const LABEL = 'text-muted-foreground';
 /**
  * The account's labeller: its Anthropic key, shown only as "Set" with Replace and Remove, or a password field when none
  * is set (or while replacing); its model and daily max; Save. A typed key lives only in this panel's state and leaves
- * it, the field's value included, as soon as Save sends it.
+ * it, the field's value included, as soon as Save sends it, trimmed (one of only spaces isn't sent). Remove sends the
+ * saved model and daily max, never the form's unsaved ones.
  */
 export function LabellerPanel({ account }: { account: AccountResponse }) {
   const { labeller } = account;
@@ -25,10 +26,10 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
   const modelId = useId();
   const maxId = useId();
 
-  function save(request: Pick<LabellerRequest, 'key'>) {
+  function save(request: LabellerRequest) {
     setKey('');
     setReplacing(false);
-    send(() => saveLabeller({ ...request, model, dailyMax: Number(dailyMax) }), "Couldn't save the labeller. Try again.");
+    send(() => saveLabeller(request), "Couldn't save the labeller. Try again.");
   }
 
   return (
@@ -37,7 +38,7 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
         className="flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault();
-          save({ key: key || undefined });
+          save({ key: key.trim() || undefined, model, dailyMax: Number(dailyMax) });
         }}
       >
         <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center justify-items-start gap-x-4 gap-y-3 text-sm">
@@ -49,7 +50,15 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
                 <Button type="button" variant="outline" size="xs" disabled={pending} onClick={() => setReplacing(true)}>
                   Replace
                 </Button>
-                <Button type="button" variant="outline" size="xs" disabled={pending} onClick={() => save({ key: null })}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  disabled={pending}
+                  onClick={() =>
+                    save({ key: null, model: labeller.model as LabellerRequest['model'], dailyMax: labeller.dailyMax })
+                  }
+                >
                   Remove
                 </Button>
               </div>

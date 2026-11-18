@@ -68,6 +68,7 @@ components:
   panel: tinted glass with a white sheen, 1px bright edge, inner top highlight, soft drop shadow, panel radius
   button: pill; the pressed option is solid primary, the others clear glass with an edge
   select: pill, clear glass, a drawn chevron inset like the text
+  input: pill, as buttons and selects
   table: rows on the panel, hairline row borders, header row slightly lighter, row hover lightens
   menu: a glass rail, 224px and window-tall; named sections of icon and label entries, the current page a lighter pill with full-weight text; the brand on top, showing mode, Refresh and the import time at its foot
   chart: drawn on the panel, recessive grid, the categorical palette below
@@ -128,13 +129,14 @@ With `prefers-reduced-transparency: reduce`, panels become solid (`#2a1d5e` / `#
 
 ## Shapes
 
-Panels and notice bars use a 1.25rem radius; buttons, selects and pressed options are pills; table rows are square inside their panel; legend and table swatches are 3px-rounded squares. Nothing else is rounded.
+Panels and notice bars use a 1.25rem radius; buttons, selects, text fields and pressed options are pills; table rows are square inside their panel; legend and table swatches are 3px-rounded squares. Nothing else is rounded.
 
 ## Components
 
 - **Panel:** the glass recipe above. Charts, tables and the workflow diagram sit on panels; prose notes do not.
 - **Button and option switch:** pills. In a switch, the pressed option is solid primary and the others are clear glass with an edge; a disabled option is 50% opacity with its tooltip still reachable.
 - **Select:** a clear glass pill with a drawn chevron in secondary ink, inset from the right as far as the text is from the left; its open list uses the system's popup.
+- **Text field:** a pill, as buttons and selects are.
 - **Table:** header row a slightly lighter glass band, header text 600; hairline row borders; row hover lightens the row by one glass step. Numeric columns right-aligned with tabular figures; the unit goes in the header; the one cell that carries its own unit is a session's length ("45 min", "7 h 46", "3 d 11 h"). A table that scrolls sideways fades at the edge where columns are hidden.
 - **Menu rail:** glass, 224px; section names in the small role in secondary ink, 24px between sections; an entry is a 16px icon and its label, the current page a lighter pill with 600 weight, the rest 400 with hover; an icon never carries state; the brand on top, and at the foot, above a hairline, showing mode, Refresh and the import time.
 - **Heatmap cell:** the ramp under Chart colours, its number written in it.

@@ -105,6 +105,40 @@ export const Remove: Story = {
   },
 };
 
+/**
+ * Remove posts the saved model and daily max, whatever the form's unsaved fields hold: an emptied daily max doesn't
+ * block it.
+ */
+export const RemoveIgnoresUnsavedFields: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/account/labeller': 204 });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const panel = within(await canvas.findByRole('region', { name: 'Labeller' }));
+    await userEvent.selectOptions(panel.getByRole('combobox', { name: 'Model' }), 'Sonnet 5.5');
+    await userEvent.clear(panel.getByRole('spinbutton', { name: 'Daily max (findings)' }));
+    await userEvent.click(panel.getByRole('button', { name: 'Remove' }));
+    await posted({ key: null, model: 'claude-haiku-5-5', dailyMax: 500 });
+  },
+};
+
+/** A key is sent trimmed, and one of only spaces isn't sent at all. */
+export const BlankKey: Story = {
+  args: { account: accountEmpty },
+  beforeEach: () => {
+    mockApi({ '/api/account/labeller': 204 });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const panel = within(await canvas.findByRole('region', { name: 'Labeller' }));
+    await userEvent.type(panel.getByLabelText('Anthropic key'), '   ');
+    await userEvent.click(panel.getByRole('button', { name: 'Save' }));
+    await posted({ model: 'claude-haiku-5-5', dailyMax: 500 });
+    await userEvent.type(panel.getByLabelText('Anthropic key'), ` ${KEY}  `);
+    await userEvent.click(panel.getByRole('button', { name: 'Save' }));
+    await posted({ key: KEY, model: 'claude-haiku-5-5', dailyMax: 500 });
+  },
+};
+
 /** While the save runs, the panel's actions are disabled. */
 export const Pending: Story = {
   beforeEach: () => {

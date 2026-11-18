@@ -152,7 +152,13 @@ describe('POST /api/account/labeller', () => {
     expect(labellerAccounts(hosted.hosted.accounts)).toEqual([]);
   });
 
-  test('refuses another model, a daily max outside 1..10000 or a key that is not a string', async () => {
+  test('stores a key trimmed of the spaces around it', async () => {
+    expect((await postLabeller({ key: `  ${KEY} `, model: MODEL, dailyMax: 500 })).status).toBe(204);
+    const [entry] = labellerAccounts(hosted.hosted.accounts);
+    expect(openKey(SECRET, entry!.sealedKey, A.id)).toBe(KEY);
+  });
+
+  test('refuses another model, a daily max outside 1..10000 or a key that is not a string or is blank', async () => {
     for (const body of [
       { key: KEY, model: 'claude-opus-5-5', dailyMax: 10 },
       { key: KEY, model: MODEL, dailyMax: 0 },
@@ -160,6 +166,7 @@ describe('POST /api/account/labeller', () => {
       { key: KEY, model: MODEL, dailyMax: 1.5 },
       { key: 7, model: MODEL, dailyMax: 10 },
       { key: '', model: MODEL, dailyMax: 10 },
+      { key: '   ', model: MODEL, dailyMax: 10 },
       null,
     ]) {
       expect((await postLabeller(body)).status).toBe(400);
