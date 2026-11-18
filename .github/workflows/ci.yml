@@ -29,3 +29,17 @@ jobs:
       - run: pnpm --filter @cwd/web exec playwright test --project=checks --project=checks-dark
       # The screenshot comparisons, in the Playwright container pinned to the installed @playwright/test version.
       - run: pnpm test:screens
+
+  # The server and shared tests on macOS too, since the defaults differ by platform.
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm vitest run --project @cwd/server --project @cwd/shared

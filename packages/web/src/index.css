@@ -221,16 +221,17 @@
     --on-shade-5: #10162f;
 }
 
-@property --cue-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
-@property --cue-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --cue-direction { syntax: '*'; inherits: false; }
+/* The edge cue: a scroller's edge fades where more is hidden, along `--cue-direction` (to the right unless a list sets
+   it): the far edge at the start, both once scrolled, the near edge at the end. Each step writes its whole mask in fixed
+   lengths, since Chrome substitutes a keyframe's var()s once, when the animation starts: a mask built from animated
+   lengths keeps its first shape. A gradient doesn't interpolate, so an edge switches at once, half a percent into the
+   scroll or before its end. The mask lives only in the animation, so a table that fits (an inactive timeline) has none:
+   a mask would clip the panel's shadow. */
 @keyframes scroll-cue {
-    0% { --cue-start: 0px; --cue-end: 3rem; }
-    8% { --cue-start: 3rem; --cue-end: 3rem; }
-    92% { --cue-start: 3rem; --cue-end: 3rem; }
-    100% { --cue-start: 3rem; --cue-end: 0px; }
-    /* The mask lives only in the animation, so a table that fits (an inactive timeline) has none: a mask would clip the
-       panel's shadow. */
-    0%, 100% { mask-image: linear-gradient(to right, transparent, #000 var(--cue-start), #000 calc(100% - var(--cue-end)), transparent); }
+    0% { mask-image: linear-gradient(var(--cue-direction, to right), #000 calc(100% - 3rem), transparent); }
+    1%, 99% { mask-image: linear-gradient(var(--cue-direction, to right), transparent, #000 3rem, #000 calc(100% - 3rem), transparent); }
+    100% { mask-image: linear-gradient(var(--cue-direction, to right), transparent, #000 3rem); }
 }
 
 /* A panel: DESIGN.md's glass recipe. */
@@ -282,6 +283,11 @@
     [data-slot='table-container'], [data-scroll-cue] {
       animation: scroll-cue linear both;
       animation-timeline: scroll(self inline);
+      }
+    /* A list that scrolls down (Home's feed) takes the same cue on its block axis: its foot fades while more is below. */
+    [data-scroll-cue='block'] {
+      animation-timeline: scroll(self block);
+      --cue-direction: to bottom;
       }
     }
   [data-slot='table-header'] {
