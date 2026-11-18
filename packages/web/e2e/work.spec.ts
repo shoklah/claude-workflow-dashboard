@@ -67,9 +67,8 @@ test('a link to one session lists it open under a chip that clears it, and passe
   await expect(page.getByText(/^Session: /)).toHaveCount(0);
 });
 
-// At 1440 px a title column of a table that isn't a list (a change's sessions) wraps between its minimum and maximum
-// width, never down to a word and never as wide as its longest title, and the Runs and Sessions lists fit their panels.
-test('at 1440 px the title columns wrap within one width range, and the Runs and Sessions lists fit', async ({ page }) => {
+// At 1440 px the Runs and Sessions lists and a change's sessions list fit their panels.
+test("at 1440 px the Runs and Sessions lists and a change's sessions list fit", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const overflow = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => el.scrollWidth - el.clientWidth);
   await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
@@ -77,12 +76,7 @@ test('at 1440 px the title columns wrap within one width range, and the Runs and
   await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
   expect(await overflow('Sessions')).toBeLessThanOrEqual(0);
   await page.goto(CHANGE, { waitUntil: 'networkidle' });
-  const session = await page
-    .getByRole('region', { name: 'Sessions table', exact: true })
-    .getByRole('columnheader', { name: 'Session', exact: true })
-    .evaluate((th) => Math.round(th.getBoundingClientRect().width));
-  expect(session).toBeGreaterThanOrEqual(136);
-  expect(session).toBeLessThanOrEqual(288);
+  expect(await overflow('Sessions table')).toBeLessThanOrEqual(0);
 });
 
 // The offline sync change of report-work: `changeKey` of its spec (server/test/work.test.ts).

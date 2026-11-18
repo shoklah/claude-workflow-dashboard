@@ -1,8 +1,9 @@
-import type { ChangeRow } from '@cwd/shared';
+import { useMemo } from 'react';
+import { parseTime, type ChangeRow } from '@cwd/shared';
 import { ChangeLink } from '../components/ChangeLink.tsx';
-import { EmptyRow, NUM, Num, Unknown } from '../components/Num.tsx';
+import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
+import { Num, Unknown } from '../components/Num.tsx';
 import { Term } from '../components/Panel.tsx';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   STAGE_LABELS,
@@ -13,67 +14,71 @@ import {
   projectLabel,
 } from '../lib/format.ts';
 
-/** The table's columns, with the Project column. */
-const COLUMN_COUNT = 9;
+const COLUMNS: ListColumn<ChangeRow>[] = [
+  {
+    id: 'change',
+    header: 'Change',
+    wide: true,
+    names: true,
+    value: (c) => c.title,
+    // A title of one long word (a branch) breaks inside it rather than widen a narrow list.
+    cell: (c) => <ChangeLink changeKey={c.key} title={c.title} className="wrap-anywhere" />,
+  },
+  {
+    id: 'project',
+    header: 'Project',
+    fold: true,
+    value: (c) => projectLabel(c.project),
+    cell: (c) => (
+      <>
+        {projectLabel(c.project)}
+        {c.otherCount > 0 && (
+          <Term tip={otherProjectsLabel(c.otherProjects, c.otherCount)} className="ml-2">
+            {otherCountLabel(c.otherCount)}
+          </Term>
+        )}
+      </>
+    ),
+  },
+  { id: 'path', header: 'Path', fold: true, value: (c) => pathLabel(c.path), cell: (c) => pathLabel(c.path) },
+  { id: 'stage', header: 'Stage', value: (c) => STAGE_LABELS[c.stage], cell: (c) => STAGE_LABELS[c.stage] },
+  {
+    id: 'activity',
+    header: 'Last activity',
+    fold: true,
+    value: (c) => (c.lastActivity === null ? null : parseTime(c.lastActivity).getTime()),
+    cell: (c) => (c.lastActivity ? <Time iso={c.lastActivity} /> : <Unknown />),
+  },
+  { id: 'findings', header: 'Findings', num: true, value: (c) => c.findings, cell: (c) => <Num value={c.findings} /> },
+  {
+    id: 'cost',
+    header: 'Est. cost ($)',
+    num: true,
+    fold: true,
+    value: (c) => c.cost,
+    cell: (c) => <Num value={c.cost} format={formatDollars} />,
+  },
+];
+
+const FACTS: ListFact<ChangeRow>[] = [
+  ['Runs', (c) => <Num value={c.runs} />],
+  ['Sessions', (c) => <Num value={c.sessions} />],
+];
 
 /** A list of changes, as the API orders them, in a region named `label`: each title linking to its change's page, then
- * (with `project`) its home project with "+N" for its other projects, its path, stage, last activity and whole totals. */
+ * (with `project`) its home project with "+N" for its other projects, its path, stage, last activity, findings and cost,
+ * a row opening to its runs and sessions; every number a whole change's. */
 export function ChangesTable({ rows, project, label }: { rows: ChangeRow[]; project: boolean; label: string }) {
+  const columns = useMemo(() => (project ? COLUMNS : COLUMNS.filter((c) => c.id !== 'project')), [project]);
   return (
-    <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': label }}>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Change</TableHead>
-          {project && <TableHead>Project</TableHead>}
-          <TableHead>Path</TableHead>
-          <TableHead>Stage</TableHead>
-          <TableHead>Last activity</TableHead>
-          <TableHead className={NUM}>Runs</TableHead>
-          <TableHead className={NUM}>Sessions</TableHead>
-          <TableHead className={NUM}>Findings</TableHead>
-          <TableHead className={NUM}>Est. cost ($)</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.length === 0 && (
-          <EmptyRow columns={project ? COLUMN_COUNT : COLUMN_COUNT - 1}>No changes in this period.</EmptyRow>
-        )}
-        {rows.map((row) => (
-          <TableRow key={row.key}>
-            <TableCell className="font-medium">
-              {/* As wide as its title up to the column's maximum, so it wraps only past it, never down to a word. */}
-              <ChangeLink changeKey={row.key} title={row.title} className="inline-block w-max max-w-80 whitespace-normal" />
-            </TableCell>
-            {project && (
-              <TableCell className="text-muted-foreground">
-                {projectLabel(row.project)}
-                {row.otherCount > 0 && (
-                  <Term tip={otherProjectsLabel(row.otherProjects, row.otherCount)} className="ml-2">
-                    {otherCountLabel(row.otherCount)}
-                  </Term>
-                )}
-              </TableCell>
-            )}
-            <TableCell className="text-muted-foreground">{pathLabel(row.path)}</TableCell>
-            <TableCell className="text-muted-foreground">{STAGE_LABELS[row.stage]}</TableCell>
-            <TableCell className="text-muted-foreground tabular-nums">
-              {row.lastActivity ? <Time iso={row.lastActivity} /> : <Unknown />}
-            </TableCell>
-            <TableCell className={NUM}>
-              <Num value={row.runs} />
-            </TableCell>
-            <TableCell className={NUM}>
-              <Num value={row.sessions} />
-            </TableCell>
-            <TableCell className={NUM}>
-              <Num value={row.findings} />
-            </TableCell>
-            <TableCell className={NUM}>
-              <Num value={row.cost} format={formatDollars} />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataList
+      rows={rows}
+      rowKey={(c) => c.key}
+      name={(c) => c.title}
+      columns={columns}
+      facts={FACTS}
+      label={label}
+      empty="No changes in this period."
+    />
   );
 }
