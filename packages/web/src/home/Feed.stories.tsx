@@ -34,6 +34,14 @@ export const Empty: Story = {
 /** Full: finished runs and new warnings, newest first, each led by its branch; free text shows as text, never as HTML. */
 export const Full: Story = {
   args: { items: fullHome.feed },
+  // In Home's column from lg (`lg:w-72`), where the title's row is tightest.
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvas, canvasElement, userEvent }) => {
     const items = within(canvas.getByRole('list')).getAllByRole('listitem');
     await expect(items).toHaveLength(4);

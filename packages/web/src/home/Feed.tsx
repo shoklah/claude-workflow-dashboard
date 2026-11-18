@@ -59,7 +59,7 @@ function Item({ item }: { item: FeedItem }) {
 }
 
 /** What's new since the last look (finished runs, first-seen warnings), and "Mark all seen", an icon, to start again
- * from now: Home's side column, sticky from lg, its list scrolling in its own region. */
+ * from now; it shrinks to the column Home gives it, its list scrolling in its own region. */
 export function Feed({ items }: { items: FeedItem[] }) {
   const queryClient = useQueryClient();
   async function onMarkAllSeen() {
@@ -81,7 +81,7 @@ export function Feed({ items }: { items: FeedItem[] }) {
           </Tooltip>
         )
       }
-      className="text-sm lg:sticky lg:top-3 lg:max-h-[calc(100dvh-1.5rem)] lg:w-72 lg:flex-none"
+      className="min-h-0 text-sm"
     >
       {items.length === 0 ? (
         <p className="text-muted-foreground">Nothing new. Finished runs and new warnings show here until you mark them seen.</p>
