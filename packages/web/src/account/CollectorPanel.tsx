@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Copy } from 'lucide-react';
 import type { AccountResponse } from '@cwd/shared';
 import { createToken, resetCollector, revokeToken } from '../api.ts';
@@ -16,6 +15,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
+import { useSend } from './send.ts';
 
 const COLUMN_COUNT = 3;
 
@@ -26,24 +26,8 @@ const COLUMN_COUNT = 3;
  * in fixed words.
  */
 export function CollectorPanel({ account }: { account: AccountResponse }) {
-  const queryClient = useQueryClient();
   const [token, setToken] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
-
-  // Each POST changes the account, so its data is read again; its failure shows as `failure`, never the error's text.
-  async function send(post: () => Promise<void>, failure: string) {
-    setPending(true);
-    setFailed(null);
-    try {
-      await post();
-      await queryClient.invalidateQueries({ queryKey: ['/api/account'] });
-    } catch {
-      setFailed(failure);
-    } finally {
-      setPending(false);
-    }
-  }
+  const { pending, failed, send } = useSend();
 
   return (
     <Panel title="Collector">

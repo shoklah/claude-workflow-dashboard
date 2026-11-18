@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import type { ShowingResponse, StatusResponse } from '@cwd/shared';
+import { viewedShowing, viewingStatus } from '../test/account.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { Shell } from './Shell.tsx';
 
@@ -109,7 +110,10 @@ export const ShowingOn: Story = {
  * page and the import's time, with no Refresh. */
 export const Hosted: Story = {
   beforeEach: () => {
-    mockApi({ '/api/status': { ...ok, account: { login: 'rowan-k' } }, '/api/showing': showingOff });
+    mockApi({
+      '/api/status': { ...ok, account: { login: 'rowan-k', viewing: null, viewable: [], admin: false } },
+      '/api/showing': showingOff,
+    });
   },
   play: async ({ canvas, canvasElement }) => {
     const aside = within(rail(canvasElement));
@@ -117,5 +121,26 @@ export const Hosted: Story = {
     await expect(aside.getByRole('switch', { name: 'Showing mode' })).toBeVisible();
     await expect(rail(canvasElement).querySelector('time')).toHaveAttribute('datetime', LAST_GOOD);
     await expect(canvas.queryByRole('button', { name: 'Refresh' })).toBeNull();
+  },
+};
+
+/** Viewing another account: the rail's foot holds the switcher, the read-only bar naming her projects, the login and
+ * the import's time, in that order, with no showing mode switch and no "Stop showing". */
+export const Viewing: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': viewingStatus, '/api/showing': viewedShowing });
+  },
+  play: async ({ canvasElement }) => {
+    const aside = within(rail(canvasElement));
+    const select = await aside.findByRole('combobox', { name: 'Dashboard' });
+    await expect(select).toHaveDisplayValue('mika-ito');
+    const bar = await aside.findByText("mika-ito's projects: lantern-notes");
+    await expect(aside.getByText('Read-only')).toBeVisible();
+    await expect(aside.queryByRole('switch')).toBeNull();
+    await expect(aside.queryByRole('button', { name: 'Stop showing' })).toBeNull();
+    const login = aside.getByRole('link', { name: 'rowan-k' });
+    const time = rail(canvasElement).querySelector('time')!;
+    const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    await expect(follows(select, bar) && follows(bar, login) && follows(login, time)).toBe(true);
   },
 };

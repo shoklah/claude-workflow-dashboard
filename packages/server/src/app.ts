@@ -6,13 +6,13 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { Db } from './db/open.ts';
 import type { AccountFiles } from './hosted/account-files.ts';
-import { sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
-import { registerAuth, SESSION } from './hosted/auth.ts';
+import { isAdmin, SESSION, sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
+import { registerAuth } from './hosted/auth.ts';
 import type { GitHubClient } from './hosted/github.ts';
 import { registerRoutes } from './routes.ts';
 
-/** Hosted mode's deps: its public host and origin (`https://<publicHost>`), the accounts database, each account's file
- * and the admin's GitHub login. */
+/** Hosted mode's deps: its public host and origin (`https://<publicHost>`), the accounts database, each account's file,
+ * the admin's GitHub login, `EDWARD_SECRET` (which seals the accounts' Anthropic keys) and the label job's request. */
 export type HostedDeps = {
   publicHost: string;
   origin: string;
@@ -20,6 +20,8 @@ export type HostedDeps = {
   files: AccountFiles;
   admin: string;
   github: GitHubClient;
+  secret: Buffer;
+  requestLabels: () => void;
 };
 
 export type AppDeps = {
@@ -40,8 +42,12 @@ export type AppDeps = {
   hosted?: HostedDeps;
 };
 
-/** Each request's database and caller, set by createApp's middleware. */
-export type AppEnv = { Variables: { db: Db; account: Account | null } };
+/** Each request's database, caller and the owner it views (hosted mode; null for its own account), set by createApp's
+ * middleware. */
+export type AppEnv = { Variables: { db: Db; account: Account | null; viewing: Account | null } };
+
+// The POSTs a viewer may send: choosing what it views, and signing out.
+const VIEWER_WRITES = ['/api/view', '/auth/signout'];
 
 // Hosted paths open without a caller.
 const OPEN = ['/signin', '/favicon.svg'];
@@ -59,7 +65,9 @@ const OPEN_PREFIXES = ['/auth/', '/assets/'];
  * Hosted mode: the `Host` must be the public host; `/api/collect*` resolves only a bearer collector token (401 without
  * one); any other method but GET and HEAD needs `X-Dashboard-Refresh: 1` and the public origin, sent; then the session
  * cookie names the caller, whose own account file is the database. With no caller, the open paths pass, `/api/*` is a
- * 401 and any other path a redirect to `/signin`.
+ * 401 and any other path a redirect to `/signin`. A caller viewing an owner's account (`c.var.viewing`) gets the
+ * owner's file as the database, and any method but GET and HEAD, except on VIEWER_WRITES, is a 403. `/api/admin*` is a
+ * 404 to any caller but the admin's (`EDWARD_ADMIN`) account.
  */
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const { db, hosted } = deps;
@@ -79,11 +87,13 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
       }
       c.set('db', db as Db);
       c.set('account', null);
+      c.set('viewing', null);
       return next();
     }
     if (c.req.header('Host') !== hosted.publicHost) return c.text('Forbidden', 403);
     const path = c.req.path;
     let account: Account | null;
+    let viewing: Account | null = null;
     if (path === '/api/collect' || path.startsWith('/api/collect/')) {
       const auth = c.req.header('Authorization');
       const token = auth?.startsWith('Bearer ') ? auth.slice('Bearer '.length) : '';
@@ -94,13 +104,19 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
         return c.text('Forbidden', 403);
       }
       const raw = getCookie(c, SESSION);
-      account = raw ? sessionAccount(hosted.accounts, raw, deps.now()) : null;
+      const session = raw ? sessionAccount(hosted.accounts, raw, hosted.admin, deps.now()) : null;
+      account = session?.account ?? null;
+      viewing = session?.viewing ?? null;
       if (!account && !OPEN.includes(path) && !OPEN_PREFIXES.some((prefix) => path.startsWith(prefix))) {
         return path === '/api' || path.startsWith('/api/') ? c.body(null, 401) : c.redirect('/signin', 302);
       }
+      const adminPath = path === '/api/admin' || path.startsWith('/api/admin/');
+      if (adminPath && !(account && isAdmin(account.login, hosted.admin))) return c.notFound();
+      if (viewing && writes && !VIEWER_WRITES.includes(path)) return c.text('Forbidden', 403);
     }
     c.set('account', account);
-    if (account) c.set('db', hosted.files.db(account.id));
+    c.set('viewing', viewing);
+    if (account) c.set('db', hosted.files.db((viewing ?? account).id));
     return next();
   });
   registerRoutes(app, deps);

@@ -107,7 +107,10 @@ describe('GET /auth/github/callback', () => {
     expect(line).toMatch(/SameSite=Lax/);
     expect(line).toMatch(/Path=\/(;|$)/);
     expect(line).toMatch(/Max-Age=2592000/);
-    expect(sessionAccount(hosted.hosted.accounts, cookieValue(line), NOW)).toEqual({ id: 101, login: 'Alice' });
+    expect(sessionAccount(hosted.hosted.accounts, cookieValue(line), 'admin', NOW)?.account).toEqual({
+      id: 101,
+      login: 'Alice',
+    });
     expect(setCookie(res, 'edward_oauth')).toMatch(/Max-Age=0/);
     expectNotLogged('code-alice', state);
   });

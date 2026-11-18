@@ -12,6 +12,7 @@ const SET = {
   GITHUB_CLIENT_ID: 'test-client-id',
   GITHUB_CLIENT_SECRET: 'test-client-secret',
   EDWARD_ADMIN: 'rowan-k',
+  EDWARD_SECRET: '0f'.repeat(32),
 };
 const NOW = new Date('2026-11-12T12:00:00Z');
 
@@ -19,7 +20,7 @@ describe('hostedSettings', () => {
   test('names every missing variable, and only its name', () => {
     expect(() => hostedSettings({})).toThrow(
       new Error(
-        "hosted mode needs EDWARD_PUBLIC_HOST, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, EDWARD_ADMIN in the data folder's .env",
+        "hosted mode needs EDWARD_PUBLIC_HOST, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, EDWARD_ADMIN, EDWARD_SECRET in the data folder's .env",
       ),
     );
     const { GITHUB_CLIENT_ID, ...rest } = SET;
@@ -28,12 +29,21 @@ describe('hostedSettings', () => {
     );
   });
 
-  test('returns the four settings when all are set', () => {
+  test('refuses an EDWARD_SECRET that is not 64 hex characters, naming the variable only', () => {
+    for (const secret of ['0f'.repeat(31), '0f'.repeat(33), 'zz'.repeat(32), `${'0f'.repeat(31)}0 `]) {
+      expect(() => hostedSettings({ ...SET, EDWARD_SECRET: secret })).toThrow(
+        new Error("hosted mode needs EDWARD_SECRET as 64 hex characters in the data folder's .env"),
+      );
+    }
+  });
+
+  test('returns the settings when all are set, the secret as its 32 bytes', () => {
     expect(hostedSettings(SET)).toEqual({
       publicHost: 'edward.example',
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
       admin: 'rowan-k',
+      secret: Buffer.from('0f'.repeat(32), 'hex'),
     });
   });
 });
@@ -56,6 +66,8 @@ describe('hostedDeps', () => {
       github: githubClient({ clientId: SET.GITHUB_CLIENT_ID, clientSecret: SET.GITHUB_CLIENT_SECRET }),
       webDist,
       now: () => NOW,
+      secret: hostedSettings(SET).secret,
+      requestLabels: () => {},
     });
   });
 

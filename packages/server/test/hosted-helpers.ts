@@ -1,7 +1,6 @@
 import type { Hono } from 'hono';
 import { createApp, type AppEnv, type HostedDeps } from '../src/app.ts';
-import { addInvite, createSession, createToken, signInAccount } from '../src/hosted/accounts.ts';
-import { SESSION } from '../src/hosted/auth.ts';
+import { addInvite, createSession, createToken, SESSION, signInAccount } from '../src/hosted/accounts.ts';
 import { githubClient, type GitHubClient } from '../src/hosted/github.ts';
 import { hostedDeps } from '../src/hosted/main.ts';
 
@@ -9,11 +8,15 @@ import { hostedDeps } from '../src/hosted/main.ts';
 export const PUBLIC_HOST = 'edward.example';
 export const ORIGIN = `https://${PUBLIC_HOST}`;
 export const NOW = new Date('2026-11-12T12:00:00Z');
+/** An invented `EDWARD_SECRET`, as its 32 bytes. */
+export const SECRET = Buffer.alloc(32, 1);
 
 /** The stub GitHub's users, by the code that signs each in; any other code throws as the client does. */
 export const GITHUB_USERS: Record<string, { id: number; login: string }> = {
   'code-alice': { id: 101, login: 'Alice' },
   'code-mallory': { id: 666, login: 'mallory' },
+  'code-mika': { id: 202, login: 'mika-ito' },
+  'code-admin': { id: 1, login: 'admin' },
 };
 
 /** A GitHub client that never calls GitHub: the real authorize URL, and `user` from GITHUB_USERS. */
@@ -26,8 +29,8 @@ const stubGitHub: GitHubClient = {
   },
 };
 
-/** A hosted app over `dir`, built through `hostedDeps`, its clock at NOW, serving `webDist` when given; `close`
- * closes its databases. */
+/** A hosted app over `dir`, built through `hostedDeps`, its clock at NOW, its secret SECRET and no label job, serving
+ * `webDist` when given; `close` closes its databases. */
 export function hostedApp(
   dir: string,
   { webDist }: { webDist?: string } = {},
@@ -41,6 +44,8 @@ export function hostedApp(
     github: stubGitHub,
     webDist: webDist ?? null,
     now: () => NOW,
+    secret: SECRET,
+    requestLabels: () => {},
   });
   const hosted = deps.hosted;
   return {

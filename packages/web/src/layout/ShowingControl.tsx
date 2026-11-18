@@ -16,15 +16,49 @@ import {
 import { Switch } from '../components/ui/switch.tsx';
 import { NOTICE } from '../lib/format.ts';
 
+/** A list of projects to tick, by name, `picked` holding the ticked keys: showing mode's picker and the Account page's
+ * Shown projects alike. */
+export function ProjectPicks({
+  projects,
+  picked,
+  onChange,
+}: {
+  projects: { key: string; name: string }[];
+  picked: string[];
+  onChange: (picked: string[]) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1 text-sm">
+      {projects.map((project) => (
+        <label key={project.key} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={picked.includes(project.key)}
+            onChange={(e) =>
+              onChange(e.target.checked ? [...picked, project.key] : picked.filter((key) => key !== project.key))
+            }
+          />
+          {project.name}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Showing mode: while off, a switch that opens the project picker; while on, an orange bar naming what it shows. With
- * `stacked` (the rail's foot), the bar is a column: the names wrapping over a full-width "Stop showing".
+ * `stacked` (the rail's foot), the bar is a column: the names wrapping over a full-width "Stop showing". While
+ * `viewing` another account (its login), the bar is read-only: that account's kept projects and "Read-only", never the
+ * switch, and nothing while they load.
  */
-export function ShowingControl({ stacked }: { stacked?: boolean }) {
+export function ShowingControl({ stacked, viewing }: { stacked?: boolean; viewing?: string | null }) {
   const showing = useLiveQuery<ShowingResponse>('/api/showing');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [picked, setPicked] = useState<string[]>([]);
+  const [ticked, setTicked] = useState<string[] | null>(null);
+  // Ticked from the kept list until changed, since "Start showing" keeps the pick as the kept list too.
+  const kept = (showing.data?.projects ?? []).filter((project) => project.picked).map((project) => project.key);
+  const picked = ticked ?? kept;
 
   // The server filters every response by the mode, so every page's cached data is dropped and read again: no page
   // shows, even for a moment or on Back, what the new mode hides.
@@ -35,13 +69,19 @@ export function ShowingControl({ stacked }: { stacked?: boolean }) {
   }
 
   if (showing.isError) return <p className="text-sm">Couldn't read showing mode.</p>;
-  if (showing.data?.on) {
+  if (viewing || showing.data?.on) {
+    if (!showing.data) return null;
+    const names = showing.data.projects.map((project) => project.name).join(', ') || 'none';
     return (
       <div className={cn('flex px-3', stacked ? 'flex-col gap-2 py-2' : 'items-center gap-3 py-1', NOTICE)}>
-        <b className={cn(stacked && 'break-words')}>Showing: {showing.data.projects.map((project) => project.name).join(', ')}</b>
-        <Button variant="outline" size="sm" onClick={() => show([])}>
-          Stop showing
-        </Button>
+        <b className={cn(stacked && 'break-words')}>{viewing ? `${viewing}'s projects: ${names}` : `Showing: ${names}`}</b>
+        {viewing ? (
+          <span>Read-only</span>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => show([])}>
+            Stop showing
+          </Button>
+        )}
       </div>
     );
   }
@@ -60,20 +100,7 @@ export function ShowingControl({ stacked }: { stacked?: boolean }) {
               counts only in totals and charts. Paths and session IDs are never sent while this is on.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-1 text-sm">
-            {showing.data?.projects.map((project) => (
-              <label key={project.key} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={picked.includes(project.key)}
-                  onChange={(e) =>
-                    setPicked(e.target.checked ? [...picked, project.key] : picked.filter((key) => key !== project.key))
-                  }
-                />
-                {project.name}
-              </label>
-            ))}
-          </div>
+          <ProjectPicks projects={showing.data?.projects ?? []} picked={picked} onChange={setTicked} />
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>

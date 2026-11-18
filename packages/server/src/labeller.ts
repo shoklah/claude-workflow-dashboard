@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
-import { AREAS, RELEVANCE, type Area, type Relevance } from '@cwd/shared';
-import { inArea, labellable, type ActiveList } from './categories.ts';
+import { AREAS, LABELLER_DEFAULTS, RELEVANCE, type Area, type Relevance } from '@cwd/shared';
+import { activeList, inArea, labellable, type ActiveList } from './categories.ts';
 import { labelInputs, labelledOn, pendingInputs, saveBatch, type StoredLabel } from './db/labels.ts';
 import type { Db } from './db/open.ts';
 import { listUnits } from './db/read.ts';
@@ -16,7 +16,6 @@ export type LabelClient = (batch: { id: string; area: Area; text: string }[], li
 }>;
 
 const BATCH = 25;
-const DAILY_MAX = 500;
 
 /** A label client's failure whose message is fixed, with no finding text and no key, so labelPending logs it. */
 export class LabelError extends Error {}
@@ -28,8 +27,20 @@ export class LabelError extends Error {}
 export function labellerSettings(env: Record<string, string | undefined>): { model: string; dailyMax: number } | null {
   if (!env.ANTHROPIC_API_KEY) return null;
   const max = Number(env.LABELLER_DAILY_MAX);
-  const dailyMax = Number.isInteger(max) && max > 0 ? max : DAILY_MAX;
-  return { model: env.LABELLER_MODEL || 'claude-haiku-5-5', dailyMax };
+  const dailyMax = Number.isInteger(max) && max > 0 ? max : LABELLER_DEFAULTS.dailyMax;
+  return { model: env.LABELLER_MODEL || LABELLER_DEFAULTS.model, dailyMax };
+}
+
+/** One label job's run over a database: its pending findings under the active list, read each time since an import can
+ * change it; with no list, nothing is labelled. */
+export async function labelOnce(
+  db: Db,
+  client: LabelClient,
+  settings: { model: string; dailyMax: number },
+  now: Date,
+): Promise<void> {
+  const list = activeList(db);
+  if (list) await labelPending(db, client, settings, now, list);
 }
 
 /**
@@ -110,13 +121,14 @@ function systemPrompt(list: ActiveList, area: Area): string {
 }
 
 /**
- * The label client over the Anthropic API, with the key from `ANTHROPIC_API_KEY`. Its prompt and the reply's schema are
+ * The label client over the Anthropic API, with `apiKey` (an account's, in hosted mode), else the key from
+ * `ANTHROPIC_API_KEY`. Its prompt and the reply's schema are
  * built from the list and the batch's area on each call, since an import can change the active list. A reply that
  * doesn't parse throws a LabelError naming its stop reason, never the parser's own message, which quotes the reply,
  * which holds finding text.
  */
-export function anthropicLabelClient(model: string): LabelClient {
-  const client = new Anthropic();
+export function anthropicLabelClient(model: string, apiKey?: string): LabelClient {
+  const client = apiKey ? new Anthropic({ apiKey }) : new Anthropic();
   return async (batch, list) => {
     const area = batch[0]!.area;
     const format = zodOutputFormat(labelsSchema(list, area));

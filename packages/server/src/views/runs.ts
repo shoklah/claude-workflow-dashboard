@@ -122,11 +122,13 @@ export function sessionWarningShown(scope: Scope | null, sessions: StoredUnit<Se
 /**
  * A query's period: its last `weeks` weeks (this week and the ones before it, weeks starting Sunday 07:00 UTC), oldest
  * first, each named by weekOf, whether a run's facts match the query's path and project key (`filters`), and whether
- * they are in it (`matches`): finished in one of those weeks, and matching the filters.
+ * they are in it (`matches`): finished in one of those weeks, and matching the filters. With a scope, a project key it
+ * doesn't show matches nothing, as an unknown key does, so a guessed hidden key confirms nothing.
  */
 export function period(
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
+  scope: Scope | null,
 ): {
   weeks: string[];
   filters: (row: Pick<RunFacts, 'path' | 'projectKey'>) => boolean;
@@ -134,8 +136,9 @@ export function period(
 } {
   const start = weekStart(now).getTime();
   const weeks = Array.from({ length: query.weeks }, (_, i) => weekOf(new Date(start - (query.weeks - 1 - i) * WEEK)));
+  const hiddenProject = !!scope && !!query.project && !scope.shown.has(query.project);
   const filters = (row: Pick<RunFacts, 'path' | 'projectKey'>) =>
-    (!query.path || row.path === query.path) && (!query.project || row.projectKey === query.project);
+    !hiddenProject && (!query.path || row.path === query.path) && (!query.project || row.projectKey === query.project);
   // A stored run always has its finish time (finishedAt), the date its key is made from.
   const matches = (row: RunFacts) => weeks.includes(weekOf(parseTime(row.finishedAt ?? ''))) && filters(row);
   return { weeks, filters, matches };
@@ -171,8 +174,9 @@ export function periodStoredUnits(
   sessions: StoredUnit<SessionEntry>[],
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
+  scope: Scope | null,
 ): { weeks: string[]; runs: StoredUnit<RunEntry>[]; sessions: StoredUnit<SessionEntry>[] } {
-  const { weeks, filters, matches } = period(query, now);
+  const { weeks, filters, matches } = period(query, now, scope);
   const names = storedNames(runs);
   const runRoots = new Set(runs.map(rootOf));
   const kept = ({ merged: { project } }: StoredUnit<SessionEntry>) =>
@@ -189,8 +193,9 @@ export function periodRuns(
   runs: StoredUnit<RunEntry>[],
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
+  scope: Scope | null,
 ): { weeks: string[]; runs: RunEntry[] } {
-  const { weeks, runs: inPeriod } = periodStoredUnits(runs, [], query, now);
+  const { weeks, runs: inPeriod } = periodStoredUnits(runs, [], query, now, scope);
   return { weeks, runs: inPeriod.map((unit) => unit.merged) };
 }
 
@@ -205,8 +210,9 @@ export function periodUnits(
   sessions: StoredUnit<SessionEntry>[],
   query: Pick<RunsQuery, 'weeks' | 'path' | 'project'>,
   now: Date,
+  scope: Scope | null,
 ): { weeks: string[]; runs: RunEntry[]; sessions: SessionEntry[] } {
-  const units = periodStoredUnits(runs, sessions, query, now);
+  const units = periodStoredUnits(runs, sessions, query, now, scope);
   return {
     weeks: units.weeks,
     runs: units.runs.map((unit) => unit.merged),
@@ -233,12 +239,12 @@ export function runsList(
   const work = levels(runs, sessions);
   const all = runs.map((run) => storedFacts(run, names));
   const rows = all.flatMap((row) => showFacts(scope, row) ?? []);
-  const inPeriod = period(query, now).matches;
-  const inWeeks = period({ weeks: query.weeks }, now).matches;
+  const inPeriod = period(query, now, scope).matches;
+  const inWeeks = period({ weeks: query.weeks }, now, null).matches;
   const warned = new Set(currentWarnings(runs, [], warnings).map((w) => w.key));
   const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
   const matches = (row: RunFacts) =>
-    inPeriod(row) && (!query.warnings || warned.has(row.key)) && inGoal(work, row.key, query.goal);
+    inPeriod(row) && (!query.warnings || warned.has(row.key)) && inGoal(work, scope, row.key, query.goal);
   const shown = rows.filter(matches);
   return {
     runs: shown

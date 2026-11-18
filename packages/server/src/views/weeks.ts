@@ -2,6 +2,7 @@ import type { FindingsQuery, RunEntry, RunTime, WeeksResponse } from '@cwd/share
 import type { StoredUnit } from '../db/read.ts';
 import { coverageFrom, emptyWeek, median, weekSums } from './home.ts';
 import { periodRuns } from './runs.ts';
+import type { Scope } from './scope.ts';
 
 /** Full runs with waves and without, as the reporter's run_time: how many, how many have minutes, and their median. */
 export function runTime(runs: RunEntry[]): RunTime {
@@ -18,11 +19,16 @@ export function runTime(runs: RunEntry[]): RunTime {
 
 /**
  * The Weeks page: over the stored runs in the query's period (period), each of its weeks' sums (weekSums), oldest
- * first, a week with no runs empty, and the Full runs' run time. It holds no project text, so showing mode changes
- * nothing: its sums count every project, as every page's do.
+ * first, a week with no runs empty, and the Full runs' run time. It holds no project text, so the scope changes only
+ * its project filter (period): its sums count every project, as every page's do.
  */
-export function weeksView(input: { runs: StoredUnit<RunEntry>[]; query: FindingsQuery; now: Date }): WeeksResponse {
-  const { weeks, runs } = periodRuns(input.runs, input.query, input.now);
+export function weeksView(input: {
+  runs: StoredUnit<RunEntry>[];
+  query: FindingsQuery;
+  now: Date;
+  scope: Scope | null;
+}): WeeksResponse {
+  const { weeks, runs } = periodRuns(input.runs, input.query, input.now, input.scope);
   const sums = weekSums(runs);
   return {
     weeks: weeks.map((week) => ({ week, ...(sums.get(week) ?? emptyWeek()) })),

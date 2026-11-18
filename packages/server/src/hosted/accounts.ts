@@ -1,14 +1,31 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { and, eq, gte, lt } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { LABELLER_DEFAULTS, type AccountResponse, type LabellerModel } from '@cwd/shared';
 import { openSqlite } from '../db/open.ts';
+import type { AccountFiles } from './account-files.ts';
 import * as schema from './schema.ts';
-import { accounts, collectorTokens, invites, sessions } from './schema.ts';
+import {
+  accounts,
+  collectorTokens,
+  invites,
+  labellerSettings,
+  sessions,
+  viewerGrants,
+} from './schema.ts';
+import { sealKey } from './secret.ts';
+
+/** An account's login lower-cased: logins match case-insensitively, invites and grants stored lower-case. */
+const lowerLogin = sql`lower(${accounts.login})`;
 
 // Two levels up from this file, as openDb's.
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url));
 // A session's lifetime, for its stored expiry and its cookie alike.
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
+/** The session cookie's name, which createApp's middleware reads. */
+export const SESSION = 'edward_session';
+/** The session cookie's options, for setting and clearing it alike. */
+export const SESSION_COOKIE = { httpOnly: true, secure: true, sameSite: 'Lax', path: '/' } as const;
 
 export type AccountsDb = ReturnType<typeof openAccountsDb>;
 export type Account = { id: number; login: string };
@@ -34,23 +51,99 @@ export function addInvite(db: AccountsDb, login: string, at: Date): void {
   db.insert(invites).values({ login: login.toLowerCase(), addedAt: at }).onConflictDoNothing().run();
 }
 
+/** Whether `login` is the admin's (`EDWARD_ADMIN`), case-insensitive. */
+export function isAdmin(login: string, admin: string): boolean {
+  return login.toLowerCase() === admin.toLowerCase();
+}
+
 /**
- * The account of a GitHub user: an existing one by id, its login updated; else a new one when the login is invited or
- * is `admin` (case-insensitive); else null.
+ * The account of a GitHub user: an existing one by id while its stored login is invited or is `admin`, its login
+ * updated and its invite moved to the new login (the old one kept while another account's stored login is it); a new
+ * one when the login is invited or is `admin` (case-insensitive); else null.
  */
 export function signInAccount(db: AccountsDb, user: Account, admin: string, at: Date): Account | null {
   return db.transaction((tx) => {
-    const existing = tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, user.id)).get();
+    const existing = tx.select({ login: accounts.login }).from(accounts).where(eq(accounts.id, user.id)).get();
+    const login = user.login.toLowerCase();
     if (existing) {
+      const stored = existing.login.toLowerCase();
+      const invite = tx.select().from(invites).where(eq(invites.login, stored)).get();
+      if (!invite && !isAdmin(stored, admin)) return null;
+      if (invite && stored !== login) {
+        // The old login's invite stays while another account's stored login is it (logins aren't unique).
+        const shared = tx
+          .select({ id: accounts.id })
+          .from(accounts)
+          .where(and(eq(lowerLogin, stored), ne(accounts.id, user.id)))
+          .get();
+        if (!shared) tx.delete(invites).where(eq(invites.login, stored)).run();
+        tx.insert(invites).values({ login, addedAt: invite.addedAt }).onConflictDoNothing().run();
+      }
       tx.update(accounts).set({ login: user.login }).where(eq(accounts.id, user.id)).run();
     } else {
-      const login = user.login.toLowerCase();
       const invited = tx.select().from(invites).where(eq(invites.login, login)).get();
-      if (!invited && login !== admin.toLowerCase()) return null;
+      if (!invited && !isAdmin(login, admin)) return null;
       tx.insert(accounts).values({ id: user.id, login: user.login, createdAt: at }).run();
     }
+    // Grants made to this login before it had an account are its from now on.
+    tx.update(viewerGrants)
+      .set({ viewerId: user.id })
+      .where(and(eq(viewerGrants.viewerLogin, login), isNull(viewerGrants.viewerId)))
+      .run();
     return { id: user.id, login: user.login };
   });
+}
+
+/** The invited logins, lower-case, in order, each with whether an account's login is it. */
+export function listInvites(db: AccountsDb): { login: string; addedAt: Date; signedIn: boolean }[] {
+  return db
+    .select({
+      login: invites.login,
+      addedAt: invites.addedAt,
+      signedIn: sql<number>`exists (select 1 from accounts where lower(accounts.login) = invites.login)`,
+    })
+    .from(invites)
+    .orderBy(invites.login)
+    .all()
+    .map((invite) => ({ ...invite, signedIn: !!invite.signedIn }));
+}
+
+/** Removes `login`'s invite (any case) and the sessions and collector tokens of the accounts whose login it is; their
+ * data stays until they are deleted, and signInAccount refuses them meanwhile. */
+export function removeInvite(db: AccountsDb, login: string): void {
+  const lower = login.toLowerCase();
+  const held = db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(lowerLogin, lower));
+  db.transaction((tx) => {
+    tx.delete(invites).where(eq(invites.login, lower)).run();
+    tx.delete(sessions).where(inArray(sessions.accountId, held)).run();
+    tx.delete(collectorTokens).where(inArray(collectorTokens.accountId, held)).run();
+  });
+}
+
+/** Every account by id, with its times, never anything of its tokens or sessions. */
+export function listAccounts(
+  db: AccountsDb,
+): { id: number; login: string; createdAt: Date; lastCollectAt: Date | null }[] {
+  return db
+    .select({ ...accountColumns, createdAt: accounts.createdAt, lastCollectAt: accounts.lastCollectAt })
+    .from(accounts)
+    .orderBy(accounts.id)
+    .all();
+}
+
+/** The account whose login is `login` (case-insensitive; the newest, if several have it), if any. */
+export function accountByLogin(db: AccountsDb, login: string): Account | null {
+  return (
+    db
+      .select(accountColumns)
+      .from(accounts)
+      .where(eq(lowerLogin, login.toLowerCase()))
+      .orderBy(desc(accounts.createdAt), desc(accounts.id))
+      .get() ?? null
+  );
 }
 
 /** A new session for the account, valid for 30 days from `at`; returns its raw ID, stores only its hash. */
@@ -63,16 +156,119 @@ export function createSession(db: AccountsDb, accountId: number, at: Date): stri
   return raw;
 }
 
-/** The account of an unexpired session, by its raw ID's hash. */
-export function sessionAccount(db: AccountsDb, raw: string, at: Date): Account | null {
-  return (
-    db
-      .select(accountColumns)
+/**
+ * The account of an unexpired session, by its raw ID's hash, and the owner it views: null for its own, and null too
+ * once that owner isn't in its viewableAccounts (the grant removed, or the owner neither invited nor the admin).
+ */
+export function sessionAccount(
+  db: AccountsDb,
+  raw: string,
+  admin: string,
+  at: Date,
+): { account: Account; viewing: Account | null } | null {
+  const row = db
+    .select({ ...accountColumns, viewingId: sessions.viewingId })
+    .from(sessions)
+    .innerJoin(accounts, eq(accounts.id, sessions.accountId))
+    .where(and(eq(sessions.idHash, hashSecret(raw)), gte(sessions.expiresAt, at)))
+    .get();
+  if (!row) return null;
+  const account = { id: row.id, login: row.login };
+  const viewing =
+    row.viewingId === null
+      ? null
+      : (viewableAccounts(db, account, admin).find((owner) => owner.id === row.viewingId) ?? null);
+  return { account, viewing };
+}
+
+/** Sets the owner a session views, null for its own account; false, changing nothing, when the owner gave its account
+ * no grant. */
+export function setViewing(db: AccountsDb, raw: string, ownerId: number | null): boolean {
+  const idHash = hashSecret(raw);
+  if (ownerId !== null) {
+    const session = db
+      .select({ accountId: sessions.accountId })
       .from(sessions)
-      .innerJoin(accounts, eq(accounts.id, sessions.accountId))
-      .where(and(eq(sessions.idHash, hashSecret(raw)), gte(sessions.expiresAt, at)))
-      .get() ?? null
+      .where(eq(sessions.idHash, idHash))
+      .get();
+    const viewer = session && getAccount(db, session.accountId);
+    const grant =
+      viewer && db.select().from(viewerGrants).where(and(eq(viewerGrants.ownerId, ownerId), grantedTo(viewer))).get();
+    if (!grant) return false;
+  }
+  db.update(sessions).set({ viewingId: ownerId }).where(eq(sessions.idHash, idHash)).run();
+  return true;
+}
+
+/** Grants to the account: bound to its id, or not bound yet and naming its login. */
+function grantedTo(account: Account) {
+  return or(
+    eq(viewerGrants.viewerId, account.id),
+    and(isNull(viewerGrants.viewerId), eq(viewerGrants.viewerLogin, account.login.toLowerCase())),
   );
+}
+
+/** Grants `login` (case-insensitive) a view of the owner's account, bound to the account that holds that login now
+ * (the newest, if several have it), if any. */
+export function addViewer(db: AccountsDb, ownerId: number, login: string): void {
+  const viewerLogin = login.toLowerCase();
+  const viewer = accountByLogin(db, viewerLogin);
+  db.insert(viewerGrants)
+    .values({ ownerId, viewerLogin, viewerId: viewer?.id ?? null })
+    .onConflictDoNothing()
+    .run();
+}
+
+/** Removes the owner's grant listed as `login` (as listViewers shows it, any case). */
+export function removeViewer(db: AccountsDb, ownerId: number, login: string): void {
+  const shown = login.toLowerCase();
+  for (const grant of grantsOf(db, ownerId).filter((grant) => grant.shown === shown)) {
+    db.delete(viewerGrants)
+      .where(and(eq(viewerGrants.ownerId, ownerId), eq(viewerGrants.viewerLogin, grant.viewerLogin)))
+      .run();
+  }
+}
+
+/** The logins the owner granted a view, lower-case, each once, in order: a bound grant's viewer's current login, an
+ * unbound one's as granted. */
+export function listViewers(db: AccountsDb, ownerId: number): string[] {
+  return [...new Set(grantsOf(db, ownerId).map((grant) => grant.shown))].sort();
+}
+
+// The owner's grants, each with the login it shows as (listViewers).
+function grantsOf(db: AccountsDb, ownerId: number): { viewerLogin: string; shown: string }[] {
+  return db
+    .select({
+      viewerLogin: viewerGrants.viewerLogin,
+      shown: sql<string>`coalesce(${lowerLogin}, ${viewerGrants.viewerLogin})`,
+    })
+    .from(viewerGrants)
+    .leftJoin(accounts, eq(accounts.id, viewerGrants.viewerId))
+    .where(eq(viewerGrants.ownerId, ownerId))
+    .all();
+}
+
+/** The owners the account may view, each once: those that granted it (grantedTo), and whose own login is invited or
+ * `admin`. */
+export function viewableAccounts(db: AccountsDb, account: Account, admin: string): Account[] {
+  return db
+    .selectDistinct(accountColumns)
+    .from(viewerGrants)
+    .innerJoin(accounts, eq(accounts.id, viewerGrants.ownerId))
+    .leftJoin(invites, eq(invites.login, lowerLogin))
+    .where(and(grantedTo(account), or(isNotNull(invites.login), eq(lowerLogin, admin.toLowerCase()))))
+    .orderBy(accounts.id)
+    .all();
+}
+
+/**
+ * Deletes the account: its file first, so a failed removal leaves a live account its owner can delete again, then its
+ * row, with its sessions, tokens, labeller settings and the grants it gave and received by cascade (a received grant
+ * isn't unbound, since its login may since belong to someone else).
+ */
+export function deleteAccount(db: AccountsDb, files: AccountFiles, id: number): void {
+  files.remove(id);
+  db.delete(accounts).where(eq(accounts.id, id)).run();
 }
 
 export function deleteSession(db: AccountsDb, raw: string): void {
@@ -130,4 +326,46 @@ export function getAccount(
   id: number,
 ): (Account & { createdAt: Date; lastCollectAt: Date | null }) | null {
   return db.select().from(accounts).where(eq(accounts.id, id)).get() ?? null;
+}
+
+/** The account's labeller: whether a key is set, never the key, its model and its daily max (the defaults with none). */
+export function getLabeller(db: AccountsDb, accountId: number): AccountResponse['labeller'] {
+  const row = db.select().from(labellerSettings).where(eq(labellerSettings.accountId, accountId)).get();
+  return {
+    keySet: !!row?.sealedKey,
+    model: (row?.model as LabellerModel | undefined) ?? LABELLER_DEFAULTS.model,
+    dailyMax: row?.dailyMax ?? LABELLER_DEFAULTS.dailyMax,
+  };
+}
+
+/** Sets the account's labeller; its key is stored only sealed under `secret`: undefined keeps the stored one, null
+ * removes it. */
+export function setLabeller(
+  db: AccountsDb,
+  accountId: number,
+  settings: { key?: string | null; model: string; dailyMax: number },
+  secret: Buffer,
+): void {
+  const { key, model, dailyMax } = settings;
+  const values = {
+    model,
+    dailyMax,
+    ...(key === undefined ? {} : { sealedKey: key === null ? null : sealKey(secret, key, accountId) }),
+  };
+  db.insert(labellerSettings)
+    .values({ accountId, ...values })
+    .onConflictDoUpdate({ target: labellerSettings.accountId, set: values })
+    .run();
+}
+
+/** The accounts with a key, its key still sealed, for the label job. */
+export function labellerAccounts(
+  db: AccountsDb,
+): { accountId: number; sealedKey: string; model: string; dailyMax: number }[] {
+  return db
+    .select()
+    .from(labellerSettings)
+    .where(isNotNull(labellerSettings.sealedKey))
+    .orderBy(labellerSettings.accountId)
+    .all() as { accountId: number; sealedKey: string; model: string; dailyMax: number }[];
 }

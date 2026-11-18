@@ -4,13 +4,15 @@ import { projectKey } from '../keys.ts';
 import { storedNames } from './runs.ts';
 import type { Scope } from './scope.ts';
 
-/** Showing mode's state: while off, every stored run's project, by name; while on, only the picked ones, named by the
- * scope. */
-export function showingView(runs: StoredUnit<RunEntry>[], scope: Scope | null): ShowingResponse {
+/** Showing mode's state: while off, every stored run's project, by name, picked when the kept list holds it; while on,
+ * only the picked ones, named by the scope. */
+export function showingView(runs: StoredUnit<RunEntry>[], scope: Scope | null, kept: string[]): ShowingResponse {
+  const keptKeys = new Set(kept);
   const projects = scope
     ? [...scope.names].map(([key, name]) => ({ key, name, picked: true }))
     : [...storedNames(runs)]
         .filter(([, name]) => name)
-        .map(([root, name]) => ({ key: projectKey(root), name, picked: false }));
+        .map(([root, name]) => ({ key: projectKey(root), name }))
+        .map((project) => ({ ...project, picked: keptKeys.has(project.key) }));
   return { on: scope !== null, projects: projects.sort((a, b) => a.name.localeCompare(b.name)) };
 }

@@ -19,3 +19,4 @@ export * from './api/context.ts';
 export * from './api/spend.ts';
 export * from './api/work.ts';
 export * from './api/account.ts';
+export * from './api/admin.ts';

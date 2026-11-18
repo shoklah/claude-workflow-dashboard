@@ -216,7 +216,7 @@ export function homeView(input: {
   const stepsOf = (of: Run[]) => of.flatMap((r) => r.unit.merged.steps ?? []);
 
   // The charts' weeks: this week and the 11 before it, oldest first.
-  const weeks = period({ weeks: CHART_WEEKS }, now).weeks;
+  const weeks = period({ weeks: CHART_WEEKS }, now, null).weeks;
   const byWeek = weeks.map((week) => runs.filter((r) => weekOf(r.finished) === week));
 
   function weekNumbers(week: string, inWeek: Run[]): WeekNumbers {
@@ -316,7 +316,7 @@ export function homeView(input: {
     ),
   ];
   const usageOf = (weeks: number) => {
-    const units = periodUnits(input.runs, input.sessions, { weeks }, now);
+    const units = periodUnits(input.runs, input.sessions, { weeks }, now, null);
     return usageSums(units.runs, units.sessions, scope, skillNames);
   };
 

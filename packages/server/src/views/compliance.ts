@@ -91,7 +91,7 @@ export function complianceView(input: {
   totals: unknown;
 }): ComplianceResponse {
   const { query, seenAt, scope } = input;
-  const { weeks, matches } = period(query, input.now);
+  const { weeks, matches } = period(query, input.now, scope);
   const names = storedNames(input.runs);
   const runs = new Map(input.runs.map((unit) => [unit.key, { unit, facts: storedFacts(unit, names) }]));
   const sessionShown = sessionWarningShown(scope, input.sessions);

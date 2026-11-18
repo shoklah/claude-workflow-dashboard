@@ -155,7 +155,7 @@ describe('hosted request rules', () => {
 
   test("status names A's account", async () => {
     const status = (await (await asA('/api/status')).json()) as StatusResponse;
-    expect(status.account).toEqual({ login: A.login });
+    expect(status.account).toEqual({ login: A.login, viewing: null, viewable: [], admin: false });
   });
 
   test('an expired or unknown session is no caller', async () => {

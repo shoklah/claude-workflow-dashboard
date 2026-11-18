@@ -4,19 +4,23 @@
 // `pnpm --filter @cwd/server dev:fixtures [fixture...]` (default report-full report-later report-v6 report-v7
 // report-work); the port is the config's default unless PORT is set. With `DEV_MODE=hosted` it serves hosted mode on
 // `localhost:<port>` instead, the fixtures imported into account 1's file, and a stub GitHub that signs in at once as
-// account 1, `rowan-k`, the admin.
+// account 1, `rowan-k`, the admin; account 2, `mika-ito`, invited, holds the same fixtures, keeps lantern-notes as its
+// one shown project and grants `rowan-k` a view.
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Relevance } from '@cwd/shared';
 import { builtWebDist, serveApp } from './app.ts';
+import { addInvite, addViewer, signInAccount } from './hosted/accounts.ts';
 import { hostedDeps } from './hosted/main.ts';
 import { activeList, inArea } from './categories.ts';
 import { loadConfig } from './config.ts';
 import { labelInputs, saveBatch } from './db/labels.ts';
 import { openDb } from './db/open.ts';
-import { lastImport, listUnits } from './db/read.ts';
+import { lastImport, listUnits, setShownProjects } from './db/read.ts';
+import type { Db } from './db/open.ts';
+import { projectKey } from './keys.ts';
 import { createQueue } from './queue.ts';
 import { importOnce } from './reporter.ts';
 
@@ -45,15 +49,32 @@ const hosted =
         },
         webDist: builtWebDist(),
         now: () => NOW,
+        // An invented secret, and no label job: the labeller stays off.
+        secret: Buffer.alloc(32, 1),
+        requestLabels: () => {},
       })
     : null;
 const db = hosted ? hosted.hosted.files.db(1) : openDb(join(dataDir, 'dashboard.sqlite'));
 
-for (const [i, file] of files.entries()) {
-  const at = new Date(NOW.getTime() - (files.length - i) * HOUR);
-  await importOnce(db, { ...base, reporterCommand: ['sh', '-c', 'cat "$0"', file] }, () => at);
-  const result = lastImport(db);
-  if (!result?.ok) throw new Error(`fixture ${names[i]} did not import: ${result?.error}`);
+/** Imports the named fixtures into `into`, an hour apart, the last an hour before NOW. */
+async function importFixtures(into: Db) {
+  for (const [i, file] of files.entries()) {
+    const at = new Date(NOW.getTime() - (files.length - i) * HOUR);
+    await importOnce(into, { ...base, reporterCommand: ['sh', '-c', 'cat "$0"', file] }, () => at);
+    const result = lastImport(into);
+    if (!result?.ok) throw new Error(`fixture ${names[i]} did not import: ${result?.error}`);
+  }
+}
+await importFixtures(db);
+
+if (hosted) {
+  const { accounts, admin, files: accountFiles } = hosted.hosted;
+  addInvite(accounts, 'mika-ito', NOW);
+  signInAccount(accounts, { id: 2, login: 'mika-ito' }, admin, NOW);
+  addViewer(accounts, 2, 'rowan-k');
+  const mika = accountFiles.db(2);
+  await importFixtures(mika);
+  setShownProjects(mika, [projectKey('/Users/example/Work/lantern-notes')]);
 }
 
 // Each label names its run by date and branch and is saved under the active list (the last fixture's); one that matches

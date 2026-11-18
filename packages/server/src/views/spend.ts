@@ -105,7 +105,7 @@ export function spendView(input: {
   scope: Scope | null;
 }): SpendResponse {
   const { query, scope } = input;
-  const units = periodUnits(input.runs, input.sessions, query, input.now);
+  const units = periodUnits(input.runs, input.sessions, query, input.now, scope);
   const runs = query.units === 'sessions' && !query.path ? [] : units.runs;
   const sessions = query.units === 'runs' ? [] : units.sessions;
   const sums = phaseSums(runs, sessions, (model) => maskText(scope, model));

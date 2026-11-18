@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { BrushCleaning } from 'lucide-react';
 import type { FeedItem } from '@cwd/shared';
-import { markSeen } from '../api.ts';
+import { markSeen, useStatus } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
 import { Num } from '../components/Num.tsx';
@@ -68,9 +68,11 @@ function Item({ item }: { item: FeedItem }) {
 }
 
 /** What's new since the last look (finished runs, first-seen warnings), and "Mark all seen", an icon, to start again
- * from now; it shrinks to the column Home gives it, its list scrolling in its own region. */
+ * from now, except while viewing another account, read-only; it shrinks to the column Home gives it, its list scrolling
+ * in its own region. */
 export function Feed({ items }: { items: FeedItem[] }) {
   const queryClient = useQueryClient();
+  const viewing = useStatus().data?.account?.viewing;
   async function onMarkAllSeen() {
     await markSeen();
     await queryClient.invalidateQueries({ queryKey: ['/api/home'] });
@@ -79,7 +81,8 @@ export function Feed({ items }: { items: FeedItem[] }) {
     <Panel
       title="Since you last looked"
       aside={
-        items.length > 0 && (
+        items.length > 0 &&
+        !viewing && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="outline" size="icon-sm" className="ml-auto" aria-label="Mark all seen" onClick={onMarkAllSeen}>
@@ -104,7 +107,7 @@ export function Feed({ items }: { items: FeedItem[] }) {
         >
           <ul className="flex flex-col gap-3">
             {items.map((item) => (
-              <Item key={`${item.type} ${item.at} ${item.runKey} ${item.text}`} item={item} />
+              <Item key={`${item.type} ${item.at} ${item.runKey} ${item.sessionId} ${item.text}`} item={item} />
             ))}
           </ul>
         </div>

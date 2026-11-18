@@ -9,7 +9,7 @@ export function statusView(
   lastGood: { at: Date } | null,
   importing: boolean,
   scope: Scope | null,
-  account: { login: string } | null,
+  account: StatusResponse['account'],
 ): StatusResponse {
   return {
     lastImportAt: last?.at.toISOString() ?? null,

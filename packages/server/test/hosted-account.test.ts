@@ -55,6 +55,8 @@ describe('GET /api/account', () => {
       lastCollectAt: null,
       machine: true,
       tokens: [{ id: own!.id, createdAt: NOW.toISOString(), lastUsedAt: null }],
+      viewers: [],
+      labeller: { keySet: false, model: 'claude-haiku-5-5', dailyMax: 500 },
     });
     const text = JSON.stringify(body);
     for (const { hash } of hosted.hosted.accounts.select().from(collectorTokens).all()) {

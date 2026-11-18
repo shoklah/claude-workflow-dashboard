@@ -7,7 +7,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema.ts';
 
 // Two levels up from this file, so it is found from src/db/ and from a build that keeps the layout (dist/db/).
-const MIGRATIONS = fileURLToPath(new URL('../../drizzle', import.meta.url));
+export const MIGRATIONS = fileURLToPath(new URL('../../drizzle', import.meta.url));
 
 export type Db = ReturnType<typeof openDb>;
 /** A transaction on a Db, for helpers that run inside one. */

@@ -45,7 +45,8 @@ A hosted edward serves several accounts, each signing in with GitHub (invite-onl
 3. In `data/claude-workflow-dashboard/`, write `config.json` as `{ "mode": "hosted" }` and a `.env` with:
    - `EDWARD_PUBLIC_HOST`: the public hostname, `<host>`;
    - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`: the OAuth app's;
-   - `EDWARD_ADMIN`: the admin's GitHub login, the one account that signs in without an invite.
+   - `EDWARD_ADMIN`: the admin's GitHub login, the one account that signs in without an invite. The admin is whoever holds that login, so update `EDWARD_ADMIN` before renaming the admin's GitHub account: a freed login taken by someone else would become the admin.
+   - `EDWARD_SECRET`: 32 random bytes as 64 hex characters (`openssl rand -hex 32`), which seals each account's Anthropic key; a new one makes every stored key unreadable.
 
    The server refuses to start without them, naming the missing ones.
 
@@ -54,6 +55,21 @@ A hosted edward serves several accounts, each signing in with GitHub (invite-onl
 5. Point the reverse proxy at `127.0.0.1:4317`, passing the original `Host` header through, since the server refuses any other `Host`: Caddy does by default; nginx needs `proxy_set_header Host $host;`.
 
 The `/data` volume (`data/` on the server) holds the accounts database and every account's file, and is their only copy: put it in the server's backups.
+
+### Moving a local history into an account
+
+A local edward's `dashboard.sqlite` (its imports, finding labels, cursor and showing mode) can become an account's data, once that account has signed in and while it holds none:
+
+1. On the Mac, stop the local edward, so `dashboard.sqlite` isn't copied mid-write: `pnpm agent:uninstall`.
+2. Copy its `dashboard.sqlite` to the server's `deploy/data/import/` (readable by uid 1000).
+3. From `deploy/`, stop the hosted server, import, and start it again:
+   ```sh
+   docker compose -f compose.example.yml stop edward
+   docker compose -f compose.example.yml run --rm edward pnpm account:import <login> /data/import/dashboard.sqlite
+   docker compose -f compose.example.yml up -d
+   ```
+   It prints `imported into account <login>`, or why it refused (no such account, an account that already holds data, a file from a newer edward, or a file that isn't an edward database), changing nothing.
+4. On the Mac, run only the collector from then on (see Collector): `pnpm agent:install --collector`. The copied `dashboard.sqlite` stays there as the backup of the moment it was copied.
 
 ## The data folder
 

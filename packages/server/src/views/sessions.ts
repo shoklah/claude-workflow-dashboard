@@ -161,7 +161,7 @@ export function sessionsView(input: {
   scope: Scope | null;
 }): SessionsResponse {
   const { query, scope } = input;
-  const { weeks, filters } = period(query, input.now);
+  const { weeks, filters } = period(query, input.now, scope);
   const names = storedNames(input.runs);
   const runRoots = new Set(input.runs.map(rootOf));
   const warned = new Map<string, number>();
@@ -191,7 +191,7 @@ export function sessionsView(input: {
       !!query.session ||
       ((query.path ? holds : [{ path: null }]).some((h) => filters({ path: h.path, projectKey: key ?? '' })) &&
         (!query.warnings || warnings > 0) &&
-        inGoal(work, unit.key, query.goal));
+        inGoal(work, scope, unit.key, query.goal));
 
     if (!showSession(scope, session.project)) {
       if (matches(held.map((h) => h.facts))) hidden += 1;

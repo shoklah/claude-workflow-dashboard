@@ -67,7 +67,7 @@ export function contextView(input: {
   scope: Scope | null;
 }): ContextResponse {
   const { query, scope } = input;
-  const { weeks, runs, sessions } = periodStoredUnits(input.runs, input.sessions, query, input.now);
+  const { weeks, runs, sessions } = periodStoredUnits(input.runs, input.sessions, query, input.now, scope);
   const sums = contextSums(
     runs.map((unit) => unit.merged),
     sessions.map((unit) => unit.merged),

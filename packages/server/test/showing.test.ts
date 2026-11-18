@@ -15,7 +15,8 @@ import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport, recordImportFailure } from '../src/db/import.ts';
-import { getShowing, setSeenAt, setShowing } from '../src/db/read.ts';
+import { getShowing, getShownProjects, setSeenAt, setShowing } from '../src/db/read.ts';
+import { state } from '../src/db/schema.ts';
 import { projectKey, runKey } from '../src/keys.ts';
 import { forbiddenStrings, leaks, maskText, scopeOf, showFacts } from '../src/views/scope.ts';
 
@@ -91,8 +92,8 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
-async function post(projects: string[]): Promise<Response> {
-  return app().request('/api/showing', {
+async function post(projects: string[], path = '/api/showing'): Promise<Response> {
+  return app().request(path, {
     method: 'POST',
     headers: { Host: HOST, 'X-Dashboard-Refresh': '1', 'Content-Type': 'application/json' },
     body: JSON.stringify({ projects }),
@@ -299,13 +300,76 @@ test('showing mode survives reopening the database', () => {
   expect(getShowing(db)).toEqual([projectKey(WORK)]);
 });
 
-test('an empty list turns showing off, and GET then lists every stored project', async () => {
+test('an empty list turns showing off, keeping its list, and GET then lists every stored project', async () => {
   expect((await post([])).ok).toBe(true);
   expect(getShowing(db)).toBeNull();
+  expect(getShownProjects(db)).toEqual([projectKey(WORK)]);
   const showing = await get<ShowingResponse>('/api/showing');
   expect(showing.on).toBe(false);
   expect(showing.projects).toHaveLength(3);
-  expect(showing.projects.every((p) => !p.picked)).toBe(true);
+  expect(showing.projects.filter((p) => p.picked).map((p) => p.key)).toEqual([projectKey(WORK)]);
+});
+
+test('turning showing mode off keeps its project list', () => {
+  setShowing(db, [projectKey(WORK), projectKey(TIDEPOOL)]);
+  setShowing(db, null);
+  expect(getShowing(db)).toBeNull();
+  expect(getShownProjects(db)).toEqual([projectKey(WORK), projectKey(TIDEPOOL)]);
+});
+
+test('POST /api/showing/projects while off changes the kept list and leaves showing off', async () => {
+  setShowing(db, null);
+  expect((await post([projectKey(TIDEPOOL)], '/api/showing/projects')).status).toBe(204);
+  expect(getShowing(db)).toBeNull();
+  expect(getShownProjects(db)).toEqual([projectKey(TIDEPOOL)]);
+});
+
+test('POST /api/showing/projects while on changes the shown projects too', async () => {
+  expect((await post([projectKey(TIDEPOOL), projectKey(TIDEPOOL)], '/api/showing/projects')).status).toBe(204);
+  expect(getShowing(db)).toEqual([projectKey(TIDEPOOL)]);
+  expect(getShownProjects(db)).toEqual([projectKey(TIDEPOOL)]);
+});
+
+test('POST /api/showing/projects with a key that is not stored answers 400 and changes nothing', async () => {
+  expect((await post(['ffffffffffffffff'], '/api/showing/projects')).status).toBe(400);
+  expect(getShownProjects(db)).toEqual([projectKey(WORK)]);
+  expect(getShowing(db)).toEqual([projectKey(WORK)]);
+});
+
+test('POST /api/showing/projects answers any other method with 405', async () => {
+  const res = await app().request('/api/showing/projects', { headers: { Host: HOST } });
+  expect(res.status).toBe(405);
+});
+
+test('POST /api/showing/projects with an empty list while off empties the kept list', async () => {
+  setShowing(db, null);
+  expect((await post([], '/api/showing/projects')).status).toBe(204);
+  expect(getShownProjects(db)).toEqual([]);
+  expect(getShowing(db)).toBeNull();
+});
+
+test('POST /api/showing/projects with an empty list while on turns showing off with an empty kept list', async () => {
+  expect((await post([], '/api/showing/projects')).status).toBe(204);
+  expect(getShowing(db)).toBeNull();
+  expect(getShownProjects(db)).toEqual([]);
+});
+
+test('a database with only a showing row reads as on, and turned off keeps its list', () => {
+  db.delete(state).run();
+  db.insert(state).values({ name: 'showing', value: JSON.stringify([projectKey(WORK)]) }).run();
+  expect(getShowing(db)).toEqual([projectKey(WORK)]);
+  expect(getShownProjects(db)).toEqual([projectKey(WORK)]);
+  setShowing(db, null);
+  expect(getShowing(db)).toBeNull();
+  expect(getShownProjects(db)).toEqual([projectKey(WORK)]);
+});
+
+test('GET /api/showing while off marks the kept projects picked', async () => {
+  setShowing(db, null);
+  const showing = await get<ShowingResponse>('/api/showing');
+  expect(showing.on).toBe(false);
+  expect(showing.projects.filter((p) => p.picked).map((p) => p.key)).toEqual([projectKey(WORK)]);
+  expect(showing.projects).toHaveLength(3);
 });
 
 // report-v6: lantern-notes and tidepool-api runs, and sessions in lantern-notes (one in a worktree), tidepool-api, the

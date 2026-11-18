@@ -3,13 +3,18 @@ import type { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppDeps, AppEnv, HostedDeps } from '../app.ts';
 import { postOnly } from '../routes.ts';
-import { createSession, deleteSession, newSecret, SESSION_MS, signInAccount } from './accounts.ts';
+import {
+  createSession,
+  deleteSession,
+  newSecret,
+  SESSION,
+  SESSION_COOKIE,
+  SESSION_MS,
+  signInAccount,
+} from './accounts.ts';
 
 const OAUTH = 'edward_oauth';
-/** The session cookie's name, which createApp's middleware reads. */
-export const SESSION = 'edward_session';
 const OAUTH_COOKIE = { httpOnly: true, secure: true, sameSite: 'Lax', path: '/auth' } as const;
-const SESSION_COOKIE = { httpOnly: true, secure: true, sameSite: 'Lax', path: '/' } as const;
 
 /** Whether two strings are equal, in constant time for equal lengths. */
 function sameSecret(a: string, b: string): boolean {

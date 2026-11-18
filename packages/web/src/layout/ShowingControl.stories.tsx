@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import type { ShowingResponse, StatusResponse } from '@cwd/shared';
+import { viewedShowing } from '../test/account.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { ShowingControl } from './ShowingControl.tsx';
 
@@ -138,5 +139,65 @@ export const StackedLongNames: Story = {
     await expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
     await expect(bar.getBoundingClientRect().width).toBeLessThanOrEqual(176);
     await expect(stop.getBoundingClientRect().top).toBeGreaterThan(canvas.getByText(/^Showing:/).getBoundingClientRect().bottom - 1);
+  },
+};
+
+/** Viewing another account: its kept projects in the bar, read-only, with nothing that would change them. */
+export const Viewing: Story = {
+  args: { viewing: 'mika-ito' },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/showing': viewedShowing });
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("mika-ito's projects: lantern-notes")).toBeVisible();
+    await expect(canvas.getByText('Read-only')).toBeVisible();
+    await expect(canvas.queryByRole('button')).toBeNull();
+    await expect(canvas.queryByRole('switch')).toBeNull();
+  },
+};
+
+/** Viewing, while showing mode's state loads: nothing yet, never the switch. */
+export const ViewingLoading: Story = {
+  args: { viewing: 'mika-ito' },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/showing': 'pending' });
+  },
+  play: async ({ canvas }) => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await expect(canvas.queryByRole('switch')).toBeNull();
+    await expect(canvas.queryByText('Read-only')).toBeNull();
+  },
+};
+
+/** The picker starts ticked from the kept list, so ticking another project adds to it instead of replacing it. */
+export const PickerKeepsKeptList: Story = {
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      '/api/showing': { on: false, projects: [off.projects[0]!, { ...off.projects[1]!, picked: true }] },
+    });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('switch', { name: 'Showing mode' }));
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog');
+    await expect(within(dialog).getByRole('checkbox', { name: 'harbor' })).toBeChecked();
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'atlas' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Start showing' }));
+    await expect(fetch).toHaveBeenCalledWith('/api/showing', {
+      method: 'POST',
+      headers: { 'X-Dashboard-Refresh': '1', 'Content-Type': 'application/json' },
+      body: `{"projects":["2b3c4d5e6f708192","${ATLAS}"]}`,
+    });
+  },
+};
+
+/** Viewing an account whose kept list is empty: the bar says so in a word. */
+export const ViewingNone: Story = {
+  args: { viewing: 'mika-ito' },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/showing': { on: true, projects: [] } });
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("mika-ito's projects: none")).toBeVisible();
   },
 };
