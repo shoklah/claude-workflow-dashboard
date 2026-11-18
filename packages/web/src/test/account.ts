@@ -1,6 +1,7 @@
-import type { AccountResponse } from '@cwd/shared';
+import type { AccountResponse, ShowingResponse, StatusResponse } from '@cwd/shared';
 
-// Invented answers of GET /api/account (hosted mode) for the Account page's stories.
+// Invented answers of GET /api/account (hosted mode) for the Account page's stories, and of the status and showing
+// mode for a caller who may view another account.
 
 /** A machine feeds the account; two tokens, the older never used. */
 export const accountFull: AccountResponse = {
@@ -25,4 +26,27 @@ export const accountEmpty: AccountResponse = {
   tokens: [],
   viewers: [],
   labeller: { keySet: false, model: 'claude-haiku-5-5', dailyMax: 500 },
+};
+
+const AT = '2026-11-12T10:00:00.000Z';
+
+/** Signed in as rowan-k, who may view mika-ito's account, on their own. */
+export const ownStatus: StatusResponse = {
+  lastImportAt: AT,
+  lastGoodImportAt: AT,
+  error: null,
+  importing: false,
+  account: { login: 'rowan-k', viewing: null, viewable: ['mika-ito'], admin: false },
+};
+
+/** The same caller viewing mika-ito's account. */
+export const viewingStatus: StatusResponse = {
+  ...ownStatus,
+  account: { login: 'rowan-k', viewing: 'mika-ito', viewable: ['mika-ito'], admin: false },
+};
+
+/** `/api/showing` while viewing mika-ito's account: her kept list, on. */
+export const viewedShowing: ShowingResponse = {
+  on: true,
+  projects: [{ key: '1a2b3c4d5e6f7081', name: 'lantern-notes', picked: true }],
 };

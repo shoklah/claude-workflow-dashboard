@@ -72,6 +72,11 @@ export async function showProjects(projects: string[]): Promise<void> {
   await post('/api/showing', { projects } satisfies ShowingRequest);
 }
 
+/** Views the account with this login, read-only, or with null one's own again (hosted mode). */
+export async function view(login: string | null): Promise<void> {
+  await post('/api/view', { login });
+}
+
 /** Creates a collector token (hosted mode), answering it raw, this once. */
 export async function createToken(): Promise<TokenResponse> {
   return (await post('/api/account/tokens')).json() as Promise<TokenResponse>;

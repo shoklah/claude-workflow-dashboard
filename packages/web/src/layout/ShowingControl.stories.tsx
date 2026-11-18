@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import type { ShowingResponse, StatusResponse } from '@cwd/shared';
+import { viewedShowing } from '../test/account.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { ShowingControl } from './ShowingControl.tsx';
 
@@ -138,5 +139,32 @@ export const StackedLongNames: Story = {
     await expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
     await expect(bar.getBoundingClientRect().width).toBeLessThanOrEqual(176);
     await expect(stop.getBoundingClientRect().top).toBeGreaterThan(canvas.getByText(/^Showing:/).getBoundingClientRect().bottom - 1);
+  },
+};
+
+/** Viewing another account: its kept projects in the bar, read-only, with nothing that would change them. */
+export const Viewing: Story = {
+  args: { viewing: 'mika-ito' },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/showing': viewedShowing });
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("mika-ito's projects: lantern-notes")).toBeVisible();
+    await expect(canvas.getByText('Read-only')).toBeVisible();
+    await expect(canvas.queryByRole('button')).toBeNull();
+    await expect(canvas.queryByRole('switch')).toBeNull();
+  },
+};
+
+/** Viewing, while showing mode's state loads: nothing yet, never the switch. */
+export const ViewingLoading: Story = {
+  args: { viewing: 'mika-ito' },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/showing': 'pending' });
+  },
+  play: async ({ canvas }) => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await expect(canvas.queryByRole('switch')).toBeNull();
+    await expect(canvas.queryByText('Read-only')).toBeNull();
   },
 };

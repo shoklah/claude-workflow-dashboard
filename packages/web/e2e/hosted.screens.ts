@@ -28,3 +28,18 @@ for (const width of [1440, 375]) {
     await expect(page).toHaveScreenshot(`account-${width}.png`);
   });
 }
+
+for (const width of [1440, 375]) {
+  test(`/ at ${width} px, viewing mika-ito's dashboard`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await pinClock(page);
+    await page.goto('/signin');
+    await page.getByRole('link', { name: 'Sign in with GitHub' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+    await page.getByRole('combobox', { name: 'Dashboard' }).selectOption('mika-ito');
+    // The bar is drawn twice, in the rail and in the top row, one hidden by breakpoint.
+    await expect(page.getByText("mika-ito's projects: lantern-notes").filter({ visible: true })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveScreenshot(`viewer-${width}.png`);
+  });
+}

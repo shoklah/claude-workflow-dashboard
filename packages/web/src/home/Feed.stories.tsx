@@ -3,6 +3,7 @@ import { expect, waitFor, within } from 'storybook/test';
 import type { HomeResponse, StatusResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { emptyHome, fullHome } from '../test/home.ts';
+import { viewingStatus } from '../test/account.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { Feed } from './Feed.tsx';
 
@@ -214,5 +215,17 @@ export const MarkAllSeen: Story = {
     );
     await expect(posts).toEqual([['/api/seen', { method: 'POST', headers: { 'X-Dashboard-Refresh': '1' } }]]);
     await waitFor(() => expect(canvas.queryAllByRole('listitem')).toHaveLength(0));
+  },
+};
+
+/** Viewing another account: its feed, with no "Mark all seen", which would change it. */
+export const Viewing: Story = {
+  args: { items: fullHome.feed },
+  beforeEach: () => {
+    mockApi({ '/api/status': viewingStatus });
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(4);
+    await waitFor(() => expect(canvas.queryByRole('button', { name: 'Mark all seen' })).toBeNull());
   },
 };

@@ -18,9 +18,11 @@ import { NOTICE } from '../lib/format.ts';
 
 /**
  * Showing mode: while off, a switch that opens the project picker; while on, an orange bar naming what it shows. With
- * `stacked` (the rail's foot), the bar is a column: the names wrapping over a full-width "Stop showing".
+ * `stacked` (the rail's foot), the bar is a column: the names wrapping over a full-width "Stop showing". While
+ * `viewing` another account (its login), the bar is read-only: that account's kept projects and "Read-only", never the
+ * switch, and nothing while they load.
  */
-export function ShowingControl({ stacked }: { stacked?: boolean }) {
+export function ShowingControl({ stacked, viewing }: { stacked?: boolean; viewing?: string | null }) {
   const showing = useLiveQuery<ShowingResponse>('/api/showing');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -35,13 +37,19 @@ export function ShowingControl({ stacked }: { stacked?: boolean }) {
   }
 
   if (showing.isError) return <p className="text-sm">Couldn't read showing mode.</p>;
-  if (showing.data?.on) {
+  if (viewing || showing.data?.on) {
+    if (!showing.data) return null;
+    const names = showing.data.projects.map((project) => project.name).join(', ');
     return (
       <div className={cn('flex px-3', stacked ? 'flex-col gap-2 py-2' : 'items-center gap-3 py-1', NOTICE)}>
-        <b className={cn(stacked && 'break-words')}>Showing: {showing.data.projects.map((project) => project.name).join(', ')}</b>
-        <Button variant="outline" size="sm" onClick={() => show([])}>
-          Stop showing
-        </Button>
+        <b className={cn(stacked && 'break-words')}>{viewing ? `${viewing}'s projects: ${names}` : `Showing: ${names}`}</b>
+        {viewing ? (
+          <span>Read-only</span>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => show([])}>
+            Stop showing
+          </Button>
+        )}
       </div>
     );
   }

@@ -97,3 +97,58 @@ test('Sign out lands on the sign-in page, and a page then redirects there', asyn
   await page.goto('/work');
   await expect(page).toHaveURL(`${HOSTED_URL}/signin`);
 });
+
+// rowan-k may view mika-ito's account, whose one kept project is lantern-notes; viewing is the session's, so a new
+// test starts on rowan-k's own dashboard.
+test("switching to mika-ito's dashboard shows only her kept project, read-only, and switching back restores", async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/signin');
+  await page.getByRole('link', { name: 'Sign in with GitHub' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await page.goto('/work?view=runs');
+  const rail = page.getByRole('complementary');
+  const switcher = rail.getByRole('combobox', { name: 'Dashboard' });
+  const tidepoolRows = page.getByRole('row').filter({ hasText: /tidepool-api|fix\/retry-backoff/ });
+  await expect(switcher).toHaveValue('');
+  await expect(tidepoolRows).toHaveCount(2);
+
+  await switcher.selectOption('mika-ito');
+  await expect(rail.getByText("mika-ito's projects: lantern-notes")).toBeVisible();
+  await expect(rail.getByText('Read-only')).toBeVisible();
+  await expect(rail.getByRole('switch')).toHaveCount(0);
+  await expect(rail.getByRole('button', { name: 'Stop showing' })).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: 'lantern-notes' }).first()).toBeVisible();
+  await expect(tidepoolRows).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  // Home: her feed, with no "Mark all seen".
+  await page.goto('/');
+  const feed = page.getByRole('region', { name: 'Since you last looked', exact: true });
+  await expect(feed.getByText(/lantern-notes/).first()).toBeVisible();
+  await expect(feed.getByRole('button', { name: 'Mark all seen' })).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  await page.goto('/work?view=runs');
+  await switcher.selectOption('Yours');
+  await expect(rail.getByRole('switch', { name: 'Showing mode' })).toBeVisible();
+  await expect(rail.getByText('Read-only')).toHaveCount(0);
+  await expect(tidepoolRows).toHaveCount(2);
+});
+
+test('at 375 px the switcher and the read-only bar sit in the top row, and the page fits', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/signin');
+  await page.getByRole('link', { name: 'Sign in with GitHub' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  const header = page.getByRole('banner');
+  await header.getByRole('combobox', { name: 'Dashboard' }).selectOption('mika-ito');
+  await expect(header.getByText("mika-ito's projects: lantern-notes")).toBeVisible();
+  await expect(header.getByText('Read-only')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+  await page.waitForLoadState('networkidle');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
