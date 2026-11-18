@@ -7,8 +7,8 @@ import { createQueue } from './queue.ts';
 import { runReporter } from './reporter.ts';
 import { startTriggers } from './triggers.ts';
 
-// The server refuses a failure text longer than this.
-const FAILURE_MAX = 2000;
+// The longest error text a collector may record: the collector cuts to it and `/api/collect/failure` refuses past it.
+export const COLLECT_MAX_ERROR = 2000;
 const CONFLICT_LINE =
   'collect: export answered 409: another machine feeds this account (Reset collector on the Account page)';
 
@@ -65,7 +65,7 @@ export async function collectOnce(opts: {
     await send(fetch, 'failure', new URL('/api/collect/failure', server), {
       method: 'POST',
       headers: { ...auth, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: result.error.slice(0, FAILURE_MAX) }),
+      body: JSON.stringify({ error: result.error.slice(0, COLLECT_MAX_ERROR) }),
     });
     return null;
   }

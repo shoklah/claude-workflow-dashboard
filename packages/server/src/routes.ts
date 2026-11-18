@@ -18,6 +18,7 @@ import {
 } from '@cwd/shared';
 import type { AppDeps, AppEnv } from './app.ts';
 import { activeList, labellable } from './categories.ts';
+import { COLLECT_MAX_ERROR } from './collector.ts';
 import { recordImportFailure, splitCursor } from './db/import.ts';
 import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
 import {
@@ -61,8 +62,6 @@ export function postOnly(c: Context): Response {
 // The collect endpoint's limits: the gzipped body, and the export it unzips to.
 const COLLECT_MAX_BODY = 32 * 1024 * 1024;
 const COLLECT_MAX_JSON = 64 * 1024 * 1024;
-// The longest error text a collector may record.
-const COLLECT_MAX_ERROR = 2000;
 
 // The most weeks a list covers: the Runs page's longest period, so a huge `weeks` can't build a huge response.
 const MAX_WEEKS = 52;
