@@ -6,9 +6,10 @@ import { rebuildDerived } from '../db/import.ts';
 /**
  * Each account's database, `<dataDir>/accounts/<id>.sqlite`, opened, migrated and rebuilt once per process on its first
  * use, then kept open; `remove` closes it and deletes the file with its `-journal`, `-wal` and `-shm`, so no hot journal
- * rolls back into the next file at that path. A path is built only from a positive safe integer id; any other id throws.
+ * rolls back into the next file at that path; `file` is its path, unopened. A path is built only from a positive safe
+ * integer id; any other id throws.
  */
-export type AccountFiles = { db(id: number): Db; remove(id: number): void; close(): void };
+export type AccountFiles = { db(id: number): Db; file(id: number): string; remove(id: number): void; close(): void };
 
 export function accountFiles(dataDir: string): AccountFiles {
   const open = new Map<number, Db>();
@@ -27,6 +28,7 @@ export function accountFiles(dataDir: string): AccountFiles {
       }
       return db;
     },
+    file: fileOf,
     remove(id) {
       const file = fileOf(id);
       open.get(id)?.$client.close();

@@ -56,6 +56,21 @@ A hosted edward serves several accounts, each signing in with GitHub (invite-onl
 
 The `/data` volume (`data/` on the server) holds the accounts database and every account's file, and is their only copy: put it in the server's backups.
 
+### Moving a local history into an account
+
+A local edward's `dashboard.sqlite` (its imports, finding labels, cursor and showing mode) can become an account's data, once that account has signed in and while it holds none:
+
+1. On the Mac, stop the local edward, so `dashboard.sqlite` isn't copied mid-write: `pnpm agent:uninstall`.
+2. Copy its `dashboard.sqlite` to the server's `deploy/data/import/` (readable by uid 1000).
+3. From `deploy/`, stop the hosted server, import, and start it again:
+   ```sh
+   docker compose -f compose.example.yml stop edward
+   docker compose -f compose.example.yml run --rm edward pnpm account:import <login> /data/import/dashboard.sqlite
+   docker compose -f compose.example.yml up -d
+   ```
+   It prints `imported into account <login>`, or why it refused (no such account, an account that already holds data, a file from a newer edward, or a file that isn't an edward database), changing nothing.
+4. On the Mac, run only the collector from then on (see Collector): `pnpm agent:install --collector`. The copied `dashboard.sqlite` stays there as the backup of the moment it was copied.
+
 ## The data folder
 
 Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` on macOS and `$XDG_DATA_HOME/claude-workflow-dashboard/` on Linux (`~/.local/share/claude-workflow-dashboard/` when `XDG_DATA_HOME` is unset, empty or relative), the project's first name, which the launchd agent and the systemd unit keep too, created with mode `0700`:
