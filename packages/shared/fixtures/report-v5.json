@@ -2883,6 +2883,36 @@
               "cost": 1.755
             }
           }
+        },
+        {
+          "kind": "final_review",
+          "id": "9d2e41c07ab35f18",
+          "time": "2026-11-12T07:06:02.117Z",
+          "end": "2026-11-12T07:28:40.506Z",
+          "step": null,
+          "agent": "final-reviewer",
+          "description": "Final review (pair)",
+          "requested_model": "fable",
+          "requested_effort": "high",
+          "model": "claude-fable-5-1",
+          "effort": "high",
+          "skills": [],
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 2,
+            "unneeded": 0
+          },
+          "models": {
+            "claude-fable-5-1": {
+              "input": 15000,
+              "output": 10000,
+              "cache_read": 800000,
+              "cache_write": 50000,
+              "cost": 1.5
+            }
+          },
+          "pair": true
         }
       ],
       "skills": [
@@ -2921,11 +2951,11 @@
           "cost": 6.28
         },
         "claude-fable-5-1": {
-          "input": 28000,
-          "output": 17000,
-          "cache_read": 1300000,
-          "cache_write": 80000,
-          "cost": 2.455
+          "input": 43000,
+          "output": 27000,
+          "cache_read": 2100000,
+          "cache_write": 130000,
+          "cost": 3.955
         }
       },
       "efforts": {
@@ -2964,7 +2994,7 @@
           {
             "week": "2026-11-08",
             "advisor": 0.27,
-            "fable": 2.455
+            "fable": 3.955
           }
         ]
       },
@@ -3395,7 +3425,7 @@
         "notes": 9,
         "changed": 3,
         "cost": 0.72,
-        "share": 9.664429530201343
+        "share": 8.044692737430166
       },
       "startup": {
         "with": 1,
@@ -3488,7 +3518,7 @@
         "stops": 0,
         "fable_points": 12,
         "all_points": 8,
-        "cost": 23.240000000000002,
+        "cost": 24.74,
         "minutes_per_run": 200.0,
         "later_fixes": 1
       }
@@ -3596,10 +3626,12 @@
         },
         "final-reviewer": {
           "requested": {
-            "-/xhigh": 2
+            "-/xhigh": 2,
+            "fable/high": 1
           },
           "actual": {
-            "claude-fable-5-1/xhigh": 2
+            "claude-fable-5-1/xhigh": 2,
+            "claude-fable-5-1/high": 1
           },
           "mismatches": 0
         },
@@ -3695,8 +3727,8 @@
         {
           "week": "2026-11-08",
           "advisor": 0.72,
-          "fable": 6.73,
-          "share": 9.664429530201343,
+          "fable": 8.23,
+          "share": 8.044692737430166,
           "stop": false
         }
       ],
