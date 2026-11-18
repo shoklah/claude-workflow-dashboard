@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppDeps, AppEnv, HostedDeps } from '../app.ts';
+import { postOnly } from '../routes.ts';
 import { createSession, deleteSession, newSecret, SESSION_DAYS, signInAccount } from './accounts.ts';
 
 const OAUTH = 'edward_oauth';
@@ -57,4 +58,8 @@ export function registerAuth(app: Hono<AppEnv>, deps: AppDeps & { hosted: Hosted
     deleteCookie(c, SESSION, SESSION_COOKIE);
     return c.body(null, 204);
   });
+  app.all('/auth/signout', postOnly);
+
+  // So the built files' index.html fallback never answers an /auth path.
+  app.all('/auth/*', (c) => c.notFound());
 }

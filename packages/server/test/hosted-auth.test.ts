@@ -89,6 +89,9 @@ describe('GET /auth/github', () => {
     const res = await send('/auth/github');
     expect(res.status).toBe(302);
     expect(res.headers.get('Location')).toMatch(/^https:\/\/github\.com\/login\/oauth\/authorize\?/);
+    // Nor does the index.html fallback answer any other /auth path.
+    expect((await send('/auth/signout')).status).toBe(405);
+    expect((await send('/auth/nope')).status).toBe(404);
   });
 });
 

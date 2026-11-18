@@ -48,7 +48,7 @@ import { weeksView } from './views/weeks.ts';
 import { changeView, goalHomes, goalView, levels, workView } from './views/work.ts';
 
 /** The answer to any method but POST on a POST-only route. */
-function postOnly(c: Context): Response {
+export function postOnly(c: Context): Response {
   return c.body(null, 405, { Allow: 'POST' });
 }
 
