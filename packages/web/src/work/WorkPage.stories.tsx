@@ -137,6 +137,12 @@ export const Full: Story = {
       'Last activity',
     ]);
 
+    // The sections' Changes lists line up, a long project name included: each column starts at the same place.
+    const lefts = (section: HTMLElement) =>
+      within(section).getAllByRole('columnheader').map((th) => Math.round(th.getBoundingClientRect().left));
+    await expect(lefts(search)).toEqual(lefts(sync));
+    await expect(lefts(none)).toEqual(lefts(sync));
+
     const loose = canvas.getByText('4 sessions in this period belong to no change.');
     await expect(within(loose.parentElement!).getByRole('link', { name: 'See them under Sessions' })).toHaveAttribute(
       'href',
