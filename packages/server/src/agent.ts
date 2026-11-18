@@ -107,27 +107,24 @@ export function agentSpec(
 
 if (import.meta.main) {
   // No server bundle: node runs main.ts with its type stripping, as check:real does, with the node running install.
-  const logDir = join(loadConfig().dataDir, 'logs');
   const entry = fileURLToPath(new URL('./main.ts', import.meta.url));
-  const spec = agentSpec(process.platform, {
-    home: homedir(),
-    env: process.env,
-    uid: process.getuid?.(),
-    node: process.execPath,
-    entry,
-    logDir,
-  });
+  const opts = { home: homedir(), env: process.env, uid: process.getuid?.(), node: process.execPath, entry };
+  const specWith = (logDir: string) => agentSpec(process.platform, { ...opts, logDir });
+  // Only install reads the config, for the log folder: uninstall needs only the file and the stop commands.
+  const spec = specWith('');
   const command = process.argv[2];
   const run = ([cmd, ...args]: string[]) => spawnSync(cmd, args, { stdio: 'inherit' }).status ?? 1;
   if (!spec) {
     console.error('agent:install supports macOS and Linux (Windows: use WSL)');
     process.exitCode = 1;
   } else if (command === 'install') {
+    const logDir = join(loadConfig().dataDir, 'logs');
+    const { file, contents, start } = specWith(logDir)!;
     mkdirSync(logDir, { recursive: true, mode: 0o700 });
-    mkdirSync(dirname(spec.file), { recursive: true });
-    writeFileSync(spec.file, spec.contents);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, contents);
     let status = 0;
-    for (const step of spec.start) {
+    for (const step of start) {
       status = run(step);
       if (status !== 0) break;
     }
