@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import type { HomeResponse } from '@cwd/shared';
 import { expectLegendClear } from './charts.ts';
 import { pinClock } from './fixed-time.ts';
 import { settled } from './settled.ts';
@@ -61,11 +62,11 @@ for (const width of [375, 768, 1440]) {
     test.use({ viewport: { width, height: 900 } });
 
     // A long feed whose last item, a finished run, has a fact not known: its "not known" read-out (an absolute
-    // `sr-only`) stays inside the feed's list, so the page ends with its content.
+    // `sr-only`) stays inside the feed's scrolling list, so the page ends with its content.
     test('a long feed never makes the page longer than its content', async ({ page }) => {
       await page.route('**/api/home', async (route) => {
         const response = await route.fetch();
-        const home = (await response.json()) as { feed: { type: string; text: string | null; minutes: number | null }[] };
+        const home = (await response.json()) as HomeResponse;
         const warning = home.feed.find((item) => item.type === 'warning')!;
         const run = home.feed.find((item) => item.type === 'run')!;
         home.feed = [...Array.from({ length: 40 }, (_, i) => ({ ...warning, text: `${warning.text} ${i}` })), { ...run, minutes: null }];
@@ -73,11 +74,11 @@ for (const width of [375, 768, 1440]) {
       });
       await page.goto('/');
       await expect(page.getByRole('region', { name: 'Since you last looked list' }).getByText('not known')).toHaveCount(1);
-      const [documentHeight, shellHeight] = await page.evaluate(() => [
+      const [documentHeight, appHeight] = await page.evaluate(() => [
         document.documentElement.scrollHeight,
-        document.getElementById('main')!.parentElement!.parentElement!.offsetHeight,
+        document.getElementById('root')!.offsetHeight,
       ]);
-      expect(documentHeight).toBe(shellHeight);
+      expect(documentHeight).toBe(appHeight);
     });
 
     test('every step box is readable and reachable', async ({ page }) => {
