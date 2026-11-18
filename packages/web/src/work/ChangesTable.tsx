@@ -14,9 +14,10 @@ import {
   projectLabel,
 } from '../lib/format.ts';
 
-/** The minimum widths a goal's page lines up its Changes and Sessions lists by, the one above the other: Stage over
- * Step, Last activity over Started, Findings over Length (the cost columns already match). */
-export const ALIGNED = { stage: 'min-w-29', time: 'min-w-28', count: 'min-w-22' };
+/** The minimum widths lists line up by, the one above the other: a goal's page's Changes and Sessions (Stage over Step,
+ * Last activity over Started, Findings over Length; the cost columns already match), and Work's goal sections' Changes
+ * (Project too, room for a name and its "+N"). */
+export const ALIGNED = { project: 'min-w-36', stage: 'min-w-29', time: 'min-w-28', count: 'min-w-22' };
 
 const COLUMNS: ListColumn<ChangeRow>[] = [
   {
@@ -31,6 +32,7 @@ const COLUMNS: ListColumn<ChangeRow>[] = [
     id: 'project',
     header: 'Project',
     fold: true,
+    width: ALIGNED.project,
     value: (c) => projectLabel(c.project),
     cell: (c) => (
       <>
