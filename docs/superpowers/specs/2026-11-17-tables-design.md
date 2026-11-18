@@ -89,7 +89,7 @@ A column marked narrow shows only while the list's own container is at least 768
 - Runs: Project, Path, Finished, Est. cost ($). First glance when narrow: Branch, Found, Warnings.
 - Sessions: Project, Started, Est. cost ($). First glance when narrow: Session, Length, Warnings.
 - Context: Kind, When, Largest, Read share. First glance when narrow: Name, Past the cap.
-- Compliance: Project.
+- Compliance: Project, Since you last looked (the owner's call at build, 2026-11-18: at 375 px the list scrolled sideways by 65 px with it). First glance when narrow: Run, Warning.
 - Findings on the Findings page: Run. On the run page nothing folds: #, Summary, App, Valid fit at 375 px (`tables-findings-375-*`, `tables-run-375-*`).
 
 The summary or warning column is the one that takes the room and wraps (`wide`). The others keep their content's width.
