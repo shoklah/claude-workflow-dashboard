@@ -150,6 +150,32 @@ describe('viewers', () => {
     expect(viewableAccounts(db, viewer(db, { id: 303, login: 'mika-ito' }), ADMIN)).toEqual([]);
   });
 
+  test('an owner that granted both an old and a new login of one account is viewable once', () => {
+    const { db } = fresh();
+    owner(db);
+    viewer(db);
+    addViewer(db, OWNER.id, 'mika-ito');
+    const renamed = signInAccount(db, { id: 202, login: 'mika-new' }, ADMIN, LATER)!;
+    addViewer(db, OWNER.id, 'mika-new');
+    expect(viewableAccounts(db, renamed, ADMIN)).toEqual([OWNER]);
+    expect(listViewers(db, OWNER.id)).toEqual(['mika-new']);
+  });
+
+  test("a bound viewer is listed by its current login, and removed by it; an unbound one by the granted login", () => {
+    const { db } = fresh();
+    owner(db);
+    viewer(db);
+    addViewer(db, OWNER.id, 'mika-ito');
+    addViewer(db, OWNER.id, 'Sam-Lee');
+    signInAccount(db, { id: 202, login: 'Mika-New' }, ADMIN, LATER);
+    expect(listViewers(db, OWNER.id)).toEqual(['mika-new', 'sam-lee']);
+    removeViewer(db, OWNER.id, 'mika-new');
+    expect(listViewers(db, OWNER.id)).toEqual(['sam-lee']);
+    expect(viewableAccounts(db, { id: 202, login: 'Mika-New' }, ADMIN)).toEqual([]);
+    removeViewer(db, OWNER.id, 'sam-lee');
+    expect(listViewers(db, OWNER.id)).toEqual([]);
+  });
+
   test("an owner whose invite is removed isn't viewable; the admin needs none", () => {
     const { db } = fresh();
     owner(db);

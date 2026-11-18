@@ -6,8 +6,8 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { Db } from './db/open.ts';
 import type { AccountFiles } from './hosted/account-files.ts';
-import { sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
-import { registerAuth, SESSION } from './hosted/auth.ts';
+import { SESSION, sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
+import { registerAuth } from './hosted/auth.ts';
 import type { GitHubClient } from './hosted/github.ts';
 import { registerRoutes } from './routes.ts';
 

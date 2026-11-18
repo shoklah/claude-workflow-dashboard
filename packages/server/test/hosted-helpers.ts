@@ -1,7 +1,6 @@
 import type { Hono } from 'hono';
 import { createApp, type AppEnv, type HostedDeps } from '../src/app.ts';
-import { addInvite, createSession, createToken, signInAccount } from '../src/hosted/accounts.ts';
-import { SESSION } from '../src/hosted/auth.ts';
+import { addInvite, createSession, createToken, SESSION, signInAccount } from '../src/hosted/accounts.ts';
 import { githubClient, type GitHubClient } from '../src/hosted/github.ts';
 import { hostedDeps } from '../src/hosted/main.ts';
 

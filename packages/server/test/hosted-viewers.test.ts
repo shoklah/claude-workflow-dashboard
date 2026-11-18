@@ -21,9 +21,9 @@ import {
   createToken,
   listTokens,
   removeViewer,
+  SESSION,
   signInAccount,
 } from '../src/hosted/accounts.ts';
-import { SESSION } from '../src/hosted/auth.ts';
 import { changeKey, goalKey, projectKey } from '../src/keys.ts';
 import { storedBranches, storedSessionRoots } from '../src/views/runs.ts';
 import { forbiddenStrings, leaks } from '../src/views/scope.ts';

@@ -48,12 +48,12 @@ import {
   listViewers,
   removeViewer,
   revokeToken,
+  SESSION,
   setLastCollect,
   setViewing,
   viewableAccounts,
   type Account,
 } from './hosted/accounts.ts';
-import { SESSION } from './hosted/auth.ts';
 import { projectKey } from './keys.ts';
 import { importJson } from './reporter.ts';
 import { accountView } from './views/account.ts';

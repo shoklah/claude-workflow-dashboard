@@ -9,6 +9,8 @@ import { accounts, collectorTokens, invites, sessions, viewerGrants } from './sc
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url));
 // A session's lifetime, for its stored expiry and its cookie alike.
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
+/** The session cookie's name, which createApp's middleware reads. */
+export const SESSION = 'edward_session';
 
 export type AccountsDb = ReturnType<typeof openAccountsDb>;
 export type Account = { id: number; login: string };
@@ -136,28 +138,41 @@ export function addViewer(db: AccountsDb, ownerId: number, login: string): void 
     .run();
 }
 
+/** Removes the owner's grant listed as `login` (as listViewers shows it, any case). */
 export function removeViewer(db: AccountsDb, ownerId: number, login: string): void {
-  db.delete(viewerGrants)
-    .where(and(eq(viewerGrants.ownerId, ownerId), eq(viewerGrants.viewerLogin, login.toLowerCase())))
-    .run();
+  const shown = login.toLowerCase();
+  for (const grant of grantsOf(db, ownerId).filter((grant) => grant.shown === shown)) {
+    db.delete(viewerGrants)
+      .where(and(eq(viewerGrants.ownerId, ownerId), eq(viewerGrants.viewerLogin, grant.viewerLogin)))
+      .run();
+  }
 }
 
-/** The logins the owner granted a view, lower-case, in order. */
+/** The logins the owner granted a view, lower-case, each once, in order: a bound grant's viewer's current login, an
+ * unbound one's as granted. */
 export function listViewers(db: AccountsDb, ownerId: number): string[] {
-  return db
-    .select({ login: viewerGrants.viewerLogin })
-    .from(viewerGrants)
-    .where(eq(viewerGrants.ownerId, ownerId))
-    .orderBy(viewerGrants.viewerLogin)
-    .all()
-    .map((row) => row.login);
+  return [...new Set(grantsOf(db, ownerId).map((grant) => grant.shown))].sort();
 }
 
-/** The owners the account may view: those that granted it (grantedTo), and whose own login is invited or `admin`. */
+// The owner's grants, each with the login it shows as (listViewers).
+function grantsOf(db: AccountsDb, ownerId: number): { viewerLogin: string; shown: string }[] {
+  return db
+    .select({
+      viewerLogin: viewerGrants.viewerLogin,
+      shown: sql<string>`coalesce(lower(${accounts.login}), ${viewerGrants.viewerLogin})`,
+    })
+    .from(viewerGrants)
+    .leftJoin(accounts, eq(accounts.id, viewerGrants.viewerId))
+    .where(eq(viewerGrants.ownerId, ownerId))
+    .all();
+}
+
+/** The owners the account may view, each once: those that granted it (grantedTo), and whose own login is invited or
+ * `admin`. */
 export function viewableAccounts(db: AccountsDb, account: Account, admin: string): Account[] {
   const ownerLogin = sql`lower(${accounts.login})`;
   return db
-    .select(accountColumns)
+    .selectDistinct(accountColumns)
     .from(viewerGrants)
     .innerJoin(accounts, eq(accounts.id, viewerGrants.ownerId))
     .leftJoin(invites, eq(invites.login, ownerLogin))
