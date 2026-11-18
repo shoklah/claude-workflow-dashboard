@@ -12,7 +12,6 @@ const FAILED = "Sign-in didn't finish. Try again.";
 
 /** The page holds no data, so it has one state per `?error=`: none, refused and failed. */
 export const Default: Story = {
-  parameters: { path: '/signin' },
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
     const notice = canvas.getByText(NOTICE);
@@ -27,7 +26,7 @@ export const Default: Story = {
 
 /** Signed in with a GitHub account that isn't invited. */
 export const Refused: Story = {
-  parameters: { path: '/signin?error=refused' },
+  args: { error: 'refused' },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText(REFUSED)).toBeVisible();
     await expect(canvas.queryByText(FAILED)).toBeNull();
@@ -37,7 +36,7 @@ export const Refused: Story = {
 
 /** A bad `state` or a GitHub error. */
 export const Failed: Story = {
-  parameters: { path: '/signin?error=failed' },
+  args: { error: 'failed' },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText(FAILED)).toBeVisible();
     await expect(canvas.queryByText(REFUSED)).toBeNull();

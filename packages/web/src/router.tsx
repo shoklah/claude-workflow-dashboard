@@ -38,7 +38,10 @@ const signInRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): { error?: 'refused' | 'failed' } => ({
     error: search.error === 'refused' || search.error === 'failed' ? search.error : undefined,
   }),
-  component: SignInPage,
+  component: function SignIn() {
+    const { error } = signInRoute.useSearch();
+    return <SignInPage error={error} />;
+  },
 });
 
 const accountRoute = createRoute({

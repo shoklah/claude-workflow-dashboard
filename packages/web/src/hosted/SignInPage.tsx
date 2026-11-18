@@ -1,4 +1,3 @@
-import { useSearch } from '@tanstack/react-router';
 import { KeyRound } from 'lucide-react';
 import { Line, PageTitle, Panel, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
@@ -12,8 +11,7 @@ const ERRORS = {
 
 /** Hosted mode's way in, outside the shell: one glass panel centred on the backdrop, the same at every width, saying
  * where the data goes before the button, and why the last sign-in failed (`?error=refused|failed`) above it. */
-export function SignInPage() {
-  const { error } = useSearch({ strict: false });
+export function SignInPage({ error }: { error?: keyof typeof ERRORS }) {
   return (
     <main id="main" tabIndex={-1} className="flex min-h-screen items-center justify-center p-4 outline-none">
       <Panel className="w-full max-w-sm gap-5 p-6">
