@@ -31,7 +31,7 @@ export const Empty: Story = {
   },
 };
 
-/** Full: finished runs and new warnings, newest first, each led by its branch; free text shows as text, never as HTML. */
+/** Full: finished runs and new warnings, newest first, each led by its message; free text shows as text, never as HTML. */
 export const Full: Story = {
   args: { items: fullHome.feed },
   // In Home's column from lg (`lg:w-72`), where the title's row is tightest.
@@ -67,7 +67,7 @@ export const Full: Story = {
     await expect(items[1]).toHaveTextContent('Typed "grill me" but grill-me never loaded');
     await expect(items[1].querySelector('.bg-warning-edge')).not.toBeNull();
 
-    // A run's warning opens its run; the run's own "branch (date):" lead is gone, the branch already leads.
+    // A run's warning opens its run; the run's own "branch (date):" lead is gone, the run's link already names it.
     await expect(within(items[2]).getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(within(items[2]).getByText('final-reviewer ran on another model than its pin')).toBeVisible();
     await expect(facts(items[2])).toEqual([]);
@@ -89,6 +89,37 @@ export const Full: Story = {
     // The status is a swatch beside its word, not a coloured edge; nothing is joined with " · ".
     await expect(canvasElement.querySelector('.border-l-4, .border-l-3')).toBeNull();
     await expect(canvasElement.textContent).not.toContain(' · ');
+
+    // Reading order: docs/design/2026-11-18-feed-items.
+    const font = (el: Element) => {
+      const style = getComputedStyle(el);
+      return [style.fontSize, style.fontWeight, style.color];
+    };
+    const inOrder = (...els: Element[]) =>
+      els.every((el, i) => i === 0 || els[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const [finished, sessionWarning, runWarning] = items.slice(0, 3).map((item) => within(item));
+    const warning = runWarning.getByText('final-reviewer ran on another model than its pin');
+    const warningStatus = runWarning.getByText('New warning');
+    const warningRun = runWarning.getByRole('link');
+    const warningProject = runWarning.getByText('atlas');
+    const title = finished.getByRole('link', { name: 'Search every note by title and body' });
+    const runStatus = finished.getByText('Run finished');
+    const runProject = finished.getByText('atlas, Full path');
+    const [findings, actedOn] = finished.getAllByRole('term');
+    const session = sessionWarning.getByText('Session', { exact: false });
+    // The caption and context in secondary ink, the message in primary.
+    const [muted, primary] = [getComputedStyle(warningStatus).color, getComputedStyle(warning).color];
+    await expect(muted).not.toBe(primary);
+    for (const small of [warningStatus, warningRun, warningProject, session, runStatus, runProject, findings]) {
+      await expect(font(small)).toEqual(['12px', '400', muted]);
+    }
+    for (const message of [warning, sessionWarning.getByText('Typed "grill me" but grill-me never loaded'), title]) {
+      await expect(font(message)).toEqual(['14px', '500', primary]);
+    }
+    await expect(inOrder(warningStatus, warning, warningRun, warningProject)).toBe(true);
+    await expect(inOrder(runStatus, title, runProject)).toBe(true);
+    // A run's facts share one row.
+    await expect(findings.getBoundingClientRect().top).toBe(actedOn.getBoundingClientRect().top);
 
     // "Mark all seen" is an icon on the title's row at the column's 288 px, named and with its tooltip.
     const middle = (el: Element) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
