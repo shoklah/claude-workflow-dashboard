@@ -137,7 +137,7 @@ export const Full: Story = {
       'Last activity',
     ]);
 
-    // The sections' Changes lists line up, whatever their projects' names: each column starts at the same place.
+    // The sections' Changes lists line up, a long project name included: each column starts at the same place.
     const lefts = (section: HTMLElement) =>
       within(section).getAllByRole('columnheader').map((th) => Math.round(th.getBoundingClientRect().left));
     await expect(lefts(search)).toEqual(lefts(sync));

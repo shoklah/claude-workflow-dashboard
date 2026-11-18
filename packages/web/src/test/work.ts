@@ -54,7 +54,7 @@ export const designChange: ChangeRow = {
 const searchChange: ChangeRow = {
   key: 'c4d5e6f708192a3b',
   title: 'Cache the top queries',
-  project: 'tidepool-api',
+  project: 'tidepool-search-indexer-service',
   otherProjects: [],
   otherCount: 0,
   path: 'full',
