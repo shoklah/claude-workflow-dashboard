@@ -43,15 +43,15 @@ import {
 /** The main session's model and effort, each model's cost, the agents with each model and effort they ran on, and
  * the advisor's calls and notes. */
 function ModelsAndAdvisor({ run }: { run: RunPageResponse }) {
-  const { main, models, agents, advisor } = run;
+  const { sessionModel, models, agents, advisor } = run;
   return (
     <Panel title="Models and advisor">
-      {!main && models.length === 0 && agents.length === 0 && <Line muted>No model recorded.</Line>}
-      {main && (
+      {!sessionModel && models.length === 0 && agents.length === 0 && <Line muted>No model recorded.</Line>}
+      {sessionModel && (
         <Pairs
           pairs={[
-            ['Main session model', <Text value={modelLabel(main.model)} />],
-            ['Main session effort', <Text value={main.effort} />],
+            ['Main session model', <Text value={modelLabel(sessionModel.model)} />],
+            ['Main session effort', <Text value={sessionModel.effort} />],
           ]}
         />
       )}

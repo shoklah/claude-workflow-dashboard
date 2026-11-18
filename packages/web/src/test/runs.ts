@@ -234,7 +234,7 @@ export const runFull: RunPageResponse = {
     { name: 'implementer', actual: { 'claude-opus-5-5/medium': 4 } },
     { name: 'task-reviewer', actual: { 'claude-opus-5-5/high': 5 } },
   ],
-  main: { model: 'claude-opus-5-5', effort: 'medium' },
+  sessionModel: { model: 'claude-opus-5-5', effort: 'medium' },
   phases: [
     { name: 'plan_writing', cost: 1.1 },
     { name: 'implement', cost: 3.4 },
@@ -276,7 +276,7 @@ export const runBeforeSteps: RunPageResponse = {
   offers: [],
   laterFixes: [],
   agents: [],
-  main: null,
+  sessionModel: null,
   phases: [],
 };
 

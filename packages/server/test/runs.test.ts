@@ -457,18 +457,11 @@ test("a run's strengths list each review step's, with its step, task and round",
 });
 
 test("with showing on, the run page holds no hidden project's name, path or branch, its strengths' and kit steps' included", async () => {
-  const raw = fixture('report-v5');
-  const branches = new Map<string, string[]>();
-  for (const r of raw.runs) {
-    const root = projectRoot(r.record.project);
-    branches.set(root, [...(branches.get(root) ?? []), r.record.branch]);
-  }
   const TIDEPOOL = '/Users/example/Work/tidepool-api';
-  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
-  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], sessionRoots);
-  expect(strings.forbidden).toContain('lantern-notes');
   db.$client.close();
   db = dbWith('report-v5', (raw) => {
+    // A hidden lantern-notes run on the branch most projects have, so no response key may contain `main`.
+    raw.runs[2].record.branch = 'main';
     // A strength that names the hidden lantern-notes, its branch and a path in it.
     raw.runs[5].steps[1].strengths[0].summary =
       'As lantern-notes does on feature/offline-sync in /Users/example/Work/lantern-notes/src/retry.ts';
@@ -478,6 +471,10 @@ test("with showing on, the run page holds no hidden project's name, path or bran
     }) - 1;
     raw.runs[5].dispatches.push({ agent: 'kit-reviewer', model: 'lantern-notes', effort: 'high', step: index });
   });
+  const branches = storedBranches(listUnits(db, 'run'));
+  const sessionRoots = storedSessionRoots(listUnits(db, 'session'));
+  const strings = forbiddenStrings([...branches.keys()], branches, [TIDEPOOL], [], sessionRoots);
+  expect(strings.forbidden).toEqual(expect.arrayContaining(['lantern-notes', 'main']));
   setShowing(db, [projectKey(TIDEPOOL)]);
   const body = await run(WEBHOOKS);
   expect(body.strengths[0].summary).toBe('As another project does on another branch in retry.ts');
@@ -613,9 +610,9 @@ describe("the run's surroundings", () => {
     expect((await run(WEBHOOKS_V7)).agents).toEqual(expected);
   });
 
-  test("main and phases are the run's main session and each phase's cost", async () => {
+  test("sessionModel and phases are the run's main session and each phase's cost", async () => {
     const body = await run(FULL_V7);
-    expect(body.main).toEqual({ model: 'claude-opus-5-5', effort: 'medium' });
+    expect(body.sessionModel).toEqual({ model: 'claude-opus-5-5', effort: 'medium' });
     expect(body.phases[0]).toEqual({ name: 'design', cost: 1.6 });
     expect(body.phases).toEqual(v7.runs[4].phases.map((p: any) => ({ name: p.name, cost: modelsCost(p.models) })));
   });
@@ -652,7 +649,7 @@ describe("the run's surroundings", () => {
     expect(body.agents.filter((a) => a.name === 'another project')).toEqual([
       { name: 'another project', actual: { 'another project/another project': 1, 'claude-opus-5-5/high': 1 } },
     ]);
-    expect(body.main).toEqual({ model: 'another project', effort: 'high' });
+    expect(body.sessionModel).toEqual({ model: 'another project', effort: 'high' });
     expect(body.offers[0]).toEqual({ skill: 'another project', outcome: 'accepted' });
     expect(body.skills[0].name).toBe('another project');
     expect(body.models.at(-1)).toEqual({ model: 'another project', cost: 0.2 });
