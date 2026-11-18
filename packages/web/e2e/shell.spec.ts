@@ -86,8 +86,8 @@ test('under reduced motion nothing animates, and a wide table still fades at its
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
   // The edge cue is a scroll-driven animation: it follows the table's scroll, not the clock, so it stays.
-  const cueEnd = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
-  expect(cueEnd).toBe('48px');
+  const mask = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
+  expect(mask).toContain('100% - 48px');
 });
 
 test("the browser's bar takes the backdrop's colour, and follows the system's light and dark", async ({ page }) => {
@@ -107,12 +107,14 @@ test("the browser's bar takes the backdrop's colour, and follows the system's li
 
 test('a table that scrolls sideways fades at the edge hiding columns, and one that fits does not', async ({ page }) => {
   await pinClock(page);
-  const cueEnd = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).getPropertyValue('--cue-end').trim());
   const mask = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
+  const scrollTo = (share: number) =>
+    page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el, share) => { el.scrollLeft = (el.scrollWidth - el.clientWidth) * share; }, share);
+  const [clear, ink] = ['rgba(0, 0, 0, 0)', 'rgb(0, 0, 0)'];
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
-  expect(await cueEnd('Sessions')).toBe('48px');
-  expect(await mask('Sessions')).toContain('100% - 48px');
+  // At the start only the right edge fades, both once scrolled, only the left at the end.
+  expect(await mask('Sessions')).toBe(`linear-gradient(to right, ${ink} calc(100% - 48px), ${clear})`);
   // The mask cuts what is drawn outside the box, so the keyboard's focus outline is drawn inside it.
   await page.keyboard.press('Tab');
   const focus = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => {
@@ -121,11 +123,12 @@ test('a table that scrolls sideways fades at the edge hiding columns, and one th
     return { visible: el.matches(':focus-visible'), mask: style.maskImage, outline: style.outlineStyle, inside: parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth) <= 0 };
   });
   expect(focus).toEqual({ visible: true, mask: expect.stringContaining('100% - 48px'), outline: 'solid', inside: true });
-  await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
-  await expect.poll(() => cueEnd('Sessions')).toBe('0px');
+  await scrollTo(0.5);
+  await expect.poll(() => mask('Sessions')).toBe(`linear-gradient(to right, ${clear}, ${ink} 48px, ${ink} calc(100% - 48px), ${clear})`);
+  await scrollTo(1);
+  await expect.poll(() => mask('Sessions')).toBe(`linear-gradient(to right, ${clear}, ${ink} 48px)`);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/skills', { waitUntil: 'networkidle' });
-  expect(await cueEnd('Skills')).toBe('0px');
   // No mask at all on a table that fits: a mask clips the panel's shadow.
   expect(await mask('Skills')).toBe('none');
 });

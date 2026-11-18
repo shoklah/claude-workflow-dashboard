@@ -110,11 +110,15 @@ export const Many: Story = {
     const list = canvas.getByRole('region', { name: 'Since you last looked list' });
     await expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
     await expect(list.getBoundingClientRect().height).toBeLessThanOrEqual(24 * 16);
-    // The cue follows the list's vertical scroll: its foot fades while more items are below, its head once scrolled.
-    const cue = (end: 'start' | 'end') => getComputedStyle(list).getPropertyValue(`--cue-${end}`).trim();
-    await expect([cue('start'), cue('end')]).toEqual(['0px', '48px']);
+    // The cue follows the list's scroll, down the list (the gradient's default direction, so none is written): its foot
+    // fades at the top, both ends once scrolled, its head alone at the end.
+    const mask = () => getComputedStyle(list).maskImage;
+    const [clear, ink] = ['rgba(0, 0, 0, 0)', 'rgb(0, 0, 0)'];
+    await expect(mask()).toBe(`linear-gradient(${ink} calc(100% - 48px), ${clear})`);
+    list.scrollTop = (list.scrollHeight - list.clientHeight) / 2;
+    await waitFor(() => expect(mask()).toBe(`linear-gradient(${clear}, ${ink} 48px, ${ink} calc(100% - 48px), ${clear})`));
     list.scrollTop = list.scrollHeight;
-    await waitFor(() => expect([cue('start'), cue('end')]).toEqual(['48px', '0px']));
+    await waitFor(() => expect(mask()).toBe(`linear-gradient(${clear}, ${ink} 48px)`));
   },
 };
 
