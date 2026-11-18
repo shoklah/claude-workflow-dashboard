@@ -52,7 +52,7 @@ describe('plist', () => {
 
 describe('systemdUnit', () => {
   test('runs node on the entry, restarts always, and logs into the data dir', () => {
-    const unit = systemdUnit({ node: '/opt/node/bin/node', entry: '/repo/src/main.ts', logDir: '/data/logs' });
+    const unit = systemdUnit({ node: '/opt/node/bin/node', entry: '/repo/src/main.ts', logDir: '/data/logs', dataHome: '/x' });
     expect(unit).toContain('ExecStart="/opt/node/bin/node" "/repo/src/main.ts"\n');
     expect(unit).toContain('Restart=always\nRestartSec=10\n');
     expect(unit).toContain('StandardOutput=append:/data/logs/out.log\n');
@@ -60,14 +60,13 @@ describe('systemdUnit', () => {
     expect(unit).toContain('[Install]\nWantedBy=default.target\n');
   });
   test('quotes and escapes a path with spaces, %, $, " and \\', () => {
-    const unit = systemdUnit({ node: '/n/node', entry: '/My Projects/100% $HOME "x"\\y/main.ts', logDir: '/d 100%/logs' });
+    const unit = systemdUnit({ node: '/n/node', entry: '/My Projects/100% $HOME "x"\\y/main.ts', logDir: '/d 100%/logs', dataHome: '/x' });
     expect(unit).toContain('ExecStart="/n/node" "/My Projects/100%% $$HOME \\"x\\"\\\\y/main.ts"\n');
     expect(unit).toContain('StandardOutput=append:/d 100%%/logs/out.log\n');
   });
-  test("carries the install shell's XDG_DATA_HOME, and none without it", () => {
+  test('carries the data home as XDG_DATA_HOME, quoted', () => {
     const base = { node: '/n/node', entry: '/r/main.ts', logDir: '/d/logs' };
     expect(systemdUnit({ ...base, dataHome: '/x data' })).toContain('Environment="XDG_DATA_HOME=/x data"\n');
-    expect(systemdUnit(base)).not.toContain('Environment=');
   });
 });
 

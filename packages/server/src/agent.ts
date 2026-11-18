@@ -50,16 +50,16 @@ const quoted = (text: string) => `"${percent(text).replace(/\\/g, '\\\\').replac
  * hits its start limit in half a second and leaves the unit failed), logging into `logDir`, with `dataHome` as
  * XDG_DATA_HOME.
  */
-export function systemdUnit(opts: { node: string; entry: string; logDir: string; dataHome?: string }): string {
+export function systemdUnit(opts: { node: string; entry: string; logDir: string; dataHome: string }): string {
   // In ExecStart, `$` starts a variable.
   const arg = (text: string) => quoted(text).replace(/\$/g, '$$$$');
-  const environment = opts.dataHome ? `Environment=${quoted(`XDG_DATA_HOME=${opts.dataHome}`)}\n` : '';
   return `[Unit]
 Description=edward
 
 [Service]
 ExecStart=${arg(opts.node)} ${arg(opts.entry)}
-${environment}Restart=always
+Environment=${quoted(`XDG_DATA_HOME=${opts.dataHome}`)}
+Restart=always
 RestartSec=10
 StandardOutput=append:${percent(join(opts.logDir, 'out.log'))}
 StandardError=append:${percent(join(opts.logDir, 'err.log'))}
