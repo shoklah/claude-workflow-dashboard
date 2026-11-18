@@ -135,14 +135,11 @@ deletion. Phase 4 starts only when its condition below holds.
 2. **The agent per platform**, behind the same `pnpm agent:install` and `pnpm agent:uninstall`: launchd on macOS (as
    today) and a systemd user unit on Linux (`~/.config/systemd/user/<name>.service`, `Restart=always`, enabled with
    `systemctl --user enable --now`). Each file is made by a pure function beside `plist()`, unit-tested like it; no
-   test runs `launchctl` or `systemctl` or writes outside a temp folder. The agent runs the mode `config.json` names
-   (`local` runs the server, `collector` the collector).
-3. **Test tooling without `sh`**: the reporter stand-ins become a small Node script under `packages/shared/test/`
-   (prints a file, ignores extra arguments), used by `dev:fixtures` and the tests, so phase 4 finds them ready.
-   `test:screens` stays a Linux container run.
-4. **CI** adds a `macos-latest` job that runs typecheck and the vitest suites of `shared` and `server`; everything else
+   test runs `launchctl` or `systemctl` or writes outside a temp folder.
+   In this phase the agent always runs the server; phase 2 adds the collector's agent.
+3. **CI** adds a `macos-latest` job that runs typecheck and the vitest suites of `shared` and `server`; everything else
    stays on Ubuntu.
-5. README: requirements and install per platform. Windows users run the workflow and edward under WSL, which is Linux.
+4. README: requirements and install per platform. Windows users run the workflow and edward under WSL, which is Linux.
 
 ### Phase 2: the collector
 
@@ -278,7 +275,11 @@ request goes there for the reporter at least, and to say how it writes Windows p
 2. **Defaults:** `%LOCALAPPDATA%\claude-workflow-dashboard` and `py -3 -I`.
 3. **The agent:** a Task Scheduler task (at logon, restarted on failure, through `schtasks` with a task XML), from a
    pure function, unit-tested; no test runs `schtasks`.
-4. **CI** adds a `windows-latest` job running typecheck and the `shared` and `server` suites.
+4. **Test tooling without `sh`**: the reporter stand-ins (`['sh', '-c', 'cat "$0"', …]`, `['cat', …]`) become a small
+   Node script under `packages/shared/test/` (prints a file, ignores extra arguments), used by `dev:fixtures` and the
+   tests, so they run on Windows (moved here from phase 1 while planning it: only Windows needs it).
+   `test:screens` stays a Linux container run.
+5. **CI** adds a `windows-latest` job running typecheck and the `shared` and `server` suites.
 
 ## Code conventions this changes
 
