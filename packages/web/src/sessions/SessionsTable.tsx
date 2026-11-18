@@ -129,20 +129,23 @@ const COLUMNS: ListColumn<SessionRow>[] = [
   },
 ];
 
+/** A session's models, one a line, left out with none: the Sessions list's and a change's or goal's sessions' alike. */
+export const MODEL_FACT: ListFact<Pick<SessionRow, 'models'>> = [
+  'Model',
+  (s) =>
+    s.models.length === 0
+      ? null
+      : s.models.map(({ model }) => (
+          <span key={model} className="block">
+            <Text value={modelLabel(model)} />
+          </span>
+        )),
+];
+
 const FACTS: ListFact<SessionRow>[] = [
   ...CHANGE_FACTS,
   ['ID', (s) => (s.sessionId === null ? null : <SessionChip id={s.sessionId} />)],
-  [
-    'Model',
-    (s) =>
-      s.models.length === 0
-        ? null
-        : s.models.map(({ model }) => (
-            <span key={model} className="block">
-              <Text value={modelLabel(model)} />
-            </span>
-          )),
-  ],
+  MODEL_FACT,
   [
     'Effort',
     (s) =>

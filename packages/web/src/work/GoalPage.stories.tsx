@@ -3,7 +3,7 @@ import { expect, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
-import { cells } from '../test/table.ts';
+import { openedRow, visibleFact, visibleTerms } from '../test/table.ts';
 import { goalFull, goalSeveral } from '../test/work.ts';
 import { GoalPage } from './GoalPage.tsx';
 
@@ -50,12 +50,12 @@ export const Missing: Story = {
 };
 
 /** Full: a link back to Work, the name, the header facts, the graph with a lane per change, then No change, then Other
- * goals, the Changes table with no Project column (one project) and the Sessions table with its Change column. */
+ * goals, the Changes table with no Project column (one project) and the Sessions list, whose rows open to their change. */
 export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [GOAL]: goalFull });
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await expect(await canvas.findByRole('heading', { name: 'Offline sync', level: 1 })).toBeVisible();
     await expect(canvas.getAllByRole('link', { name: 'Work' })[0]).toHaveAttribute('href', '/work');
     const header = canvas.getByRole('heading', { level: 1 }).parentElement!.querySelector('dl')!;
@@ -90,14 +90,23 @@ export const Full: Story = {
     await expect(within(changes).getAllByRole('row')).toHaveLength(goalFull.changes.length + 1);
 
     const sessions = canvas.getByRole('region', { name: 'Sessions table' });
-    await expect(within(sessions).getAllByRole('columnheader').map((th) => th.textContent).slice(0, 3)).toEqual([
+    await expect(within(sessions).getAllByRole('columnheader').map((th) => th.textContent).slice(0, 2)).toEqual([
       'Session',
-      'Change',
       'Step',
     ]);
-    const rows = within(sessions).getAllByRole('row').slice(1);
-    await expect(cells(rows[0])[1]).toBe('Offline sync: queue and replay');
-    await expect(cells(rows.at(-1)!)[1]).toBe('–no change');
+    // The Sessions list lines up under the Changes list: Step under Stage, Started under Last activity, Length under
+    // Findings.
+    const left = (table: HTMLElement, name: string) =>
+      Math.round(within(table).getByRole('columnheader', { name }).getBoundingClientRect().left);
+    for (const [above, below] of [['Stage', 'Step'], ['Last activity', 'Started'], ['Findings', 'Length']])
+      await expect(left(sessions, below)).toBe(left(changes, above));
+
+    // A session opens to its change; one in no change leaves the fact out.
+    const toggles = within(sessions).getAllByRole('button', { name: /^Details of / });
+    await userEvent.click(toggles[0]);
+    await expect(visibleFact(openedRow(toggles[0]), 'Change')).toHaveTextContent('Offline sync: queue and replay');
+    await userEvent.click(toggles.at(-1)!);
+    await expect(visibleTerms(openedRow(toggles.at(-1)!))).not.toContain('Change');
   },
 };
 

@@ -3,7 +3,7 @@ import { expect, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { HTML_TEXT } from '../test/runs.ts';
-import { cells, expectNoJoined } from '../test/table.ts';
+import { cells, expectNoJoined, openedRow, visibleTerms, visibleValues, width } from '../test/table.ts';
 import { designChange, markupChange, syncChange } from '../test/work.ts';
 import { ChangesTable } from './ChangesTable.tsx';
 
@@ -20,10 +20,12 @@ export const Empty: Story = {
   },
 };
 
-/** Full: a row per change, its title linking to its page, one value per cell with the unit in the header; a change
- * with other projects shows "+N", whose tooltip names the shown ones and counts the rest; a markup title is text. */
+/** Full: a row per change, its title linking to its page, one value per cell with the unit in the header, its runs and
+ * sessions in the row it opens to; a change with other projects shows "+N", whose tooltip names the shown ones and
+ * counts the rest; a markup title is text. */
 export const Full: Story = {
   args: { rows: [syncChange, markupChange, designChange] },
+  decorators: [width(1000)],
   play: async ({ canvas, canvasElement, userEvent }) => {
     const [head, sync, markup, design] = canvas.getAllByRole('row');
     await expect(within(head).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
@@ -32,11 +34,10 @@ export const Full: Story = {
       'Path',
       'Stage',
       'Last activity',
-      'Runs',
-      'Sessions',
       'Findings',
       'Est. cost ($)',
     ]);
+    for (const th of within(head).getAllByRole('columnheader')) await expect(th).toBeVisible();
     await expectNoJoined(canvasElement);
     await expect(cells(sync)).toEqual([
       syncChange.title,
@@ -44,8 +45,6 @@ export const Full: Story = {
       'Full',
       'Implementation',
       formatDayTime(parseTime(syncChange.lastActivity!)),
-      '2',
-      '5',
       '23',
       '61.40',
     ]);
@@ -58,20 +57,17 @@ export const Full: Story = {
     await expect(canvasElement.querySelector('img')).toBeNull();
     await expect(cells(markup)[1]).toBe('lantern-notes');
     // Not known: the dashes, read out; a project no stored run has.
-    await expect(cells(design)).toEqual([
-      designChange.title,
-      'Other project',
-      'Full',
-      'Design',
-      '–not known',
-      '0',
-      '1',
-      '–not known',
-      '–not known',
-    ]);
+    await expect(cells(design)).toEqual([designChange.title, 'Other project', 'Full', 'Design', '–not known', '–not known', '–not known']);
     for (const th of within(head).getAllByRole('columnheader').slice(5)) await expect(th).toHaveClass('text-right');
     await userEvent.hover(within(sync).getByText('+2'));
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('tidepool-api, 1 other project');
+
+    // A row opens to its runs and sessions, zero included.
+    const toggle = canvas.getByRole('button', { name: `Details of ${designChange.title}` });
+    await userEvent.click(toggle);
+    const opened = openedRow(toggle);
+    await expect(visibleTerms(opened)).toEqual(['Runs', 'Sessions']);
+    await expect(visibleValues(opened)).toEqual(['0', '1']);
   },
 };
 
@@ -81,19 +77,29 @@ export const NoProject: Story = {
   play: async ({ canvas }) => {
     const [head] = canvas.getAllByRole('row');
     await expect(within(head).queryByRole('columnheader', { name: 'Project' })).toBeNull();
-    await expect(within(head).getAllByRole('columnheader')).toHaveLength(8);
+    await expect(within(head).getAllByRole('columnheader')).toHaveLength(6);
   },
 };
 
-/** At a phone's width the table scrolls in its own region, and a title keeps its one line up to the column's
- * maximum. */
+/** Narrow: under 768 px the list keeps Change, Stage and Findings; Project, Path, Last activity and the cost open first
+ * under a row. */
 export const Narrow: Story = {
   args: { rows: [syncChange, designChange] },
-  parameters: { viewport: { options: { phone: { name: 'Phone', styles: { width: '375px', height: '812px' } } } } },
-  globals: { viewport: { value: 'phone' } },
-  play: async ({ canvas }) => {
-    const link = canvas.getByRole('link', { name: syncChange.title });
-    const line = parseFloat(getComputedStyle(link).lineHeight);
-    await expect(link.getBoundingClientRect().height).toBeLessThan(line * 1.5);
+  decorators: [width(375)],
+  play: async ({ canvas, userEvent }) => {
+    const head = canvas.getAllByRole('row')[0];
+    for (const name of ['Change', 'Stage', 'Findings']) await expect(within(head).getByRole('columnheader', { name })).toBeVisible();
+    for (const name of ['Project', 'Path', 'Last activity', 'Est. cost ($)'])
+      await expect(within(head).getByText(name).closest('th')).not.toBeVisible();
+    const toggle = canvas.getByRole('button', { name: `Details of ${syncChange.title}` });
+    await userEvent.click(toggle);
+    await expect(visibleTerms(openedRow(toggle))).toEqual([
+      'Project',
+      'Path',
+      'Last activity',
+      'Est. cost ($)',
+      'Runs',
+      'Sessions',
+    ]);
   },
 };

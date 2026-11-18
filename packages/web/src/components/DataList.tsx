@@ -25,10 +25,11 @@ export const PAGE_SIZE = 10;
 
 /**
  * A first-glance column: what it sorts by (`value`, unknown last) and what it shows (`cell`). `wide` is the one column
- * that takes the room and wraps; `fold` hides it under a 768 px container and moves it into the opened row. `text`, on
- * the toggle column, is the row's name as plain text for `RowToggle`, with `textClass` on it (an unnamed row's muted
- * word); null (or no `text`) means the cell is a link, and the toggle is a chevron button of its own. `names` marks the
- * column that names the row, its cells in medium weight.
+ * that takes the room and wraps, breaking inside a word (a branch) only when it must; `fold` hides it under a 768 px
+ * container and moves it into the opened row. `text`, on the toggle column, is the row's name as plain text for
+ * `RowToggle`, with `textClass` on it (an unnamed row's muted word); null (or no `text`) means the cell is a link, and
+ * the toggle is a chevron button of its own. `names` marks the column that names the row, its cells in medium weight.
+ * `width` is a minimum-width class, so a column lines up with another list's above or below it.
  */
 export type ListColumn<T> = {
   id: string;
@@ -41,6 +42,7 @@ export type ListColumn<T> = {
   text?: (row: T) => string | null;
   textClass?: (row: T) => string | false | undefined;
   names?: boolean;
+  width?: string;
 };
 
 /** A fact of the opened row: its term and its value, left out when null. */
@@ -150,7 +152,7 @@ export function DataList<T extends RowData>({
                 key={c.id}
                 column={table.getColumn(c.id)!}
                 num={c.num}
-                className={cn(c.num && NUM, !c.wide && 'w-0', c.fold && FOLD)}
+                className={cn(c.num && NUM, !c.wide && 'w-0', c.width, c.fold && FOLD)}
               >
                 {c.header}
               </SortHead>
@@ -201,7 +203,7 @@ export function DataList<T extends RowData>({
                   {columns.map((c) => (
                     <TableCell
                       key={c.id}
-                      className={cn('align-top', c.names && 'font-medium', c.num && NUM, c.wide && 'w-full min-w-0 whitespace-normal', c.fold && FOLD)}
+                      className={cn('align-top', c.names && 'font-medium', c.num && NUM, c.wide && 'w-full min-w-0 whitespace-normal wrap-anywhere', c.width, c.fold && FOLD)}
                     >
                       {opens && c === toggleColumn ? toggleCell(c) : c.cell(r)}
                     </TableCell>
