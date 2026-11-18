@@ -29,12 +29,14 @@ import {
   getRun,
   getSeenAt,
   getShowing,
+  getShownProjects,
   lastGoodImport,
   lastImport,
   listUnits,
   listWarnings,
   setSeenAt,
   setShowing,
+  setShownProjects,
   type StoredUnit,
 } from './db/read.ts';
 import { createToken, getAccount, listTokens, revokeToken, setLastCollect, type Account } from './hosted/accounts.ts';
@@ -179,21 +181,33 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     return view ? c.json(view) : c.notFound();
   });
 
-  // Slice 2a, task 3: showing mode. An empty list turns it off; a key no stored run's project has is a 400.
-  app.get('/api/showing', (c) => {
-    const runs = listUnits(c.var.db, 'run');
-    return c.json(showingView(runs, scopeFor(c, runs)));
-  });
-  app.post('/api/showing', async (c) => {
+  // Slice 2a, task 3: showing mode. An empty list turns it off; a key no stored run's project has is a 400. Slice 2b,
+  // task 1: its kept list, which turning it off keeps, set alone by /api/showing/projects.
+  const showingBody = async (c: Context<AppEnv>): Promise<string[] | null> => {
     const body = await c.req.json().catch(() => null);
     const projects: unknown = body?.projects;
     const stored = new Set(listUnits(c.var.db, 'run').map((run) => projectKey(rootOf(run))));
-    if (!Array.isArray(projects) || !projects.every((key) => typeof key === 'string' && stored.has(key))) {
-      return c.body(null, 400);
-    }
-    setShowing(c.var.db, projects.length > 0 ? [...new Set(projects as string[])] : null);
+    if (!Array.isArray(projects) || !projects.every((key) => typeof key === 'string' && stored.has(key))) return null;
+    return [...new Set(projects as string[])];
+  };
+  app.get('/api/showing', (c) => {
+    const runs = listUnits(c.var.db, 'run');
+    return c.json(showingView(runs, scopeFor(c, runs), getShownProjects(c.var.db)));
+  });
+  app.post('/api/showing', async (c) => {
+    const projects = await showingBody(c);
+    if (!projects) return c.body(null, 400);
+    setShowing(c.var.db, projects.length > 0 ? projects : null);
     return c.body(null, 204);
   });
+  app.post('/api/showing/projects', async (c) => {
+    const projects = await showingBody(c);
+    if (!projects) return c.body(null, 400);
+    setShownProjects(c.var.db, projects);
+    if (projects.length === 0) setShowing(c.var.db, null);
+    return c.body(null, 204);
+  });
+  app.all('/api/showing/projects', postOnly);
 
   // Slice 2a, task 7: the Findings page, with the labeller's state; slice 2b, task 8: under the active list, with no
   // label and none waiting while there is none.

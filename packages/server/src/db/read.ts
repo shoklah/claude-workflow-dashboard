@@ -17,6 +17,7 @@ export type StoredWarning = {
 
 const SEEN_AT = 'seenAt';
 const SHOWING = 'showing';
+const SHOWN_PROJECTS = 'shownProjects';
 const CURSOR = 'cursor';
 
 /** Every stored run or session, its merged facts parsed with the loader's schema. */
@@ -93,14 +94,34 @@ export function getShowing(db: Db): string[] | null {
   return row ? (JSON.parse(row.value) as string[]) : null;
 }
 
-/** Turns showing mode on with the given project keys, or off with null. */
+/** Showing mode's kept project list, which outlives its switch: the `shownProjects` row, else (a database written
+ * before it) the `showing` row, else none. */
+export function getShownProjects(db: Db): string[] {
+  const row = db.select().from(state).where(eq(state.name, SHOWN_PROJECTS)).get();
+  return row ? (JSON.parse(row.value) as string[]) : (getShowing(db) ?? []);
+}
+
+/** Replaces the kept project list, and the shown projects too while showing mode is on. */
+export function setShownProjects(db: Db, projects: string[]): void {
+  const on = getShowing(db) !== null;
+  writeState(db, SHOWN_PROJECTS, projects);
+  if (on) writeState(db, SHOWING, projects);
+}
+
+/** Turns showing mode on with the given project keys, kept as its list, or off with null, keeping its list. */
 export function setShowing(db: Db, projects: string[] | null): void {
   if (projects === null) {
+    writeState(db, SHOWN_PROJECTS, getShownProjects(db));
     db.delete(state).where(eq(state.name, SHOWING)).run();
     return;
   }
+  writeState(db, SHOWN_PROJECTS, projects);
+  writeState(db, SHOWING, projects);
+}
+
+function writeState(db: Db, name: string, projects: string[]): void {
   const value = JSON.stringify(projects);
-  db.insert(state).values({ name: SHOWING, value }).onConflictDoUpdate({ target: state.name, set: { value } }).run();
+  db.insert(state).values({ name, value }).onConflictDoUpdate({ target: state.name, set: { value } }).run();
 }
 
 export function lastImport(db: Db): { at: Date; ok: boolean; error: string | null } | null {
