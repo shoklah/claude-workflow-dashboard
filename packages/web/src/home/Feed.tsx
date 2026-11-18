@@ -36,13 +36,15 @@ function Item({ item }: { item: FeedItem }) {
         </span>
       </div>
       {warning ? (
-        item.text !== null && (
-          <WarningText text={item.text} sessionId={item.sessionId} branch={item.branch} className="font-medium" />
-        )
+        <>
+          {item.text !== null && (
+            <WarningText text={item.text} sessionId={item.sessionId} branch={item.branch} className="font-medium" />
+          )}
+          {run && <div className="text-xs text-muted-foreground">{run}</div>}
+        </>
       ) : (
         <div className="font-medium">{run}</div>
       )}
-      {warning && run && <div className="text-xs text-muted-foreground">{run}</div>}
       {item.project !== null && (
         <span className="text-xs text-muted-foreground">
           {path === null ? item.project : `${item.project}, ${path} path`}
