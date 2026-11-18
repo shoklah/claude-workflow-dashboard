@@ -13,6 +13,7 @@ export const accountFull: AccountResponse = {
     { id: 1, createdAt: '2026-10-30T18:02:00.000Z', lastUsedAt: null },
   ],
   viewers: [],
+  labeller: { keySet: true, model: 'claude-haiku-5-5', dailyMax: 500 },
 };
 
 /** A new account: no collect, no machine, no tokens. */
@@ -23,4 +24,5 @@ export const accountEmpty: AccountResponse = {
   machine: false,
   tokens: [],
   viewers: [],
+  labeller: { keySet: false, model: 'claude-haiku-5-5', dailyMax: 500 },
 };

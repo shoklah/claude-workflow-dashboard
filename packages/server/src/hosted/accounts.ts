@@ -3,7 +3,16 @@ import { fileURLToPath } from 'node:url';
 import { and, desc, eq, gte, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { openSqlite } from '../db/open.ts';
 import * as schema from './schema.ts';
-import { accounts, collectorTokens, invites, sessions, viewerGrants } from './schema.ts';
+import {
+  accounts,
+  collectorTokens,
+  invites,
+  LABELLER_DEFAULTS,
+  labellerSettings,
+  sessions,
+  viewerGrants,
+} from './schema.ts';
+import { sealKey } from './secret.ts';
 
 // Two levels up from this file, as openDb's.
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url));
@@ -236,4 +245,46 @@ export function getAccount(
   id: number,
 ): (Account & { createdAt: Date; lastCollectAt: Date | null }) | null {
   return db.select().from(accounts).where(eq(accounts.id, id)).get() ?? null;
+}
+
+/** The account's labeller: whether a key is set, never the key, its model and its daily max (the defaults with none). */
+export function getLabeller(db: AccountsDb, accountId: number): { keySet: boolean; model: string; dailyMax: number } {
+  const row = db.select().from(labellerSettings).where(eq(labellerSettings.accountId, accountId)).get();
+  return {
+    keySet: !!row?.sealedKey,
+    model: row?.model ?? LABELLER_DEFAULTS.model,
+    dailyMax: row?.dailyMax ?? LABELLER_DEFAULTS.dailyMax,
+  };
+}
+
+/** Sets the account's labeller; its key is stored only sealed under `secret`: undefined keeps the stored one, null
+ * removes it. */
+export function setLabeller(
+  db: AccountsDb,
+  accountId: number,
+  settings: { key?: string | null; model: string; dailyMax: number },
+  secret: Buffer,
+): void {
+  const { key, model, dailyMax } = settings;
+  const values = {
+    model,
+    dailyMax,
+    ...(key === undefined ? {} : { sealedKey: key === null ? null : sealKey(secret, key) }),
+  };
+  db.insert(labellerSettings)
+    .values({ accountId, ...values })
+    .onConflictDoUpdate({ target: labellerSettings.accountId, set: values })
+    .run();
+}
+
+/** The accounts with a key, its key still sealed, for the label job. */
+export function labellerAccounts(
+  db: AccountsDb,
+): { accountId: number; sealedKey: string; model: string; dailyMax: number }[] {
+  return db
+    .select()
+    .from(labellerSettings)
+    .where(isNotNull(labellerSettings.sealedKey))
+    .orderBy(labellerSettings.accountId)
+    .all() as { accountId: number; sealedKey: string; model: string; dailyMax: number }[];
 }

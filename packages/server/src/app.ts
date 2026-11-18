@@ -11,8 +11,8 @@ import { registerAuth } from './hosted/auth.ts';
 import type { GitHubClient } from './hosted/github.ts';
 import { registerRoutes } from './routes.ts';
 
-/** Hosted mode's deps: its public host and origin (`https://<publicHost>`), the accounts database, each account's file
- * and the admin's GitHub login. */
+/** Hosted mode's deps: its public host and origin (`https://<publicHost>`), the accounts database, each account's file,
+ * the admin's GitHub login, `EDWARD_SECRET` (which seals the accounts' Anthropic keys) and the label job's request. */
 export type HostedDeps = {
   publicHost: string;
   origin: string;
@@ -20,6 +20,8 @@ export type HostedDeps = {
   files: AccountFiles;
   admin: string;
   github: GitHubClient;
+  secret: Buffer;
+  requestLabels: () => void;
 };
 
 export type AppDeps = {

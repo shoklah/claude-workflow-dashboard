@@ -46,6 +46,7 @@ A hosted edward serves several accounts, each signing in with GitHub (invite-onl
    - `EDWARD_PUBLIC_HOST`: the public hostname, `<host>`;
    - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`: the OAuth app's;
    - `EDWARD_ADMIN`: the admin's GitHub login, the one account that signs in without an invite.
+   - `EDWARD_SECRET`: 32 random bytes as 64 hex characters (`openssl rand -hex 32`), which seals each account's Anthropic key; a new one makes every stored key unreadable.
 
    The server refuses to start without them, naming the missing ones.
 

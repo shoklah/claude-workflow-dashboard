@@ -110,13 +110,14 @@ function systemPrompt(list: ActiveList, area: Area): string {
 }
 
 /**
- * The label client over the Anthropic API, with the key from `ANTHROPIC_API_KEY`. Its prompt and the reply's schema are
+ * The label client over the Anthropic API, with `apiKey` (an account's, in hosted mode), else the key from
+ * `ANTHROPIC_API_KEY`. Its prompt and the reply's schema are
  * built from the list and the batch's area on each call, since an import can change the active list. A reply that
  * doesn't parse throws a LabelError naming its stop reason, never the parser's own message, which quotes the reply,
  * which holds finding text.
  */
-export function anthropicLabelClient(model: string): LabelClient {
-  const client = new Anthropic();
+export function anthropicLabelClient(model: string, apiKey?: string): LabelClient {
+  const client = apiKey ? new Anthropic({ apiKey }) : new Anthropic();
   return async (batch, list) => {
     const area = batch[0]!.area;
     const format = zodOutputFormat(labelsSchema(list, area));

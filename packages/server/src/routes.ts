@@ -11,6 +11,7 @@ import {
   type ComplianceQuery,
   type ContextQuery,
   type FindingsQuery,
+  LABELLER_MODELS,
   type RunEntry,
   type SessionEntry,
   type RunsQuery,
@@ -44,11 +45,13 @@ import {
   addViewer,
   createToken,
   getAccount,
+  getLabeller,
   listTokens,
   listViewers,
   removeViewer,
   revokeToken,
   SESSION,
+  setLabeller,
   setLastCollect,
   setViewing,
   viewableAccounts,
@@ -234,16 +237,19 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   app.all('/api/showing/projects', postOnly);
 
   // Slice 2a, task 7: the Findings page, with the labeller's state; slice 2b, task 8: under the active list, with no
-  // label and none waiting while there is none.
+  // label and none waiting while there is none. Hosted, the labeller is the viewed or calling account's, on while its key
+  // is set.
   app.get('/api/findings', (c) => {
     const runs = listUnits(c.var.db, 'run');
     const inputs = labelInputs(runs);
     const list = activeList(c.var.db);
     const labels = list ? currentLabels(c.var.db, inputs, list.number) : new Map();
     const now = deps.now();
-    const model = deps.labeller?.model;
+    const own = deps.hosted && getLabeller(deps.hosted.accounts, (c.var.viewing ?? (c.var.account as Account)).id);
+    const active = own ? (own.keySet ? { model: own.model } : null) : deps.labeller;
+    const model = active?.model;
     const labeller = {
-      on: deps.labeller !== null,
+      on: active !== null,
       labelled: labels.size,
       waiting: model && list ? pendingInputs(c.var.db, labellable(inputs, list), model, list.number).length : 0,
       tokensThisWeek: tokensSince(c.var.db, weekStart(now)),
@@ -432,6 +438,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
         }
         if (!importJson(c.var.db, json, sent, at)) return c.body(null, 400);
         collected(c);
+        hosted.requestLabels();
         return c.body(null, 204);
       },
     );
@@ -458,6 +465,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
           listTokens(hosted.accounts, id),
           getCursor(hosted.files.db(id)) !== null,
           listViewers(hosted.accounts, id),
+          getLabeller(hosted.accounts, id),
         ),
       );
     });
@@ -477,6 +485,19 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
       return c.body(null, 204);
     });
     app.all('/api/account/reset-collector', postOnly);
+
+    // Slice 2b, task 3: the caller's labeller, its Anthropic key stored only sealed (setLabeller); an absent key keeps
+    // the stored one, null removes it.
+    app.post('/api/account/labeller', async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const { key, model, dailyMax } = body ?? {};
+      const keyOk = key === undefined || key === null || (typeof key === 'string' && key.length > 0);
+      const maxOk = Number.isInteger(dailyMax) && dailyMax >= 1 && dailyMax <= 10000;
+      if (!keyOk || !LABELLER_MODELS.includes(model) || !maxOk) return c.body(null, 400);
+      setLabeller(hosted.accounts, caller(c).id, { key, model, dailyMax }, hosted.secret);
+      return c.body(null, 204);
+    });
+    app.all('/api/account/labeller', postOnly);
 
     // Slice 2b, task 2: viewers. An owner grants GitHub logins a read-only view of its account; a caller picks an
     // account it may view (viewableAccounts) by login, or null for its own, for its session.

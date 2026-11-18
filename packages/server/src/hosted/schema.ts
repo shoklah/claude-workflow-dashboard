@@ -53,3 +53,17 @@ export const viewerGrants = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.ownerId, table.viewerLogin] })],
 );
+
+/** An account's labeller, its defaults with no row. */
+export const LABELLER_DEFAULTS = { model: 'claude-haiku-5-5', dailyMax: 500 };
+
+/** An account's labeller: its Anthropic key sealed under EDWARD_SECRET (hosted/secret.ts), null for none, never in
+ * clear; its model and daily max. */
+export const labellerSettings = sqliteTable('labeller_settings', {
+  accountId: integer('account_id')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  sealedKey: text('sealed_key'),
+  model: text('model').notNull().default(LABELLER_DEFAULTS.model),
+  dailyMax: integer('daily_max').notNull().default(LABELLER_DEFAULTS.dailyMax),
+});

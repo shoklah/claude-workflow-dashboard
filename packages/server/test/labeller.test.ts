@@ -260,14 +260,16 @@ describe('anthropicLabelClient', () => {
   async function withStandIn(
     text: string,
     stopReason: string,
-    check: (requests: any[]) => Promise<void>,
+    check: (requests: any[], keys: (string | undefined)[]) => Promise<void>,
   ): Promise<void> {
     const requests: any[] = [];
+    const keys: (string | undefined)[] = [];
     const server = createServer((req, res) => {
       let body = '';
       req.on('data', (chunk) => (body += chunk));
       req.on('end', () => {
         requests.push(JSON.parse(body));
+        keys.push(req.headers.authorization);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
           JSON.stringify({
@@ -288,7 +290,7 @@ describe('anthropicLabelClient', () => {
     process.env.ANTHROPIC_API_KEY = 'test-key';
     process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     try {
-      await check(requests);
+      await check(requests, keys);
     } finally {
       for (const [name, value] of [['ANTHROPIC_API_KEY', env.key], ['ANTHROPIC_BASE_URL', env.url]] as const) {
         if (value === undefined) delete process.env[name];
@@ -305,6 +307,16 @@ describe('anthropicLabelClient', () => {
       const result = client([{ id: 'f1', area: 'plan', text: 'An invented finding.' }], active);
       await expect(result).rejects.toThrow(LabelError);
       await expect(result).rejects.toThrow("the labeller's reply did not parse (stop reason: max_tokens)");
+    });
+  });
+
+  test("with a key given, sends that key, not the environment's", async () => {
+    const active = list(imported(fixture('report-v5')));
+    await withStandIn(JSON.stringify({ labels: [] }), 'end_turn', async (_, keys) => {
+      const batch = [{ id: 'f1', area: 'plan' as const, text: 'An invented finding.' }];
+      await anthropicLabelClient(MODEL, 'sk-ant-invented-account')(batch, active);
+      await anthropicLabelClient(MODEL)(batch, active);
+      expect(keys).toEqual(['Bearer sk-ant-invented-account', 'Bearer test-key']);
     });
   });
 

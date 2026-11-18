@@ -8,6 +8,8 @@ import { hostedDeps } from '../src/hosted/main.ts';
 export const PUBLIC_HOST = 'edward.example';
 export const ORIGIN = `https://${PUBLIC_HOST}`;
 export const NOW = new Date('2026-11-12T12:00:00Z');
+/** An invented `EDWARD_SECRET`, as its 32 bytes. */
+export const SECRET = Buffer.alloc(32, 1);
 
 /** The stub GitHub's users, by the code that signs each in; any other code throws as the client does. */
 export const GITHUB_USERS: Record<string, { id: number; login: string }> = {
@@ -25,8 +27,8 @@ const stubGitHub: GitHubClient = {
   },
 };
 
-/** A hosted app over `dir`, built through `hostedDeps`, its clock at NOW, serving `webDist` when given; `close`
- * closes its databases. */
+/** A hosted app over `dir`, built through `hostedDeps`, its clock at NOW, its secret SECRET and no label job, serving
+ * `webDist` when given; `close` closes its databases. */
 export function hostedApp(
   dir: string,
   { webDist }: { webDist?: string } = {},
@@ -40,6 +42,8 @@ export function hostedApp(
     github: stubGitHub,
     webDist: webDist ?? null,
     now: () => NOW,
+    secret: SECRET,
+    requestLabels: () => {},
   });
   const hosted = deps.hosted;
   return {

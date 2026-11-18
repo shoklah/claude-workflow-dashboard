@@ -45,6 +45,9 @@ const hosted =
         },
         webDist: builtWebDist(),
         now: () => NOW,
+        // An invented secret, and no label job: the labeller stays off.
+        secret: Buffer.alloc(32, 1),
+        requestLabels: () => {},
       })
     : null;
 const db = hosted ? hosted.hosted.files.db(1) : openDb(join(dataDir, 'dashboard.sqlite'));
