@@ -7,3 +7,5 @@ playwright-report/
 storybook-static/
 .vitest/
 .env
+deploy/data/
+deploy/compose.*.local.yml
