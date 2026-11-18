@@ -156,7 +156,7 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   const pages = page.getByRole('dialog', { name: 'Pages' });
   await menu.click();
   await expect(pages.getByText('edward', { exact: true })).toBeVisible();
-  await expect(pages.getByRole('link')).toHaveCount(10);
+  await expect(pages.getByRole('navigation', { name: 'Main' }).getByRole('link')).toHaveCount(10);
   await page.keyboard.press('Escape');
   await expect(pages).toBeHidden();
   await menu.click();
@@ -167,6 +167,10 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   await expect(page).toHaveURL(/\/work$/);
   await expect(pages).toBeHidden();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeInViewport();
+  await menu.click();
+  await pages.getByRole('link', { name: 'edward, Home' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(pages).toBeHidden();
 });
 
 test('the rail stays put while a long page scrolls, with no header row', async ({ page }) => {
@@ -271,4 +275,12 @@ test("a Menu dialog link to the page already shown returns the focus to the Menu
   await page.getByRole('dialog', { name: 'Pages' }).getByRole('link', { name: 'Spend' }).click();
   await expect(page.getByRole('dialog', { name: 'Pages' })).toBeHidden();
   await expect(menu).toBeFocused();
+});
+
+test('the brand in the rail is a link to Home', async ({ page }) => {
+  await pinClock(page);
+  await page.goto('/spend');
+  await page.getByRole('complementary').getByRole('link', { name: 'edward, Home' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeFocused();
 });

@@ -98,7 +98,7 @@ export function MenuButton() {
         className="top-2 left-2 max-h-[calc(100dvh-1rem)] max-w-64 translate-x-0 translate-y-0 overflow-y-auto rounded-panel border-panel-edge bg-popover p-4 text-popover-foreground sm:max-w-64">
         <DialogHeader className="text-left">
           <DialogTitle className="sr-only">Pages</DialogTitle>
-          <Brand />
+          <Brand home onNavigate={() => setOpen(false)} />
           <DialogDescription className="sr-only">Go to a page of the dashboard.</DialogDescription>
         </DialogHeader>
         <Menu onNavigate={() => setOpen(false)} />

@@ -50,7 +50,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </a>
       </Button>
       <aside className="glass sticky top-3 m-3 hidden h-[calc(100dvh-1.5rem)] w-56 flex-none flex-col gap-4 self-start p-3 md:flex">
-        <Brand />
+        <Brand home />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <Menu />
         </div>
