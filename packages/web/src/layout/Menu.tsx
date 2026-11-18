@@ -10,6 +10,7 @@ import { cn } from 'cn';
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
 import { useStatus } from '../api.ts';
+import { CURRENT, ENTRY } from '../lib/format.ts';
 import { AccountLinks } from './AccountLinks.tsx';
 import { Brand } from './Brand.tsx';
 
@@ -40,9 +41,6 @@ const SECTIONS: { name: string | null; entries: Entry[] }[] = [
   ] },
 ];
 
-/** An entry's look, and the current entry's (`AccountLinks`' too). */
-export const ENTRY = 'flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent';
-export const CURRENT = 'bg-accent font-semibold';
 
 /** The pages' links in their sections; `onNavigate` runs when one is followed. */
 export function Menu({ onNavigate }: { onNavigate?: () => void }) {

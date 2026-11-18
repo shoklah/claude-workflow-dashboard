@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { UserRound } from 'lucide-react';
 import { useStatus } from '../api.ts';
-import { CURRENT, ENTRY } from './Menu.tsx';
+import { CURRENT, ENTRY } from '../lib/format.ts';
 
 /** Hosted mode's signed-in login, a link to the Account page in the menu entry's look; nothing in local mode or while
  * the status loads. `onNavigate` runs when it is followed. */

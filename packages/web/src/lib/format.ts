@@ -409,6 +409,9 @@ export const WARNING_BORDER = 'border-warning-edge';
 export const WARNING_INK = 'text-warning-ink';
 // The import notice's and showing mode's amber glass bar (DESIGN.md's Notice bars).
 export const NOTICE = 'rounded-panel border border-notice-edge bg-notice text-sm text-notice-ink';
+// A menu entry's look, and the current entry's: the Menu's pages and `AccountLinks` alike.
+export const ENTRY = 'flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent';
+export const CURRENT = 'bg-accent font-semibold';
 // The run page's two findings tables: each one's 4 px left side (its container's own border, so it follows the rounded
 // corners), amber for problems and green for strengths, and its title icon's ink.
 export const PROBLEMS_SIDE = 'border-l-4 border-l-notice-edge';
