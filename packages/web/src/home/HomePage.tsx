@@ -23,9 +23,7 @@ export function HomePage() {
             <WeeklyCharts charts={home.data.charts} coverageFrom={home.data.coverageFrom} />
             <SkillsAndCommands usage={home.data.usage} />
           </div>
-          <div className="lg:w-72 lg:flex-none">
-            <Feed items={home.data.feed} />
-          </div>
+          <Feed items={home.data.feed} />
         </div>
       )}
     </div>

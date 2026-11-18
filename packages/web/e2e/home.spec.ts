@@ -37,6 +37,15 @@ test('a summary with HTML shows as text', async ({ page }) => {
   await expect(feed).not.toContainText('WARN:');
 });
 
+// The feed never sets the page's length: at the default 1280 px its list scrolls inside it, and at the page's end the
+// whole feed is still in view. Stacked, its cap is the Feed stories'.
+test('the feed stays in view, its list scrolling inside it', async ({ page }) => {
+  const list = page.getByRole('region', { name: 'Since you last looked list' });
+  expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.getByRole('region', { name: 'Since you last looked', exact: true })).toBeInViewport({ ratio: 1 });
+});
+
 // The diagram keeps its boxes at their own size (12 px text) at every width: where they don't fit, the flow scrolls
 // sideways in its own focusable region, so every box is whole and reachable, and the page itself never scrolls sideways.
 for (const width of [375, 768, 1440]) {

@@ -1,8 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
+import { BrushCleaning } from 'lucide-react';
 import type { FeedItem } from '@cwd/shared';
 import { markSeen } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.tsx';
 import { Num } from '../components/Num.tsx';
 import { Pairs, Panel } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
@@ -56,7 +58,8 @@ function Item({ item }: { item: FeedItem }) {
   );
 }
 
-/** What's new since the last look (finished runs, first-seen warnings), and "Mark all seen" to start again from now. */
+/** What's new since the last look (finished runs, first-seen warnings), and "Mark all seen", an icon, to start again
+ * from now: Home's side column, sticky from lg, its list scrolling in its own region. */
 export function Feed({ items }: { items: FeedItem[] }) {
   const queryClient = useQueryClient();
   async function onMarkAllSeen() {
@@ -68,21 +71,34 @@ export function Feed({ items }: { items: FeedItem[] }) {
       title="Since you last looked"
       aside={
         items.length > 0 && (
-          <Button variant="outline" size="sm" className="ml-auto" onClick={onMarkAllSeen}>
-            Mark all seen
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon-sm" className="ml-auto" aria-label="Mark all seen" onClick={onMarkAllSeen}>
+                <BrushCleaning aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Mark all seen</TooltipContent>
+          </Tooltip>
         )
       }
-      className="text-sm"
+      className="text-sm lg:sticky lg:top-3 lg:max-h-[calc(100dvh-1.5rem)] lg:w-72 lg:flex-none"
     >
       {items.length === 0 ? (
         <p className="text-muted-foreground">Nothing new. Finished runs and new warnings show here until you mark them seen.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {items.map((item) => (
-            <Item key={`${item.type} ${item.at} ${item.runKey} ${item.text}`} item={item} />
-          ))}
-        </ul>
+        <div
+          data-scroll-cue="block"
+          tabIndex={0}
+          role="region"
+          aria-label="Since you last looked list"
+          className="max-h-96 overflow-y-auto lg:max-h-none"
+        >
+          <ul className="flex flex-col gap-3">
+            {items.map((item) => (
+              <Item key={`${item.type} ${item.at} ${item.runKey} ${item.text}`} item={item} />
+            ))}
+          </ul>
+        </div>
       )}
     </Panel>
   );

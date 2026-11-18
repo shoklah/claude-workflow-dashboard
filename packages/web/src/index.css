@@ -223,14 +223,15 @@
 
 @property --cue-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
 @property --cue-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --cue-direction { syntax: '*'; inherits: false; }
 @keyframes scroll-cue {
     0% { --cue-start: 0px; --cue-end: 3rem; }
     8% { --cue-start: 3rem; --cue-end: 3rem; }
     92% { --cue-start: 3rem; --cue-end: 3rem; }
     100% { --cue-start: 3rem; --cue-end: 0px; }
     /* The mask lives only in the animation, so a table that fits (an inactive timeline) has none: a mask would clip the
-       panel's shadow. */
-    0%, 100% { mask-image: linear-gradient(to right, transparent, #000 var(--cue-start), #000 calc(100% - var(--cue-end)), transparent); }
+       panel's shadow. It runs along the scroll's axis: `--cue-direction`, to the right unless a list sets it. */
+    0%, 100% { mask-image: linear-gradient(var(--cue-direction, to right), transparent, #000 var(--cue-start), #000 calc(100% - var(--cue-end)), transparent); }
 }
 
 /* A panel: DESIGN.md's glass recipe. */
@@ -282,6 +283,11 @@
     [data-slot='table-container'], [data-scroll-cue] {
       animation: scroll-cue linear both;
       animation-timeline: scroll(self inline);
+      }
+    /* A list that scrolls down (Home's feed) takes the same cue on its block axis: its foot fades while more is below. */
+    [data-scroll-cue='block'] {
+      animation-timeline: scroll(self block);
+      --cue-direction: to bottom;
       }
     }
   [data-slot='table-header'] {
