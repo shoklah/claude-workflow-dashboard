@@ -131,7 +131,7 @@ const COLUMNS: ListColumn<SessionRow>[] = [
 
 const FACTS: ListFact<SessionRow>[] = [
   ...CHANGE_FACTS,
-  ['ID', (s) => (s.sessionId === null ? null : <SessionChip id={s.sessionId} copy={false} />)],
+  ['ID', (s) => (s.sessionId === null ? null : <SessionChip id={s.sessionId} />)],
   [
     'Model',
     (s) =>

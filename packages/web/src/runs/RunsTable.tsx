@@ -3,7 +3,7 @@ import { closedFindings, foundFindings, parseTime, type RunFacts, type RunRow } 
 import { ChangeLink } from '../components/ChangeLink.tsx';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
 import { Num, Text } from '../components/Num.tsx';
-import { RunLink, runName } from '../components/RunLink.tsx';
+import { RunLink, runLabel, runName } from '../components/RunLink.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatDollars, pathLabel } from '../lib/format.ts';
 
@@ -55,7 +55,8 @@ const COLUMNS: ListColumn<ListedRun>[] = [
 /** A count of the opened row, left out when not known. */
 const known = (value: number | null) => (value === null ? null : <Num value={value} />);
 
-const BRANCH: ListFact<ListedRun> = ['Branch', (r) => r.branch];
+/** The branch, only when the title names the run: an untitled run's Run cell is already its branch. */
+const BRANCH: ListFact<ListedRun> = ['Branch', (r) => (r.headline ? r.branch : null)];
 const COUNTS: ListFact<ListedRun>[] = [
   ['Time (min)', (r) => known(r.minutes)],
   ['Tasks', (r) => known(r.tasks)],
@@ -92,7 +93,7 @@ export function RunsTable({ runs, of }: { runs: ListedRun[]; of?: { project: boo
     <DataList
       rows={runs}
       rowKey={(r) => r.key}
-      name={(r) => runName(r.headline, r.branch) ?? 'no branch'}
+      name={(r) => runLabel(r.headline, r.branch)}
       columns={columns}
       facts={all ? FACTS : CHANGE_RUN_FACTS}
       label="Runs table"

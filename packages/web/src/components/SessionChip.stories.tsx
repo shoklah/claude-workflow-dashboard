@@ -38,11 +38,3 @@ export const Focused: Story = {
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(ID);
   },
 };
-
-/** Without its copy button (the Sessions table). */
-export const NoCopy: Story = {
-  args: { copy: false },
-  play: async ({ canvas }) => {
-    await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
-  },
-};

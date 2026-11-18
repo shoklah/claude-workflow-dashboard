@@ -53,7 +53,7 @@ The question every list answers: which items are here, and which one do I want t
 4. A list is ordered by clicking a header (option C): ascending, then descending, then back to the list's own order. The sort covers every row, not just the page, and goes back to page 1. With no sort, the list keeps its order from today.
 5. The scope is lists of items: findings and strengths (run page and Findings page), Runs, Sessions, Context's runs and sessions, and Compliance's warnings, with the Work page's lists to come. Summary tables are left as they are.
 6. First glances, approved on the mock:
-   - Runs: Branch, Project, Path, Finished, Found, Est. cost ($), Warnings.
+   - Runs: Run (its title, else its branch), Project, Path, Finished, Found, Est. cost ($), Warnings.
    - Sessions: Session, Project, Started, Length, Est. cost ($), Warnings. The opened row holds its facts, then its timeline.
    - Context: Name, Kind, When, Past the cap, Largest, Read share.
    - Compliance's warnings: their columns as today, with sorting and pages added.
@@ -86,7 +86,7 @@ Under a list of more than 10 rows (`Pager`, right-aligned): "1–10 of 24", then
 
 A column marked narrow shows only while the list's own container is at least 768 px wide (a container query on `DataList`'s wrapper, Tailwind's `@3xl`). Below that it moves, in its order, to the top of the opened row, and every row gets the toggle, even in a list with no other details (Compliance's Project). The fold follows the list's own width, not the window's, because from 768 px the rail takes about 260 px. Measured on the mock, whose fold follows the window, Runs still scrolls sideways by 279 px at a 768 px window and 23 px at 1024, Sessions by 214 px at 768, and Context's units by 277 px at 768. The narrow columns:
 
-- Runs: Project, Path, Finished, Est. cost ($). First glance when narrow: Branch, Found, Warnings.
+- Runs: Project, Path, Finished, Est. cost ($). First glance when narrow: Run, Found, Warnings.
 - Sessions: Project, Started, Est. cost ($). First glance when narrow: Session, Length, Warnings.
 - Context: Kind, When, Largest, Read share. First glance when narrow: Name, Past the cap.
 - Compliance: Project, Since you last looked (the owner's call at build, 2026-11-18: at 375 px the list scrolled sideways by 65 px with it). First glance when narrow: Run, Warning.

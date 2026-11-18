@@ -118,6 +118,7 @@ The question: what have I been working toward, and what did each effort take?
 - Under the sections, one line when the period has sessions in no change: "4 sessions in this period belong to no change.", with a link to the Sessions view.
 - **Runs view.** Today's Runs table and its "Has warnings" control, with three changes: its first column is "Run", the run's title linking to the run's page; a "Change" column links to the change's page (the dash, read "no design", for a change of one run with no spec); a "Goal" column. Branch stays, after Goal.
 - **Sessions view.** Today's Sessions table, its opening rows and its "Has warnings" control, with "Change" and "Goal" columns added after Project. With `session=<key>` in the URL it lists that one session, whatever the period and the other filters, with its row open, under a chip naming it with a link that clears it, as Compliance's step chip does. A key that matches nothing, or a session showing mode hides, lists none and says so.
+- Both views are `DataList`s (the tables design): Change, Goal and Branch sit in a row's opened row, not in columns, and Branch only when the run's title names it.
 - The view is in the URL (`/work?view=runs`), so Back works and the redirects below can land on it.
 
 ### A goal's page, `/work/goals/$key` (`goal-*`)
@@ -136,6 +137,8 @@ The question: what did this design take, from the first conversation to the last
 - A link back to Work, the change's title, and its facts: Goal (a link to the goal's page), Project (its home project) and Other projects when it has some, Path, Stage, Started, Last activity, Sessions, Runs, Est. cost, and Spec (the file's name) when it has one.
 - **"How the work spread"**: the session graph in one lane, with sessions of other changes or goals that this change's sessions started, or that started them, drawn outlined.
 - **Runs**: Run (title, linking to the run's page), Project when the change has several, Branch, Finished, Time (min), Tasks, Findings (Found, Closed), Est. cost ($). Plan records are listed too, with their path shown in a Path column when the change has one.
+- The change page's Runs is a `DataList`: Branch, Time (min), Tasks and Closed findings sit in its opened row.
+- The goal and change pages' Sessions and Changes tables move onto `DataList` in a follow-up.
 - **Sessions**: Session (its title, a link to `/work?view=sessions&session=<key>`), Step, Started, Started by (the starting session's title; the dash, read "started by you", when none), Length, Model, Run (the title of the run it holds), Est. cost ($).
 
 ### The session graph

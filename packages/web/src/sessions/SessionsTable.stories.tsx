@@ -96,8 +96,8 @@ export const Full: Story = {
     );
     await expect(visibleFact(opened, 'Goal').textContent).toBe(twoRunSession.goal!.name);
     await expect(within(visibleFact(opened, 'ID')).getByText('7d1e4b2a')).toBeVisible();
-    // The ID has no copy button here.
-    await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
+    // The ID keeps its copy button in the opened row.
+    await expect(within(visibleFact(opened, 'ID')).getByRole('button', { name: 'Copy session ID' })).toBeVisible();
     await expect(visibleFact(opened, 'Model').textContent).toBe('Opus 5.5');
     await expect(visibleFact(opened, 'Effort').textContent).toBe('medium');
     await expect(['Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup'].map((t) => visibleFact(opened, t).textContent)).toEqual([

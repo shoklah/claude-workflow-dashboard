@@ -123,8 +123,14 @@ export function DataList<T extends RowData>({
     autoResetPageIndex: false,
     enableMultiSort: false,
   });
-  // The rows toggled away from how they start, so a row new to the list starts as `open` says.
+  // The rows toggled away from how they start, so a row new to the list starts as `open` says; a change of `open`
+  // starts every row again.
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+  const [seenOpen, setSeenOpen] = useState(open);
+  if (open !== seenOpen) {
+    setSeenOpen(open);
+    setToggled(new Set());
+  }
   const toggle = (key: string) =>
     setToggled((was) => {
       const next = new Set(was);
@@ -132,9 +138,6 @@ export function DataList<T extends RowData>({
       return next;
     });
   const folded = columns.filter((c) => c.fold);
-  // With nothing to open but its folded columns, a row opens only while they fold.
-  const foldOnly = facts.length === 0 && extra === undefined;
-  const opens = !foldOnly || folded.length > 0;
   const toggleColumn = columns.find((c) => !c.fold);
   return (
     <div className="@container flex flex-col gap-3">
@@ -160,6 +163,10 @@ export function DataList<T extends RowData>({
             const r = row.original;
             const key = rowKey(r, row.index);
             const isOpen = toggled.has(key) !== open;
+            // With nothing to open but its folded columns (no `extra`, every fact empty), a row opens only while they
+            // fold, and not at all without them.
+            const foldOnly = extra === undefined && shownPairs(r, facts).length === 0;
+            const opens = !foldOnly || folded.length > 0;
             const toggleCell = (c: ListColumn<T>) => {
               const text = c.text?.(r) ?? null;
               if (text !== null) {

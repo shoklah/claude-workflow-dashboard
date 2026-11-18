@@ -7,12 +7,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
 /**
  * A session by its name, with its full ID in a tooltip on hover and focus and a button that copies it (decision 31).
- * The name is the ID's first 8 characters until the reporter gives sessions a title (CR9). `copy={false}` leaves the
- * button out.
+ * The name is the ID's first 8 characters until the reporter gives sessions a title (CR9).
  */
-export function SessionChip({ id, copy = true }: { id: string; copy?: boolean }) {
+export function SessionChip({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
-  async function copyId() {
+  async function copy() {
     await navigator.clipboard.writeText(id);
     setCopied(true);
   }
@@ -26,16 +25,12 @@ export function SessionChip({ id, copy = true }: { id: string; copy?: boolean })
         </TooltipTrigger>
         <TooltipContent className="font-mono">{id}</TooltipContent>
       </Tooltip>
-      {copy && (
-        <>
-          <Button variant="ghost" size="icon-xs" aria-label="Copy session ID" onClick={copyId}>
-            <Copy aria-hidden />
-          </Button>
-          <span aria-live="polite" className="text-xs text-muted-foreground">
-            {copied && 'Copied'}
-          </span>
-        </>
-      )}
+      <Button variant="ghost" size="icon-xs" aria-label="Copy session ID" onClick={copy}>
+        <Copy aria-hidden />
+      </Button>
+      <span aria-live="polite" className="text-xs text-muted-foreground">
+        {copied && 'Copied'}
+      </span>
     </span>
   );
 }

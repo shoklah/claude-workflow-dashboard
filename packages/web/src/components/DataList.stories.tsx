@@ -310,6 +310,57 @@ export const FoldOnly: Story = {
   },
 };
 
+/** A row whose facts are all empty: like a list with no facts, its toggle shows only while its columns fold. */
+export const EmptyFactsRow: Story = {
+  args: { facts: [['Known', (r) => (r.count === null ? null : 'yes')]] },
+  render: (args) => (
+    <div className="flex flex-col gap-6">
+      <div data-testid="narrow" style={{ width: 375 }}>
+        <DataList {...args} />
+      </div>
+      <div data-testid="wide" style={{ width: 1000 }}>
+        <DataList {...args} />
+      </div>
+    </div>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const wide = within(canvas.getByTestId('wide'));
+    await expect(wide.getByRole('button', { name: 'Item 1' })).toBeVisible();
+    await expect(wide.queryByRole('button', { name: 'Item 4' })).toBeNull();
+    await expect(wide.getAllByText('Item 4').filter((el) => el.checkVisibility())).toHaveLength(1);
+    const narrow = within(canvas.getByTestId('narrow'));
+    const toggle = narrow.getByRole('button', { name: 'Item 4' });
+    await userEvent.click(toggle);
+    await expect(visibleTerms(openedRow(toggle))).toEqual(['When']);
+  },
+};
+
+/** A change of `open` starts every row again as it says: a row closed while every row started open stays closed once
+ * they start closed. */
+export const OpenChangeResets: Story = {
+  args: { rows: ROWS.slice(0, 3) },
+  render: function Render(args) {
+    const [open, setOpen] = useState(true);
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(!open)}>
+          Flip
+        </button>
+        <DataList {...args} open={open} />
+      </>
+    );
+  },
+  play: async ({ canvas, userEvent }) => {
+    const toggle = canvas.getByRole('button', { name: 'Item 1' });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(toggle);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(canvas.getByRole('button', { name: 'Flip' }));
+    await expect(canvas.getByRole('button', { name: 'Item 1' })).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.getByRole('button', { name: 'Item 2' })).toHaveAttribute('aria-expanded', 'false');
+  },
+};
+
 /** A refetch with fewer rows from a later page never paints that page: the first render shows page 1. */
 export const NoStalePage: Story = {
   render: function Render(args) {

@@ -58,14 +58,15 @@ export const Full: Story = {
     // One value per cell.
     await expectNoJoined(canvasElement);
 
-    // The first run, with no title, is named by its branch; it opens to its branch and other counts, no change or
-    // goal left out; the time is whole minutes.
+    // The first run, with no title, is named by its branch, so it opens to its other counts without the branch again,
+    // no change or goal left out; the time is whole minutes.
     await userEvent.click(canvas.getByRole('button', { name: `Details of ${HTML_TEXT}` }));
     const opened = canvas.getAllByRole('row')[2];
-    await expect(visibleTerms(opened)).toEqual(['Branch', 'Time (min)', 'Tasks', 'Waves', 'Closed findings', 'Stops']);
-    await expect(visibleValues(opened)).toEqual([HTML_TEXT, '25', '1', '0', '1', '0']);
+    await expect(visibleTerms(opened)).toEqual(['Time (min)', 'Tasks', 'Waves', 'Closed findings', 'Stops']);
+    await expect(visibleValues(opened)).toEqual(['25', '1', '0', '1', '0']);
 
-    // A titled run's chevron reads its title, and its opened row its change, linking to the change's page, and goal.
+    // A titled run's chevron reads its title, and its opened row its change, linking to the change's page, goal and
+    // branch.
     await userEvent.click(canvas.getByRole('button', { name: `Details of ${fullRun.headline}` }));
     const fullOpened = canvas.getAllByRole('row')[4];
     await expect(visibleTerms(fullOpened).slice(0, 3)).toEqual(['Change', 'Goal', 'Branch']);
@@ -75,10 +76,8 @@ export const Full: Story = {
       `/work/changes/${fullRun.change!.key}`,
     );
 
-    // A record from before steps knows only its branch.
-    await userEvent.click(canvas.getByRole('button', { name: 'Details of feat/import' }));
-    const oldOpened = canvas.getAllByRole('row').at(-1)!;
-    await expect(visibleTerms(oldOpened)).toEqual(['Branch']);
+    // A record from before steps with no title knows nothing more, so wide it has no toggle.
+    await expect(canvas.queryByRole('button', { name: 'Details of feat/import' })).toBeNull();
 
     // Free text with HTML in it shows as text.
     await expect(canvas.getByRole('link', { name: HTML_TEXT })).toBeVisible();
@@ -87,9 +86,9 @@ export const Full: Story = {
 };
 
 /** Narrow: under 768 px the list keeps Run, Found and Warnings; Project, Path, Finished and the cost open first
- * under a row. */
+ * under a row, so a record from before steps with no title opens to them alone. */
 export const Narrow: Story = {
-  args: { runs: [fullRun] },
+  args: { runs: [fullRun, oldRun] },
   decorators: [width(375)],
   play: async ({ canvas, userEvent }) => {
     const head = canvas.getAllByRole('row')[0];
@@ -112,6 +111,8 @@ export const Narrow: Story = {
       'Closed findings',
       'Stops',
     ]);
+    await userEvent.click(canvas.getByRole('button', { name: 'Details of feat/import' }));
+    await expect(visibleTerms(canvas.getAllByRole('row').at(-1)!)).toEqual(['Project', 'Path', 'Finished', 'Est. cost ($)']);
   },
 };
 

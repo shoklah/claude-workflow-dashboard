@@ -8,6 +8,14 @@ export function runName(title: string | null | undefined, branch: string | null 
   return title || branch || null;
 }
 
+/** What a run's link reads without a title or a branch. */
+const NO_BRANCH = 'no branch';
+
+/** A run's name as a label (a list row's name), `runName` else what its link reads without one. */
+export function runLabel(title: string | null | undefined, branch: string | null | undefined): string {
+  return runName(title, branch) ?? NO_BRANCH;
+}
+
 /** A run's link to its page, named by `runName` ("no branch" read out without a name). */
 export function RunLink({
   runKey,
@@ -22,7 +30,7 @@ export function RunLink({
 }) {
   return (
     <Link to="/runs/$key" params={{ key: runKey }} className={cn(LINK, className)}>
-      <Text value={runName(title, branch)} unknown="no branch" />
+      <Text value={runName(title, branch)} unknown={NO_BRANCH} />
     </Link>
   );
 }

@@ -4,7 +4,7 @@ import { parseTime, type ContextUnit } from '@cwd/shared';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
 import { Num, Unknown } from '../components/Num.tsx';
 import { Line, Section } from '../components/Panel.tsx';
-import { RunLink, runName } from '../components/RunLink.tsx';
+import { RunLink, runLabel, runName } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -102,7 +102,7 @@ export function ContextUnits({
       <DataList
         rows={units}
         rowKey={(u) => u.key}
-        name={(u) => (u.run ? (runName(u.run.headline, u.run.branch) ?? 'no branch') : sessionName(u.session?.title ?? null))}
+        name={(u) => (u.run ? runLabel(u.run.headline, u.run.branch) : sessionName(u.session?.title ?? null))}
         columns={COLUMNS}
         facts={FACTS}
         label="Runs and sessions table"
