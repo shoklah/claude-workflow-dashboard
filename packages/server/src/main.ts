@@ -1,50 +1,59 @@
 // The dashboard: loads the config and the data folder's `.env`, opens the database, imports on start and on each
 // trigger (one at a time, through the queue), labels the findings after each import when there is a key, and serves
-// the app. Usage: `pnpm --filter @cwd/server start`.
+// the app; with `mode: "collector"` it runs the collector instead, and with `mode: "hosted"` the hosted server.
+// `EDWARD_CONFIG` names another config file in the data folder. Usage: `pnpm --filter @cwd/server start`.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { builtWebDist, serveApp } from './app.ts';
 import { activeList } from './categories.ts';
-import { loadConfig } from './config.ts';
+import { runCollector } from './collector.ts';
+import { loadConfig, type Config } from './config.ts';
 import { rebuildDerived } from './db/import.ts';
 import { openDb } from './db/open.ts';
 import { lastGoodImport } from './db/read.ts';
+import { runHosted } from './hosted/main.ts';
 import { anthropicLabelClient, labelPending, labellerSettings } from './labeller.ts';
 import { createQueue } from './queue.ts';
 import { importOnce } from './reporter.ts';
 import { startTriggers } from './triggers.ts';
 
-const config = loadConfig();
+const config = loadConfig(undefined, process.env.EDWARD_CONFIG);
 const envFile = join(config.dataDir, '.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
-const db = openDb(join(config.dataDir, 'dashboard.sqlite'));
-// The derived values are rebuilt at every start, so rows stored before a new derived value gain it.
-rebuildDerived(db);
-const now = () => new Date();
-const settings = labellerSettings(process.env);
-const client = settings && anthropicLabelClient(settings.model);
-// The label job reads the active list each time, since an import can change it; with no list it labels nothing.
-const labels =
-  settings && client
-    ? createQueue(async () => {
-        const list = activeList(db);
-        if (list) await labelPending(db, client, settings, now(), list);
-      }, 'label')
-    : null;
-const queue = createQueue(async () => {
-  await importOnce(db, config, now);
-  labels?.request();
-});
-// The last good import, not the last attempt, so a failed import doesn't hold back the transcript timer.
-startTriggers(config, queue.request, () => lastGoodImport(db)?.at ?? null);
-queue.request();
-serveApp({
-  db,
-  port: config.port,
-  requestImport: queue.request,
-  importing: queue.busy,
-  webDist: builtWebDist(),
-  now,
-  aliases: config.aliases,
-  labeller: settings,
-});
+if (config.mode === 'collector') runCollector(config, process.env);
+else if (config.mode === 'hosted') runHosted(config, process.env);
+else serveDashboard(config);
+
+function serveDashboard(config: Config): void {
+  const db = openDb(join(config.dataDir, 'dashboard.sqlite'));
+  // The derived values are rebuilt at every start, so rows stored before a new derived value gain it.
+  rebuildDerived(db);
+  const now = () => new Date();
+  const settings = labellerSettings(process.env);
+  const client = settings && anthropicLabelClient(settings.model);
+  // The label job reads the active list each time, since an import can change it; with no list it labels nothing.
+  const labels =
+    settings && client
+      ? createQueue(async () => {
+          const list = activeList(db);
+          if (list) await labelPending(db, client, settings, now(), list);
+        }, 'label')
+      : null;
+  const queue = createQueue(async () => {
+    await importOnce(db, config, now);
+    labels?.request();
+  });
+  // The last good import, not the last attempt, so a failed import doesn't hold back the transcript timer.
+  startTriggers(config, queue.request, () => lastGoodImport(db)?.at ?? null);
+  queue.request();
+  serveApp({
+    db,
+    port: config.port,
+    requestImport: queue.request,
+    importing: queue.busy,
+    webDist: builtWebDist(),
+    now,
+    aliases: config.aliases,
+    labeller: settings,
+  });
+}

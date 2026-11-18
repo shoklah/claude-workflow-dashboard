@@ -13,10 +13,23 @@ export type Db = ReturnType<typeof openDb>;
 /** A transaction on a Db, for helpers that run inside one. */
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
-/** The database in `file`, its folder created with mode 0700 (the data is personal), migrated to the latest schema. */
-export function openDb(file: string) {
+/** A SQLite file with its Drizzle schema, its folder created with mode 0700 (the data is personal), its pragmas set,
+ * migrated from `migrationsFolder` to the latest schema. */
+export function openSqlite<S extends Record<string, unknown>>(
+  file: string,
+  tables: S,
+  migrationsFolder: string,
+  pragmas: string[] = [],
+) {
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
-  const db = drizzle(new Database(file), { schema });
-  migrate(db, { migrationsFolder: MIGRATIONS });
+  const client = new Database(file);
+  for (const pragma of pragmas) client.pragma(pragma);
+  const db = drizzle(client, { schema: tables });
+  migrate(db, { migrationsFolder });
   return db;
+}
+
+/** The database in `file`, through `openSqlite`. */
+export function openDb(file: string) {
+  return openSqlite(file, schema, MIGRATIONS);
 }

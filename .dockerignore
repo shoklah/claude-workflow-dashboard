@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report
+**/storybook-static
+**/*.sqlite
+.git
+.claude
+.superpowers
+.worktrees
+.env
+deploy/data

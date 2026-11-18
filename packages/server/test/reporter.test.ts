@@ -80,6 +80,18 @@ describe('runReporter', () => {
     }
   });
 
+  test("the reporter runs without the collector's token in its env", async () => {
+    const token = process.env.EDWARD_TOKEN;
+    process.env.EDWARD_TOKEN = 'test-token';
+    try {
+      const script = nodeScript('console.log(JSON.stringify("EDWARD_TOKEN" in process.env))');
+      expect(await runReporter(script, TIMEOUT)).toEqual({ ok: true, json: false });
+    } finally {
+      if (token === undefined) delete process.env.EDWARD_TOKEN;
+      else process.env.EDWARD_TOKEN = token;
+    }
+  });
+
   test('exit 0 with empty output is an error "reporter printed no JSON"', async () => {
     expect(await runReporter(nodeScript('process.stdout.write("  \\n")'), TIMEOUT)).toEqual({
       ok: false,
@@ -119,6 +131,8 @@ describe('importOnce', () => {
       projectsDir: join(dataDir, 'projects'),
       reporterTimeoutMs: TIMEOUT,
       aliases: {},
+      mode: 'local',
+      server: null,
     };
     return { db, config };
   }

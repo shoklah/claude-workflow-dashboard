@@ -62,19 +62,22 @@ function importUnit(tx: Tx, kind: Kind, key: string, raw: unknown, at: Date): vo
   tx.update(units).set({ missingSince: null }).where(unit).run();
 }
 
+/** A cursor's state id and sequence, split at the last `:`; null for none, or for one whose sequence isn't a whole
+ * number. */
+export function splitCursor(cursor: string | null | undefined): { id: string; seq: number } | null {
+  if (!cursor) return null;
+  const at = cursor.lastIndexOf(':');
+  const seq = cursor.slice(at + 1);
+  return at < 0 || !/^\d+$/.test(seq) ? null : { id: cursor.slice(0, at), seq: Number(seq) };
+}
+
 /**
- * Whether an export is incremental: `sent` is the cursor sent to the reporter and `got` the export's, each a state id
- * and a sequence split at the last `:`; true only when the ids are equal and `got`'s sequence is the higher.
+ * Whether an export is incremental: `sent` is the cursor sent to the reporter and `got` the export's, each split by
+ * `splitCursor`; true only when the ids are equal and `got`'s sequence is the higher.
  */
 export function isIncremental(sent: string | null, got: string | null | undefined): boolean {
-  const split = (cursor: string | null | undefined) => {
-    if (!cursor) return null;
-    const at = cursor.lastIndexOf(':');
-    const seq = cursor.slice(at + 1);
-    return at < 0 || !/^\d+$/.test(seq) ? null : { id: cursor.slice(0, at), seq: Number(seq) };
-  };
-  const a = split(sent);
-  const b = split(got);
+  const a = splitCursor(sent);
+  const b = splitCursor(got);
   return a !== null && b !== null && a.id === b.id && b.seq > a.seq;
 }
 

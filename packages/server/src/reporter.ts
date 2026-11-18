@@ -14,16 +14,17 @@ function failure(summary: string, detail = ''): ReporterResult {
 }
 
 /**
- * Runs the reporter, with the env but `ANTHROPIC_API_KEY`, and parses its whole output as JSON. Every failure is a
+ * Runs the reporter, with the env but `ANTHROPIC_API_KEY` and `EDWARD_TOKEN`, and parses its whole output as JSON. Every failure is a
  * result, never a throw: a command that can't start, a non-zero exit (with stderr's last line), no output, output that
  * isn't JSON, or a run past the timeout, which is killed. The error text never quotes stdout, which holds the data.
  */
 export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterResult> {
   return new Promise((resolve) => {
     const [command, ...args] = cmd;
-    // The labeller's key, which main.ts loads into process.env, stays out of the reporter's env.
+    // The labeller's key and the collector's token, which main.ts loads into process.env, stay out of the reporter's env.
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
+    delete env.EDWARD_TOKEN;
     const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], env });
     let stdout = '';
     let stderr = '';
@@ -58,6 +59,12 @@ export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterR
   });
 }
 
+/** The reporter's command with `--changed-since` the cursor, `0` when none; throws with no command. */
+export function reporterCommand(config: Config, cursor: string | null): string[] {
+  if (config.reporterCommand.length === 0) throw new Error('no reporter command');
+  return [...config.reporterCommand, '--changed-since', cursor ?? '0'];
+}
+
 /**
  * Runs the reporter once and imports its report, or records the failure with its error text, a throw included (an
  * empty command, a locked database). The import is timed before the reporter runs, so a transcript that changes
@@ -68,20 +75,33 @@ export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterR
 export async function importOnce(db: Db, config: Config, now: () => Date): Promise<void> {
   const at = now();
   try {
-    if (config.reporterCommand.length === 0) throw new Error('no reporter command');
     const sent = getCursor(db);
-    const command = [...config.reporterCommand, '--changed-since', sent ?? '0'];
-    const result = await runReporter(command, config.reporterTimeoutMs);
+    const result = await runReporter(reporterCommand(config, sent), config.reporterTimeoutMs);
     if (!result.ok) return recordImportFailure(db, result.error, at);
-    const loaded = loadReport(result.json);
+    importJson(db, result.json, sent, at);
+  } catch (error) {
+    recordImportFailure(db, `import failed: ${error instanceof Error ? error.message : String(error)}`, at);
+  }
+}
+
+/**
+ * Imports an export's parsed JSON, `sent` the cursor its reporter ran with, or records the failure: a version or
+ * fields the loader refuses, or a throw, as `import failed: <message>`. True when it was stored.
+ */
+export function importJson(db: Db, json: unknown, sent: string | null, at: Date): boolean {
+  try {
+    const loaded = loadReport(json);
     if (!loaded.ok) {
       const error =
         loaded.reason === 'version' ? 'report version is not 1' : `report fields don't match: ${loaded.fields.join(', ')}`;
-      return recordImportFailure(db, error, at);
+      recordImportFailure(db, error, at);
+      return false;
     }
-    const { runs, sessions, totals } = result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
+    const { runs, sessions, totals } = json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
     importReport(db, loaded.report, { runs, sessions, totals }, at, sent);
+    return true;
   } catch (error) {
     recordImportFailure(db, `import failed: ${error instanceof Error ? error.message : String(error)}`, at);
+    return false;
   }
 }

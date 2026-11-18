@@ -9,6 +9,8 @@ import type { LucideIcon } from 'lucide-react';
 import { cn } from 'cn';
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
+import { CURRENT, ENTRY } from '../lib/format.ts';
+import { AccountLinks } from './AccountLinks.tsx';
 import { Brand } from './Brand.tsx';
 
 type Entry = { to: LinkProps['to']; label: string; icon: LucideIcon; exact?: boolean; also?: string[] };
@@ -38,8 +40,6 @@ const SECTIONS: { name: string | null; entries: Entry[] }[] = [
   ] },
 ];
 
-/** The current entry's look. */
-const CURRENT = 'bg-accent font-semibold';
 
 /** The pages' links in their sections; `onNavigate` runs when one is followed. */
 export function Menu({ onNavigate }: { onNavigate?: () => void }) {
@@ -62,7 +62,7 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
                   to={entry.to}
                   onClick={onNavigate}
                   activeOptions={{ exact: entry.exact }}
-                  className={cn('flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent', also && CURRENT)}
+                  className={cn(ENTRY, also && CURRENT)}
                   activeProps={{ className: CURRENT }}
                   aria-current={also ? 'page' : undefined}
                 >
@@ -78,8 +78,8 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** The menu under 768 px: one button in the header row that opens the pages' links in a dialog, closed by following one.
- * Once the Shell has moved the focus into the page (a link to a new page), it leaves it there; otherwise (Escape, Close,
+/** The menu under 768 px: one button in the header row that opens the pages' links in a dialog, closed by following one,
+ * and in hosted mode the account's links at its foot, above a hairline. Once the Shell has moved the focus into the page (a link to a new page), it leaves it there; otherwise (Escape, Close,
  * a link to the page already shown) it returns the focus to the button. */
 export function MenuButton() {
   const [open, setOpen] = useState(false);
@@ -102,6 +102,7 @@ export function MenuButton() {
           <DialogDescription className="sr-only">Go to a page of the dashboard.</DialogDescription>
         </DialogHeader>
         <Menu onNavigate={() => setOpen(false)} />
+        <AccountLinks className="border-t pt-3 text-sm" onNavigate={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

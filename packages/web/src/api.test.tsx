@@ -76,3 +76,22 @@ test('a 500 is still retried', async () => {
   // The client waits a second before its first retry.
   await vi.waitFor(() => expect(thingFetches).toBe(2), { timeout: 3000 });
 });
+
+test('a 401 sends the page to the sign-in page, and is not retried', async () => {
+  // `location` can't be stubbed in a browser, so the navigation is caught, and stopped, as it starts.
+  const destinations: string[] = [];
+  const stop = (event: NavigateEvent) => {
+    destinations.push(new URL(event.destination.url).pathname);
+    event.preventDefault();
+  };
+  navigation.addEventListener('navigate', stop);
+  try {
+    const { errors } = renderLiveQuery(401);
+    await vi.waitFor(() => expect(errors.at(-1)).toBeInstanceOf(ApiError));
+  } finally {
+    navigation.removeEventListener('navigate', stop);
+  }
+  expect(destinations).toEqual(['/signin']);
+  expect(thingFetches).toBe(1);
+  expect(retry(0, new ApiError('/api/thing', 401))).toBe(false);
+});

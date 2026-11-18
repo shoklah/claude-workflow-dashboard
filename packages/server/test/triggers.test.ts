@@ -23,6 +23,8 @@ function tempConfig(): Config {
     projectsDir: join(dir, 'claude dir', 'projects'),
     reporterTimeoutMs: 1000,
     aliases: {},
+    mode: 'local',
+    server: null,
   };
 }
 
