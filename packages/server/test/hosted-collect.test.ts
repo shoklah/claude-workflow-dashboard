@@ -37,8 +37,10 @@ function collect(
   });
 }
 
-function post(token: string, raw: unknown) {
-  return collect('/api/collect', token, { method: 'POST', body: gzipSync(JSON.stringify(raw)) });
+/** POSTs `raw` gzipped, with the cursor the collector's reporter ran with (`X-Collector-Cursor`, none when null). */
+function post(token: string, raw: unknown, ranWith: string | null = null) {
+  const headers: Record<string, string> = ranWith === null ? {} : { 'X-Collector-Cursor': ranWith };
+  return collect('/api/collect', token, { method: 'POST', body: gzipSync(JSON.stringify(raw)), headers });
 }
 
 const db = (id: number) => hosted.hosted.files.db(id);
@@ -81,10 +83,48 @@ describe('POST /api/collect', () => {
     incremental.runs = [full.runs[0]];
     incremental.sessions = [];
     incremental.removed = { runs: [keys[1]], sessions: [] };
-    expect((await post(tokenA, incremental)).status).toBe(204);
+    expect((await post(tokenA, incremental, 'state-a:3')).status).toBe(204);
     const missing = listUnits(db(A.id), 'run').filter((u) => u.missingSince !== null).map((u) => u.key);
     expect(missing).toEqual([keys[1]]);
     expect(listUnits(db(A.id), 'session').every((u) => u.missingSince === null)).toBe(true);
+  });
+
+  /** An incremental export from `state-a:3`, holding only the first run, at `seq`. */
+  function incrementalFrom(seq: number): any {
+    const raw = exportWith(`state-a:${seq}`);
+    raw.runs = [raw.runs[0]];
+    raw.sessions = [];
+    raw.removed = { runs: [], sessions: [] };
+    return raw;
+  }
+
+  test('an export whose reporter ran before a Reset collector is refused with 409, nothing marked missing', async () => {
+    expect((await post(tokenA, exportWith('state-a:3'))).status).toBe(204);
+    const before = listUnits(db(A.id), 'run');
+    const importsBefore = importCount(A.id);
+    clearCursor(db(A.id));
+
+    const res = await post(tokenA, incrementalFrom(4), 'state-a:3');
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'another machine feeds this account' });
+    expect(listUnits(db(A.id), 'run')).toEqual(before);
+    expect(listUnits(db(A.id), 'run').every((u) => u.missingSince === null)).toBe(true);
+    expect(importCount(A.id)).toBe(importsBefore);
+    expect(getCursor(db(A.id))).toBeNull();
+  });
+
+  test('an export arriving after a later one of the same state is refused with 409, nothing marked missing', async () => {
+    expect((await post(tokenA, exportWith('state-a:3'))).status).toBe(204);
+    expect((await post(tokenA, incrementalFrom(5), 'state-a:3')).status).toBe(204);
+    const before = listUnits(db(A.id), 'run');
+    const importsBefore = importCount(A.id);
+
+    const res = await post(tokenA, incrementalFrom(4), 'state-a:3');
+    expect(res.status).toBe(409);
+    expect(listUnits(db(A.id), 'run')).toEqual(before);
+    expect(listUnits(db(A.id), 'run').every((u) => u.missingSince === null)).toBe(true);
+    expect(importCount(A.id)).toBe(importsBefore);
+    expect(getCursor(db(A.id))).toBe('state-a:5');
   });
 
   test("another machine's export is refused with 409 before anything is stored", async () => {

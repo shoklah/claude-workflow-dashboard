@@ -10,7 +10,7 @@ import { startTriggers } from './triggers.ts';
 // The longest error text a collector may record: the collector cuts to it and `/api/collect/failure` refuses past it.
 export const COLLECT_MAX_ERROR = 2000;
 const CONFLICT_LINE =
-  'collect: export answered 409: another machine feeds this account (Reset collector on the Account page)';
+  "collect: export answered 409: the account's cursor changed (after Reset collector the next collect resyncs; if another machine feeds this account, Reset collector on the Account page)";
 
 /** Logs a step's thrown error by its name only, since its message can quote the URL. */
 function logFailed(step: string, error: unknown): null {
@@ -76,7 +76,13 @@ export async function collectOnce(opts: {
   }
   const response = await send(fetch, 'export', new URL('/api/collect', server), {
     method: 'POST',
-    headers: { ...auth, 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+    headers: {
+      ...auth,
+      'Content-Type': 'application/json',
+      'Content-Encoding': 'gzip',
+      // The cursor the reporter ran with, so the server refuses the export if the stored one moved since.
+      ...(cursor === null ? {} : { 'X-Collector-Cursor': cursor }),
+    },
     body: gzipSync(JSON.stringify(result.json)),
   });
   return response?.status === 204 ? at : null;

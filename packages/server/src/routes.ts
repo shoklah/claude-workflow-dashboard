@@ -360,8 +360,9 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     return view ? c.json(view) : c.notFound();
   });
 
-  // Hosted, task 5: the collector's cursor, export and failure, into the token's own account file. While a cursor is
-  // stored, an export with another state id or none is refused before anything is stored: one machine feeds an account.
+  // Hosted, task 5: the collector's cursor, export and failure, into the token's own account file. An export whose
+  // reporter ran with another cursor than the stored one (`X-Collector-Cursor`), or, while a cursor is stored, with
+  // another state id or none, is refused before anything is stored: one machine feeds an account.
   const { hosted } = deps;
   if (hosted) {
     // The middleware sets the caller on every hosted /api/collect* (a token) and /api/account* (a session) request.
@@ -382,10 +383,12 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
           recordImportFailure(c.var.db, 'collect failed: body is not gzipped JSON', at);
           return c.body(null, 400);
         }
-        const sent = getCursor(c.var.db);
+        // The cursor the collector's reporter ran with, none when the header is absent; it must still be the stored one.
+        const sent = c.req.header('X-Collector-Cursor') ?? null;
+        const stored = getCursor(c.var.db);
         const cursor = (json as { cursor?: unknown } | null)?.cursor;
         const id = typeof cursor === 'string' ? splitCursor(cursor)?.id : undefined;
-        if (sent !== null && (id === undefined || id !== splitCursor(sent)?.id)) {
+        if (sent !== stored || (stored !== null && (id === undefined || id !== splitCursor(stored)?.id))) {
           return c.json({ error: 'another machine feeds this account' }, 409);
         }
         if (!importJson(c.var.db, json, sent, at)) return c.body(null, 400);

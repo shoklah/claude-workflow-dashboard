@@ -10,7 +10,8 @@ import type { Config } from '../src/config.ts';
 const AT = new Date('2026-11-18T09:00:00Z');
 const TOKEN = 'edw_test-token-0123456789';
 const SERVER = 'https://edward.example.com';
-const CONFLICT_LINE = 'collect: export answered 409: another machine feeds this account (Reset collector on the Account page)';
+const CONFLICT_LINE =
+  "collect: export answered 409: the account's cursor changed (after Reset collector the next collect resyncs; if another machine feeds this account, Reset collector on the Account page)";
 
 const dirs: string[] = [];
 let logs: string[];
@@ -86,6 +87,16 @@ describe('collectOnce', () => {
     expect(post.headers.get('content-type')).toBe('application/json');
     expect(JSON.parse(gunzipSync(post.body as Uint8Array).toString('utf8'))).toEqual(fixture('report-work'));
     expect(logs.join('\n')).not.toContain(TOKEN);
+  });
+
+  test('the export carries the cursor its reporter ran with, none when the server had none', async () => {
+    const withCursor = stubFetch({ cursor: 'state-a:3' });
+    await collectOnce({ config: configWith(), token: TOKEN, fetch: withCursor.fetch, now: () => AT });
+    expect(withCursor.sent[1].headers.get('x-collector-cursor')).toBe('state-a:3');
+
+    const without = stubFetch({ cursor: null });
+    await collectOnce({ config: configWith(), token: TOKEN, fetch: without.fetch, now: () => AT });
+    expect(without.sent[1].headers.has('x-collector-cursor')).toBe(false);
   });
 
   test("the reporter gets the cursor the server answers, else 0", async () => {
