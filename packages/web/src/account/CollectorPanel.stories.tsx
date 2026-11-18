@@ -77,3 +77,30 @@ export const RevokeAndReset: Story = {
     await expect(globalThis.fetch).toHaveBeenCalledWith('/api/account/reset-collector', expect.objectContaining({ method: 'POST' }));
   },
 };
+
+/** While a call runs, the panel's actions are disabled, so a second click can't create a token no one sees. */
+export const Pending: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/account/tokens': 'pending' });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const create = await canvas.findByRole('button', { name: 'Create token' });
+    await userEvent.click(create);
+    await expect(create).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Reset collector' })).toBeDisabled();
+    for (const revoke of canvas.getAllByRole('button', { name: 'Revoke' })) await expect(revoke).toBeDisabled();
+  },
+};
+
+/** A failed revoke says so in the panel, in fixed words, and the actions come back. */
+export const RevokeFails: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/account/tokens/2/revoke': 500 });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const panel = within(await canvas.findByRole('region', { name: 'Collector' }));
+    await userEvent.click(panel.getAllByRole('button', { name: 'Revoke' })[0]);
+    await expect(await panel.findByText("Couldn't revoke the token. Try again.")).toBeVisible();
+    await expect(panel.getAllByRole('button', { name: 'Revoke' })[0]).toBeEnabled();
+  },
+};

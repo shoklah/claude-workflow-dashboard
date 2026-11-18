@@ -4,7 +4,7 @@ import { Copy } from 'lucide-react';
 import type { AccountResponse } from '@cwd/shared';
 import { createToken, resetCollector, revokeToken } from '../api.ts';
 import { EmptyRow } from '../components/Num.tsx';
-import { ColumnHead, Pairs, Panel, ScrollTable } from '../components/Panel.tsx';
+import { ColumnHead, Pairs, Panel, ScrollTable, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
 import {
   Dialog,
@@ -22,17 +22,27 @@ const COLUMN_COUNT = 3;
 /**
  * The collector's facts (its last collect, whether a machine feeds the account), its tokens with a Revoke each, Create
  * token and, while a machine is set, Reset collector. A new token shows once, in a dialog, as the collector's `.env`
- * line; it leaves the page when the dialog closes.
+ * line; it leaves the page when the dialog closes. While a call runs every action is disabled, and a failed one says so
+ * in fixed words.
  */
 export function CollectorPanel({ account }: { account: AccountResponse }) {
   const queryClient = useQueryClient();
   const [token, setToken] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
-  // Each POST changes the account, so its data is read again.
-  async function send<T>(post: () => Promise<T>): Promise<T> {
-    const answer = await post();
-    await queryClient.invalidateQueries({ queryKey: ['/api/account'] });
-    return answer;
+  // Each POST changes the account, so its data is read again; its failure shows as `failure`, never the error's text.
+  async function send(post: () => Promise<void>, failure: string) {
+    setPending(true);
+    setFailed(null);
+    try {
+      await post();
+      await queryClient.invalidateQueries({ queryKey: ['/api/account'] });
+    } catch {
+      setFailed(failure);
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -66,7 +76,12 @@ export function CollectorPanel({ account }: { account: AccountResponse }) {
                   {t.lastUsedAt ? <Time iso={t.lastUsedAt} /> : <span className="text-muted-foreground">Never</span>}
                 </td>
                 <td className="px-2 py-1.5 text-right">
-                  <Button variant="outline" size="xs" onClick={() => send(() => revokeToken(t.id))}>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={pending}
+                    onClick={() => send(() => revokeToken(t.id), "Couldn't revoke the token. Try again.")}
+                  >
                     Revoke
                   </Button>
                 </td>
@@ -76,13 +91,25 @@ export function CollectorPanel({ account }: { account: AccountResponse }) {
         </tbody>
       </ScrollTable>
       <div className="flex flex-wrap gap-2">
-        <Button onClick={async () => setToken((await send(createToken)).token)}>Create token</Button>
+        <Button
+          disabled={pending}
+          onClick={() =>
+            send(async () => setToken((await createToken()).token), "Couldn't create a token. Try again.")
+          }
+        >
+          Create token
+        </Button>
         {account.machine && (
-          <Button variant="outline" onClick={() => send(resetCollector)}>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => send(resetCollector, "Couldn't reset the collector. Try again.")}
+          >
             Reset collector
           </Button>
         )}
       </div>
+      {failed && <State error>{failed}</State>}
       <Dialog open={token !== null} onOpenChange={(open) => !open && setToken(null)}>
         <DialogContent>
           <DialogHeader>

@@ -64,3 +64,15 @@ export const Failed: Story = {
     await expect(canvas.queryByRole('region', { name: 'Your account' })).toBeNull();
   },
 };
+
+/** A failed sign-out says so under "Your account", in fixed words, and stays on the page. */
+export const SignOutFails: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/account': accountFull, '/auth/signout': 500 });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const yours = within(await canvas.findByRole('region', { name: 'Your account' }));
+    await userEvent.click(yours.getByRole('button', { name: 'Sign out' }));
+    await expect(await yours.findByText("Couldn't sign out. Try again.")).toBeVisible();
+  },
+};
