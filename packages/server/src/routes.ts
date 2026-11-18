@@ -6,6 +6,7 @@ import {
   toSpendUnits,
   toStepKind,
   weekStart,
+  type AccountResponse,
   type ComplianceQuery,
   type ContextQuery,
   type FindingsQuery,
@@ -14,6 +15,7 @@ import {
   type RunsQuery,
   type SessionsQuery,
   type SpendQuery,
+  type TokenResponse,
   type WorkQuery,
 } from '@cwd/shared';
 import type { AppDeps, AppEnv } from './app.ts';
@@ -22,6 +24,7 @@ import { COLLECT_MAX_ERROR } from './collector.ts';
 import { recordImportFailure, splitCursor } from './db/import.ts';
 import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
 import {
+  clearCursor,
   getCursor,
   getRun,
   getSeenAt,
@@ -34,7 +37,7 @@ import {
   setShowing,
   type StoredUnit,
 } from './db/read.ts';
-import { setLastCollect, type Account } from './hosted/accounts.ts';
+import { createToken, getAccount, listTokens, revokeToken, setLastCollect, type Account } from './hosted/accounts.ts';
 import { projectKey } from './keys.ts';
 import { importJson } from './reporter.ts';
 import { complianceView } from './views/compliance.ts';
@@ -398,5 +401,42 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
       return c.body(null, 204);
     });
     app.all('/api/collect/failure', postOnly);
+
+    // Hosted, task 9: the caller's account, its collector tokens and the collector reset. A session caller only (a
+    // token resolves only on /api/collect*); each reads the caller's own file, never `c.var.db`.
+    const caller = (c: Context<AppEnv>) => c.var.account as Account;
+    app.get('/api/account', (c) => {
+      const { id } = caller(c);
+      const account = getAccount(hosted.accounts, id);
+      if (!account) return c.notFound();
+      const body: AccountResponse = {
+        login: account.login,
+        createdAt: account.createdAt.toISOString(),
+        lastCollectAt: account.lastCollectAt?.toISOString() ?? null,
+        machine: getCursor(hosted.files.db(id)) !== null,
+        tokens: listTokens(hosted.accounts, id).map((token) => ({
+          id: token.id,
+          createdAt: token.createdAt.toISOString(),
+          lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+        })),
+      };
+      return c.json(body);
+    });
+    app.post('/api/account/tokens', (c) => {
+      const body: TokenResponse = { token: createToken(hosted.accounts, caller(c).id, deps.now()) };
+      return c.json(body, 201);
+    });
+    app.all('/api/account/tokens', postOnly);
+    app.post('/api/account/tokens/:id/revoke', (c) => {
+      const id = Number(c.req.param('id'));
+      if (!Number.isSafeInteger(id) || !revokeToken(hosted.accounts, caller(c).id, id)) return c.notFound();
+      return c.body(null, 204);
+    });
+    app.all('/api/account/tokens/:id/revoke', postOnly);
+    app.post('/api/account/reset-collector', (c) => {
+      clearCursor(hosted.files.db(caller(c).id));
+      return c.body(null, 204);
+    });
+    app.all('/api/account/reset-collector', postOnly);
   }
 }
