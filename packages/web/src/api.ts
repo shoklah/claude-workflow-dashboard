@@ -10,14 +10,16 @@ export class ApiError extends Error {
   }
 }
 
-/** The app's retries, as its query client's default: never for a 404, which a retry won't change, else three as
- * TanStack's default. */
+/** The app's retries, as its query client's default: never for a 404 or a 401, which a retry won't change, else three
+ * as TanStack's default. */
 export function retry(failures: number, error: Error): boolean {
-  return !(error instanceof ApiError && error.status === 404) && failures < 3;
+  return !(error instanceof ApiError && (error.status === 404 || error.status === 401)) && failures < 3;
 }
 
+/** A GET of the API; a 401 (hosted mode, signed out) sends the page to the sign-in page. */
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
+  if (response.status === 401) window.location.assign('/signin');
   if (!response.ok) throw new ApiError(path, response.status);
   return response.json() as Promise<T>;
 }

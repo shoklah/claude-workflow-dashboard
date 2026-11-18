@@ -15,7 +15,8 @@ const showingOff: ShowingResponse = { on: false, projects: [{ key: '1a2b3c4d5e6f
 // Stories run at 1200 px, so the rail shows and the top row is hidden; e2e/shell.spec.ts checks 375 px.
 const rail = (canvasElement: HTMLElement) => canvasElement.querySelector('aside')!;
 
-export const Loading: Story = {
+/** Loading: the status pending, so no Refresh yet, which hosted mode never shows. */
+export const StatusLoading: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': 'pending', '/api/showing': showingOff });
   },
@@ -26,7 +27,7 @@ export const Loading: Story = {
     await expect(canvas.getByText('The page')).toBeVisible();
     await expect(canvas.queryByRole('status')).toBeNull();
     await expect(rail(canvasElement).textContent).toContain('edward');
-    await expect(canvas.getByRole('button', { name: 'Refresh' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Refresh' })).toBeNull();
     await expect(rail(canvasElement).querySelector('time')).toBeNull();
   },
 };
@@ -101,5 +102,20 @@ export const ShowingOn: Story = {
     const aside = within(rail(canvasElement));
     await expect(await aside.findByRole('button', { name: 'Stop showing' })).toBeVisible();
     await expect(aside.queryByRole('switch')).toBeNull();
+  },
+};
+
+/** Hosted mode (the status names the account): the rail's foot holds showing mode, the login linking to the Account
+ * page and the import's time, with no Refresh. */
+export const Hosted: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': { ...ok, account: { login: 'rowan-k' } }, '/api/showing': showingOff });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const aside = within(rail(canvasElement));
+    await expect(await aside.findByRole('link', { name: 'rowan-k' })).toHaveAttribute('href', '/account');
+    await expect(aside.getByRole('switch', { name: 'Showing mode' })).toBeVisible();
+    await expect(rail(canvasElement).querySelector('time')).toHaveAttribute('datetime', LAST_GOOD);
+    await expect(canvas.queryByRole('button', { name: 'Refresh' })).toBeNull();
   },
 };

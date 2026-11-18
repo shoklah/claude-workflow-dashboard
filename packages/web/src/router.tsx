@@ -1,9 +1,10 @@
-import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
+import { Outlet, createRootRoute, createRoute, createRouter, redirect, useLocation } from '@tanstack/react-router';
 import { toStepKind, type StepKind } from '@cwd/shared';
 import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { ContextPage } from './context/ContextPage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
 import { HomePage } from './home/HomePage.tsx';
+import { SignInPage } from './hosted/SignInPage.tsx';
 import { ErrorPage, NotFoundPage } from './layout/ErrorPages.tsx';
 import { Shell } from './layout/Shell.tsx';
 import { ModelsPage } from './models/ModelsPage.tsx';
@@ -16,12 +17,27 @@ import { ChangePage } from './work/ChangePage.tsx';
 import { GoalPage } from './work/GoalPage.tsx';
 import { WorkPage, type WorkView } from './work/WorkPage.tsx';
 
+// Every path inside the shell, the not-found and error pages too, except hosted mode's sign-in page, drawn bare.
 const rootRoute = createRootRoute({
-  component: () => (
-    <Shell>
+  component: function Root() {
+    const signIn = useLocation({ select: (location) => location.pathname === '/signin' });
+    return signIn ? (
       <Outlet />
-    </Shell>
-  ),
+    ) : (
+      <Shell>
+        <Outlet />
+      </Shell>
+    );
+  },
+});
+
+const signInRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signin',
+  validateSearch: (search: Record<string, unknown>): { error?: 'refused' | 'failed' } => ({
+    error: search.error === 'refused' || search.error === 'failed' ? search.error : undefined,
+  }),
+  component: SignInPage,
 });
 
 const homeRoute = createRoute({
@@ -157,6 +173,7 @@ export const router = createRouter({
     workRoute,
     goalRoute,
     changeRoute,
+    signInRoute,
   ]),
 });
 
