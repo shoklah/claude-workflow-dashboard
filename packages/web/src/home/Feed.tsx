@@ -107,7 +107,7 @@ export function Feed({ items }: { items: FeedItem[] }) {
         >
           <ul className="flex flex-col gap-3">
             {items.map((item) => (
-              <Item key={`${item.type} ${item.at} ${item.runKey} ${item.text}`} item={item} />
+              <Item key={`${item.type} ${item.at} ${item.runKey} ${item.sessionId} ${item.text}`} item={item} />
             ))}
           </ul>
         </div>
