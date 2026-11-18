@@ -320,3 +320,37 @@ When each phase lands, `CLAUDE.md`'s conventions change to match (one line each)
 - Install is a clone and pnpm, no published package.
 - No Refresh button in hosted mode; status is per account.
 - No aliases in hosted mode.
+
+## Screens (agreed with the owner, 2026-11-18)
+
+Captures in `docs/design/2026-11-18-hosted/` (1440 px dark and light, 768 px dark, 375 px dark and light), rendered from
+the mock branch `claude/hosted-mock` on invented data. Hosted mode only; a local install's screens don't change.
+
+- **Sign-in** (`/signin`, `signin-*`, `signin-refused-*`): answers "how do I get in, and where does my data go?". One
+  glass panel centred on the backdrop, no rail: the brand, "Sign in", the line that what the collector sends is stored
+  on the owner's server, where they can read the files, and "Sign in with GitHub". Its states are fixed texts in a
+  warning-edged line above it: not invited, and sign-in didn't finish (a bad `state` or a GitHub error). Same layout at
+  every width. Components: `Brand`, `Button`, the glass panel; no new ones.
+- **The rail's foot** (`viewer-*`): answers "whose dashboard is this, and who am I?". In hosted mode, Refresh is gone;
+  under the hairline sit the account switcher, showing mode, the signed-in login as a link to Account (icon and login,
+  in the menu's entry look) with Admin under it for the admin only, and "Imported <time>". The switcher, a native
+  `select` named "Dashboard" (Yours, then each account you view), shows only to an account that views another. While
+  viewing another account, showing mode's control is replaced by an amber bar in its look, "<login>'s projects:
+  <names>" and "Read-only", and every control that POSTs is left out (Home's "Mark all seen" among them), from the
+  status response saying the caller is viewing. Under 768 px the switcher and the bar sit in the top row and the
+  account links at the foot of the Menu dialog. Components: `ShowingControl`'s bar look, the menu entry's look,
+  `Menu`'s dialog; the switcher is a native `select`.
+- **Account** (`/account`, `account-*`, `account-empty-*`): answers "how is my account fed, labelled and shown?". Four
+  panels, two columns from `lg`: Collector (last collect, the machine, the tokens table with Created, Last used and
+  Revoke, "Create token" and "Reset collector"; a new token shows once in a dialog with a Copy button), Labeller (the
+  key shown only as Set with Replace and Remove, or a password field when none; the model `select`; the daily max),
+  Viewers (the line on what viewers see, the logins with Remove, a login field with "Add viewer"), and Shown projects
+  (showing mode's list as checkboxes, Save); then on the backdrop "Your account" (login, since when), Sign out, and
+  Delete account behind a confirming dialog. Empty: "No tokens…", "No viewers.", the key field and "No key: findings
+  stay unlabelled."; loading and error are each panel's `State`. Components: `Panel`, `Pairs`, `ScrollTable`,
+  `ColumnHead`, `EmptyRow`, `Button`, `Dialog`, `Section`; new: a text field, shadcn's `input` through its CLI, since
+  the kit has none.
+- **Admin** (`/admin`, `admin-*`): answers "who may sign in, and which accounts exist?". Two panels: Invites (login,
+  added, signed in yet, Remove; a login field and "Invite"; empty: "No invites: only you can sign in.") and Accounts
+  (login, created, last collect, Delete behind a confirming dialog, none on the admin's own row). No way into an
+  account's data. Components: as Account's.
