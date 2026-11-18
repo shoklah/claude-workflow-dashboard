@@ -8,7 +8,7 @@ The screenshot is one of the screenshot-test baselines, on invented data. The re
 
 ## Requirements
 
-- macOS (the dashboard runs as a launchd agent).
+- macOS or Linux (the dashboard runs as a launchd agent or a systemd user unit); on Windows, through WSL.
 - Node 22.18 or later (see `.nvmrc`): Node runs the server's TypeScript directly.
 - pnpm, the version in `package.json`'s `packageManager` (for example through `corepack enable`).
 - The workflow's reporter installed at `~/.claude/scripts/workflow-report.py`, printing JSON version 1 and accepting CR6's `--changed-since` (a reporter before CR6 rejects it, so every import fails). Without it, each import fails with a banner naming the missing command.
@@ -21,7 +21,7 @@ pnpm build
 pnpm agent:install
 ```
 
-`pnpm build` builds the web app, which the server serves. `pnpm agent:install` writes a launchd agent to `~/Library/LaunchAgents/com.shoklah.claude-workflow-dashboard.plist` that starts the server at login, with the `node` that ran the command, and keeps it running. The dashboard is then at <http://localhost:4317>.
+`pnpm build` builds the web app, which the server serves. `pnpm agent:install` starts the server with the `node` that ran the command and keeps it running: on macOS it writes a launchd agent to `~/Library/LaunchAgents/com.shoklah.claude-workflow-dashboard.plist`, which starts at login; on Linux it writes a systemd user unit to `~/.config/systemd/user/claude-workflow-dashboard.service` and enables it, and the unit runs while you are logged in unless you run `loginctl enable-linger`. The dashboard is then at <http://localhost:4317>.
 
 `pnpm agent:uninstall` stops the agent and deletes its file. To reinstall (after moving the repo or changing Node), uninstall first.
 
