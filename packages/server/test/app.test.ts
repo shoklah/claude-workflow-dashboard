@@ -154,7 +154,13 @@ describe('status', () => {
   }
 
   test('status before any import', async () => {
-    expect(await status()).toEqual({ lastImportAt: null, lastGoodImportAt: null, error: null, importing: false });
+    expect(await status()).toEqual({
+      lastImportAt: null,
+      lastGoodImportAt: null,
+      error: null,
+      importing: false,
+      account: null,
+    });
   });
 
   test('status reports the last good import and whether one runs', async () => {
@@ -167,6 +173,7 @@ describe('status', () => {
       lastGoodImportAt: '2026-11-12T10:00:00.000Z',
       error: null,
       importing: true,
+      account: null,
     });
   });
 
@@ -177,6 +184,7 @@ describe('status', () => {
       lastGoodImportAt: null,
       error: 'reporter printed no JSON',
       importing: false,
+      account: null,
     });
   });
 
@@ -193,6 +201,21 @@ describe('status', () => {
   test('status cuts paths one after another, and leaves a word with a slash', async () => {
     recordImportFailure(db, 'reporter exited with 2: and/or usage: /usr/bin/python3 /Users/x/a b/report.py', NOW);
     expect((await status()).error).toBe('reporter exited with 2: and/or usage: python3 report.py');
+  });
+});
+
+describe('local mode has no account', () => {
+  test('status says no account, and a session cookie changes nothing', async () => {
+    const plain = await send('/api/status');
+    const withCookie = await send('/api/status', { headers: { Cookie: 'edward_session=abc' } });
+    expect(withCookie.status).toBe(200);
+    const body = (await plain.json()) as StatusResponse;
+    expect(body.account).toBeNull();
+    expect(await withCookie.json()).toEqual(body);
+    expect((await send('/api/nope', { headers: { Cookie: 'edward_session=abc' } })).status).toBe(404);
+    const cookie = { Cookie: 'edward_session=abc' };
+    const res = await send('/api/refresh', { ...refresh, headers: { ...refresh.headers, ...cookie } });
+    expect(res.status).toBe(202);
   });
 });
 
