@@ -73,15 +73,30 @@ export async function importOnce(db: Db, config: Config, now: () => Date): Promi
     const command = [...config.reporterCommand, '--changed-since', sent ?? '0'];
     const result = await runReporter(command, config.reporterTimeoutMs);
     if (!result.ok) return recordImportFailure(db, result.error, at);
-    const loaded = loadReport(result.json);
+    importJson(db, result.json, sent, at);
+  } catch (error) {
+    recordImportFailure(db, `import failed: ${error instanceof Error ? error.message : String(error)}`, at);
+  }
+}
+
+/**
+ * Imports an export's parsed JSON, `sent` the cursor its reporter ran with, or records the failure: a version or
+ * fields the loader refuses, or a throw, as `import failed: <message>`. True when it was stored.
+ */
+export function importJson(db: Db, json: unknown, sent: string | null, at: Date): boolean {
+  try {
+    const loaded = loadReport(json);
     if (!loaded.ok) {
       const error =
         loaded.reason === 'version' ? 'report version is not 1' : `report fields don't match: ${loaded.fields.join(', ')}`;
-      return recordImportFailure(db, error, at);
+      recordImportFailure(db, error, at);
+      return false;
     }
-    const { runs, sessions, totals } = result.json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
+    const { runs, sessions, totals } = json as { runs: unknown[]; sessions: unknown[]; totals: unknown };
     importReport(db, loaded.report, { runs, sessions, totals }, at, sent);
+    return true;
   } catch (error) {
     recordImportFailure(db, `import failed: ${error instanceof Error ? error.message : String(error)}`, at);
+    return false;
   }
 }

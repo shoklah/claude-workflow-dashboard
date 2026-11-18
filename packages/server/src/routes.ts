@@ -1,4 +1,6 @@
+import { gunzipSync } from 'node:zlib';
 import type { Context, Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import {
   toPath,
   toSpendUnits,
@@ -16,8 +18,10 @@ import {
 } from '@cwd/shared';
 import type { AppDeps, AppEnv } from './app.ts';
 import { activeList, labellable } from './categories.ts';
+import { recordImportFailure, splitCursor } from './db/import.ts';
 import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
 import {
+  getCursor,
   getRun,
   getSeenAt,
   getShowing,
@@ -29,7 +33,9 @@ import {
   setShowing,
   type StoredUnit,
 } from './db/read.ts';
+import { setLastCollect, type Account } from './hosted/accounts.ts';
 import { projectKey } from './keys.ts';
+import { importJson } from './reporter.ts';
 import { complianceView } from './views/compliance.ts';
 import { contextView } from './views/context.ts';
 import { findingsView } from './views/findings.ts';
@@ -51,6 +57,12 @@ import { changeView, goalHomes, goalView, levels, workView } from './views/work.
 export function postOnly(c: Context): Response {
   return c.body(null, 405, { Allow: 'POST' });
 }
+
+// The collect endpoint's limits: the gzipped body, and the export it unzips to.
+const COLLECT_MAX_BODY = 32 * 1024 * 1024;
+const COLLECT_MAX_JSON = 64 * 1024 * 1024;
+// The longest error text a collector may record.
+const COLLECT_MAX_ERROR = 2000;
 
 // The most weeks a list covers: the Runs page's longest period, so a huge `weeks` can't build a huge response.
 const MAX_WEEKS = 52;
@@ -343,4 +355,49 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     const view = goalView({ runs, sessions, key: c.req.param('key'), scope, names: storedNames(runs) });
     return view ? c.json(view) : c.notFound();
   });
+
+  // Hosted, task 5: the collector's cursor, export and failure, into the token's own account file. While a cursor is
+  // stored, an export with another state id or none is refused before anything is stored: one machine feeds an account.
+  const { hosted } = deps;
+  if (hosted) {
+    // The middleware sets the token's account on every /api/collect* request.
+    const collected = (c: Context<AppEnv>) =>
+      setLastCollect(hosted.accounts, (c.var.account as Account).id, deps.now());
+    app.get('/api/collect/cursor', (c) => c.json({ cursor: getCursor(c.var.db) }));
+    app.post(
+      '/api/collect',
+      bodyLimit({ maxSize: COLLECT_MAX_BODY, onError: (c) => c.body(null, 413) }),
+      async (c) => {
+        const at = deps.now();
+        let json: unknown;
+        try {
+          const body = gunzipSync(Buffer.from(await c.req.arrayBuffer()), { maxOutputLength: COLLECT_MAX_JSON });
+          json = JSON.parse(body.toString('utf8'));
+        } catch (error) {
+          if (error instanceof RangeError) return c.body(null, 413);
+          recordImportFailure(c.var.db, 'collect failed: body is not gzipped JSON', at);
+          return c.body(null, 400);
+        }
+        const sent = getCursor(c.var.db);
+        const cursor = (json as { cursor?: unknown } | null)?.cursor;
+        const id = typeof cursor === 'string' ? splitCursor(cursor)?.id : undefined;
+        if (sent !== null && (id === undefined || id !== splitCursor(sent)?.id)) {
+          return c.json({ error: 'another machine feeds this account' }, 409);
+        }
+        if (!importJson(c.var.db, json, sent, at)) return c.body(null, 400);
+        collected(c);
+        return c.body(null, 204);
+      },
+    );
+    app.all('/api/collect', postOnly);
+    app.post('/api/collect/failure', async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const error: unknown = body?.error;
+      if (typeof error !== 'string' || error.length > COLLECT_MAX_ERROR) return c.body(null, 400);
+      recordImportFailure(c.var.db, error, deps.now());
+      collected(c);
+      return c.body(null, 204);
+    });
+    app.all('/api/collect/failure', postOnly);
+  }
 }

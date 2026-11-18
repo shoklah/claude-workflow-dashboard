@@ -154,8 +154,8 @@ describe('hosted request rules', () => {
     expect((await send('/api/home', { headers: bearer })).status).toBe(401);
     expect((await asA('/api/collect/cursor')).status).toBe(401);
     expect((await send('/api/collect/cursor', { headers: { Authorization: 'Bearer ed_nope' } })).status).toBe(401);
-    // A's token passes the rules; no collect route exists yet.
-    expect((await send('/api/collect/cursor', { headers: bearer })).status).toBe(404);
+    // A's token passes the rules.
+    expect((await send('/api/collect/cursor', { headers: bearer })).status).toBe(200);
   });
 
   test('there is no refresh route', async () => {
