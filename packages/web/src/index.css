@@ -277,6 +277,12 @@
   [data-slot='table-container']:focus-visible, [data-scroll-cue]:focus-visible {
     @apply outline-2 -outline-offset-2 outline-ring;
     }
+  /* A scrolling region holds its absolute descendants (an `sr-only` read-out, an icon button's name), as shadcn's table
+     container does: otherwise their containing block lies outside the region's clip, and they stretch the page from
+     their place in it. */
+  [data-scroll-cue] {
+    position: relative;
+    }
   /* The cue on a table that scrolls sideways: its edge fades where more columns are hidden. The scroll timeline is
      inactive on a table that fits, so the animation, and with it the mask, doesn't apply. */
   @supports (animation-timeline: scroll()) {
