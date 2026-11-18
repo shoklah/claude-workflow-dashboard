@@ -22,7 +22,7 @@ const COLUMNS: ListColumn<WorkSessionRow>[] = [
     header: 'Session',
     wide: true,
     names: true,
-    value: (s) => sessionName(s.title),
+    value: (s) => s.title,
     cell: (s) => <SessionLink sessionKey={s.key} title={s.title} />,
   },
   { id: 'step', header: 'Step', width: ALIGNED.stage, value: (s) => STAGE_LABELS[s.step], cell: (s) => STAGE_LABELS[s.step] },

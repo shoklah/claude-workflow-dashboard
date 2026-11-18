@@ -90,6 +90,19 @@ export const Narrow: Story = {
   },
 };
 
+/** A session with no title is unknown to the Session sort, so it sorts last either way. */
+export const SortUntitled: Story = {
+  args: { sessions: [{ ...changeFull.sessions[0], key: 'untitled', title: null }, changeFull.sessions[1], changeFull.sessions[0]] },
+  play: async ({ canvas, userEvent }) => {
+    const heads = () => canvas.getAllByRole('row').slice(1).map((row) => cells(row)[0]);
+    const sort = canvas.getByRole('button', { name: 'Session' });
+    await userEvent.click(sort);
+    await expect(heads()).toEqual(['Design offline sync', 'Design offline sync, after handoff', 'no title']);
+    await userEvent.click(sort);
+    await expect(heads()).toEqual(['Design offline sync, after handoff', 'Design offline sync', 'no title']);
+  },
+};
+
 /** Empty: one line saying how the table fills. */
 export const Empty: Story = {
   args: { sessions: [] },

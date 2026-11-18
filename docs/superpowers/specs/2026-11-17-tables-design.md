@@ -51,7 +51,7 @@ The question every list answers: which items are here, and which one do I want t
 2. A row's other facts open in place, below the row (option A, over a side panel or a dialog). Empty facts are left out.
 3. A list longer than 10 rows shows 10 at a time, with "N–M of T" and Previous and Next under the table. A list of 10 or fewer has no controls. A filter or a step selection returns the list to its first page. The Work page's lists use the same control.
 4. A list is ordered by clicking a header (option C): ascending, then descending, then back to the list's own order. The sort covers every row, not just the page, and goes back to page 1. With no sort, the list keeps its order from today.
-5. The scope is lists of items: findings and strengths (run page and Findings page), Runs, Sessions, Context's runs and sessions, and Compliance's warnings, with the Work page's lists to come. Summary tables are left as they are.
+5. The scope is lists of items: findings and strengths (run page and Findings page), Runs, Sessions, Context's runs and sessions, and Compliance's warnings, and the Work page's lists (its goal sections' and the goal page's changes, a change's or goal's sessions). Summary tables are left as they are.
 6. First glances, approved on the mock:
    - Runs: Run (its title, else its branch), Project, Path, Finished, Found, Est. cost ($), Warnings.
    - Sessions: Session, Project, Started, Length, Est. cost ($), Warnings. The opened row holds its facts, then its timeline.

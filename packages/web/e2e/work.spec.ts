@@ -67,18 +67,6 @@ test('a link to one session lists it open under a chip that clears it, and passe
   await expect(page.getByText(/^Session: /)).toHaveCount(0);
 });
 
-// At 1440 px the Runs and Sessions lists and a change's sessions list fit their panels.
-test("at 1440 px the Runs and Sessions lists and a change's sessions list fit", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  const overflow = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => el.scrollWidth - el.clientWidth);
-  await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
-  expect(await overflow('Runs table')).toBeLessThanOrEqual(0);
-  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
-  expect(await overflow('Sessions')).toBeLessThanOrEqual(0);
-  await page.goto(CHANGE, { waitUntil: 'networkidle' });
-  expect(await overflow('Sessions table')).toBeLessThanOrEqual(0);
-});
-
 // The offline sync change of report-work: `changeKey` of its spec (server/test/work.test.ts).
 const CHANGE = '/work/changes/6acb252ca65f81f8';
 

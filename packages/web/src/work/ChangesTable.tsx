@@ -24,7 +24,7 @@ const COLUMNS: ListColumn<ChangeRow>[] = [
     header: 'Change',
     wide: true,
     names: true,
-    value: (c) => c.title,
+    value: (c) => c.title || null,
     cell: (c) => <ChangeLink changeKey={c.key} title={c.title} />,
   },
   {
@@ -78,7 +78,7 @@ export function ChangesTable({ rows, project, label }: { rows: ChangeRow[]; proj
     <DataList
       rows={rows}
       rowKey={(c) => c.key}
-      name={(c) => c.title}
+      name={(c) => c.title || 'no branch'}
       columns={columns}
       facts={FACTS}
       label={label}

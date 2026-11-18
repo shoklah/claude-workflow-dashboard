@@ -25,8 +25,8 @@ export const PAGE_SIZE = 10;
 
 /**
  * A first-glance column: what it sorts by (`value`, unknown last) and what it shows (`cell`). `wide` is the one column
- * that takes the room and wraps, breaking inside a word (a branch) only when it must; `fold` hides it under a 768 px container and moves it into the opened row. `text`, on
- * the toggle column, is the row's name as plain text for `RowToggle`, with `textClass` on it (an unnamed row's muted
+ * that takes the room and wraps, breaking inside a word (a branch) only when it must; `fold` hides it under a 768 px
+ * container and moves it into the opened row. `text`, on the toggle column, is the row's name as plain text for `RowToggle`, with `textClass` on it (an unnamed row's muted
  * word); null (or no `text`) means the cell is a link, and the toggle is a chevron button of its own. `names` marks the
  * column that names the row, its cells in medium weight. `width` is a minimum-width class, so a column lines up with
  * another list's above or below it.
