@@ -119,6 +119,21 @@ export async function deleteAccount(): Promise<void> {
   await post('/api/account/delete');
 }
 
+/** Invites a GitHub login to sign in (hosted mode, the admin only). */
+export async function invite(login: string): Promise<void> {
+  await post('/api/admin/invites', { login });
+}
+
+/** Takes back a login's invite, by login, which signs its account out of every session and collector. */
+export async function removeInvite(login: string): Promise<void> {
+  await post(`/api/admin/invites/${encodeURIComponent(login)}/remove`);
+}
+
+/** Deletes another account and its data, by id (the admin only). */
+export async function deleteAccountAsAdmin(id: number): Promise<void> {
+  await post(`/api/admin/accounts/${id}/delete`);
+}
+
 /** Ends the session (hosted mode). */
 export async function signOut(): Promise<void> {
   await post('/auth/signout');

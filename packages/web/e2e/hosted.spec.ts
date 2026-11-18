@@ -201,3 +201,35 @@ test('at 375 px the switcher and the read-only bar sit in the top row, and the p
   await page.waitForLoadState('networkidle');
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+test('/admin: inviting a login adds its row, and removing it takes the row away', async ({ page }) => {
+  await pinClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/signin');
+  await page.getByRole('link', { name: 'Sign in with GitHub' }).click();
+  await page.getByRole('complementary').getByRole('link', { name: 'Admin' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Admin' })).toBeVisible();
+  const invites = page.getByRole('region', { name: 'Invites', exact: true });
+  const table = invites.getByRole('table', { name: 'Invites' });
+  await expect(table.getByRole('row').filter({ hasText: 'mika-ito' })).toHaveCount(1);
+  await page.waitForLoadState('networkidle');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  const row = table.getByRole('row').filter({ hasText: 'kai-n' });
+  await invites.getByRole('textbox', { name: 'GitHub login' }).fill('kai-n');
+  await invites.getByRole('button', { name: 'Invite' }).click();
+  await expect(row).toHaveCount(1);
+  await expect(row.getByText('Not yet')).toBeVisible();
+  await row.getByRole('button', { name: 'Remove' }).click();
+  await expect(row).toHaveCount(0);
+
+  // The accounts: the admin's own row has no Delete; another's asks first, naming its login.
+  const accounts = page.getByRole('region', { name: 'Accounts', exact: true });
+  await expect(accounts.getByRole('row').filter({ hasText: 'rowan-k' }).getByRole('button')).toHaveCount(0);
+  await accounts.getByRole('row').filter({ hasText: 'mika-ito' }).getByRole('button', { name: 'Delete' }).click();
+  const dialog = page.getByRole('dialog', { name: "Delete mika-ito's account?" });
+  await settled(dialog);
+  expect((await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations).toEqual([]);
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toHaveCount(0);
+});

@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router';
-import { UserRound } from 'lucide-react';
+import { KeyRound, UserRound } from 'lucide-react';
 import { useStatus } from '../api.ts';
 import { cn } from 'cn';
 import { CURRENT, ENTRY } from '../lib/format.ts';
 
-/** Hosted mode's signed-in login, a link to the Account page in the menu entry's look; nothing in local mode or while
- * the status loads. `onNavigate` runs when it is followed; `className` is what a call site adds (the Menu dialog's
+/** Hosted mode's signed-in login, a link to the Account page, and for the admin Admin under it, a link to the Admin
+ * page, both in the menu entry's look; nothing in local mode or while the status loads. `onNavigate` runs when it is followed; `className` is what a call site adds (the Menu dialog's
  * hairline). */
 export function AccountLinks({ onNavigate, className }: { onNavigate?: () => void; className?: string }) {
   const account = useStatus().data?.account;
@@ -16,6 +16,12 @@ export function AccountLinks({ onNavigate, className }: { onNavigate?: () => voi
         <UserRound className="size-4 flex-none" aria-hidden />
         {account.login}
       </Link>
+      {account.admin && (
+        <Link to="/admin" onClick={onNavigate} className={ENTRY} activeProps={{ className: CURRENT }}>
+          <KeyRound className="size-4 flex-none" aria-hidden />
+          Admin
+        </Link>
+      )}
     </nav>
   );
 }

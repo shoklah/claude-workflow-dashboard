@@ -44,3 +44,16 @@ for (const width of [1440, 375]) {
     await expect(page).toHaveScreenshot(`viewer-${width}.png`);
   });
 }
+
+for (const width of [1440, 375]) {
+  test(`/admin at ${width} px, signed in as the admin`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await pinClock(page);
+    await page.goto('/signin');
+    await page.getByRole('link', { name: 'Sign in with GitHub' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+    await page.goto('/admin');
+    await expect(page.getByRole('table', { name: 'Accounts' }).getByText('mika-ito')).toBeVisible();
+    await expect(page).toHaveScreenshot(`admin-${width}.png`);
+  });
+}

@@ -1,6 +1,7 @@
 import { Outlet, createRootRoute, createRoute, createRouter, redirect, useLocation } from '@tanstack/react-router';
 import { toStepKind, type StepKind } from '@cwd/shared';
 import { AccountPage } from './account/AccountPage.tsx';
+import { AdminPage } from './admin/AdminPage.tsx';
 import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { ContextPage } from './context/ContextPage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
@@ -48,6 +49,12 @@ const accountRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/account',
   component: AccountPage,
+});
+
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin',
+  component: AdminPage,
 });
 
 const homeRoute = createRoute({
@@ -185,6 +192,7 @@ export const router = createRouter({
     changeRoute,
     signInRoute,
     accountRoute,
+    adminRoute,
   ]),
 });
 
