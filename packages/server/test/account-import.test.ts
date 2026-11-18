@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { fixture } from '../../shared/test/fixture.ts';
 import { openDb, type Db } from '../src/db/open.ts';
@@ -142,4 +143,27 @@ test('refuses a file that does not exist, creating none', () => {
   const missing = join(dir, 'missing.sqlite');
   refused('Alice', missing, 'the file is not an edward database');
   expect(existsSync(missing)).toBe(false);
+});
+
+test('a copy whose first open fails leaves the account empty, so the import can run again', () => {
+  // The newest migration's row gone, so the first open runs it again over a schema that already has it, and throws.
+  const broken = join(dir, 'broken.sqlite');
+  withDb(local, (db) => db.$client.prepare('vacuum into ?').run(broken));
+  const raw = new Database(broken);
+  raw.prepare('delete from __drizzle_migrations where created_at = (select max(created_at) from __drizzle_migrations)').run();
+  raw.close();
+
+  expect(() => importAccountFile({ dataDir: data, login: 'Alice', file: broken })).toThrow();
+  expect(readdirSync(join(data, 'accounts'))).toEqual([]);
+
+  expect(importAccountFile({ dataDir: data, login: 'Alice', file: local })).toEqual({ ok: true, accountId: A.id });
+});
+
+test('refuses an unknown login without creating the accounts database', () => {
+  const empty = join(dir, 'empty data');
+  expect(importAccountFile({ dataDir: empty, login: 'Alice', file: local })).toEqual({
+    ok: false,
+    reason: 'no account for Alice: sign in first',
+  });
+  expect(existsSync(empty)).toBe(false);
 });

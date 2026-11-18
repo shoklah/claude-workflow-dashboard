@@ -55,13 +55,19 @@ function holdsData(file: string): boolean {
 /**
  * Copies the edward database in `file` into the account signed in as `login`, whose file must hold no unit and no
  * import; any refusal changes nothing. The copy is `VACUUM INTO` a temporary file beside the account's, renamed into
- * place, then opened once through `accountFiles`, which migrates an older file and rebuilds its derived values.
+ * place, then opened once through `accountFiles`, which migrates an older file and rebuilds its derived values; a
+ * failed copy or first open leaves the account with no file.
  */
 export function importAccountFile(opts: { dataDir: string; login: string; file: string }): AccountImport {
   const { dataDir, login, file } = opts;
-  const accounts = openAccountsDb(join(dataDir, 'accounts.sqlite'));
-  const account = accountByLogin(accounts, login);
-  accounts.$client.close();
+  // No accounts database means no account; it isn't opened, so a mistaken run creates none.
+  const accountsFile = join(dataDir, 'accounts.sqlite');
+  let account = null;
+  if (existsSync(accountsFile)) {
+    const accounts = openAccountsDb(accountsFile);
+    account = accountByLogin(accounts, login);
+    accounts.$client.close();
+  }
   if (!account) return { ok: false, reason: `no account for ${login}: sign in first` };
 
   let source: Database.Database;
@@ -86,7 +92,13 @@ export function importAccountFile(opts: { dataDir: string; login: string; file: 
       rmSync(temporary, { force: true });
       throw error;
     }
-    files.db(account.id);
+    try {
+      files.db(account.id);
+    } catch (error) {
+      // A copy that can't be migrated or rebuilt is taken out again, so the account stays empty.
+      files.remove(account.id);
+      throw error;
+    }
     return { ok: true, accountId: account.id };
   } finally {
     source.close();
