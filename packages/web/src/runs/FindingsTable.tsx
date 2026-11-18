@@ -53,8 +53,8 @@ const columnsOf = (labels: Record<string, string>): ListColumn<Row>[] => [
   },
 ];
 
-/** The opened row's facts, one "Fix round N" per verdict of the finding with the most, and with `run` its project. */
-const factsOf = (labels: Record<string, string>, rounds: number, run: boolean): ListFact<Row>[] => [
+/** The opened row's facts, one "Fix round N" per verdict of the finding with the most, then its project (the Findings page's rows only). */
+const factsOf = (labels: Record<string, string>, rounds: number): ListFact<Row>[] => [
   ['Step', (f) => STEP_LABELS[f.step]],
   ['Task', taskLabel],
   ['Severity', (f) => f.severity && countName(f.severity)],
@@ -66,7 +66,7 @@ const factsOf = (labels: Record<string, string>, rounds: number, run: boolean): 
     `Fix round ${i + 1}`,
     (f) => (i < f.verdicts.length ? <Verdict verdict={f.verdicts[i]}>{verdictLabel(f.verdicts[i])}</Verdict> : null),
   ]),
-  ...(run ? [['Project', (f: Row) => f.project ?? null] satisfies ListFact<Row>] : []),
+  ['Project', (f) => f.project ?? null],
 ];
 
 // The filters: each lists the values its field holds, in order, labelled as the opened row shows them.
@@ -136,7 +136,7 @@ export function FindingsTable({
         rowKey={(f, i) => `${f.runKey ?? ''}:${f.id ?? i}`}
         name={(f) => f.id ?? NONE}
         columns={columns}
-        facts={factsOf(categoryLabels, rounds, run ?? false)}
+        facts={factsOf(categoryLabels, rounds)}
         label={label}
         empty={
           findings.length === 0 ? 'No findings.' : 'No findings match these filters. Set a filter back to All to see more.'
