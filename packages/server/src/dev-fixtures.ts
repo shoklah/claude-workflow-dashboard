@@ -2,13 +2,16 @@
 // hour apart (the first is the baseline, so the feed shows what the later ones add), labels.json's invented labels,
 // a fixed clock, a reporter that prints the last fixture again, no triggers and the labeller off. Usage:
 // `pnpm --filter @cwd/server dev:fixtures [fixture...]` (default report-full report-later report-v6 report-v7
-// report-work); the port is the config's default unless PORT is set.
+// report-work); the port is the config's default unless PORT is set. With `DEV_MODE=hosted` it serves hosted mode on
+// `localhost:<port>` instead, the fixtures imported into account 1's file, and a stub GitHub that signs in at once as
+// account 1, `rowan-k`, the admin.
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Relevance } from '@cwd/shared';
 import { builtWebDist, serveApp } from './app.ts';
+import { hostedDeps } from './hosted/main.ts';
 import { activeList, inArea } from './categories.ts';
 import { loadConfig } from './config.ts';
 import { labelInputs, saveBatch } from './db/labels.ts';
@@ -26,8 +29,25 @@ const names =
     : ['report-full', 'report-later', 'report-v6', 'report-v7', 'report-work'];
 const files = names.map((name) => fileURLToPath(new URL(`../../shared/fixtures/${name}.json`, import.meta.url)));
 const dataDir = mkdtempSync(join(tmpdir(), 'cwd fixtures '));
-const db = openDb(join(dataDir, 'dashboard.sqlite'));
 const base = loadConfig(dataDir);
+const port = process.env.PORT ? Number(process.env.PORT) : base.port;
+const hosted =
+  process.env.DEV_MODE === 'hosted'
+    ? hostedDeps({
+        dataDir,
+        port,
+        publicHost: `localhost:${port}`,
+        origin: `http://localhost:${port}`,
+        admin: 'rowan-k',
+        github: {
+          authorizeUrl: (state, redirectUri) => `${redirectUri}?code=dev&state=${encodeURIComponent(state)}`,
+          user: async () => ({ id: 1, login: 'rowan-k' }),
+        },
+        webDist: builtWebDist(),
+        now: () => NOW,
+      })
+    : null;
+const db = hosted ? hosted.hosted!.files.db(1) : openDb(join(dataDir, 'dashboard.sqlite'));
 
 for (const [i, file] of files.entries()) {
   const at = new Date(NOW.getTime() - (files.length - i) * HOUR);
@@ -65,16 +85,18 @@ const labels = fixtureLabels.map(({ date, branch, findingId, category, relevance
 });
 saveBatch(db, labels, { at: NOW, inputTokens: 0, outputTokens: 0 }, list.number);
 
-const config = { ...base, reporterCommand: ['sh', '-c', 'cat "$0"', files.at(-1)!] };
-const queue = createQueue(() => importOnce(db, config, () => NOW));
-const port = process.env.PORT ? Number(process.env.PORT) : config.port;
-serveApp({
-  db,
-  port,
-  requestImport: queue.request,
-  importing: queue.busy,
-  webDist: builtWebDist(),
-  now: () => NOW,
-  aliases: config.aliases,
-  labeller: null,
-});
+if (hosted) serveApp(hosted);
+else {
+  const config = { ...base, reporterCommand: ['sh', '-c', 'cat "$0"', files.at(-1)!] };
+  const queue = createQueue(() => importOnce(db, config, () => NOW));
+  serveApp({
+    db,
+    port,
+    requestImport: queue.request,
+    importing: queue.busy,
+    webDist: builtWebDist(),
+    now: () => NOW,
+    aliases: config.aliases,
+    labeller: null,
+  });
+}

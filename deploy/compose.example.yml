@@ -1,0 +1,12 @@
+# Hosted edward behind a reverse proxy on the same machine, which must pass the original Host header through.
+# Create ./data before the first start, owned by the container's node user: `mkdir data && sudo chown 1000:1000 data`.
+# It holds the accounts database and every account's file, the only copy: back it up.
+services:
+  edward:
+    build: ..
+    image: edward-hosted
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4317:4317"
+    volumes:
+      - ./data:/data

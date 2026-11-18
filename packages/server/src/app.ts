@@ -16,7 +16,7 @@ export type HostedDeps = {
   publicHost: string;
   origin: string;
   accounts: AccountsDb;
-  files: { db(id: number): Db };
+  files: { db(id: number): Db; close(): void };
   admin: string;
   github: GitHubClient;
 };
@@ -117,8 +117,8 @@ export function builtWebDist(): string | null {
   return existsSync(dir) ? dir : null;
 }
 
-/** Serves the app on 127.0.0.1 only, never on another interface. */
-export function serveApp(deps: AppDeps): void {
-  serve({ fetch: createApp(deps).fetch, hostname: '127.0.0.1', port: deps.port });
+/** Serves the app on 127.0.0.1; only hosted mode, inside its container, passes 0.0.0.0. */
+export function serveApp(deps: AppDeps, hostname: '127.0.0.1' | '0.0.0.0' = '127.0.0.1'): void {
+  serve({ fetch: createApp(deps).fetch, hostname, port: deps.port });
   console.log(`edward on http://localhost:${deps.port}`);
 }

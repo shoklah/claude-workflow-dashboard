@@ -1,7 +1,7 @@
 // The dashboard: loads the config and the data folder's `.env`, opens the database, imports on start and on each
 // trigger (one at a time, through the queue), labels the findings after each import when there is a key, and serves
-// the app; with `mode: "collector"` it runs the collector instead. `EDWARD_CONFIG` names another config file in the
-// data folder. Usage: `pnpm --filter @cwd/server start`.
+// the app; with `mode: "collector"` it runs the collector instead, and with `mode: "hosted"` the hosted server.
+// `EDWARD_CONFIG` names another config file in the data folder. Usage: `pnpm --filter @cwd/server start`.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { builtWebDist, serveApp } from './app.ts';
@@ -11,6 +11,7 @@ import { loadConfig, type Config } from './config.ts';
 import { rebuildDerived } from './db/import.ts';
 import { openDb } from './db/open.ts';
 import { lastGoodImport } from './db/read.ts';
+import { runHosted } from './hosted/main.ts';
 import { anthropicLabelClient, labelPending, labellerSettings } from './labeller.ts';
 import { createQueue } from './queue.ts';
 import { importOnce } from './reporter.ts';
@@ -20,6 +21,7 @@ const config = loadConfig(undefined, process.env.EDWARD_CONFIG);
 const envFile = join(config.dataDir, '.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 if (config.mode === 'collector') runCollector(config, process.env);
+else if (config.mode === 'hosted') runHosted(config, process.env);
 else serveDashboard(config);
 
 function serveDashboard(config: Config): void {

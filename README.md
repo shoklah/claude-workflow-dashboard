@@ -4,7 +4,7 @@ Edward is a live, local dashboard for a Claude Code agentic workflow. It runs th
 
 ![The home page on invented data](packages/web/e2e/home.screens.ts-snapshots/home-screens-linux.png)
 
-The screenshot is one of the screenshot-test baselines, on invented data. The repo holds code and invented fixtures only; the real data is read at run time on your own machine and never leaves it. The server listens on `127.0.0.1` only.
+The screenshot is one of the screenshot-test baselines, on invented data. The repo holds code and invented fixtures only; the real data is read at run time on your own machine and never leaves it. In local mode the server listens on `127.0.0.1` only.
 
 ## Requirements
 
@@ -35,6 +35,23 @@ The collector runs the reporter on this machine and sends its export to a hosted
 4. Run `pnpm agent:install --collector`.
 
 On macOS it writes a launchd agent to `~/Library/LaunchAgents/com.shoklah.claude-workflow-dashboard.collector.plist`, on Linux a systemd user unit to `~/.config/systemd/user/claude-workflow-dashboard-collector.service`; it logs into the data folder's `logs/collector/`. `pnpm agent:uninstall --collector` stops it and deletes its file. The local server's agent and the collector's can run side by side.
+
+## Hosted
+
+A hosted edward serves several accounts, each signing in with GitHub (invite-only) and fed by its own collector. It runs as a Docker container behind a reverse proxy that serves HTTPS.
+
+1. Create a GitHub OAuth app whose callback URL is `https://<host>/auth/github/callback`.
+2. On the server, in the repo's `deploy/` folder, create `data/` owned by the container's `node` user: `mkdir data && sudo chown 1000:1000 data`.
+3. In `data/claude-workflow-dashboard/`, write `config.json` as `{ "mode": "hosted" }` and a `.env` with:
+   - `EDWARD_PUBLIC_HOST`: the public hostname, `<host>`;
+   - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`: the OAuth app's;
+   - `EDWARD_ADMIN`: the admin's GitHub login, the one account that signs in without an invite.
+
+   The server refuses to start without them, naming the missing ones.
+4. Build and start it from `deploy/`: `docker compose -f compose.example.yml up -d --build`. It publishes `127.0.0.1:4317` only, for the reverse proxy.
+5. Point the reverse proxy at `127.0.0.1:4317`, passing the original `Host` header through, since the server refuses any other `Host`: Caddy does by default; nginx needs `proxy_set_header Host $host;`.
+
+The `/data` volume (`data/` on the server) holds the accounts database and every account's file, and is their only copy: put it in the server's backups.
 
 ## The data folder
 
