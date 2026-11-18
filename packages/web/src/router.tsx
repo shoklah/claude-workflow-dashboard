@@ -1,5 +1,6 @@
 import { Outlet, createRootRoute, createRoute, createRouter, redirect, useLocation } from '@tanstack/react-router';
 import { toStepKind, type StepKind } from '@cwd/shared';
+import { AccountPage } from './account/AccountPage.tsx';
 import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { ContextPage } from './context/ContextPage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
@@ -38,6 +39,12 @@ const signInRoute = createRoute({
     error: search.error === 'refused' || search.error === 'failed' ? search.error : undefined,
   }),
   component: SignInPage,
+});
+
+const accountRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/account',
+  component: AccountPage,
 });
 
 const homeRoute = createRoute({
@@ -174,6 +181,7 @@ export const router = createRouter({
     goalRoute,
     changeRoute,
     signInRoute,
+    accountRoute,
   ]),
 });
 

@@ -10,7 +10,6 @@ export function AccountLinks({ onNavigate }: { onNavigate?: () => void }) {
   if (!account) return null;
   return (
     <nav aria-label="Account" className="flex flex-col gap-1">
-      {/* @ts-expect-error The Account page isn't routed yet; this goes once its route is. */}
       <Link to="/account" onClick={onNavigate} className={ENTRY} activeProps={{ className: CURRENT }}>
         <UserRound className="size-4 flex-none" aria-hidden />
         {account.login}

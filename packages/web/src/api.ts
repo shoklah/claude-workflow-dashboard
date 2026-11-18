@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import type { ShowingRequest, StatusResponse } from '@cwd/shared';
+import type { ShowingRequest, StatusResponse, TokenResponse } from '@cwd/shared';
 
 /** A GET the API answered with an error status, which the page can tell apart (a 404 is an unknown key). */
 export class ApiError extends Error {
@@ -45,27 +45,49 @@ export function useLiveQuery<T>(path: string) {
   });
 }
 
-/** A POST to the API, with its body as JSON when given. The header is the server's guard against cross-site POSTs. */
-async function post(path: string, body?: object): Promise<void> {
+/** A POST to the API, with its body as JSON when given, answering its response. The header is the server's guard
+ * against cross-site POSTs. */
+async function post(path: string, body?: object): Promise<Response> {
   const response = await fetch(path, {
     method: 'POST',
     headers: { 'X-Dashboard-Refresh': '1', ...(body && { 'Content-Type': 'application/json' }) },
     ...(body && { body: JSON.stringify(body) }),
   });
   if (!response.ok) throw new Error(`${path} answered ${response.status}`);
+  return response;
 }
 
 /** Asks the server for an import now. */
-export function refresh(): Promise<void> {
-  return post('/api/refresh');
+export async function refresh(): Promise<void> {
+  await post('/api/refresh');
 }
 
 /** Marks everything up to now seen, so the home feed starts again from here. */
-export function markSeen(): Promise<void> {
-  return post('/api/seen');
+export async function markSeen(): Promise<void> {
+  await post('/api/seen');
 }
 
 /** Shows only these projects in full, by key; an empty list stops showing mode. */
-export function showProjects(projects: string[]): Promise<void> {
-  return post('/api/showing', { projects } satisfies ShowingRequest);
+export async function showProjects(projects: string[]): Promise<void> {
+  await post('/api/showing', { projects } satisfies ShowingRequest);
+}
+
+/** Creates a collector token (hosted mode), answering it raw, this once. */
+export async function createToken(): Promise<TokenResponse> {
+  return (await post('/api/account/tokens')).json() as Promise<TokenResponse>;
+}
+
+/** Revokes one of the account's collector tokens, by id. */
+export async function revokeToken(id: number): Promise<void> {
+  await post(`/api/account/tokens/${id}/revoke`);
+}
+
+/** Forgets the machine that feeds the account, so the next collect may come from another. */
+export async function resetCollector(): Promise<void> {
+  await post('/api/account/reset-collector');
+}
+
+/** Ends the session (hosted mode). */
+export async function signOut(): Promise<void> {
+  await post('/auth/signout');
 }
