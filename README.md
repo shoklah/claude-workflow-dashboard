@@ -27,7 +27,7 @@ pnpm agent:install
 
 ## The data folder
 
-Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` (the project's first name, which the launchd agent keeps too), created with mode `0700`:
+Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` on macOS and `$XDG_DATA_HOME/claude-workflow-dashboard/` on Linux (`~/.local/share/claude-workflow-dashboard/` when `XDG_DATA_HOME` is unset), the project's first name, which the launchd agent and the systemd unit keep too, created with mode `0700`:
 
 - `dashboard.sqlite`: the imports and what was read from them.
 - `logs/`: the agent's `out.log` and `err.log`.
@@ -37,7 +37,7 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 | Key | Default |
 |---|---|
 | `port` | `4317` |
-| `reporterCommand` | `["/usr/bin/python3", "-I", "~/.claude/scripts/workflow-report.py", "--json"]`, with `~` expanded; the dashboard appends `--changed-since <cursor>`, so an override must accept it and must not pass `--since` |
+| `reporterCommand` | `["/usr/bin/python3", "-I", "~/.claude/scripts/workflow-report.py", "--json"]` on macOS, `"python3"` in place of `"/usr/bin/python3"` on Linux, with `~` expanded; the dashboard appends `--changed-since <cursor>`, so an override must accept it and must not pass `--since` |
 | `runLog` | `~/.claude/workflow-log.jsonl` (an import runs when it changes) |
 | `projectsDir` | `~/.claude/projects` (the session transcripts, checked every 15 minutes) |
 | `reporterTimeoutMs` | `120000` |
