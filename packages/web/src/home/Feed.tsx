@@ -103,7 +103,7 @@ export function Feed({ items }: { items: FeedItem[] }) {
           tabIndex={0}
           role="region"
           aria-label="Since you last looked list"
-          className="max-h-96 overflow-y-auto lg:max-h-none"
+          className="relative max-h-96 overflow-y-auto lg:max-h-none"
         >
           <ul className="flex flex-col gap-3">
             {items.map((item) => (
