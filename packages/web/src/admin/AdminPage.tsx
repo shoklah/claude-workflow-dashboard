@@ -20,6 +20,8 @@ import { NotFoundPage } from '../layout/ErrorPages.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatDay } from '../lib/format.ts';
 
+const COLUMN_COUNT = 4;
+
 /** The admin's data, read again after a POST changes it. */
 const reloadAdmin = (client: QueryClient) => client.invalidateQueries({ queryKey: ['/api/admin'] });
 
@@ -74,7 +76,7 @@ function InvitesPanel({ invites, viewing }: { invites: AdminResponse['invites'];
         </thead>
         <tbody>
           {invites.length === 0 ? (
-            <EmptyRow columns={viewing ? 3 : 4}>No invites: only you can sign in.</EmptyRow>
+            <EmptyRow columns={viewing ? COLUMN_COUNT - 1 : COLUMN_COUNT}>No invites: only you can sign in.</EmptyRow>
           ) : (
             invites.map((invited) => (
               <tr key={invited.login} className="border-t hover:bg-muted/50">
