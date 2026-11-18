@@ -1,16 +1,15 @@
 import { useState } from 'react';
-import { cn } from 'cn';
-import type { ComplianceResponse, FindingsQuery, StepKind } from '@cwd/shared';
+import type { ComplianceResponse, ComplianceWarning, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
+import { DataList, type ListColumn } from '../components/DataList.tsx';
 import { FilterChip } from '../components/FilterChip.tsx';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
 import { Line, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
-import { RunLink } from '../components/RunLink.tsx';
+import { RunLink, runLabel, runName } from '../components/RunLink.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Option, Options } from '../components/Option.tsx';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import {
   FAMILY_LABELS,
   STEP_LABELS,
@@ -39,6 +38,47 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
   }
   return groups;
 }
+
+/** The listed warnings' columns: the run (a session's has none), its project, the warning and whether it is new, the
+ * project and whether it is new folding while narrow. */
+const WARNING_COLUMNS: ListColumn<ComplianceWarning>[] = [
+  {
+    id: 'run',
+    header: 'Run',
+    names: true,
+    value: (w) => runName(w.headline, w.branch),
+    cell: (w) => (w.runKey === null ? <Unknown label="no run" /> : <RunLink runKey={w.runKey} branch={w.branch} title={w.headline} />),
+  },
+  {
+    id: 'project',
+    header: 'Project',
+    fold: true,
+    value: (w) => (w.runKey === null ? projectLabel(w.project) : w.project),
+    cell: (w) => (
+      <span className="text-muted-foreground">
+        {w.runKey === null ? projectLabel(w.project) : <Text value={w.project} />}
+      </span>
+    ),
+  },
+  {
+    id: 'warning',
+    header: 'Warning',
+    wide: true,
+    value: (w) => w.text,
+    cell: (w) => (
+      <span className="flex flex-col gap-1">
+        <WarningText text={w.text} sessionId={w.sessionId} branch={w.branch} />
+      </span>
+    ),
+  },
+  {
+    id: 'seen',
+    header: 'Since you last looked',
+    fold: true,
+    value: (w) => (w.isNew ? 'New' : 'Seen'),
+    cell: (w) => <span className={w.isNew ? WARNING_INK : 'text-muted-foreground'}>{w.isNew ? 'New' : 'Seen'}</span>,
+  },
+];
 
 /** A reporter's information line as a term and its value, split at the first ": "; a line with none is "Line N". */
 function informationPair(line: string, i: number): [string, string] {
@@ -122,40 +162,13 @@ export function CompliancePage({ step }: { step?: StepKind }) {
         <Section
           title={`${plural(listed.length, 'warning')} of "${kindLabel(cell.id || null)}", week of ${weekLabel(cell.week)}`}
         >
-          <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Warnings' }}>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Run</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Warning</TableHead>
-                <TableHead>Since you last looked</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {listed.map((w) => (
-                <TableRow key={`${w.runKey} ${w.sessionId} ${w.text}`}>
-                  <TableCell className="align-top font-medium">
-                    {w.runKey === null ? (
-                      <Unknown label="no run" />
-                    ) : (
-                      <RunLink runKey={w.runKey} branch={w.branch} title={w.headline} />
-                    )}
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground">
-                    {w.runKey === null ? projectLabel(w.project) : <Text value={w.project} />}
-                  </TableCell>
-                  <TableCell className="min-w-64 whitespace-normal">
-                    <span className="flex flex-col gap-1">
-                      <WarningText text={w.text} sessionId={w.sessionId} branch={w.branch} />
-                    </span>
-                  </TableCell>
-                  <TableCell className={cn('align-top', w.isNew ? WARNING_INK : 'text-muted-foreground')}>
-                    {w.isNew ? 'New' : 'Seen'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataList
+            rows={listed}
+            rowKey={(w) => `${w.runKey} ${w.sessionId} ${w.text}`}
+            name={(w) => (w.runKey === null ? 'no run' : runLabel(w.headline, w.branch))}
+            columns={WARNING_COLUMNS}
+            label="Warnings"
+          />
         </Section>
       )}
       {data && data.rows.length > 0 && !cell && <Line>Select a cell to list its warnings.</Line>}

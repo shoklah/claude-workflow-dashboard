@@ -15,6 +15,11 @@ test('the shell has no axe violations', async ({ page }) => {
 // Every page fits the viewport at a phone's, a tablet's and a desktop's width: what is wider (a table, a chart grid)
 // scrolls inside its own region, never the page, and a region that scrolls can take the keyboard's focus (axe).
 const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/work/changes/6acb252ca65f81f8', '/work/goals/843fdb9f8959fb12', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks', '/nope'];
+// The heatmap cell a page's list waits on: Findings' and Compliance's lists show only once a cell is selected.
+const SELECT: Record<string, string> = {
+  '/findings': 'Correctness, week of Nov 8: 3',
+  '/compliance': 'Step has no agent id, week of Nov 8: 1',
+};
 
 for (const width of [375, 768, 1440]) {
   test(`no page scrolls sideways at ${width} px, and none has axe violations there`, async ({ page }) => {
@@ -27,8 +32,16 @@ for (const width of [375, 768, 1440]) {
     for (const path of [...PAGES, `/runs/${runs.runs[0].key}`]) {
       await page.goto(path, { waitUntil: 'networkidle' });
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      if (SELECT[path]) {
+        await page.getByRole('button', { name: SELECT[path] }).click();
+        await expect(page.locator('[data-list]')).toHaveCount(1);
+      }
       const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (extra > 0) failures.push(`${path}: ${extra} px`);
+      // Nothing of a list's first glance hides behind a sideways scroll: its narrow columns fold instead.
+      const lists = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-list]')].map((el) => ({ name: el.getAttribute('aria-label'), extra: el.scrollWidth - el.clientWidth })));
+      for (const list of lists) if (list.extra > 0) failures.push(`${path}: the ${list.name} list scrolls sideways by ${list.extra} px`);
       const { violations } = await new AxeBuilder({ page }).analyze();
       for (const v of violations) failures.push(`${path}: ${v.id}`);
       // Secondary and status inks appear only on a panel: nothing in them has the backdrop as its nearest painted surface.
@@ -72,7 +85,7 @@ test('under reduced motion nothing animates, and a wide table still fades at its
   await pinClock(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
+  await page.goto('/weeks', { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Menu' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   // Every animation and transition on the page, the open dialog's included, ends at once (computed durations are in s).
@@ -86,7 +99,7 @@ test('under reduced motion nothing animates, and a wide table still fades at its
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
   // The edge cue is a scroll-driven animation: it follows the table's scroll, not the clock, so it stays.
-  const mask = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
+  const mask = await page.getByRole('region', { name: 'By week table', exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
   expect(mask).toContain('100% - 48px');
 });
 
@@ -109,24 +122,24 @@ test('a table that scrolls sideways fades at the edge hiding columns, and one th
   await pinClock(page);
   const mask = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((el) => getComputedStyle(el).maskImage);
   const scrollTo = (share: number) =>
-    page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el, share) => { el.scrollLeft = (el.scrollWidth - el.clientWidth) * share; }, share);
+    page.getByRole('region', { name: 'By week table', exact: true }).evaluate((el, share) => { el.scrollLeft = (el.scrollWidth - el.clientWidth) * share; }, share);
   const [clear, ink] = ['rgba(0, 0, 0, 0)', 'rgb(0, 0, 0)'];
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto('/work?view=sessions', { waitUntil: 'networkidle' });
+  await page.goto('/weeks', { waitUntil: 'networkidle' });
   // At the start only the right edge fades, both once scrolled, only the left at the end.
-  expect(await mask('Sessions')).toBe(`linear-gradient(to right, ${ink} calc(100% - 48px), ${clear})`);
+  expect(await mask('By week table')).toBe(`linear-gradient(to right, ${ink} calc(100% - 48px), ${clear})`);
   // The mask cuts what is drawn outside the box, so the keyboard's focus outline is drawn inside it.
   await page.keyboard.press('Tab');
-  const focus = await page.getByRole('region', { name: 'Sessions', exact: true }).evaluate((el) => {
+  const focus = await page.getByRole('region', { name: 'By week table', exact: true }).evaluate((el) => {
     el.focus();
     const style = getComputedStyle(el);
     return { visible: el.matches(':focus-visible'), mask: style.maskImage, outline: style.outlineStyle, inside: parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth) <= 0 };
   });
   expect(focus).toEqual({ visible: true, mask: expect.stringContaining('100% - 48px'), outline: 'solid', inside: true });
   await scrollTo(0.5);
-  await expect.poll(() => mask('Sessions')).toBe(`linear-gradient(to right, ${clear}, ${ink} 48px, ${ink} calc(100% - 48px), ${clear})`);
+  await expect.poll(() => mask('By week table')).toBe(`linear-gradient(to right, ${clear}, ${ink} 48px, ${ink} calc(100% - 48px), ${clear})`);
   await scrollTo(1);
-  await expect.poll(() => mask('Sessions')).toBe(`linear-gradient(to right, ${clear}, ${ink} 48px)`);
+  await expect.poll(() => mask('By week table')).toBe(`linear-gradient(to right, ${clear}, ${ink} 48px)`);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/skills', { waitUntil: 'networkidle' });
   // No mask at all on a table that fits: a mask clips the panel's shadow.

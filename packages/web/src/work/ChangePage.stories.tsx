@@ -3,7 +3,7 @@ import { expect, within } from 'storybook/test';
 import { parseTime, type StatusResponse } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
-import { cells, expectColgroups, expectNoJoined } from '../test/table.ts';
+import { cells, expectNoJoined, openedRow, visibleTerms, visibleValues } from '../test/table.ts';
 import { changeFull, changeSmall } from '../test/work.ts';
 import { ChangePage } from './ChangePage.tsx';
 
@@ -56,7 +56,7 @@ export const Full: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [CHANGE]: changeFull });
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await expect(await canvas.findByRole('heading', { name: changeFull.title, level: 1 })).toBeVisible();
     await expect(canvas.getAllByRole('link', { name: 'Work' })[0]).toHaveAttribute('href', '/work');
     const header = canvas.getByRole('heading', { level: 1 }).parentElement!.querySelector('dl')!;
@@ -87,35 +87,30 @@ export const Full: Story = {
     const runs = canvas.getByRole('region', { name: 'Runs table' });
     await expect(within(runs).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
       'Run',
-      'Branch',
       'Project',
       'Path',
       'Finished',
-      'Time (min)',
-      'Tasks',
-      'Findings',
-      'Est. cost ($)',
       'Found',
-      'Closed',
+      'Est. cost ($)',
     ]);
-    const rows = within(runs).getAllByRole('row').slice(2);
+    const rows = within(runs).getAllByRole('row').slice(1);
     await expect(within(rows[0]).getByRole('link', { name: 'Replay the queue on reconnect' })).toHaveAttribute(
       'href',
       `/runs/${changeFull.runs[0].key}`,
     );
     await expect(cells(rows[0]).slice(1)).toEqual([
-      'claude/offline-sync-replay',
       'lantern-notes',
       'Full',
       formatDayTime(parseTime(changeFull.runs[0].finishedAt!)),
-      '231',
-      '6',
       '12',
-      '11',
       '26.90',
     ]);
-    await expect(cells(rows[2]).slice(1, 4)).toEqual(['claude/offline-sync-plan', 'tidepool-api', 'Plan']);
-    await expectColgroups(runs);
+    await expect(cells(rows[2]).slice(1, 3)).toEqual(['tidepool-api', 'Plan']);
+    // Its branch and other counts open under the row.
+    await userEvent.click(within(runs).getByRole('button', { name: 'Details of Replay the queue on reconnect' }));
+    const opened = openedRow(within(runs).getByRole('button', { name: 'Details of Replay the queue on reconnect' }));
+    await expect(visibleTerms(opened)).toEqual(['Branch', 'Time (min)', 'Tasks', 'Closed findings']);
+    await expect(visibleValues(opened)).toEqual(['claude/offline-sync-replay', '231', '6', '11']);
     await expectNoJoined(runs);
 
     await expect(canvas.getByRole('region', { name: 'Sessions table' })).toBeVisible();

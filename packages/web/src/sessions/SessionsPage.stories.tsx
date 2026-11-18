@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import type { StatusResponse } from '@cwd/shared';
+import { parseTime, type StatusResponse } from '@cwd/shared';
+import { formatDayTime } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { otherSession, sessionsEmpty, sessionsFull, sessionsHidden, twoRunSession } from '../test/sessions.ts';
 import { SessionsPage } from './SessionsPage.tsx';
+import { openedRow } from '../test/table.ts';
 
 const meta = { component: SessionsPage } satisfies Meta<typeof SessionsPage>;
 export default meta;
@@ -63,7 +65,7 @@ export const Full: Story = {
     await expect([...goals.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', twoRunSession.goal!.name]);
     await expect(canvas.queryByText(/^Session: /)).toBeNull();
     await userEvent.click(toggle);
-    const timeline = canvas.getByRole('table', { name: `Timeline of ${twoRunSession.title}` });
+    const timeline = canvas.getByRole('table', { name: `Timeline of ${twoRunSession.title}, ${formatDayTime(parseTime(twoRunSession.start))}` });
     await expect(within(timeline).getAllByRole('row').slice(1)).toHaveLength(twoRunSession.timeline.length);
     await expect(canvas.queryByText(/in other projects/)).toBeNull();
     const notes = canvas.getByText('How sessions are listed').closest('details')!;
@@ -88,8 +90,8 @@ export const HasWarnings: Story = {
     await canvas.findByText('Debug the export timeout');
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Has warnings' }));
     await expect(fetch).toHaveBeenCalledWith('/api/sessions?weeks=4&warnings=1');
-    // Two header rows and a row per session.
-    await expect(await canvas.findAllByRole('row')).toHaveLength(4);
+    // A header row and a row per session.
+    await expect(await canvas.findAllByRole('row')).toHaveLength(3);
     await expect(canvas.queryByText('Debug the export timeout')).toBeNull();
   },
 };
@@ -99,9 +101,14 @@ export const HiddenSessions: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [PROJECTS]: runsFull, '/api/sessions?weeks=4': sessionsHidden });
   },
-  play: async ({ canvas }) => {
-    await canvas.findByRole('button', { name: twoRunSession.title! });
+  play: async ({ canvas, userEvent }) => {
+    // Opened, the row leaves the hidden ID out: no chip, no ID term.
+    const toggle = await canvas.findByRole('button', { name: twoRunSession.title! });
+    await userEvent.click(toggle);
+    const opened = openedRow(toggle);
+    await expect(within(opened).getAllByText('Runs')[0]).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
+    await expect(within(opened).queryAllByText('ID')).toEqual([]);
     await expect(canvas.getByText('+ 2 sessions in other projects, counted in totals and charts only')).toBeVisible();
   },
 };
@@ -120,7 +127,7 @@ export const GoalFilter: Story = {
     await canvas.findByText('Debug the export timeout');
     await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Goal' }), twoRunSession.goal!.name);
     await expect(fetch).toHaveBeenCalledWith(`/api/sessions?weeks=4&goal=${twoRunSession.goal!.key}`);
-    await expect(await canvas.findAllByRole('row')).toHaveLength(3);
+    await expect(await canvas.findAllByRole('row')).toHaveLength(2);
   },
 };
 
@@ -139,7 +146,7 @@ export const OneSession: Story = {
     const list = canvas.getByRole('region', { name: 'Sessions' }).querySelector('table')!;
     await expect(list.querySelectorAll(':scope > tbody > tr')).toHaveLength(2);
     await expect(canvas.getByRole('button', { name: twoRunSession.title! })).toHaveAttribute('aria-expanded', 'true');
-    await expect(canvas.getByRole('table', { name: `Timeline of ${twoRunSession.title}` })).toBeVisible();
+    await expect(canvas.getByRole('table', { name: (name) => name.startsWith(`Timeline of ${twoRunSession.title}, `) })).toBeVisible();
   },
 };
 

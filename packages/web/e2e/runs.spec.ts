@@ -7,13 +7,11 @@ import { pinClock } from './fixed-time.ts';
 // branch's run a title with markup).
 const HTML_TEXT = '<img src=x onerror=alert(1)>';
 const FULL_TITLE = 'Queue edits offline and replay them on reconnect';
-// A run's link is its row's first; its change's link, after it, can carry the same title (feature/webhooks').
 
 /** Opens the Runs view, then the Full run of feature/offline-sync from it, by its title. */
 async function openFullRun(page: Page): Promise<void> {
   await page.goto('/work?view=runs');
-  const row = page.getByRole('row').filter({ hasText: 'feature/offline-sync' }).filter({ hasText: 'Full' });
-  await row.getByRole('link', { name: FULL_TITLE }).click();
+  await page.getByRole('link', { name: FULL_TITLE }).click();
   await expect(page.getByRole('heading', { name: FULL_TITLE, level: 1 })).toBeVisible();
 }
 
@@ -92,13 +90,15 @@ test("the Full run's chain opens its plan run and counts its later fix", async (
   await expect(page.getByRole('list', { name: 'Before and after this run' }).getByText('This run, plan')).toBeVisible();
 });
 
-test("each run's row names its title as the link to its page, its branch after its change and goal", async ({ page }) => {
+test("each run's row names its title as the link to its page, its branch in the row it opens", async ({ page }) => {
   await page.goto('/work?view=runs');
-  const row = page.getByRole('row').filter({ hasText: 'feature/webhooks' });
-  await expect(row.getByRole('cell').nth(3)).toHaveText('feature/webhooks');
-  await expect(row.getByRole('cell').nth(4)).toHaveText('tidepool-api');
-  await expect(row.getByRole('cell').nth(5)).toHaveText('Full');
-  await row.getByRole('link', { name: 'Send webhooks for note changes' }).first().click();
+  const toggle = page.getByRole('button', { name: 'Details of Send webhooks for note changes' });
+  const row = page.getByRole('row').filter({ has: toggle });
+  await expect(row.getByRole('cell').nth(1)).toHaveText('tidepool-api');
+  await expect(row.getByRole('cell').nth(2)).toHaveText('Full');
+  await toggle.click();
+  await expect(page.getByRole('definition').filter({ hasText: /^feature\/webhooks$/ })).toBeVisible();
+  await row.getByRole('link', { name: 'Send webhooks for note changes' }).click();
   await expect(page).toHaveURL(/\/runs\/[0-9a-f]{16}$/);
   await expect(page.getByRole('heading', { name: 'Send webhooks for note changes', level: 1 })).toBeVisible();
 });
@@ -110,12 +110,13 @@ test('a branch with HTML shows as text', async ({ page }) => {
     void dialog.dismiss();
   });
 
-  // The Runs view, in its default period: the branch in its cell, the title with markup as the link, both as text.
+  // The Runs view, in its default period: the title with markup as the link, the branch in the row it opens, both as
+  // text.
   await page.goto('/work?view=runs');
-  const row = page.getByRole('row').filter({ hasText: HTML_TEXT });
-  await expect(row.getByRole('cell', { name: HTML_TEXT })).toBeVisible();
-  const link = row.getByRole('link', { name: "Fix the sync log's <b>escaping</b>" });
+  const link = page.getByRole('link', { name: "Fix the sync log's <b>escaping</b>" });
   await expect(link).toBeVisible();
+  await page.getByRole('button', { name: "Details of Fix the sync log's <b>escaping</b>" }).click();
+  await expect(page.getByRole('definition').filter({ hasText: HTML_TEXT })).toBeVisible();
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   await expect(page.locator('main b')).toHaveCount(0);
 
@@ -151,7 +152,7 @@ test("at 1440 px the Strengths table's short columns take their content's width,
   await openFullRun(page);
   const table = page.getByRole('region', { name: 'Strengths table' });
   const width = async (name: string) => (await table.getByRole('columnheader', { name, exact: true }).boundingBox())!.width;
-  const short = (await Promise.all(['#', 'Step', 'Task', 'Category'].map(width))).reduce((sum, w) => sum + w, 0);
+  const short = (await Promise.all(['#', 'Category'].map(width))).reduce((sum, w) => sum + w, 0);
   expect(await width('Summary')).toBeGreaterThan(short);
 });
 

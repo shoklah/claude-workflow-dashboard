@@ -10,6 +10,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('the findings page lists a cell’s findings, says the labeller is off and has no axe violations', async ({ page }) => {
+  // At 1440 px the list is wide enough to show its Run column.
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.getByRole('navigation').getByRole('link', { name: 'Findings' }).click();
   await expect(page.getByRole('rowheader', { name: 'Correctness' })).toBeVisible();

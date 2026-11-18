@@ -5,7 +5,7 @@ import { contextAll, contextEmpty, contextFull, contextHidden } from '../test/co
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { ContextPage } from './ContextPage.tsx';
-import { cells, expectNoJoined } from '../test/table.ts';
+import { cells, expectNoJoined, openedRow } from '../test/table.ts';
 
 const meta = { component: ContextPage } satisfies Meta<typeof ContextPage>;
 export default meta;
@@ -127,7 +127,7 @@ export const Full: Story = {
     await expectNoJoined(rows[0].closest('table')!);
 
     const units = within(canvas.getByRole('region', { name: 'Runs and sessions' })).getAllByRole('row');
-    await expect(units[2]).toHaveTextContent('Refactor the sync queue');
+    await expect(units[1]).toHaveTextContent('Refactor the sync queue');
 
     const group = canvas.getByRole('group', { name: 'Show' });
     await expect(group).toHaveTextContent(/^Show/);
@@ -138,7 +138,7 @@ export const Full: Story = {
     await expect(fetch).toHaveBeenCalledWith(ALL);
     await expect(
       await within(canvas.getByRole('region', { name: 'Runs and sessions' })).findAllByRole('row'),
-    ).toHaveLength(6);
+    ).toHaveLength(5);
   },
 };
 
@@ -147,9 +147,15 @@ export const Showing: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, [OVER]: contextHidden });
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await expect(await canvas.findByText('Refactor the sync queue')).toBeVisible();
+    // Opened, the handoff's row leaves its hidden ID out: no chip, no "Its ID" term.
+    const toggle = canvas.getByRole('button', { name: 'Plan the offline sync' });
+    await userEvent.click(toggle);
+    const opened = openedRow(toggle);
+    await expect(within(opened).getAllByText('To session')[0]).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
+    await expect(within(opened).queryAllByText('Its ID')).toEqual([]);
     await expect(canvas.getByText('+ 2 rows in other projects, counted in totals and charts only')).toBeVisible();
   },
 };

@@ -53,8 +53,8 @@ export const Full: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('link', { name: fullRun.headline! })).toBeVisible();
-    // The two header rows, then one row per run.
-    await expect(canvas.getAllByRole('row')).toHaveLength(5);
+    // The header row, then one row per run.
+    await expect(canvas.getAllByRole('row')).toHaveLength(4);
     await expect(canvas.queryByRole('heading', { level: 1 })).toBeNull();
     await expect(canvas.getByRole('combobox', { name: 'Period' })).toHaveValue('4');
     const paths = canvas.getByRole('combobox', { name: 'Path' });
@@ -95,7 +95,7 @@ export const HasWarnings: Story = {
     await expect(await canvas.findByRole('link', { name: HTML_TEXT })).toBeVisible();
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Has warnings' }));
     await expect(fetch).toHaveBeenCalledWith('/api/runs?weeks=4&warnings=1');
-    await expect(await canvas.findAllByRole('row')).toHaveLength(3);
+    await expect(await canvas.findAllByRole('row')).toHaveLength(2);
     await expect(canvas.getByRole('link', { name: fullRun.headline! })).toBeVisible();
     await expect(canvas.queryByRole('link', { name: HTML_TEXT })).toBeNull();
   },

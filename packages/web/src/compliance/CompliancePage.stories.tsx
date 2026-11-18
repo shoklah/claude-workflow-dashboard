@@ -6,7 +6,7 @@ import { complianceEmpty, complianceFull, complianceShowing } from '../test/comp
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { CompliancePage } from './CompliancePage.tsx';
-import { expectNoJoined } from '../test/table.ts';
+import { expectNoJoined, visibleTerms, visibleValues, width } from '../test/table.ts';
 
 const meta = { component: CompliancePage } satisfies Meta<typeof CompliancePage>;
 export default meta;
@@ -60,6 +60,7 @@ export const Empty: Story = {
  * as a table: run link, project, text and whether it is new.
  */
 export const Full: Story = {
+  decorators: [width(1000)],
   beforeEach: () => {
     mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': complianceFull });
   },
@@ -101,12 +102,9 @@ export const Full: Story = {
     // The list sits in a section, a region named by its title.
     const listed = within(canvas.getByRole('region', { name: '1 warning of "Step has no agent id", week of Nov 8' }));
     const table = within(listed.getByRole('region', { name: 'Warnings' }));
-    await expect(table.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
-      'Run',
-      'Project',
-      'Warning',
-      'Since you last looked',
-    ]);
+    const headers = table.getAllByRole('columnheader');
+    await expect(headers.map((th) => th.textContent)).toEqual(['Run', 'Project', 'Warning', 'Since you last looked']);
+    for (const th of headers) await expect(th).toBeVisible();
     const rows = table.getAllByRole('row').slice(1);
     await expect(rows).toHaveLength(1);
     await expect(table.getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
@@ -149,6 +147,26 @@ export const Full: Story = {
       'fable: 3 calls',
       'every transcript was read',
     ]);
+  },
+};
+
+/** Narrow: under 768 px the list's Project and whether it is new fold, and each row opens to them alone, so the list
+ * never scrolls sideways. */
+export const Narrow: Story = {
+  decorators: [width(375)],
+  beforeEach: () => {
+    mockApi({ '/api/status': status, ...projects, '/api/compliance?weeks=4': complianceFull });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Step has no agent id, week of Nov 8: 1' }));
+    const table = within(canvas.getByRole('region', { name: 'Warnings' }));
+    await expect(table.getByRole('columnheader', { name: 'Run' })).toBeVisible();
+    await expect(table.getByText('Project').closest('th')).not.toBeVisible();
+    await expect(table.getByText('Since you last looked').closest('th')).not.toBeVisible();
+    await userEvent.click(table.getByRole('button', { name: 'Details of Search every note by title and body' }));
+    const opened = table.getAllByRole('row').at(-1)!;
+    await expect(visibleTerms(opened)).toEqual(['Project', 'Since you last looked']);
+    await expect(visibleValues(opened)).toEqual(['atlas', 'New']);
   },
 };
 
