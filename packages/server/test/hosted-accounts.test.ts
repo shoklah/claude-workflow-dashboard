@@ -4,7 +4,11 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { eq } from 'drizzle-orm';
 import {
+  accountByLogin,
   addInvite,
+  listAccounts,
+  listInvites,
+  removeInvite,
   addViewer,
   createSession,
   createToken,
@@ -65,14 +69,89 @@ describe('signInAccount', () => {
     expect(signInAccount(db, { id: 13, login: 'owner-login' }, ADMIN, AT)).toEqual({ id: 13, login: 'owner-login' });
   });
 
-  test('a second sign-in with the same id keeps the account and updates its login', () => {
+  test('a second sign-in with the same id keeps the account, updates its login and moves its invite', () => {
     const { db } = fresh();
     addInvite(db, 'mika-ito', AT);
     signInAccount(db, { id: 12, login: 'mika-ito' }, ADMIN, AT);
-    expect(signInAccount(db, { id: 12, login: 'mika-renamed' }, ADMIN, LATER)).toEqual({
+    expect(signInAccount(db, { id: 12, login: 'Mika-Renamed' }, ADMIN, LATER)).toEqual({
       id: 12,
-      login: 'mika-renamed',
+      login: 'Mika-Renamed',
     });
+    expect(listInvites(db)).toEqual([{ login: 'mika-renamed', addedAt: AT, signedIn: true }]);
+    expect(signInAccount(db, { id: 12, login: 'Mika-Renamed' }, ADMIN, LATER)).toEqual({ id: 12, login: 'Mika-Renamed' });
+  });
+
+  test('a rename onto a login already invited keeps one invite', () => {
+    const { db } = fresh();
+    addInvite(db, 'mika-ito', AT);
+    signInAccount(db, { id: 12, login: 'mika-ito' }, ADMIN, AT);
+    addInvite(db, 'mika-new', LATER);
+    signInAccount(db, { id: 12, login: 'mika-new' }, ADMIN, LATER);
+    expect(listInvites(db).map((invite) => invite.login)).toEqual(['mika-new']);
+  });
+
+  test('refuses an existing account whose login is no longer invited; the admin needs none', () => {
+    const { db } = fresh();
+    addInvite(db, 'mika-ito', AT);
+    signInAccount(db, { id: 12, login: 'mika-ito' }, ADMIN, AT);
+    removeInvite(db, 'mika-ito');
+    expect(signInAccount(db, { id: 12, login: 'mika-ito' }, ADMIN, LATER)).toBeNull();
+    expect(getAccount(db, 12)).toMatchObject({ id: 12, login: 'mika-ito' });
+    signInAccount(db, { id: 13, login: 'owner-login' }, ADMIN, AT);
+    expect(signInAccount(db, { id: 13, login: 'owner-login' }, ADMIN, LATER)).toEqual({ id: 13, login: 'owner-login' });
+  });
+});
+
+describe('admin', () => {
+  test('listInvites says which invited logins have an account', () => {
+    const { db } = fresh();
+    addInvite(db, 'Sam-Okafor', AT);
+    addInvite(db, 'mika-ito', LATER);
+    signInAccount(db, { id: 12, login: 'Mika-Ito' }, ADMIN, LATER);
+    expect(listInvites(db)).toEqual([
+      { login: 'mika-ito', addedAt: LATER, signedIn: true },
+      { login: 'sam-okafor', addedAt: AT, signedIn: false },
+    ]);
+  });
+
+  test("removeInvite deletes that login's sessions and tokens, any case, and no one else's", () => {
+    const { db } = fresh();
+    addInvite(db, 'mika-ito', AT);
+    signInAccount(db, { id: 12, login: 'Mika-Ito' }, ADMIN, AT);
+    const owner = signInAccount(db, { id: 13, login: ADMIN }, ADMIN, AT)!;
+    const session = createSession(db, 12, AT);
+    const token = createToken(db, 12, AT);
+    const ownSession = createSession(db, owner.id, AT);
+    const ownToken = createToken(db, owner.id, AT);
+    removeInvite(db, 'MIKA-ITO');
+    expect(listInvites(db)).toEqual([]);
+    expect(sessionAccount(db, session, ADMIN, AT)).toBeNull();
+    expect(tokenAccount(db, token, AT)).toBeNull();
+    expect(getAccount(db, 12)).not.toBeNull();
+    expect(sessionAccount(db, ownSession, ADMIN, AT)?.account).toEqual(owner);
+    expect(tokenAccount(db, ownToken, AT)).toEqual(owner);
+  });
+
+  test('listAccounts lists every account by id, with its times only', () => {
+    const { db } = fresh();
+    addInvite(db, 'mika-ito', AT);
+    signInAccount(db, { id: 13, login: ADMIN }, ADMIN, AT);
+    signInAccount(db, { id: 12, login: 'mika-ito' }, ADMIN, AT);
+    setLastCollect(db, 12, LATER);
+    createToken(db, 12, AT);
+    createSession(db, 12, AT);
+    expect(listAccounts(db)).toEqual([
+      { id: 12, login: 'mika-ito', createdAt: AT, lastCollectAt: LATER },
+      { id: 13, login: ADMIN, createdAt: AT, lastCollectAt: null },
+    ]);
+  });
+
+  test('accountByLogin finds an account by login, any case', () => {
+    const { db } = fresh();
+    addInvite(db, 'mika-ito', AT);
+    signInAccount(db, { id: 12, login: 'Mika-Ito' }, ADMIN, AT);
+    expect(accountByLogin(db, 'MIKA-ITO')).toEqual({ id: 12, login: 'Mika-Ito' });
+    expect(accountByLogin(db, 'sam-okafor')).toBeNull();
   });
 });
 

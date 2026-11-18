@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { and, desc, eq, gte, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { LABELLER_DEFAULTS } from '@cwd/shared';
 import { openSqlite } from '../db/open.ts';
 import type { AccountFiles } from './account-files.ts';
@@ -48,19 +48,32 @@ export function addInvite(db: AccountsDb, login: string, at: Date): void {
   db.insert(invites).values({ login: login.toLowerCase(), addedAt: at }).onConflictDoNothing().run();
 }
 
+/** Whether `login` is the admin's (`EDWARD_ADMIN`), case-insensitive. */
+export function isAdmin(login: string, admin: string): boolean {
+  return login.toLowerCase() === admin.toLowerCase();
+}
+
 /**
- * The account of a GitHub user: an existing one by id, its login updated; else a new one when the login is invited or
- * is `admin` (case-insensitive); else null.
+ * The account of a GitHub user: an existing one by id while its stored login is invited or is `admin`, its login
+ * updated and its invite moved to the new login; a new one when the login is invited or is `admin` (case-insensitive);
+ * else null.
  */
 export function signInAccount(db: AccountsDb, user: Account, admin: string, at: Date): Account | null {
   return db.transaction((tx) => {
-    const existing = tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, user.id)).get();
+    const existing = tx.select({ login: accounts.login }).from(accounts).where(eq(accounts.id, user.id)).get();
     const login = user.login.toLowerCase();
     if (existing) {
+      const stored = existing.login.toLowerCase();
+      const invite = tx.select().from(invites).where(eq(invites.login, stored)).get();
+      if (!invite && !isAdmin(stored, admin)) return null;
+      if (invite && stored !== login) {
+        tx.delete(invites).where(eq(invites.login, stored)).run();
+        tx.insert(invites).values({ login, addedAt: invite.addedAt }).onConflictDoNothing().run();
+      }
       tx.update(accounts).set({ login: user.login }).where(eq(accounts.id, user.id)).run();
     } else {
       const invited = tx.select().from(invites).where(eq(invites.login, login)).get();
-      if (!invited && login !== admin.toLowerCase()) return null;
+      if (!invited && !isAdmin(login, admin)) return null;
       tx.insert(accounts).values({ id: user.id, login: user.login, createdAt: at }).run();
     }
     // Grants made to this login before it had an account are its from now on.
@@ -70,6 +83,58 @@ export function signInAccount(db: AccountsDb, user: Account, admin: string, at: 
       .run();
     return { id: user.id, login: user.login };
   });
+}
+
+/** The invited logins, lower-case, in order, each with whether an account's login is it. */
+export function listInvites(db: AccountsDb): { login: string; addedAt: Date; signedIn: boolean }[] {
+  return db
+    .select({
+      login: invites.login,
+      addedAt: invites.addedAt,
+      signedIn: sql<number>`exists (select 1 from accounts where lower(accounts.login) = invites.login)`,
+    })
+    .from(invites)
+    .orderBy(invites.login)
+    .all()
+    .map((invite) => ({ ...invite, signedIn: !!invite.signedIn }));
+}
+
+/** Removes `login`'s invite (any case) and the sessions and collector tokens of the accounts whose login it is; their
+ * data stays until they are deleted, and signInAccount refuses them meanwhile. */
+export function removeInvite(db: AccountsDb, login: string): void {
+  const lower = login.toLowerCase();
+  const held = db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(sql`lower(${accounts.login})`, lower));
+  db.transaction((tx) => {
+    tx.delete(invites).where(eq(invites.login, lower)).run();
+    tx.delete(sessions).where(inArray(sessions.accountId, held)).run();
+    tx.delete(collectorTokens).where(inArray(collectorTokens.accountId, held)).run();
+  });
+}
+
+/** Every account by id, with its times, never anything of its tokens or sessions. */
+export function listAccounts(
+  db: AccountsDb,
+): { id: number; login: string; createdAt: Date; lastCollectAt: Date | null }[] {
+  return db
+    .select({ ...accountColumns, createdAt: accounts.createdAt, lastCollectAt: accounts.lastCollectAt })
+    .from(accounts)
+    .orderBy(accounts.id)
+    .all();
+}
+
+/** The account whose login is `login` (case-insensitive; the newest, if several have it), if any. */
+export function accountByLogin(db: AccountsDb, login: string): Account | null {
+  return (
+    db
+      .select(accountColumns)
+      .from(accounts)
+      .where(eq(sql`lower(${accounts.login})`, login.toLowerCase()))
+      .orderBy(desc(accounts.createdAt), desc(accounts.id))
+      .get() ?? null
+  );
 }
 
 /** A new session for the account, valid for 30 days from `at`; returns its raw ID, stores only its hash. */
@@ -138,12 +203,7 @@ function grantedTo(account: Account) {
  * (the newest, if several have it), if any. */
 export function addViewer(db: AccountsDb, ownerId: number, login: string): void {
   const viewerLogin = login.toLowerCase();
-  const viewer = db
-    .select({ id: accounts.id })
-    .from(accounts)
-    .where(eq(sql`lower(${accounts.login})`, viewerLogin))
-    .orderBy(desc(accounts.createdAt), desc(accounts.id))
-    .get();
+  const viewer = accountByLogin(db, viewerLogin);
   db.insert(viewerGrants)
     .values({ ownerId, viewerLogin, viewerId: viewer?.id ?? null })
     .onConflictDoNothing()

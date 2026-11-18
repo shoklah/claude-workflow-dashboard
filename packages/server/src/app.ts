@@ -6,7 +6,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { Db } from './db/open.ts';
 import type { AccountFiles } from './hosted/account-files.ts';
-import { SESSION, sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
+import { isAdmin, SESSION, sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
 import { registerAuth } from './hosted/auth.ts';
 import type { GitHubClient } from './hosted/github.ts';
 import { registerRoutes } from './routes.ts';
@@ -66,7 +66,8 @@ const OPEN_PREFIXES = ['/auth/', '/assets/'];
  * one); any other method but GET and HEAD needs `X-Dashboard-Refresh: 1` and the public origin, sent; then the session
  * cookie names the caller, whose own account file is the database. With no caller, the open paths pass, `/api/*` is a
  * 401 and any other path a redirect to `/signin`. A caller viewing an owner's account (`c.var.viewing`) gets the
- * owner's file as the database, and any method but GET and HEAD, except on VIEWER_WRITES, is a 403.
+ * owner's file as the database, and any method but GET and HEAD, except on VIEWER_WRITES, is a 403. `/api/admin*` is a
+ * 404 to any caller but the admin's (`EDWARD_ADMIN`) account.
  */
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const { db, hosted } = deps;
@@ -109,6 +110,8 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
       if (!account && !OPEN.includes(path) && !OPEN_PREFIXES.some((prefix) => path.startsWith(prefix))) {
         return path === '/api' || path.startsWith('/api/') ? c.body(null, 401) : c.redirect('/signin', 302);
       }
+      const adminPath = path === '/api/admin' || path.startsWith('/api/admin/');
+      if (adminPath && !(account && isAdmin(account.login, hosted.admin))) return c.notFound();
       if (viewing && writes && !VIEWER_WRITES.includes(path)) return c.text('Forbidden', 403);
     }
     c.set('account', account);

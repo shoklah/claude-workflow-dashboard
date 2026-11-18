@@ -202,12 +202,14 @@ describe('a viewer of an account', () => {
       login: 'mika-ito',
       viewing: null,
       viewable: ['rowan-k'],
+      admin: false,
     });
     await view('rowan-k');
     expect((await json<StatusResponse>('/api/status')).account).toEqual({
       login: 'mika-ito',
       viewing: 'rowan-k',
       viewable: ['rowan-k'],
+      admin: false,
     });
     expect(await json<ShowingResponse>('/api/showing')).toEqual({
       on: true,
@@ -259,6 +261,8 @@ describe('a viewer of an account', () => {
     const { accounts } = hosted.hosted;
     signInAccount(accounts, { id: VIEWER.id, login: 'mika-renamed' }, 'admin', NOW);
     expect((await view('rowan-k')).status).toBe(204);
+    // The rename moved the invite: the old login needs a new one.
+    addInvite(accounts, 'mika-ito', NOW);
     const newcomer = signInAccount(accounts, { id: 303, login: 'mika-ito' }, 'admin', NOW)!;
     const cookie = `${SESSION}=${createSession(accounts, newcomer.id, NOW)}`;
     expect((await post('/api/view', { login: 'rowan-k' }, cookie)).status).toBe(404);

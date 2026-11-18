@@ -15,7 +15,7 @@ const status: StatusResponse = {
   lastGoodImportAt: AT,
   error: null,
   importing: false,
-  account: { login: 'rowan-k', viewing: null, viewable: [] },
+  account: { login: 'rowan-k', viewing: null, viewable: [], admin: false },
 };
 
 /** Full: the Collector panel, then who is signed in, since when, and Sign out. */

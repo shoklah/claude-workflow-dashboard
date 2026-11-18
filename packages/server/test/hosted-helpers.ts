@@ -15,6 +15,8 @@ export const SECRET = Buffer.alloc(32, 1);
 export const GITHUB_USERS: Record<string, { id: number; login: string }> = {
   'code-alice': { id: 101, login: 'Alice' },
   'code-mallory': { id: 666, login: 'mallory' },
+  'code-mika': { id: 202, login: 'mika-ito' },
+  'code-admin': { id: 1, login: 'admin' },
 };
 
 /** A GitHub client that never calls GitHub: the real authorize URL, and `user` from GITHUB_USERS. */

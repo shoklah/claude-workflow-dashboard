@@ -4,6 +4,7 @@ import type { Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { deleteCookie, getCookie } from 'hono/cookie';
 import {
+  type AdminResponse,
   toPath,
   toSpendUnits,
   toStepKind,
@@ -42,13 +43,18 @@ import {
   type StoredUnit,
 } from './db/read.ts';
 import {
+  addInvite,
   addViewer,
   createToken,
   deleteAccount,
   getAccount,
   getLabeller,
+  isAdmin,
+  listAccounts,
+  listInvites,
   listTokens,
   listViewers,
+  removeInvite,
   removeViewer,
   revokeToken,
   SESSION,
@@ -143,6 +149,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
               login: account.login,
               viewing: viewing?.login ?? null,
               viewable: viewableAccounts(deps.hosted.accounts, account, deps.hosted.admin).map((owner) => owner.login),
+              admin: isAdmin(account.login, deps.hosted.admin),
             }
           : null,
       ),
@@ -541,5 +548,39 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
       return c.body(null, 204);
     });
     app.all('/api/view', postOnly);
+
+    // Slice 2b, task 5: admin settings, the invites and the accounts; the middleware answers 404 to anyone but the admin.
+    app.get('/api/admin', (c) => {
+      const body: AdminResponse = {
+        invites: listInvites(hosted.accounts).map((invite) => ({ ...invite, addedAt: invite.addedAt.toISOString() })),
+        accounts: listAccounts(hosted.accounts).map((account) => ({
+          ...account,
+          createdAt: account.createdAt.toISOString(),
+          lastCollectAt: account.lastCollectAt?.toISOString() ?? null,
+        })),
+      };
+      return c.json(body);
+    });
+    app.post('/api/admin/invites', async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const login: unknown = body?.login;
+      if (typeof login !== 'string' || !GITHUB_LOGIN.test(login)) return c.body(null, 400);
+      addInvite(hosted.accounts, login, deps.now());
+      return c.body(null, 204);
+    });
+    app.all('/api/admin/invites', postOnly);
+    app.post('/api/admin/invites/:login/remove', (c) => {
+      removeInvite(hosted.accounts, c.req.param('login'));
+      return c.body(null, 204);
+    });
+    app.all('/api/admin/invites/:login/remove', postOnly);
+    app.post('/api/admin/accounts/:id/delete', (c) => {
+      const id = Number(c.req.param('id'));
+      if (!Number.isSafeInteger(id) || !getAccount(hosted.accounts, id)) return c.notFound();
+      if (id === caller(c).id) return c.body(null, 400);
+      deleteAccount(hosted.accounts, hosted.files, id);
+      return c.body(null, 204);
+    });
+    app.all('/api/admin/accounts/:id/delete', postOnly);
   }
 }
