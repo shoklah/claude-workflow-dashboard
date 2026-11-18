@@ -12,6 +12,7 @@ export const accountFull: AccountResponse = {
     { id: 2, createdAt: '2026-11-12T09:14:00.000Z', lastUsedAt: '2026-11-18T00:41:00.000Z' },
     { id: 1, createdAt: '2026-10-30T18:02:00.000Z', lastUsedAt: null },
   ],
+  viewers: [],
 };
 
 /** A new account: no collect, no machine, no tokens. */
@@ -21,4 +22,5 @@ export const accountEmpty: AccountResponse = {
   lastCollectAt: null,
   machine: false,
   tokens: [],
+  viewers: [],
 };

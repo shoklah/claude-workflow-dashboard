@@ -2,6 +2,7 @@ import { promisify } from 'node:util';
 import { gunzip } from 'node:zlib';
 import type { Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { getCookie } from 'hono/cookie';
 import {
   toPath,
   toSpendUnits,
@@ -39,7 +40,20 @@ import {
   setShownProjects,
   type StoredUnit,
 } from './db/read.ts';
-import { createToken, getAccount, listTokens, revokeToken, setLastCollect, type Account } from './hosted/accounts.ts';
+import {
+  addViewer,
+  createToken,
+  getAccount,
+  listTokens,
+  listViewers,
+  removeViewer,
+  revokeToken,
+  setLastCollect,
+  setViewing,
+  viewableAccounts,
+  type Account,
+} from './hosted/accounts.ts';
+import { SESSION } from './hosted/auth.ts';
 import { projectKey } from './keys.ts';
 import { importJson } from './reporter.ts';
 import { accountView } from './views/account.ts';
@@ -70,6 +84,9 @@ const COLLECT_MAX_BODY = 32 * 1024 * 1024;
 const COLLECT_MAX_JSON = 64 * 1024 * 1024;
 const unzip = promisify(gunzip);
 
+// A GitHub login's syntax.
+const GITHUB_LOGIN = /^[A-Za-z0-9-]{1,39}$/;
+
 // The most weeks a list covers: the Runs page's longest period, so a huge `weeks` can't build a huge response.
 const MAX_WEEKS = 52;
 
@@ -88,13 +105,13 @@ function periodQuery(c: Context): FindingsQuery {
  * middleware, which sets each request's database as `c.var.db`. */
 export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   // Showing mode's scope over the request's stored runs and sessions (each listed here when the caller has none), null
-  // while it is off.
+  // while it is off; a viewer's always, from the viewed account's kept list.
   const scopeFor = (
     c: Context<AppEnv>,
     runs?: StoredUnit<RunEntry>[],
     sessions?: StoredUnit<SessionEntry>[],
   ): Scope | null => {
-    const showing = getShowing(c.var.db);
+    const showing = c.var.viewing ? getShownProjects(c.var.db) : getShowing(c.var.db);
     if (!showing) return null;
     const allRuns = runs ?? listUnits(c.var.db, 'run');
     const allSessions = sessions ?? listUnits(c.var.db, 'session');
@@ -107,18 +124,25 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     );
   };
 
-  // Task 4: the import's status, the refresh and "mark all seen".
-  app.get('/api/status', (c) =>
-    c.json(
+  // Task 4: the import's status, the refresh and "mark all seen"; hosted, the caller's login and the accounts it views.
+  app.get('/api/status', (c) => {
+    const { account, viewing } = c.var;
+    return c.json(
       statusView(
         lastImport(c.var.db),
         lastGoodImport(c.var.db),
         deps.importing(),
         scopeFor(c),
-        c.var.account ? { login: c.var.account.login } : null,
+        account && deps.hosted
+          ? {
+              login: account.login,
+              viewing: viewing?.login ?? null,
+              viewable: viewableAccounts(deps.hosted.accounts, account, deps.hosted.admin).map((owner) => owner.login),
+            }
+          : null,
       ),
-    ),
-  );
+    );
+  });
   const { requestImport } = deps;
   if (requestImport) {
     app.post('/api/refresh', (c) => {
@@ -379,7 +403,8 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   // another state id or none, is refused before anything is stored: one machine feeds an account.
   const { hosted } = deps;
   if (hosted) {
-    // The middleware sets the caller on every hosted /api/collect* (a token) and /api/account* (a session) request.
+    // The middleware sets the caller on every hosted /api/collect* (a token), /api/account* and /api/view (a session)
+    // request.
     const caller = (c: Context<AppEnv>) => c.var.account as Account;
     const collected = (c: Context<AppEnv>) => setLastCollect(hosted.accounts, caller(c).id, deps.now());
     app.get('/api/collect/cursor', (c) => c.json({ cursor: getCursor(c.var.db) }));
@@ -427,7 +452,14 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
       const { id } = caller(c);
       const account = getAccount(hosted.accounts, id);
       if (!account) return c.notFound();
-      return c.json(accountView(account, listTokens(hosted.accounts, id), getCursor(hosted.files.db(id)) !== null));
+      return c.json(
+        accountView(
+          account,
+          listTokens(hosted.accounts, id),
+          getCursor(hosted.files.db(id)) !== null,
+          listViewers(hosted.accounts, id),
+        ),
+      );
     });
     app.post('/api/account/tokens', (c) => {
       const body: TokenResponse = { token: createToken(hosted.accounts, caller(c).id, deps.now()) };
@@ -445,5 +477,37 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
       return c.body(null, 204);
     });
     app.all('/api/account/reset-collector', postOnly);
+
+    // Slice 2b, task 2: viewers. An owner grants GitHub logins a read-only view of its account; a caller picks an
+    // account it may view (viewableAccounts) by login, or null for its own, for its session.
+    app.post('/api/account/viewers', async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const login: unknown = body?.login;
+      if (typeof login !== 'string' || !GITHUB_LOGIN.test(login)) return c.body(null, 400);
+      addViewer(hosted.accounts, caller(c).id, login);
+      return c.body(null, 204);
+    });
+    app.all('/api/account/viewers', postOnly);
+    app.post('/api/account/viewers/:login/remove', (c) => {
+      removeViewer(hosted.accounts, caller(c).id, c.req.param('login'));
+      return c.body(null, 204);
+    });
+    app.all('/api/account/viewers/:login/remove', postOnly);
+    app.post('/api/view', async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const login: unknown = body?.login;
+      if (login !== null && typeof login !== 'string') return c.body(null, 400);
+      const owner =
+        login === null
+          ? null
+          : viewableAccounts(hosted.accounts, caller(c), hosted.admin).find(
+              (account) => account.login.toLowerCase() === login.toLowerCase(),
+            );
+      if (owner === undefined || !setViewing(hosted.accounts, getCookie(c, SESSION) as string, owner?.id ?? null)) {
+        return c.notFound();
+      }
+      return c.body(null, 204);
+    });
+    app.all('/api/view', postOnly);
   }
 }

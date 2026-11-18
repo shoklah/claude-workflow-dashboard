@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // The hosted accounts database. Sessions and collector tokens are stored only as their SHA-256 (hashSecret).
 
@@ -26,6 +26,8 @@ export const sessions = sqliteTable('sessions', {
   idHash: text('id_hash').primaryKey(),
   accountId: accountId(),
   expiresAt: time('expires_at').notNull(),
+  // The owner's account this session views, null for its own; read only while the grant holds (sessionAccount).
+  viewingId: integer('viewing_id'),
 });
 
 export const collectorTokens = sqliteTable('collector_tokens', {
@@ -35,3 +37,19 @@ export const collectorTokens = sqliteTable('collector_tokens', {
   createdAt: time('created_at').notNull(),
   lastUsedAt: time('last_used_at'),
 });
+
+/**
+ * An owner's grant to a GitHub login (lower-case) to view its account read-only. Bound to the viewer's account id
+ * when made (if that login has an account) or at that login's first sign-in, and once bound matched by id only.
+ */
+export const viewerGrants = sqliteTable(
+  'viewer_grants',
+  {
+    ownerId: integer('owner_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    viewerLogin: text('viewer_login').notNull(),
+    viewerId: integer('viewer_id').references(() => accounts.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.ownerId, table.viewerLogin] })],
+);

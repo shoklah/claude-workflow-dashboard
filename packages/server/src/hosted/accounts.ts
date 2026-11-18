@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { and, eq, gte, lt } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { openSqlite } from '../db/open.ts';
 import * as schema from './schema.ts';
-import { accounts, collectorTokens, invites, sessions } from './schema.ts';
+import { accounts, collectorTokens, invites, sessions, viewerGrants } from './schema.ts';
 
 // Two levels up from this file, as openDb's.
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url));
@@ -41,14 +41,19 @@ export function addInvite(db: AccountsDb, login: string, at: Date): void {
 export function signInAccount(db: AccountsDb, user: Account, admin: string, at: Date): Account | null {
   return db.transaction((tx) => {
     const existing = tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, user.id)).get();
+    const login = user.login.toLowerCase();
     if (existing) {
       tx.update(accounts).set({ login: user.login }).where(eq(accounts.id, user.id)).run();
     } else {
-      const login = user.login.toLowerCase();
       const invited = tx.select().from(invites).where(eq(invites.login, login)).get();
       if (!invited && login !== admin.toLowerCase()) return null;
       tx.insert(accounts).values({ id: user.id, login: user.login, createdAt: at }).run();
     }
+    // Grants made to this login before it had an account are its from now on.
+    tx.update(viewerGrants)
+      .set({ viewerId: user.id })
+      .where(and(eq(viewerGrants.viewerLogin, login), isNull(viewerGrants.viewerId)))
+      .run();
     return { id: user.id, login: user.login };
   });
 }
@@ -63,16 +68,102 @@ export function createSession(db: AccountsDb, accountId: number, at: Date): stri
   return raw;
 }
 
-/** The account of an unexpired session, by its raw ID's hash. */
-export function sessionAccount(db: AccountsDb, raw: string, at: Date): Account | null {
-  return (
-    db
-      .select(accountColumns)
+/**
+ * The account of an unexpired session, by its raw ID's hash, and the owner it views: null for its own, and null too
+ * once that owner isn't in its viewableAccounts (the grant removed, or the owner neither invited nor the admin).
+ */
+export function sessionAccount(
+  db: AccountsDb,
+  raw: string,
+  admin: string,
+  at: Date,
+): { account: Account; viewing: Account | null } | null {
+  const row = db
+    .select({ ...accountColumns, viewingId: sessions.viewingId })
+    .from(sessions)
+    .innerJoin(accounts, eq(accounts.id, sessions.accountId))
+    .where(and(eq(sessions.idHash, hashSecret(raw)), gte(sessions.expiresAt, at)))
+    .get();
+  if (!row) return null;
+  const account = { id: row.id, login: row.login };
+  const viewing =
+    row.viewingId === null
+      ? null
+      : (viewableAccounts(db, account, admin).find((owner) => owner.id === row.viewingId) ?? null);
+  return { account, viewing };
+}
+
+/** Sets the owner a session views, null for its own account; false, changing nothing, when the owner gave its account
+ * no grant. */
+export function setViewing(db: AccountsDb, raw: string, ownerId: number | null): boolean {
+  const idHash = hashSecret(raw);
+  if (ownerId !== null) {
+    const session = db
+      .select({ accountId: sessions.accountId })
       .from(sessions)
-      .innerJoin(accounts, eq(accounts.id, sessions.accountId))
-      .where(and(eq(sessions.idHash, hashSecret(raw)), gte(sessions.expiresAt, at)))
-      .get() ?? null
+      .where(eq(sessions.idHash, idHash))
+      .get();
+    const viewer = session && getAccount(db, session.accountId);
+    const grant =
+      viewer && db.select().from(viewerGrants).where(and(eq(viewerGrants.ownerId, ownerId), grantedTo(viewer))).get();
+    if (!grant) return false;
+  }
+  db.update(sessions).set({ viewingId: ownerId }).where(eq(sessions.idHash, idHash)).run();
+  return true;
+}
+
+/** Grants to the account: bound to its id, or not bound yet and naming its login. */
+function grantedTo(account: Account) {
+  return or(
+    eq(viewerGrants.viewerId, account.id),
+    and(isNull(viewerGrants.viewerId), eq(viewerGrants.viewerLogin, account.login.toLowerCase())),
   );
+}
+
+/** Grants `login` (case-insensitive) a view of the owner's account, bound to the account that holds that login now
+ * (the newest, if several have it), if any. */
+export function addViewer(db: AccountsDb, ownerId: number, login: string): void {
+  const viewerLogin = login.toLowerCase();
+  const viewer = db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(sql`lower(${accounts.login})`, viewerLogin))
+    .orderBy(desc(accounts.createdAt), desc(accounts.id))
+    .get();
+  db.insert(viewerGrants)
+    .values({ ownerId, viewerLogin, viewerId: viewer?.id ?? null })
+    .onConflictDoNothing()
+    .run();
+}
+
+export function removeViewer(db: AccountsDb, ownerId: number, login: string): void {
+  db.delete(viewerGrants)
+    .where(and(eq(viewerGrants.ownerId, ownerId), eq(viewerGrants.viewerLogin, login.toLowerCase())))
+    .run();
+}
+
+/** The logins the owner granted a view, lower-case, in order. */
+export function listViewers(db: AccountsDb, ownerId: number): string[] {
+  return db
+    .select({ login: viewerGrants.viewerLogin })
+    .from(viewerGrants)
+    .where(eq(viewerGrants.ownerId, ownerId))
+    .orderBy(viewerGrants.viewerLogin)
+    .all()
+    .map((row) => row.login);
+}
+
+/** The owners the account may view: those that granted it (grantedTo), and whose own login is invited or `admin`. */
+export function viewableAccounts(db: AccountsDb, account: Account, admin: string): Account[] {
+  const ownerLogin = sql`lower(${accounts.login})`;
+  return db
+    .select(accountColumns)
+    .from(viewerGrants)
+    .innerJoin(accounts, eq(accounts.id, viewerGrants.ownerId))
+    .leftJoin(invites, eq(invites.login, ownerLogin))
+    .where(and(grantedTo(account), or(isNotNull(invites.login), eq(ownerLogin, admin.toLowerCase()))))
+    .orderBy(accounts.id)
+    .all();
 }
 
 export function deleteSession(db: AccountsDb, raw: string): void {
