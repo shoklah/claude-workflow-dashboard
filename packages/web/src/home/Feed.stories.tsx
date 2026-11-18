@@ -34,7 +34,15 @@ export const Empty: Story = {
 /** Full: finished runs and new warnings, newest first, each led by its branch; free text shows as text, never as HTML. */
 export const Full: Story = {
   args: { items: fullHome.feed },
-  play: async ({ canvas, canvasElement }) => {
+  // In Home's column from lg (`lg:w-72`), where the title's row is tightest.
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas, canvasElement, userEvent }) => {
     const items = within(canvas.getByRole('list')).getAllByRole('listitem');
     await expect(items).toHaveLength(4);
 
@@ -81,6 +89,44 @@ export const Full: Story = {
     // The status is a swatch beside its word, not a coloured edge; nothing is joined with " · ".
     await expect(canvasElement.querySelector('.border-l-4, .border-l-3')).toBeNull();
     await expect(canvasElement.textContent).not.toContain(' · ');
+
+    // "Mark all seen" is an icon on the title's row at the column's 288 px, named and with its tooltip.
+    const middle = (el: Element) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
+    const mark = canvas.getByRole('button', { name: 'Mark all seen' });
+    await expect(mark.textContent).toBe('');
+    await expect(Math.abs(middle(mark) - middle(canvas.getByRole('heading', { name: 'Since you last looked' })))).toBeLessThan(2);
+    await userEvent.hover(mark);
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('Mark all seen');
+
+    // The list scrolls in its own focusable region, named apart from the panel's.
+    await expect(canvas.getByRole('region', { name: 'Since you last looked list' })).toHaveAttribute('tabindex', '0');
+  },
+};
+
+// 30 items, a minute apart, cycling through the four of Full.
+const many = Array.from({ length: 30 }, (_, i) => ({
+  ...fullHome.feed[i % 4],
+  at: `2026-11-12T10:${String(59 - i).padStart(2, '0')}:00.000Z`,
+}));
+
+/** Many: stacked under the page, the list scrolls in its own region at most 24 rem tall, with the tables' edge cue. */
+export const Many: Story = {
+  args: { items: many },
+  parameters: { viewport: { options: { phone: { name: 'Phone', styles: { width: '375px', height: '812px' } } } } },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole('region', { name: 'Since you last looked list' });
+    await expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+    await expect(list.getBoundingClientRect().height).toBeLessThanOrEqual(24 * 16);
+    // The cue follows the list's scroll, down the list (the gradient's default direction, so none is written): its foot
+    // fades at the top, both ends once scrolled, its head alone at the end.
+    const mask = () => getComputedStyle(list).maskImage;
+    const [clear, ink] = ['rgba(0, 0, 0, 0)', 'rgb(0, 0, 0)'];
+    await expect(mask()).toBe(`linear-gradient(${ink} calc(100% - 48px), ${clear})`);
+    list.scrollTop = (list.scrollHeight - list.clientHeight) / 2;
+    await waitFor(() => expect(mask()).toBe(`linear-gradient(${clear}, ${ink} 48px, ${ink} calc(100% - 48px), ${clear})`));
+    list.scrollTop = list.scrollHeight;
+    await waitFor(() => expect(mask()).toBe(`linear-gradient(${clear}, ${ink} 48px)`));
   },
 };
 
