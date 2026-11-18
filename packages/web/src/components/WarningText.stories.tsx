@@ -42,3 +42,12 @@ export const WithSession: Story = {
     await expect(canvas.getByRole('button', { name: 'Copy session ID' })).toBeVisible();
   },
 };
+
+/** A class for the sentence alone (Home's feed sets its weight): the session's line keeps its own look. */
+export const Styled: Story = {
+  args: { ...WithSession.args, className: 'font-medium' },
+  play: async ({ canvas }) => {
+    await expect(getComputedStyle(canvas.getByText('Startup guidelines missing')).fontWeight).toBe('500');
+    await expect(getComputedStyle(canvas.getByText(/^Session/)).fontWeight).toBe('400');
+  },
+};

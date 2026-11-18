@@ -12,39 +12,46 @@ import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatCost, formatMinutes, pathLabel } from '../lib/format.ts';
 
-/** An item: what happened and when, its status a swatch beside the word (the warning orange or the finished green);
- * then the run it concerns, its branch leading and opening the run, its project and path trailing, muted; then its
- * facts, a run's as labelled pairs, a warning's its text. */
+/** An item (docs/design/2026-11-18-feed-items): a small muted caption, its status a swatch beside the word (the
+ * warning orange or the finished green) and its time; then its message in medium weight, a warning's text or a finished
+ * run's title opening the run; then its context, small and muted: a warning's run (its link, else its branch) or
+ * session, then the project and path; then a run's facts as small labelled pairs on one wrapping row. */
 function Item({ item }: { item: FeedItem }) {
   const warning = item.type === 'warning';
   const path = pathLabel(item.path);
+  // A finished run's message, a warning's context.
+  const run =
+    item.runKey !== null ? (
+      <RunLink runKey={item.runKey} branch={item.branch} title={item.headline} className="break-words" />
+    ) : (
+      item.branch !== null && <span className="break-words">{item.branch}</span>
+    );
   return (
     <li className="flex flex-col gap-1 border-b pb-3 last:border-0 last:pb-0">
-      <div className="flex items-baseline gap-2">
-        <span
-          aria-hidden
-          className={cn('size-2.5 flex-none translate-y-px rounded-swatch', warning ? 'bg-warning-edge' : 'bg-success-edge')}
-        />
-        <b className="font-semibold">{warning ? 'New warning' : 'Run finished'}</b>
-        <span className="ml-auto text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span aria-hidden className={cn('size-2.5 flex-none rounded-swatch', warning ? 'bg-warning-edge' : 'bg-success-edge')} />
+        <span>{warning ? 'New warning' : 'Run finished'}</span>
+        <span className="ml-auto">
           <Time iso={item.at} />
         </span>
       </div>
-      {item.runKey !== null ? (
-        <RunLink runKey={item.runKey} branch={item.branch} title={item.headline} className="break-words" />
+      {warning ? (
+        item.text !== null && (
+          <WarningText text={item.text} sessionId={item.sessionId} branch={item.branch} className="font-medium" />
+        )
       ) : (
-        item.branch !== null && <span className="break-words">{item.branch}</span>
+        <div className="font-medium">{run}</div>
       )}
+      {warning && run && <div className="text-xs text-muted-foreground">{run}</div>}
       {item.project !== null && (
         <span className="text-xs text-muted-foreground">
           {path === null ? item.project : `${item.project}, ${path} path`}
         </span>
       )}
-      {warning ? (
-        item.text !== null && <WarningText text={item.text} sessionId={item.sessionId} branch={item.branch} />
-      ) : (
+      {!warning && (
         <Pairs
-          className="mt-1"
+          inline="beside"
+          className="gap-x-4 text-xs"
           pairs={[
             ['Findings', <Num value={item.findings?.total} />],
             ['Acted on', <Num value={item.findings?.actedOn} />],

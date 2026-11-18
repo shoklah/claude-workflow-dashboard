@@ -90,6 +90,37 @@ export const Full: Story = {
     await expect(canvasElement.querySelector('.border-l-4, .border-l-3')).toBeNull();
     await expect(canvasElement.textContent).not.toContain(' · ');
 
+    // Reading order (docs/design/2026-11-18-feed-items): a small caption (the status word and time), then the message at
+    // body size in medium weight (a warning's text, a run's title), then its context small (the run, the session, the
+    // project); a run's facts are small pairs on one wrapping row.
+    const font = (el: Element) => [getComputedStyle(el).fontSize, getComputedStyle(el).fontWeight];
+    const [small, message] = [['12px', '400'], ['14px', '500']];
+    const inOrder = (...els: Element[]) =>
+      els.every((el, i) => i === 0 || els[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+    const warned = within(items[2]);
+    const warning = warned.getByText('final-reviewer ran on another model than its pin');
+    const its = { run: warned.getByRole('link'), project: warned.getByText('atlas'), status: warned.getByText('New warning') };
+    await expect(font(its.status)).toEqual(small);
+    await expect(font(warning)).toEqual(message);
+    await expect(font(its.run)).toEqual(small);
+    await expect(font(its.project)).toEqual(small);
+    await expect(inOrder(its.status, warning, its.run, its.project)).toBe(true);
+
+    const session = within(items[1]);
+    await expect(font(session.getByText('Typed "grill me" but grill-me never loaded'))).toEqual(message);
+    await expect(font(session.getByText('Session', { exact: false }))).toEqual(small);
+
+    const run = within(items[0]);
+    const title = run.getByRole('link', { name: 'Search every note by title and body' });
+    await expect(font(run.getByText('Run finished'))).toEqual(small);
+    await expect(font(title)).toEqual(message);
+    await expect(font(run.getByText('atlas, Full path'))).toEqual(small);
+    await expect(inOrder(run.getByText('Run finished'), title, run.getByText('atlas, Full path'))).toBe(true);
+    const [findings, actedOn] = run.getAllByRole('term');
+    await expect(font(findings)).toEqual(small);
+    await expect(findings.getBoundingClientRect().top).toBe(actedOn.getBoundingClientRect().top);
+
     // "Mark all seen" is an icon on the title's row at the column's 288 px, named and with its tooltip.
     const middle = (el: Element) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
     const mark = canvas.getByRole('button', { name: 'Mark all seen' });
