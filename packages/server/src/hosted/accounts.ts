@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { and, desc, eq, gte, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { LABELLER_DEFAULTS } from '@cwd/shared';
 import { openSqlite } from '../db/open.ts';
+import type { AccountFiles } from './account-files.ts';
 import * as schema from './schema.ts';
 import {
   accounts,
@@ -20,6 +21,8 @@ const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 /** The session cookie's name, which createApp's middleware reads. */
 export const SESSION = 'edward_session';
+/** The session cookie's options, for setting and clearing it alike. */
+export const SESSION_COOKIE = { httpOnly: true, secure: true, sameSite: 'Lax', path: '/' } as const;
 
 export type AccountsDb = ReturnType<typeof openAccountsDb>;
 export type Account = { id: number; login: string };
@@ -188,6 +191,12 @@ export function viewableAccounts(db: AccountsDb, account: Account, admin: string
     .where(and(grantedTo(account), or(isNotNull(invites.login), eq(ownerLogin, admin.toLowerCase()))))
     .orderBy(accounts.id)
     .all();
+}
+
+/** Deletes the account: its row, with its sessions, tokens, labeller settings and grants by cascade, then its file. */
+export function deleteAccount(db: AccountsDb, files: AccountFiles, id: number): void {
+  db.delete(accounts).where(eq(accounts.id, id)).run();
+  files.remove(id);
 }
 
 export function deleteSession(db: AccountsDb, raw: string): void {

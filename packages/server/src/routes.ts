@@ -2,7 +2,7 @@ import { promisify } from 'node:util';
 import { gunzip } from 'node:zlib';
 import type { Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { getCookie } from 'hono/cookie';
+import { deleteCookie, getCookie } from 'hono/cookie';
 import {
   toPath,
   toSpendUnits,
@@ -44,6 +44,7 @@ import {
 import {
   addViewer,
   createToken,
+  deleteAccount,
   getAccount,
   getLabeller,
   listTokens,
@@ -51,6 +52,7 @@ import {
   removeViewer,
   revokeToken,
   SESSION,
+  SESSION_COOKIE,
   setLabeller,
   setLastCollect,
   setViewing,
@@ -485,6 +487,15 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
       return c.body(null, 204);
     });
     app.all('/api/account/reset-collector', postOnly);
+
+    // Slice 2b, task 4: the caller deletes its own account (refused while viewing, by the middleware), then is signed
+    // out as /auth/signout does.
+    app.post('/api/account/delete', (c) => {
+      deleteAccount(hosted.accounts, hosted.files, caller(c).id);
+      deleteCookie(c, SESSION, SESSION_COOKIE);
+      return c.body(null, 204);
+    });
+    app.all('/api/account/delete', postOnly);
 
     // Slice 2b, task 3: the caller's labeller, its Anthropic key stored only sealed (setLabeller); an absent key keeps
     // the stored one, null removes it.
