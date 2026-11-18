@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { contextFull, contextHidden } from '../test/context.ts';
 import { ContextUnits } from './ContextUnits.tsx';
-import { expectNoJoined, visibleTerms, visibleValues, width } from '../test/table.ts';
+import { expectNoJoined, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 
 const meta = {
   component: ContextUnits,
@@ -10,7 +10,6 @@ const meta = {
 } satisfies Meta<typeof ContextUnits>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-
 
 /** Empty: no unit past the cap. */
 export const Empty: Story = {
@@ -119,7 +118,7 @@ export const Showing: Story = {
     // Opened, the handoff's row leaves its hidden ID out: no chip, no "Its ID" term.
     const toggle = canvas.getByRole('button', { name: 'Plan the offline sync' });
     await userEvent.click(toggle);
-    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    const opened = openedRow(toggle);
     await expect(within(opened).getAllByText('To session')[0]).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
     await expect(within(opened).queryAllByText('Its ID')).toEqual([]);

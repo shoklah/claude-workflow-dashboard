@@ -7,7 +7,7 @@ import { DataList, type ListColumn } from '../components/DataList.tsx';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
 import { Line, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
-import { RunLink } from '../components/RunLink.tsx';
+import { RunLink, runName } from '../components/RunLink.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Option, Options } from '../components/Option.tsx';
@@ -171,7 +171,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           <DataList
             rows={listed}
             rowKey={(w) => `${w.runKey} ${w.sessionId} ${w.text}`}
-            name={(w) => (w.runKey === null ? 'no run' : (w.branch ?? 'no branch'))}
+            name={(w) => (w.runKey === null ? 'no run' : runName(w.branch))}
             columns={WARNING_COLUMNS}
             label="Warnings"
             empty="No warnings in this cell."

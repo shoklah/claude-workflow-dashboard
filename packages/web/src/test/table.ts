@@ -2,11 +2,14 @@ import { createElement } from 'react';
 import type { Decorator } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
-/** A story in a box of a set width, for a list whose fold follows its own container. */
+/** A story in a box of a set width (`frame`), for a list whose fold follows its own container or a graph its panel's. */
 export const width =
   (px: number): Decorator =>
   (Story) =>
-    createElement('div', { style: { width: px } }, createElement(Story));
+    createElement('div', { 'data-testid': 'frame', style: { width: px } }, createElement(Story));
+
+/** The opened row under a row, found from its toggle. */
+export const openedRow = (toggle: HTMLElement) => toggle.closest('tr')!.nextElementSibling as HTMLElement;
 
 /** The visible elements of one tag in an opened row, as text: both its narrow and its wide facts are in the page. */
 const visible = (row: HTMLElement, tag: string) =>

@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import {
   createColumnHelper,
   createPaginatedRowModel,
@@ -84,7 +84,8 @@ export function DataList<T extends RowData>({
     const helper = createColumnHelper<typeof features, T>();
     return helper.columns(
       columns.map((c) => {
-        const known = rows.map(c.value).find((v) => v !== null);
+        let known: string | number | null = null;
+        for (const r of rows) if ((known = c.value(r)) !== null) break;
         return helper.accessor((r: T) => c.value(r) ?? undefined, {
           id: c.id,
           sortFn: typeof known === 'number' ? 'basic' : 'alphanumeric',
@@ -124,12 +125,13 @@ export function DataList<T extends RowData>({
       return next;
     });
   const folded = columns.filter((c) => c.fold);
-  const opens = facts.length > 0 || extra !== undefined || folded.length > 0;
-  const toggleColumn = columns.find((c) => !c.fold);
   // With nothing to open but its folded columns, a row opens only while they fold.
   const foldOnly = facts.length === 0 && extra === undefined;
+  const opens = !foldOnly || folded.length > 0;
+  const toggleColumn = columns.find((c) => !c.fold);
   return (
     <div className="@container flex flex-col gap-3">
+      {/* `data-list` is spread in: an object literal's `data-*` key fails the excess-property check. */}
       <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': label, className, ...{ 'data-list': '' } }}>
         <TableHeader>
           <TableRow>
@@ -151,12 +153,6 @@ export function DataList<T extends RowData>({
             const r = row.original;
             const key = rowKey(r, row.index);
             const isOpen = open.has(key);
-            const pairsOf = (list: ListFact<T>[]) =>
-              list
-                .map(([term, value]): [string, ReactNode] => [term, value(r)])
-                .filter(([, value]) => value !== null && value !== '');
-            const factPairs = pairsOf(facts);
-            const narrowPairs = [...pairsOf(folded.map((c) => [c.header, c.cell])), ...factPairs];
             const toggleCell = (c: ListColumn<T>) => {
               const text = c.text?.(r) ?? null;
               if (text !== null) {
@@ -173,18 +169,14 @@ export function DataList<T extends RowData>({
                   </>
                 );
               }
-              const Chevron = isOpen ? ChevronDown : ChevronRight;
               return (
                 <span className="flex items-start gap-2">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-label={`Details of ${name(r)}`}
-                    onClick={() => toggle(key)}
-                    className={cn('mt-0.5 rounded-sm', foldOnly && '@3xl:hidden')}
-                  >
-                    <Chevron aria-hidden className="size-4 text-muted-foreground" />
-                  </button>
+                  <RowToggle
+                    open={isOpen}
+                    onToggle={() => toggle(key)}
+                    label={`Details of ${name(r)}`}
+                    className={cn('mt-0.5', foldOnly && '@3xl:hidden')}
+                  />
                   {c.cell(r)}
                 </span>
               );
@@ -202,15 +194,7 @@ export function DataList<T extends RowData>({
                   ))}
                 </TableRow>
                 {isOpen && (
-                  <TableRow className={cn('hover:bg-transparent', foldOnly && '@3xl:hidden')}>
-                    <TableCell colSpan={columns.length} className="pt-0 pb-4 pl-8 whitespace-normal">
-                      <div className="flex max-w-3xl flex-col gap-3">
-                        {narrowPairs.length > 0 && <Pairs text pairs={narrowPairs} className="@3xl:hidden" />}
-                        {factPairs.length > 0 && <Pairs text pairs={factPairs} className="hidden @3xl:grid" />}
-                        {extra && <div className="w-0 min-w-full">{extra(r)}</div>}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <OpenedRow row={r} columns={columns.length} folded={folded} facts={facts} extra={extra} foldOnly={foldOnly} />
                 )}
               </Fragment>
             );
@@ -219,6 +203,45 @@ export function DataList<T extends RowData>({
       </Table>
       <Pager table={table} label={label} />
     </div>
+  );
+}
+
+/** A row's facts as term and value, the empty ones left out. */
+function shownPairs<T>(row: T, list: ListFact<T>[]): [string, ReactNode][] {
+  return list
+    .map(([term, value]): [string, ReactNode] => [term, value(row)])
+    .filter(([, value]) => value !== null && value !== '');
+}
+
+/** The opened row under a row: its folded columns then its facts while narrow, its facts alone while wide, then
+ * `extra`. */
+function OpenedRow<T>({
+  row,
+  columns,
+  folded,
+  facts,
+  extra,
+  foldOnly,
+}: {
+  row: T;
+  columns: number;
+  folded: ListColumn<T>[];
+  facts: ListFact<T>[];
+  extra?: (row: T) => ReactNode;
+  foldOnly: boolean;
+}) {
+  const factPairs = shownPairs(row, facts);
+  const narrowPairs = [...shownPairs(row, folded.map((c): ListFact<T> => [c.header, c.cell])), ...factPairs];
+  return (
+    <TableRow className={cn('hover:bg-transparent', foldOnly && '@3xl:hidden')}>
+      <TableCell colSpan={columns} className="pt-0 pb-4 pl-8 whitespace-normal">
+        <div className="flex max-w-3xl flex-col gap-3">
+          {narrowPairs.length > 0 && <Pairs text pairs={narrowPairs} className="@3xl:hidden" />}
+          {factPairs.length > 0 && <Pairs text pairs={factPairs} className="hidden @3xl:grid" />}
+          {extra && <div className="w-0 min-w-full">{extra(row)}</div>}
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }
 

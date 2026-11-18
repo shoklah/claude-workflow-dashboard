@@ -1,8 +1,7 @@
-import type { RunRow } from '@cwd/shared';
-import { parseTime } from '@cwd/shared';
+import { parseTime, type RunRow } from '@cwd/shared';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
 import { Num, Text } from '../components/Num.tsx';
-import { RunLink } from '../components/RunLink.tsx';
+import { RunLink, runName } from '../components/RunLink.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { closedFindings, formatDollars, foundFindings, pathLabel } from '../lib/format.ts';
 
@@ -58,7 +57,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
     <DataList
       rows={runs}
       rowKey={(r) => r.key}
-      name={(r) => r.branch ?? 'no branch'}
+      name={(r) => runName(r.branch)}
       columns={COLUMNS}
       facts={FACTS}
       label="Runs table"

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
@@ -105,6 +105,7 @@ export function FindingsTable({
   const [chosen, setChosen] = useState<Partial<Record<FilterId, string>>>({});
   const rows = findings.filter((f) => FILTERS.every(({ id }) => !chosen[id] || f[id] === chosen[id]));
   const rounds = Math.max(0, ...findings.map((f) => f.verdicts.length));
+  const columns = useMemo(() => [...(run ? [RUN_COLUMN] : []), ...columnsOf(categoryLabels)], [run, categoryLabels]);
   const filters = (
     <div className="flex flex-wrap items-center gap-4 text-sm">
       {FILTERS.filter((filter) => !skip.includes(filter.id)).map((filter) => {
@@ -134,7 +135,7 @@ export function FindingsTable({
         rows={rows}
         rowKey={(f, i) => `${f.runKey ?? ''}:${f.id ?? i}`}
         name={(f) => f.id ?? NONE}
-        columns={[...(run ? [RUN_COLUMN] : []), ...columnsOf(categoryLabels)]}
+        columns={columns}
         facts={factsOf(categoryLabels, rounds, run ?? false)}
         label={label}
         empty={

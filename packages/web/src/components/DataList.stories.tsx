@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { Num } from './Num.tsx';
-import { visibleTerms, visibleValues, width } from '../test/table.ts';
+import { visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 import { DataList, type ListColumn, type ListFact } from './DataList.tsx';
 
 /** An invented item. */
@@ -113,7 +113,7 @@ export const OpensInPlace: Story = {
     await expect(first).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(first);
     await expect(first).toHaveAttribute('aria-expanded', 'true');
-    const opened = first.closest('tr')!.nextElementSibling as HTMLElement;
+    const opened = openedRow(first);
     await expect(visibleTerms(opened)).toContain('Key');
     await expect(visibleValues(opened)).toContain('k1');
     await expect(within(opened).queryByText('Note')).toBeNull();
@@ -127,7 +127,7 @@ export const OpensInPlace: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Count' }));
     const open = canvas.getAllByRole('button', { expanded: true });
     await expect(open).toHaveLength(1);
-    const row = open[0].closest('tr')!.nextElementSibling as HTMLElement;
+    const row = openedRow(open[0]);
     await expect(visibleValues(row)).toContain('k6');
     await expect(bodyRows(canvasElement).filter((tr) => tr.textContent?.includes('k5'))).toHaveLength(0);
   },
@@ -196,13 +196,13 @@ export const Narrow: Story = {
     await expect(narrow.getByRole('columnheader', { name: 'Name' })).toBeVisible();
     await expect(narrow.getByRole('columnheader', { name: 'Count' })).toBeVisible();
     await userEvent.click(narrow.getByRole('button', { name: 'Item 1' }));
-    const narrowOpened = narrow.getByRole('button', { name: 'Item 1' }).closest('tr')!.nextElementSibling as HTMLElement;
+    const narrowOpened = openedRow(narrow.getByRole('button', { name: 'Item 1' }));
     await expect(visibleTerms(narrowOpened)).toEqual(['When', 'Key']);
 
     const wide = within(canvas.getByTestId('wide'));
     await expect(wide.getByRole('columnheader', { name: 'When' })).toBeVisible();
     await userEvent.click(wide.getByRole('button', { name: 'Item 1' }));
-    const wideOpened = wide.getByRole('button', { name: 'Item 1' }).closest('tr')!.nextElementSibling as HTMLElement;
+    const wideOpened = openedRow(wide.getByRole('button', { name: 'Item 1' }));
     await expect(visibleTerms(wideOpened)).toEqual(['Key']);
   },
 };
@@ -238,7 +238,7 @@ export const FoldedFirst: Story = {
     const toggle = canvas.getByRole('button', { name: 'Item 1' });
     await expect(toggle.closest('td')).toBe(toggle.closest('tr')!.querySelectorAll('td')[1]);
     await userEvent.click(toggle);
-    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    const opened = openedRow(toggle);
     await expect(visibleTerms(opened)[0]).toBe('When');
   },
 };
@@ -264,7 +264,7 @@ export const FoldOnly: Story = {
     const toggle = narrow.getByRole('button', { name: 'Item 1' });
     await expect(toggle).toBeVisible();
     await userEvent.click(toggle);
-    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    const opened = openedRow(toggle);
     await expect(visibleTerms(opened)).toEqual(['When']);
   },
 };

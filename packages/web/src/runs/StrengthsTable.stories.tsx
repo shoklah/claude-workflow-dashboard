@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
-import { cells, expectNoJoined, visibleTerms, visibleValues, width } from '../test/table.ts';
+import { cells, expectNoJoined, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 import { runFull } from '../test/runs.ts';
 import { StrengthsTable } from './StrengthsTable.tsx';
 
@@ -30,7 +30,7 @@ export const Full: Story = {
     await expect(canvas.getByRole('region', { name: 'Strengths table' })).toHaveAttribute('tabindex', '0');
 
     for (const name of ['S1', 'S2', 'S3']) await userEvent.click(canvas.getByRole('button', { name }));
-    const opened = (name: string) => canvas.getByRole('button', { name }).closest('tr')!.nextElementSibling as HTMLElement;
+    const opened = (name: string) => openedRow(canvas.getByRole('button', { name }));
     await expect(visibleTerms(opened('S1'))).toEqual(['Step', 'Task']);
     await expect(visibleValues(opened('S1'))).toEqual(['Task review', '3']);
     await expect(visibleTerms(opened('S2'))).toEqual(['Step']);

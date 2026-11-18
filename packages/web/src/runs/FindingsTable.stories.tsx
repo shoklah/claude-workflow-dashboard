@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { NONE, PROBLEMS_SIDE } from '../lib/format.ts';
 import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
-import { visibleFact, visibleTerms, visibleValues, width } from '../test/table.ts';
+import { visibleFact, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
 const meta = { component: FindingsTable, decorators: [width(1000)] } satisfies Meta<typeof FindingsTable>;
@@ -43,7 +43,6 @@ async function fact(
 }
 
 /** The opened row under a toggle. */
-const openedRow = (toggle: HTMLElement) => toggle.closest('tr')!.nextElementSibling as HTMLElement;
 
 export const Empty: Story = {
   args: { findings: [], categoryLabels: {} },

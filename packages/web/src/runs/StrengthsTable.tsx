@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { StrengthRow } from '@cwd/shared';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
 import { Text } from '../components/Num.tsx';
@@ -8,6 +9,17 @@ type Row = StrengthRow & { id: string };
 const FACTS: ListFact<Row>[] = [
   ['Step', (s) => STEP_LABELS[s.step]],
   ['Task', taskLabel],
+];
+
+const columnsOf = (categoryLabels: Record<string, string>): ListColumn<Row>[] => [
+  { id: 'id', header: '#', value: (s) => s.id, text: (s) => s.id, cell: (s) => s.id },
+  { id: 'summary', header: 'Summary', wide: true, value: (s) => s.summary, cell: (s) => <Text value={s.summary} /> },
+  {
+    id: 'category',
+    header: 'Category',
+    value: (s) => categoryLabel(s.category, categoryLabels),
+    cell: (s) => categoryLabel(s.category, categoryLabels),
+  },
 ];
 
 /**
@@ -22,16 +34,7 @@ export function StrengthsTable({
   strengths: Row[];
   categoryLabels: Record<string, string>;
 }) {
-  const columns: ListColumn<Row>[] = [
-    { id: 'id', header: '#', value: (s) => s.id, text: (s) => s.id, cell: (s) => s.id },
-    { id: 'summary', header: 'Summary', wide: true, value: (s) => s.summary, cell: (s) => <Text value={s.summary} /> },
-    {
-      id: 'category',
-      header: 'Category',
-      value: (s) => categoryLabel(s.category, categoryLabels),
-      cell: (s) => categoryLabel(s.category, categoryLabels),
-    },
-  ];
+  const columns = useMemo(() => columnsOf(categoryLabels), [categoryLabels]);
   return (
     <DataList
       rows={strengths}

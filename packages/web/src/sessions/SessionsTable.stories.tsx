@@ -4,7 +4,7 @@ import { parseTime } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { fullRun, smallRun } from '../test/runs.ts';
 import { otherSession, sessionsFull, twoRunSession } from '../test/sessions.ts';
-import { expectNoJoined, visibleFact, visibleTerms, width } from '../test/table.ts';
+import { expectNoJoined, visibleFact, visibleTerms, width, openedRow } from '../test/table.ts';
 import { SessionsTable } from './SessionsTable.tsx';
 
 const meta = { component: SessionsTable, decorators: [width(1000)] } satisfies Meta<typeof SessionsTable>;
@@ -22,7 +22,6 @@ function cells(table: Element): string[][] {
 }
 
 /** The opened row under a toggle. */
-const openedRow = (toggle: HTMLElement) => toggle.closest('tr')!.nextElementSibling as HTMLElement;
 
 export const Empty: Story = {
   args: { sessions: [] },

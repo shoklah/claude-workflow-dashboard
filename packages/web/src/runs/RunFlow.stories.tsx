@@ -1,8 +1,9 @@
-import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { WARNING_INK, formatDayTime } from '../lib/format.ts';
 import { runFull, runLong, runSmall } from '../test/runs.ts';
+import { width } from '../test/table.ts';
 import { stagesOf, unitsOf } from './flow.ts';
 import { RunFlow } from './RunFlow.tsx';
 
@@ -11,15 +12,6 @@ const meta = { component: RunFlow, args: { stages: stagesOf(runFull.timeline), s
 >;
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-/** The graph in a panel of a set width, as the page's Flow panel gives it. */
-const width =
-  (px: number): Decorator =>
-  (Story) => (
-    <div data-testid="frame" style={{ width: px }}>
-      <Story />
-    </div>
-  );
 
 /** Every exit chip shows its whole text where the box leaves it room. */
 async function chipsWhole(flow: HTMLElement) {

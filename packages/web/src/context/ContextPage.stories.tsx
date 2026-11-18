@@ -5,7 +5,7 @@ import { contextAll, contextEmpty, contextFull, contextHidden } from '../test/co
 import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { ContextPage } from './ContextPage.tsx';
-import { cells, expectNoJoined } from '../test/table.ts';
+import { cells, expectNoJoined, openedRow } from '../test/table.ts';
 
 const meta = { component: ContextPage } satisfies Meta<typeof ContextPage>;
 export default meta;
@@ -152,7 +152,7 @@ export const Showing: Story = {
     // Opened, the handoff's row leaves its hidden ID out: no chip, no "Its ID" term.
     const toggle = canvas.getByRole('button', { name: 'Plan the offline sync' });
     await userEvent.click(toggle);
-    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    const opened = openedRow(toggle);
     await expect(within(opened).getAllByText('To session')[0]).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
     await expect(within(opened).queryAllByText('Its ID')).toEqual([]);

@@ -6,6 +6,7 @@ import { mockApi } from '../test/mock-api.ts';
 import { runsFull } from '../test/runs.ts';
 import { otherSession, sessionsEmpty, sessionsFull, sessionsHidden, twoRunSession } from '../test/sessions.ts';
 import { SessionsPage } from './SessionsPage.tsx';
+import { openedRow } from '../test/table.ts';
 
 const meta = { component: SessionsPage } satisfies Meta<typeof SessionsPage>;
 export default meta;
@@ -100,7 +101,7 @@ export const HiddenSessions: Story = {
     // Opened, the row leaves the hidden ID out: no chip, no ID term.
     const toggle = await canvas.findByRole('button', { name: twoRunSession.title! });
     await userEvent.click(toggle);
-    const opened = toggle.closest('tr')!.nextElementSibling as HTMLElement;
+    const opened = openedRow(toggle);
     await expect(within(opened).getAllByText('Runs')[0]).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
     await expect(within(opened).queryAllByText('ID')).toEqual([]);

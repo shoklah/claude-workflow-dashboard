@@ -8,7 +8,6 @@ const meta = { component: RunsTable } satisfies Meta<typeof RunsTable>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-
 const EMPTY = 'No runs in this period. A run shows here once its record is written and imported.';
 
 export const Empty: Story = {
