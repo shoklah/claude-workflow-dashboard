@@ -28,8 +28,8 @@ const COLUMNS: ListColumn<ContextUnit>[] = [
     header: 'Name',
     wide: true,
     names: true,
-    value: (u) => (u.run ? u.run.branch : (u.session?.title ?? null)),
-    cell: (u) => (u.run ? <RunLink runKey={u.run.key} branch={u.run.branch} /> : sessionText(u)),
+    value: (u) => (u.run ? runName(u.run.headline, u.run.branch) : (u.session?.title ?? null)),
+    cell: (u) => (u.run ? <RunLink runKey={u.run.key} branch={u.run.branch} title={u.run.headline} /> : sessionText(u)),
     text: sessionText,
     textClass: (u) => !u.session?.title && UNNAMED,
   },
@@ -102,7 +102,7 @@ export function ContextUnits({
       <DataList
         rows={units}
         rowKey={(u) => u.key}
-        name={(u) => (u.run ? runName(u.run.branch) : sessionName(u.session?.title ?? null))}
+        name={(u) => (u.run ? (runName(u.run.headline, u.run.branch) ?? 'no branch') : sessionName(u.session?.title ?? null))}
         columns={COLUMNS}
         facts={FACTS}
         label="Runs and sessions table"

@@ -247,7 +247,7 @@ export const UnnamedCategory: Story = {
   },
 };
 
-/** With `run`, the first column links each finding to its run's page by its branch, as the Findings page lists them;
+/** With `run`, the first column links each finding to its run's page by its title, as the Findings page lists them;
  * its project ends the opened row. */
 export const WithRun: Story = {
   args: {
@@ -256,6 +256,7 @@ export const WithRun: Story = {
       runKey: fullRun.key,
       project: fullRun.project,
       branch: fullRun.branch,
+      headline: fullRun.headline,
     })),
     categoryLabels: runFull.categoryLabels,
     run: true,
@@ -264,10 +265,10 @@ export const WithRun: Story = {
     const headers = canvas.getAllByRole('columnheader');
     await expect(headers.map((th) => th.textContent)).toEqual(['Run', '#', 'Summary', 'App', 'Valid']);
     for (const th of headers) await expect(th).toBeVisible();
-    const links = canvas.getAllByRole('link', { name: 'feat/search' });
+    const links = canvas.getAllByRole('link', { name: fullRun.headline! });
     await expect(links).toHaveLength(6);
     await expect(links[0]).toHaveAttribute('href', `/runs/${fullRun.key}`);
-    await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill('feat/search'));
+    await expect(column(canvasElement, 'Run')).toEqual(Array(6).fill(fullRun.headline));
     await plain(canvasElement);
     const f1 = canvas.getByRole('button', { name: 'F1' });
     await userEvent.click(f1);
@@ -284,6 +285,7 @@ export const NarrowWithRun: Story = {
       runKey: fullRun.key,
       project: fullRun.project,
       branch: fullRun.branch,
+      headline: fullRun.headline,
     })),
     categoryLabels: runFull.categoryLabels,
     run: true,
@@ -297,7 +299,7 @@ export const NarrowWithRun: Story = {
     const opened = openedRow(f1);
     await expect(visibleTerms(opened)[0]).toBe('Run');
     await expect(visibleTerms(opened).at(-1)).toBe('Project');
-    await expect(within(opened).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
+    await expect(within(opened).getByRole('link', { name: fullRun.headline! })).toHaveAttribute('href', `/runs/${fullRun.key}`);
   },
 };
 

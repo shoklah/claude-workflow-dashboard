@@ -23,14 +23,15 @@ import {
 } from './runs.ts';
 import { maskText, showFacts, showSession, type Scope } from './scope.ts';
 import { commandSkill } from './skills.ts';
+import { goalOptions, inGoal, levels, listedChange, listedGoal } from './work.ts';
 
 const time = (at: string) => parseTime(at).getTime();
 
 /**
  * A session's timeline, in time order: its skill loads with their outcome (skillOutcomeLabel), its commands, a command
  * `x:y` never loaded when an unmet typed trigger in `typed` (the session's and its held runs') has skill `y` and its
- * time, and its shown held runs' window starts (the session's start for a run with none); an untimed load or command
- * is left out. Names are masked (maskText).
+ * time, and its shown held runs' window starts (the session's start for a run with none), with their headlines; an
+ * untimed load or command is left out. Names are masked (maskText).
  */
 function timelineOf(
   session: SessionEntry,
@@ -98,14 +99,58 @@ export function shownSession(
 }
 
 /**
+ * A dated session's row facts, for the Sessions view and the Work pages alike: its key, sessionFacts, start, end,
+ * length in minutes, models by cost with each one's most-used effort (masked, maskText), and cost (modelsCost).
+ */
+export function sessionRow(
+  unit: StoredUnit<SessionEntry>,
+  runRoots: Set<string>,
+  names: Map<string, string>,
+  scope: Scope | null,
+): Pick<
+  SessionRow,
+  'key' | 'title' | 'sessionId' | 'projectKey' | 'project' | 'start' | 'end' | 'minutes' | 'models' | 'cost'
+> {
+  const session = unit.merged;
+  // Only a session with a start is listed.
+  const start = session.start!;
+  const efforts = session.efforts ?? {};
+  const mostUsed = (model: string) => Object.entries(efforts[model] ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const models = Object.entries(session.models ?? {}).sort((a, b) => (b[1].cost ?? 0) - (a[1].cost ?? 0));
+  const end = session.end ?? null;
+  return {
+    key: unit.key,
+    ...sessionFacts(session, runRoots, names, scope),
+    start,
+    end,
+    minutes: end === null ? null : (time(end) - time(start)) / 60000,
+    models: models.map(([model]) => ({ model: maskText(scope, model), effort: maskText(scope, mostUsed(model)) })),
+    cost: modelsCost(session.models),
+  };
+}
+
+/** The runs each session holds, by its transcript file: the runs whose window is in that transcript. */
+export function heldRuns(runs: StoredUnit<RunEntry>[]): Map<string, StoredUnit<RunEntry>[]> {
+  const byTranscript = new Map<string, StoredUnit<RunEntry>[]>();
+  for (const run of runs) {
+    const file = run.merged.window?.transcript;
+    if (file) byTranscript.set(file, [...(byTranscript.get(file) ?? []), run]);
+  }
+  return byTranscript;
+}
+
+/**
  * The Sessions page: the sessions that started in the query's period (periodSessions), newest start first. The
  * project filter keeps a session whose root is that project's (a session in no stored run's root is "other project",
- * with no key, which no project filter matches), the path filter one holding a run of that path, and "has warnings"
- * one with a current warning (currentWarnings). A session holds the runs whose window is in its transcript, by window
- * start, a run with none at the session's start. With a scope, only sessions in a shown project are listed
- * (showSession), named by the scope, with no session ID; a hidden held run is left out of its holds, timeline and path
- * filter, the shown ones as showFacts gives them; titles and names are masked (maskText); `hidden` counts the sessions
- * that match the filters but aren't shown.
+ * with no key, which no project filter matches), the path filter one holding a run of that path, "has warnings"
+ * one with a current warning (currentWarnings), and the goal filter one whose change's goal, else its own (levels'
+ * goalOf), is that goal; `session` keeps that stored session alone, whatever the period and the other filters. A
+ * session holds the runs whose window is in its transcript, by window start, a run with none at the session's start;
+ * its change and goal are Work's (listedChange, listedGoal). `goalOptions` covers the sessions that started in the
+ * period's weeks (goalOptions). With a scope, only sessions in a shown project are listed (showSession), named by the
+ * scope, with no session ID; a hidden held run is left out of its holds, timeline and path filter, the shown ones as
+ * showFacts gives them; titles and names are masked (maskText); `hidden` counts the sessions that match the filters
+ * but aren't shown.
  */
 export function sessionsView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -121,15 +166,17 @@ export function sessionsView(input: {
   const runRoots = new Set(input.runs.map(rootOf));
   const warned = new Map<string, number>();
   for (const w of currentWarnings([], input.sessions, input.warnings)) warned.set(w.key, (warned.get(w.key) ?? 0) + 1);
-  const byTranscript = new Map<string, StoredUnit<RunEntry>[]>();
-  for (const run of input.runs) {
-    const file = run.merged.window?.transcript;
-    if (file) byTranscript.set(file, [...(byTranscript.get(file) ?? []), run]);
-  }
+  const byTranscript = heldRuns(input.runs);
+  const work = levels(input.runs, input.sessions);
+  const inWeeks = periodSessions(input.sessions, weeks);
   const sessions: SessionRow[] = [];
   let hidden = 0;
 
-  for (const unit of periodSessions(input.sessions, weeks)) {
+  // A session is listed only with its start.
+  const candidates = query.session
+    ? input.sessions.filter((s) => s.key === query.session && s.merged.start)
+    : inWeeks;
+  for (const unit of candidates) {
     const session = unit.merged;
     const key = sessionProjectKey(session.project, runRoots);
     // A session in a period always has its start.
@@ -141,8 +188,10 @@ export function sessionsView(input: {
     const warnings = warned.get(unit.key) ?? 0;
     // period's filters over the held runs, a session holding none matching no path filter.
     const matches = (holds: Pick<RunFacts, 'path'>[]) =>
-      (query.path ? holds : [{ path: null }]).some((h) => filters({ path: h.path, projectKey: key ?? '' })) &&
-      (!query.warnings || warnings > 0);
+      !!query.session ||
+      ((query.path ? holds : [{ path: null }]).some((h) => filters({ path: h.path, projectKey: key ?? '' })) &&
+        (!query.warnings || warnings > 0) &&
+        inGoal(work, unit.key, query.goal));
 
     if (!showSession(scope, session.project)) {
       if (matches(held.map((h) => h.facts))) hidden += 1;
@@ -154,24 +203,26 @@ export function sessionsView(input: {
     });
     if (!matches(shown.map((s) => s.facts))) continue;
 
-    const efforts = session.efforts ?? {};
-    const mostUsed = (model: string) => Object.entries(efforts[model] ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    const models = Object.entries(session.models ?? {}).sort((a, b) => (b[1].cost ?? 0) - (a[1].cost ?? 0));
-    const end = session.end ?? null;
     sessions.push({
-      key: unit.key,
-      ...sessionFacts(session, runRoots, names, scope),
-      start,
-      end,
-      minutes: end === null ? null : (time(end) - time(start)) / 60000,
-      models: models.map(([model]) => ({ model: maskText(scope, model), effort: maskText(scope, mostUsed(model)) })),
-      cost: modelsCost(session.models),
+      ...sessionRow(unit, runRoots, names, scope),
       startup: session.startup ?? null,
       warnings,
-      holds: shown.map(({ run, facts }) => ({ runKey: run.key, project: facts.project, branch: facts.branch, path: facts.path })),
+      change: listedChange(work, scope, unit.key),
+      goal: listedGoal(work, scope, unit.key),
+      holds: shown.map(({ run, facts }) => ({
+        runKey: run.key,
+        project: facts.project,
+        branch: facts.branch,
+        headline: facts.headline,
+        path: facts.path,
+      })),
       timeline: timelineOf(session, [session, ...held.map((h) => h.run.merged)].flatMap((u) => u.typed ?? []), shown, scope),
     });
   }
 
-  return { sessions: sessions.sort((a, b) => time(b.start) - time(a.start)), hidden };
+  return {
+    sessions: sessions.sort((a, b) => time(b.start) - time(a.start)),
+    hidden,
+    goalOptions: goalOptions(work, scope, inWeeks.map((s) => s.key)),
+  };
 }

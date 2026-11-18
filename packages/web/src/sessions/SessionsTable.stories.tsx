@@ -77,8 +77,27 @@ export const Full: Story = {
 
     // Open: its facts, in words and counts, Startup in words and a non-zero Never loaded orange.
     const opened = openedRow(toggle);
-    await expect(visibleTerms(opened)).toEqual(['ID', 'Model', 'Effort', 'Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup']);
+    await expect(visibleTerms(opened)).toEqual([
+      'Change',
+      'Goal',
+      'ID',
+      'Model',
+      'Effort',
+      'Skills',
+      'Commands typed',
+      'Never loaded',
+      'Runs',
+      'Startup',
+    ]);
+    // Its change links to the change's page and its goal is named.
+    await expect(within(visibleFact(opened, 'Change')).getByRole('link', { name: twoRunSession.change!.title })).toHaveAttribute(
+      'href',
+      `/work/changes/${twoRunSession.change!.key}`,
+    );
+    await expect(visibleFact(opened, 'Goal').textContent).toBe(twoRunSession.goal!.name);
     await expect(within(visibleFact(opened, 'ID')).getByText('7d1e4b2a')).toBeVisible();
+    // The ID has no copy button here.
+    await expect(canvas.queryByRole('button', { name: 'Copy session ID' })).toBeNull();
     await expect(visibleFact(opened, 'Model').textContent).toBe('Opus 5.5');
     await expect(visibleFact(opened, 'Effort').textContent).toBe('medium');
     await expect(['Skills', 'Commands typed', 'Never loaded', 'Runs', 'Startup'].map((t) => visibleFact(opened, t).textContent)).toEqual([
@@ -107,8 +126,8 @@ export const Full: Story = {
     await expect(lines[1].slice(1, 3)).toEqual(['Command typed', '/graphify']);
     await expect(lines[2].slice(1)).toEqual(['Command typed', '/grill-me', 'Its skill never loaded']);
     await expect(inTimeline.getByText('Its skill never loaded').closest('td')).toHaveClass('text-warning-ink');
-    await expect(lines[3].slice(1, 3)).toEqual(['Run started', 'feat/search']);
-    await expect(inTimeline.getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
+    await expect(lines[3].slice(1, 3)).toEqual(['Run started', 'Search every note by title and body']);
+    await expect(inTimeline.getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', `/runs/${fullRun.key}`);
     await expect(inTimeline.getByRole('link', { name: 'fix/retry' })).toHaveAttribute('href', `/runs/${smallRun.key}`);
     await expectNoJoined(canvasElement);
 
@@ -123,6 +142,8 @@ export const Full: Story = {
     await expect(canvas.getByRole('button', { name: 'Sketch the retry backoff' }).lastElementChild).not.toHaveClass('text-muted-foreground');
     await userEvent.click(otherToggle);
     const otherOpened = openedRow(otherToggle);
+    // No change or goal: both left out.
+    await expect(visibleTerms(otherOpened).slice(0, 1)).toEqual(['ID']);
     await expect(visibleFact(otherOpened, 'Startup').firstElementChild).toHaveClass('text-warning-ink');
     await expect(visibleFact(otherOpened, 'Startup').textContent).toBe('Missing');
     await expect(visibleFact(otherOpened, 'Never loaded').firstElementChild).not.toHaveClass('text-warning-ink');
@@ -166,5 +187,14 @@ export const SameNames: Story = {
       .filter((name) => name?.startsWith('Timeline of'));
     await expect(names).toHaveLength(4);
     await expect(new Set(names).size).toBe(4);
+  },
+};
+
+/** Open: its rows start open, as the Sessions view lists one session from a link. */
+export const Open: Story = {
+  args: { sessions: [twoRunSession], open: true },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('button', { name: twoRunSession.title! })).toHaveAttribute('aria-expanded', 'true');
+    await expect(canvas.getByRole('table', { name: TIMELINE })).toBeVisible();
   },
 };

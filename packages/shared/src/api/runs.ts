@@ -4,14 +4,26 @@ import type { Outcome, Path, StepKind } from '../report.ts';
 import type { AgentModels } from './models.ts';
 import type { SessionRow } from './sessions.ts';
 
-/** `GET /api/runs`'s query: `path`, `project` (a project's key), `weeks` (default 4) and `warnings=1`. */
-export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings: boolean };
+/** `GET /api/runs`'s query: `path`, `project` (a project's key), `weeks` (default 4), `warnings=1` and `goal` (a goal's
+ * key). */
+export type RunsQuery = { path?: Path; project?: string; weeks: number; warnings: boolean; goal?: string };
 
-export type RunRow = RunFacts;
+/** A run as the Runs view lists it: its facts, its change as Work lists it (null for a change of one run with no spec,
+ * or one Work doesn't list) and its goal as Work lists it. */
+export type RunRow = RunFacts & {
+  change: { key: string; title: string } | null;
+  goal: { key: string; name: string } | null;
+};
 
 /** `GET /api/runs`: the runs finished in the last `weeks` weeks that match the filters, newest first, the key and
- * name of every stored run's project, by name, and how many matching runs showing mode left out. */
-export type RunsResponse = { runs: RunRow[]; projects: { key: string; name: string }[]; hidden: number };
+ * name of every stored run's project, by name, how many matching runs showing mode left out, and the Goal select's
+ * options. */
+export type RunsResponse = {
+  runs: RunRow[];
+  projects: { key: string; name: string }[];
+  hidden: number;
+  goalOptions: { key: string; name: string }[];
+};
 
 /**
  * A finding of a step, with that step's kind, task, wave and round, and its labels. `category` is the workflow's when
@@ -97,17 +109,19 @@ export type RunResponse = {
   categoryLabels: Record<string, string>;
 };
 
-/** `GET /api/runs/:key`: the run as `runView` builds it, with what surrounds it: the session whose file is its
- * transcript and the one it handed off to (null when not stored or not shown), the other runs of its project and branch,
- * its offers, its later fixes (no sha), its agents as modelSums names them, its main session's model and effort, and
- * its phases' costs. */
+/** `GET /api/runs/:key`: the run as `runView` builds it, with what surrounds it: its change and goal as the Runs view
+ * gives them, the session whose file is its transcript (with its key) and the one it handed off to (null when not
+ * stored or not shown), the other runs of its project and branch, its offers, its later fixes (no sha), its agents as
+ * modelSums names them, its main session's model and effort, and its phases' costs. */
 export type RunPageResponse = RunResponse & {
-  session: Pick<SessionRow, 'title' | 'sessionId'> | null;
+  change: RunRow['change'];
+  goal: RunRow['goal'];
+  session: Pick<SessionRow, 'key' | 'title' | 'sessionId'> | null;
   handoffTo: Pick<SessionRow, 'title' | 'sessionId'> | null;
   related: { key: string; path: Path | null; finishedAt: string | null }[];
   offers: { skill: string; outcome: string }[];
   laterFixes: { date: string | null; subject: string }[];
   agents: Pick<AgentModels, 'name' | 'actual'>[];
-  main: { model: string | null; effort: string | null } | null;
+  sessionModel: { model: string | null; effort: string | null } | null;
   phases: { name: string; cost: number | null }[];
 };

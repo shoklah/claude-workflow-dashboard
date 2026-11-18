@@ -29,8 +29,8 @@ test('the compliance page lists a cell’s warnings with their run and has no ax
   const information = page.getByRole('region', { name: 'Information from the reporter' });
   await expect(information.getByRole('term').filter({ hasText: /^inline sweeps$/ })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await table.getByRole('link', { name: 'feature/webhooks' }).click();
-  await expect(page.getByRole('heading', { name: 'feature/webhooks', level: 1 })).toBeVisible();
+  await table.getByRole('link', { name: 'Send webhooks for note changes' }).click();
+  await expect(page.getByRole('heading', { name: 'Send webhooks for note changes', level: 1 })).toBeVisible();
 });
 
 test('home’s orange final review box opens compliance filtered to that step', async ({ page }) => {

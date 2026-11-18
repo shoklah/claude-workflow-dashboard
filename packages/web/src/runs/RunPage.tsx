@@ -2,11 +2,15 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowRight, ThumbsUp, TriangleAlert } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { parseTime, type RunPageResponse } from '@cwd/shared';
+import { closedFindings, foundFindings, parseTime, type RunPageResponse } from '@cwd/shared';
 import { ApiError, useLiveQuery } from '../api.ts';
 import { Lines, Num, PairCells, Text } from '../components/Num.tsx';
 import { ColumnHead, Details, Line, LINK, PageTitle, Pairs, Panel, ScrollTable, Section, State } from '../components/Panel.tsx';
+import { ChangeLink } from '../components/ChangeLink.tsx';
+import { GoalLink } from '../components/GoalLink.tsx';
+import { runName } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
+import { SessionLink } from '../components/SessionLink.tsx';
 import { TableCell } from '../components/ui/table.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
@@ -18,13 +22,11 @@ import { StepDetail } from './StepDetail.tsx';
 import { StrengthsTable } from './StrengthsTable.tsx';
 import {
   capitalize,
-  closedFindings,
   countName,
   formatCompact,
   formatCost,
   formatMinutes,
   formatShare,
-  foundFindings,
   laterFixesLabel,
   modelLabel,
   pairsOf,
@@ -41,15 +43,15 @@ import {
 /** The main session's model and effort, each model's cost, the agents with each model and effort they ran on, and
  * the advisor's calls and notes. */
 function ModelsAndAdvisor({ run }: { run: RunPageResponse }) {
-  const { main, models, agents, advisor } = run;
+  const { sessionModel, models, agents, advisor } = run;
   return (
     <Panel title="Models and advisor">
-      {!main && models.length === 0 && agents.length === 0 && <Line muted>No model recorded.</Line>}
-      {main && (
+      {!sessionModel && models.length === 0 && agents.length === 0 && <Line muted>No model recorded.</Line>}
+      {sessionModel && (
         <Pairs
           pairs={[
-            ['Main session model', <Text value={modelLabel(main.model)} />],
-            ['Main session effort', <Text value={main.effort} />],
+            ['Main session model', <Text value={modelLabel(sessionModel.model)} />],
+            ['Main session effort', <Text value={sessionModel.effort} />],
           ]}
         />
       )}
@@ -269,11 +271,16 @@ function Chain({ run }: { run: RunPageResponse }) {
   );
 }
 
-/** The run's facts, each a term over its value, then its chain. */
+/** The run's facts, each a term over its value (its branch when its headline is the title, and its change, goal and
+ * session each only when known), then its chain. */
 function Header({ run }: { run: RunPageResponse }) {
-  const { facts } = run;
+  const { facts, change, goal, session } = run;
   const pairs: [string, ReactNode][] = [
     ['Project', <Text value={facts.project} />],
+    ...(facts.headline ? [['Branch', <Text value={facts.branch} />] as [string, ReactNode]] : []),
+    ...(change ? [['Change', <ChangeLink changeKey={change.key} title={change.title} />] as [string, ReactNode]] : []),
+    ...(goal ? [['Goal', <GoalLink goalKey={goal.key} name={goal.name} />] as [string, ReactNode]] : []),
+    ...(session ? [['Session', <SessionLink sessionKey={session.key} title={session.title} />] as [string, ReactNode]] : []),
     ['Path', <Text value={pathLabel(facts.path)} />],
     ['Stage', <Text value={facts.stage} />],
     ['Time', <Num value={facts.minutes} format={formatMinutes} />],
@@ -293,7 +300,7 @@ function Header({ run }: { run: RunPageResponse }) {
 }
 
 /**
- * One run: its branch and facts, the run drawn as a graph with its problems and the reviewers' strengths in two tables
+ * One run: its name (`runName`) and facts, the run drawn as a graph with its problems and the reviewers' strengths in two tables
  * that follow the selected step, what it left for later, its warnings, and its cost, models, context and skills folded.
  * A key no shown run has gets its own message.
  */
@@ -311,8 +318,8 @@ export function RunPage({ runKey }: { runKey: string }) {
     return (
       <State error>
         {'No run with this key. '}
-        <Link to="/runs" className={LINK}>
-          Runs
+        <Link to="/work" search={{ view: 'runs' }} className={LINK}>
+          Runs in Work
         </Link>
       </State>
     );
@@ -334,7 +341,7 @@ export function RunPage({ runKey }: { runKey: string }) {
   );
   return (
     <div className="flex flex-col gap-4">
-      <PageTitle>{facts.branch ?? 'Run'}</PageTitle>
+      <PageTitle>{runName(facts.headline, facts.branch) ?? 'Run'}</PageTitle>
       <Header run={run.data} />
       <div className="flex min-w-0 flex-col gap-6">
         <Panel title="Flow">

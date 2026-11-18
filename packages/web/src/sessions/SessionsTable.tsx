@@ -5,6 +5,7 @@ import { Num, Text, Unknown } from '../components/Num.tsx';
 import { ColumnHead, ScrollTable } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
+import { CHANGE_FACTS } from '../runs/RunsTable.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   UNNAMED,
@@ -54,7 +55,7 @@ function Timeline({ session, name }: { session: SessionRow; name: string }) {
               <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{KINDS[item.kind]}</td>
               <td className="px-2 py-1.5 font-medium">
                 {item.kind === 'run' && hold ? (
-                  <RunLink runKey={hold.runKey} branch={hold.branch} />
+                  <RunLink runKey={hold.runKey} branch={hold.branch} title={hold.headline} />
                 ) : (
                   usageName({ name: item.name, kind: item.kind === 'command' ? 'command' : 'skill' })
                 )}
@@ -129,7 +130,8 @@ const COLUMNS: ListColumn<SessionRow>[] = [
 ];
 
 const FACTS: ListFact<SessionRow>[] = [
-  ['ID', (s) => (s.sessionId === null ? null : <SessionChip id={s.sessionId} />)],
+  ...CHANGE_FACTS,
+  ['ID', (s) => (s.sessionId === null ? null : <SessionChip id={s.sessionId} copy={false} />)],
   [
     'Model',
     (s) =>
@@ -167,8 +169,8 @@ const FACTS: ListFact<SessionRow>[] = [
 ];
 
 /** The Sessions list: a row per session, newest start first as the API gives them; a row's title opens its facts, then
- * its timeline. */
-export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
+ * its timeline, and with `open` every row starts open. */
+export function SessionsTable({ sessions, open = false }: { sessions: SessionRow[]; open?: boolean }) {
   return (
     <DataList
       rows={sessions}
@@ -178,6 +180,7 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
       facts={FACTS}
       extra={(s) => <Timeline session={s} name={sessionName(s.title)} />}
       label="Sessions"
+      open={open}
       empty="No sessions in this period. A session shows here once the reporter reads its transcript."
     />
   );

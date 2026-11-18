@@ -21,7 +21,7 @@ function item(
   at: { week: string; run?: typeof fullRun },
 ): FindingItem {
   const run = at.run ?? fullRun;
-  return { ...finding(f), runKey: run.key, project: run.project!, branch: run.branch, week: at.week, area: areaOf(f.step) };
+  return { ...finding(f), runKey: run.key, project: run.project!, branch: run.branch, headline: run.headline, week: at.week, area: areaOf(f.step) };
 }
 
 const impl = (week: string, run?: typeof fullRun) => ({ week, run });

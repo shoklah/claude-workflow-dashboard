@@ -3,16 +3,57 @@ import { CircleAlert } from 'lucide-react';
 import { cn } from 'cn';
 import { Time } from '../layout/StatusBanner.tsx';
 import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, outcomeWarns, plural, reviewerLabel, roundsLabel } from '../lib/format.ts';
-import { layout, stuck, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
+import { layout, stuck, type Anchor, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
 
 type Pick = { selected: string | null; onSelect: (id: string | null) => void };
 type Of<K extends Placed['kind']> = Extract<Placed, { kind: K }>;
 
-const at = ({ x, y, w, h }: Placed): CSSProperties => ({ left: x, top: y, width: w, height: h });
+/** A box's place in the panel, as absolute CSS. */
+export const at = ({ x, y, w, h }: { x: number; y: number; w: number; h: number }): CSSProperties => ({
+  left: x,
+  top: y,
+  width: w,
+  height: h,
+});
+
+/** An edge's arrowhead, in its `className`'s ink. */
+export function Arrowhead({ id, className }: { id: string; className?: string }) {
+  return (
+    <marker id={id} className={className} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0 0 L8 4 L0 8 z" fill="currentColor" />
+    </marker>
+  );
+}
+
+/** A corner's radius on an elbow. */
+const ROUND = 8;
+
+/** An elbow: straight runs with rounded corners, across its start's `lead` (if any), then up or down to its end's
+ * height, then across into its end. */
+function elbowOf({ from, to }: Edge): string {
+  const x = from.x + (from.lead ?? 0);
+  const points = [from, ...(from.lead ? [{ x, y: from.y }] : []), { x, y: to.y }, to];
+  const length = (a: Anchor, b: Anchor) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+  const toward = (c: Anchor, a: Anchor, r: number) => {
+    const d = length(c, a) || 1;
+    return { x: c.x + ((a.x - c.x) * r) / d, y: c.y + ((a.y - c.y) * r) / d };
+  };
+  let d = `M${from.x} ${from.y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const [a, c, b] = points.slice(i - 1, i + 2);
+    const r = Math.min(ROUND, length(a, c) / 2, length(c, b) / 2);
+    const [p, q] = [toward(c, a, r), toward(c, b, r)];
+    d += ` L${p.x} ${p.y} Q${c.x} ${c.y}, ${q.x} ${q.y}`;
+  }
+  return `${d} L${to.x} ${to.y}`;
+}
 
 /** An edge: lying down, a curve between its two ends; standing up, straight runs (`lead`) beside a loop's label or the
- * exit chips, and a curve between them; a fade, a straight run to or from the panel's side. */
-function pathOf({ from, to, fade }: Edge, shape: Shape): string {
+ * exit chips, and a curve between them; a fade, a straight run to or from the panel's side; an elbow (the session
+ * graph's edges between lanes), straight runs with rounded corners. */
+export function pathOf(edge: Edge, shape: Shape | 'elbow'): string {
+  const { from, to, fade } = edge;
+  if (shape === 'elbow') return elbowOf(edge);
   if (fade) return `M${from.x} ${from.y} H${to.x}`;
   if (shape === 'upright') {
     const a = from.y + (from.lead ?? 0);
@@ -58,6 +99,9 @@ function LoopLabel({ arc }: { arc: Of<'arc'> }) {
   );
 }
 
+/** A graph box's look, the session graph's too: a rectangle at its place, its lines stacked and centred. */
+export const BOX = 'absolute flex flex-col justify-center rounded-lg border bg-secondary px-2.5 text-left leading-tight';
+
 /** A box: its name, its reviewer and what it found; pressing it selects it, pressing it again clears it. */
 function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
   const { unit } = box;
@@ -69,7 +113,8 @@ function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
       aria-pressed={on}
       onClick={() => onSelect(on ? null : unit.id)}
       className={cn(
-        'absolute flex flex-col justify-center rounded-lg border bg-secondary px-2.5 text-left leading-tight hover:bg-accent',
+        BOX,
+        'hover:bg-accent',
         stuck(unit) && WARNING_BORDER,
         on && 'outline-2 outline-offset-2 outline-ring',
       )}
@@ -128,19 +173,7 @@ export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
                 ['stuck', 'text-warning-edge'],
               ] as const
             ).map(([tone, ink]) => (
-              <marker
-                key={tone}
-                id={`${id}-${tone}`}
-                className={ink}
-                viewBox="0 0 8 8"
-                refX="7"
-                refY="4"
-                markerWidth="5"
-                markerHeight="5"
-                orient="auto-start-reverse"
-              >
-                <path d="M0 0 L8 4 L0 8 z" fill="currentColor" />
-              </marker>
+              <Arrowhead key={tone} id={`${id}-${tone}`} className={ink} />
             ))}
             {edges.map(({ from, to, fade }, i) =>
               fade ? (

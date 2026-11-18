@@ -29,7 +29,7 @@ function Item({ item }: { item: FeedItem }) {
         </span>
       </div>
       {item.runKey !== null ? (
-        <RunLink runKey={item.runKey} branch={item.branch} className="break-words" />
+        <RunLink runKey={item.runKey} branch={item.branch} title={item.headline} className="break-words" />
       ) : (
         item.branch !== null && <span className="break-words">{item.branch}</span>
       )}

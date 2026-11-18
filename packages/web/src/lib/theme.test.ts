@@ -1,28 +1,38 @@
 import { act, createElement } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applySystemTheme, resolveVars, useDark } from './theme.ts';
 
 /**
- * A stand-in for `matchMedia('(prefers-color-scheme: dark)')` for the whole file, since the theme keeps the first query
- * it gets. Like a browser, each call gives a new list with its own listeners, so `lists` counts the queries made.
+ * A stand-in for `matchMedia('(prefers-color-scheme: dark)')` for the whole file, since the theme keeps the queries it
+ * gets. Like a browser, each call gives a new list with its own listeners, so `lists` counts the queries made; and like
+ * Chromium, a list keeps the state it last saw, which reading `matches` refreshes, and fires `change` only when the
+ * system's state differs from it at the next check.
  */
 let dark = false;
-const lists: Set<() => void>[] = [];
+const lists: { seen: boolean; listeners: Set<() => void> }[] = [];
 vi.spyOn(window, 'matchMedia').mockImplementation(() => {
-  const listeners = new Set<() => void>();
-  lists.push(listeners);
+  const list = { seen: dark, listeners: new Set<() => void>() };
+  lists.push(list);
   return {
     get matches() {
+      list.seen = dark;
       return dark;
     },
-    addEventListener: (_: string, listener: () => void) => listeners.add(listener),
-    removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+    addEventListener: (_: string, listener: () => void) => list.listeners.add(listener),
+    removeEventListener: (_: string, listener: () => void) => list.listeners.delete(listener),
   } as unknown as MediaQueryList;
 });
-function setDark(next: boolean) {
+/** The system turns dark or light; `between` runs before the lists' next check (a render reading the state). */
+function setDark(next: boolean, between?: () => void) {
   dark = next;
-  for (const listeners of lists) for (const listener of [...listeners]) listener();
+  between?.();
+  for (const list of lists) {
+    if (list.seen === dark) continue;
+    list.seen = dark;
+    for (const listener of [...list.listeners]) listener();
+  }
 }
 
 afterEach(() => {
@@ -53,7 +63,7 @@ describe('applySystemTheme', () => {
 });
 
 describe('useDark', () => {
-  it("re-renders its caller in step with the root's class, from the one query the theme shares", async () => {
+  it("re-renders its caller in step with the root's class, from the two queries the theme keeps", async () => {
     const stop = applySystemTheme();
     const seen: [boolean, boolean][] = [];
     function Probe() {
@@ -64,7 +74,7 @@ describe('useDark', () => {
     await act(async () => root.render(createElement(Probe)));
     await act(async () => setDark(true));
     expect(seen.at(-1)).toEqual([true, true]);
-    expect(lists).toHaveLength(1);
+    expect(lists).toHaveLength(2);
     act(() => root.unmount());
     stop();
   });
@@ -92,5 +102,21 @@ describe('resolveVars', () => {
     resolveVars({ a: 'var(--a)', b: ['var(--b)', 'var(--c)'] });
     expect(getComputedStyle).toHaveBeenCalledTimes(1);
     getComputedStyle.mockRestore();
+  });
+});
+
+describe('the system turning dark while a render reads the theme', () => {
+  it("still turns the root dark: reading the state doesn't swallow the change", async () => {
+    const stop = applySystemTheme();
+    function Probe() {
+      useDark();
+      return null;
+    }
+    const root = createRoot(document.body.appendChild(document.createElement('div')));
+    await act(async () => root.render(createElement(Probe)));
+    await act(async () => setDark(true, () => flushSync(() => root.render(createElement(Probe, { key: 'again' })))));
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    act(() => root.unmount());
+    stop();
   });
 });

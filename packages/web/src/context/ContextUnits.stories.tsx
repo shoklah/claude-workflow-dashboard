@@ -51,10 +51,10 @@ export const Full: Story = {
     await expect(session[5]).toHaveTextContent('61%');
 
     const run = within(body[1]).getAllByRole('cell');
-    await expect(within(run[0]).getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(within(run[0]).getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(run[1]).toHaveTextContent(/^Run$/);
 
-    await userEvent.click(region.getByRole('button', { name: 'Details of feat/search' }));
+    await userEvent.click(region.getByRole('button', { name: 'Details of Search every note by title and body' }));
     const opened = region.getAllByRole('row')[3];
     await expect(visibleTerms(opened)).toEqual([
       'Project',
@@ -112,7 +112,7 @@ export const Untitled: Story = {
     ],
   },
   play: async ({ canvas, userEvent }) => {
-    await expect(canvas.getByRole('link', { name: 'feat/search' }).closest('td')).toHaveClass('font-medium');
+    await expect(canvas.getByRole('link', { name: 'Search every note by title and body' }).closest('td')).toHaveClass('font-medium');
     const toggle = canvas.getByRole('button', { name: 'no title' });
     await expect(toggle.closest('td')).toHaveClass('font-medium');
     await expect(toggle.lastElementChild).toHaveClass('font-normal', 'text-muted-foreground');

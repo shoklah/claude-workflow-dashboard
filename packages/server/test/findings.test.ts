@@ -10,7 +10,9 @@ import { importReport } from '../src/db/import.ts';
 import { listUnits, setShowing } from '../src/db/read.ts';
 import { labelInputs, saveBatch } from '../src/db/labels.ts';
 import { projectKey, runKey } from '../src/keys.ts';
-import { leaks } from '../src/views/scope.ts';
+import { storedBranches, storedSessionRoots } from '../src/views/runs.ts';
+import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { goalHomes, levels } from '../src/views/work.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -301,4 +303,41 @@ test('a finding whose area has no categories in the list is not waiting', async 
   });
   // 11 findings have an id; the 5 plan ones can't be labelled.
   expect((await findings('', { labeller: { model: 'claude-haiku-5-5' } })).labeller).toMatchObject({ waiting: 6 });
+});
+
+test("a finding carries its run's headline, masked with showing on, and nothing leaks", async () => {
+  // report-work's offline-sync full run, on lantern-notes.
+  const offline = '97d6367dec7d9739';
+  const lantern = '/Users/example/Work/lantern-notes';
+  db.$client.close();
+  db = dbWith('work', () => {}, 'report-work');
+  const plain = (await findings()).findings.filter((f) => f.runKey === offline);
+  expect(plain.length).toBeGreaterThan(0);
+  expect(plain.map((f) => f.headline)).toEqual(plain.map(() => 'Queue edits offline and replay them on reconnect'));
+
+  db.$client.close();
+  db = dbWith(
+    'work masked',
+    (raw) => (raw.runs.find((r: any) => r.key === offline).headline = 'Queue edits as tidepool-api does'),
+    'report-work',
+  );
+  setShowing(db, [projectKey(lantern)]);
+  const body = await findings();
+  const masked = body.findings.filter((f) => f.runKey === offline);
+  expect(masked.length).toBeGreaterThan(0);
+  expect(masked.map((f) => f.headline)).toEqual(masked.map(() => 'Queue edits as another project does'));
+
+  const runs = listUnits(db, 'run');
+  const sessions = listUnits(db, 'session');
+  const branches = storedBranches(runs);
+  const sessionIds = sessions.flatMap((s) => s.merged.file.match(/[0-9a-f]{8}-[0-9a-f-]{27}/) ?? []);
+  const strings = forbiddenStrings(
+    [...branches.keys()],
+    branches,
+    [lantern],
+    sessionIds,
+    storedSessionRoots(sessions),
+    goalHomes(levels(runs, sessions)),
+  );
+  expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });

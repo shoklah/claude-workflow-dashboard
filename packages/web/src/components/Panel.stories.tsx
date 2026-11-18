@@ -105,6 +105,36 @@ export const PairsInline: Story = {
   },
 };
 
+/** Facts over their values on the backdrop (a change's header): the terms in primary ink, since they sit on the
+ * backdrop. */
+export const PairsOverOnBackdrop: Story = {
+  render: () => <Pairs inline="over" backdrop pairs={[['Project', 'atlas'], ['Findings', 4]]} />,
+  play: async ({ canvas, canvasElement }) => {
+    await expect(getComputedStyle(canvas.getByText('Project')).fontSize).toBe('12px');
+    for (const dt of canvasElement.querySelectorAll('dt')) await expect(dt).not.toHaveClass('text-muted-foreground');
+  },
+};
+
+/** Columns on the backdrop (a goal section's totals): each pair as wide as its column from `sm`, its value at the
+ * column's end, so rows of different values line up; the terms in primary ink, since they sit on the backdrop. */
+export const PairsColumns: Story = {
+  parameters: { viewport: { options: { desktop: { name: 'Desktop', styles: { width: '1280px', height: '900px' } } } } },
+  globals: { viewport: { value: 'desktop' } },
+  render: () => (
+    <div className="flex flex-col gap-3">
+      <Pairs inline="columns" widths={['sm:w-26', 'sm:w-34']} pairs={[['Runs', 4], ['Est. cost', '$89.35']]} />
+      <Pairs inline="columns" widths={['sm:w-26', 'sm:w-34']} pairs={[['Runs', 1250], ['Est. cost', '$4.25']]} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const [first, second] = [...canvasElement.querySelectorAll('dl')].map((dl) =>
+      [...dl.querySelectorAll('dd')].map((dd) => dd.getBoundingClientRect().right),
+    );
+    await expect(second).toEqual(first);
+    for (const dt of canvasElement.querySelectorAll('dt')) await expect(dt).not.toHaveClass('text-muted-foreground');
+  },
+};
+
 /** Names with their detail: each name in primary ink on its own row, its detail muted beside it, so a long name
  * keeps one line when a short one has a long detail. */
 export const PairsNames: Story = {

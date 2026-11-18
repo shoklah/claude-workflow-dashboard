@@ -1,4 +1,4 @@
-import type { FindingRow, RunFacts, RunPageResponse, RunsResponse, TimelineGroup, TimelineStep } from '@cwd/shared';
+import type { FindingRow, RunFacts, RunPageResponse, RunRow, RunsResponse, TimelineGroup, TimelineStep } from '@cwd/shared';
 
 // Invented runs for the Runs list's and the run page's stories.
 
@@ -7,11 +7,14 @@ export const HTML_TEXT = '<img src=x onerror=alert(1)>';
 
 const NO_FINDINGS = { total: 0, actedOn: 0, notActedOn: 0, open: 0 };
 
-export const fullRun: RunFacts = {
+export const fullRun: RunRow = {
   key: 'a1b2c3d4e5f60718',
   projectKey: '1a2b3c4d5e6f7081',
   project: 'atlas',
   branch: 'feat/search',
+  headline: 'Search every note by title and body',
+  change: { key: 'e1f2a3b4c5d60718', title: 'Plan full-text search' },
+  goal: { key: 'f1e2d3c4b5a60718', name: 'Findability' },
   path: 'full',
   stage: '1',
   startedAt: '2026-11-09T09:12:00Z',
@@ -26,11 +29,14 @@ export const fullRun: RunFacts = {
   beforeSteps: false,
 };
 
-export const smallRun: RunFacts = {
+export const smallRun: RunRow = {
   key: 'b2c3d4e5f6071829',
   projectKey: '2b3c4d5e6f708192',
   project: 'harbor',
   branch: HTML_TEXT,
+  headline: null,
+  change: null,
+  goal: null,
   path: 'small',
   stage: '2',
   startedAt: '2026-11-09T09:15:00Z',
@@ -46,11 +52,14 @@ export const smallRun: RunFacts = {
 };
 
 /** A record from before steps were logged: what it can't give is null. */
-export const oldRun: RunFacts = {
+export const oldRun: RunRow = {
   key: 'c3d4e5f607182930',
   projectKey: '3c4d5e6f70819203',
   project: 'quarry',
   branch: 'feat/import',
+  headline: null,
+  change: null,
+  goal: null,
   path: 'full',
   stage: null,
   startedAt: null,
@@ -69,11 +78,12 @@ export const runsFull: RunsResponse = {
   runs: [smallRun, fullRun, oldRun],
   projects: [fullRun, smallRun, oldRun].map((run) => ({ key: run.projectKey, name: run.project })),
   hidden: 0,
+  goalOptions: [fullRun.goal!],
 };
-export const runsWarned: RunsResponse = { runs: [fullRun], projects: runsFull.projects, hidden: 0 };
-export const runsEmpty: RunsResponse = { runs: [], projects: [], hidden: 0 };
+export const runsWarned: RunsResponse = { runs: [fullRun], projects: runsFull.projects, hidden: 0, goalOptions: [fullRun.goal!] };
+export const runsEmpty: RunsResponse = { runs: [], projects: [], hidden: 0, goalOptions: [] };
 /** Showing mode on: one shown run, two runs of other projects counted only. */
-export const runsHidden: RunsResponse = { runs: [fullRun], projects: [runsFull.projects[0]], hidden: 2 };
+export const runsHidden: RunsResponse = { runs: [fullRun], projects: [runsFull.projects[0]], hidden: 2, goalOptions: [] };
 
 /** The active list's display labels, by category id, as an invented API response carries them. */
 export const categoryLabels: Record<string, string> = {
@@ -209,7 +219,9 @@ export const runFull: RunPageResponse = {
     { text: 'session {session}: final-reviewer ran on another model than its pin', sessionId: '0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e' },
     { text: 'WARN: feat/search (2026-11-10): final review without simplify: final_review at step 4', sessionId: null },
   ],
-  session: { title: 'Search page build', sessionId: '0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e' },
+  change: fullRun.change,
+  goal: fullRun.goal,
+  session: { key: '0a1b2c3d4e5f6071', title: 'Search page build', sessionId: '0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e' },
   handoffTo: null,
   related: [{ key: 'd4e5f60718293a4b', path: 'plan', finishedAt: '2026-11-08T16:05:00Z' }],
   offers: [
@@ -222,7 +234,7 @@ export const runFull: RunPageResponse = {
     { name: 'implementer', actual: { 'claude-opus-5-5/medium': 4 } },
     { name: 'task-reviewer', actual: { 'claude-opus-5-5/high': 5 } },
   ],
-  main: { model: 'claude-opus-5-5', effort: 'medium' },
+  sessionModel: { model: 'claude-opus-5-5', effort: 'medium' },
   phases: [
     { name: 'plan_writing', cost: 1.1 },
     { name: 'implement', cost: 3.4 },
@@ -256,13 +268,15 @@ export const runBeforeSteps: RunPageResponse = {
   context: null,
   categoryLabels,
   warnings: [],
+  change: null,
+  goal: null,
   session: null,
   handoffTo: null,
   related: [],
   offers: [],
   laterFixes: [],
   agents: [],
-  main: null,
+  sessionModel: null,
   phases: [],
 };
 

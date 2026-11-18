@@ -107,7 +107,7 @@ export const Full: Story = {
     for (const th of headers) await expect(th).toBeVisible();
     const rows = table.getAllByRole('row').slice(1);
     await expect(rows).toHaveLength(1);
-    await expect(table.getByRole('link', { name: 'feat/search' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
+    await expect(table.getByRole('link', { name: 'Search every note by title and body' })).toHaveAttribute('href', '/runs/a1b2c3d4e5f60718');
     await expect(within(rows[0]).getByText('atlas')).toBeVisible();
     await expect(within(rows[0]).getByText('New')).toBeVisible();
     // The "WARN:" prefix and the run's own "branch (date):" lead are gone: the Run column already names the run.
@@ -163,7 +163,7 @@ export const Narrow: Story = {
     await expect(table.getByRole('columnheader', { name: 'Run' })).toBeVisible();
     await expect(table.getByText('Project').closest('th')).not.toBeVisible();
     await expect(table.getByText('Since you last looked').closest('th')).not.toBeVisible();
-    await userEvent.click(table.getByRole('button', { name: 'Details of feat/search' }));
+    await userEvent.click(table.getByRole('button', { name: 'Details of Search every note by title and body' }));
     const opened = table.getAllByRole('row').at(-1)!;
     await expect(visibleTerms(opened)).toEqual(['Project', 'Since you last looked']);
     await expect(visibleValues(opened)).toEqual(['atlas', 'New']);

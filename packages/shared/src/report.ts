@@ -144,7 +144,11 @@ const DispatchSchema = z.object({
   models: ModelsSchema,
   // The index, in the run's exported `steps`, of the step the reporter tied this dispatch to; null when it tied none.
   step: num,
+  // Whether this dispatch is a final review pair's second half, which the reporter's scoreboard leaves out.
+  pair: bool,
 });
+
+const SpecRefSchema = z.object({ project: z.string(), path: z.string() });
 
 export const RunEntrySchema = z.object({
   record: RunRecordSchema.nullish(),
@@ -182,6 +186,12 @@ export const RunEntrySchema = z.object({
   tool_results: counts,
   sweeps: SweepsSchema.nullish(),
   title: str,
+  // The run's one-line headline (workflow request #51).
+  headline: str,
+  // The goal the run serves, a name across projects (#54).
+  goal: str,
+  // The spec the run implements, by its project and path (#52).
+  spec: SpecRefSchema.nullish(),
 });
 
 // A main transcript's rows outside every run window (CR6), with its whole transcript's facts (CR11): its first and
@@ -207,6 +217,12 @@ export const SessionEntrySchema = z.object({
   warns: strings,
   warnings: z.array(WarningSchema).nullish(),
   title: str,
+  // The goal the session serves (#54).
+  goal: str,
+  // The spec the session worked on, its newest record's (#52).
+  spec: SpecRefSchema.nullish(),
+  // The session that started this one, by its reporter key, and how (#53).
+  started_by: z.object({ key: z.string(), how: str }).nullish(),
 });
 
 const WeekSchema = z.object({
@@ -317,6 +333,7 @@ export type Step = z.infer<typeof StepSchema>;
 export type Finding = z.infer<typeof FindingSchema>;
 export type SessionEntry = z.infer<typeof SessionEntrySchema>;
 export type Totals = z.infer<typeof TotalsSchema>;
+export type SpecRef = z.infer<typeof SpecRefSchema>;
 export type Warning = z.infer<typeof WarningSchema>;
 export type CategoryList = z.infer<typeof CategoryListSchema>;
 export type StepKind = (typeof STEP_KINDS)[number];

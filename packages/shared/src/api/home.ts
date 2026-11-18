@@ -24,6 +24,7 @@ export type FeedItem = {
   runKey: string | null;
   project: string | null;
   branch: string | null;
+  headline: string | null;
   path: string | null;
   text: string | null;
   sessionId: string | null;

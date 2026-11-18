@@ -12,6 +12,7 @@ import {
   type RunsQuery,
   type SessionsQuery,
   type SpendQuery,
+  type WorkQuery,
 } from '@cwd/shared';
 import type { AppDeps } from './app.ts';
 import { activeList, labellable } from './categories.ts';
@@ -44,6 +45,7 @@ import { spendView } from './views/spend.ts';
 import { statusView } from './views/status.ts';
 import { stepsView } from './views/steps.ts';
 import { weeksView } from './views/weeks.ts';
+import { changeView, goalHomes, goalView, levels, workView } from './views/work.ts';
 
 /** The answer to any method but POST on a POST-only route. */
 function postOnly(c: Context): Response {
@@ -71,8 +73,15 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
   const scopeFor = (runs?: StoredUnit<RunEntry>[], sessions?: StoredUnit<SessionEntry>[]): Scope | null => {
     const showing = getShowing(deps.db);
     if (!showing) return null;
-    const branches = storedBranches(runs ?? listUnits(deps.db, 'run'));
-    return scopeOf(showing, branches, deps.aliases, storedSessionRoots(sessions ?? listUnits(deps.db, 'session')));
+    const allRuns = runs ?? listUnits(deps.db, 'run');
+    const allSessions = sessions ?? listUnits(deps.db, 'session');
+    return scopeOf(
+      showing,
+      storedBranches(allRuns),
+      deps.aliases,
+      storedSessionRoots(allSessions),
+      goalHomes(levels(allRuns, allSessions)),
+    );
   };
 
   // Task 4: the import's status, the refresh and "mark all seen".
@@ -110,23 +119,29 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
 
   // Task 7: the Runs list and one run.
   app.get('/api/runs', (c) => {
-    const query: RunsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
+    const query: RunsQuery = {
+      ...periodQuery(c),
+      warnings: c.req.query('warnings') === '1',
+      goal: c.req.query('goal') || undefined,
+    };
     const runs = listUnits(deps.db, 'run');
-    return c.json(runsList(runs, listWarnings(deps.db), query, deps.now(), scopeFor(runs)));
+    const sessions = listUnits(deps.db, 'session');
+    return c.json(runsList(runs, sessions, listWarnings(deps.db), query, deps.now(), scopeFor(runs, sessions)));
   });
   app.get('/api/runs/:key', (c) => {
     const run = getRun(deps.db, c.req.param('key'));
     if (!run) return c.notFound();
     const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
     const list = activeList(deps.db);
     const labels = list ? currentLabels(deps.db, labelInputs([run]), list.number) : new Map();
     const view = runPageView({
       run,
       runs,
-      sessions: listUnits(deps.db, 'session'),
+      sessions,
       warnings: listWarnings(deps.db),
       names: storedNames(runs),
-      scope: scopeFor(runs),
+      scope: scopeFor(runs, sessions),
       labels,
       list,
     });
@@ -245,7 +260,12 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
 
   // Slice 2c, task 6: the Sessions page, each session's facts, held runs and timeline.
   app.get('/api/sessions', (c) => {
-    const query: SessionsQuery = { ...periodQuery(c), warnings: c.req.query('warnings') === '1' };
+    const query: SessionsQuery = {
+      ...periodQuery(c),
+      warnings: c.req.query('warnings') === '1',
+      goal: c.req.query('goal') || undefined,
+      session: c.req.query('session') || undefined,
+    };
     const runs = listUnits(deps.db, 'run');
     const sessions = listUnits(deps.db, 'session');
     return c.json(
@@ -274,5 +294,32 @@ export function registerRoutes(app: Hono, deps: AppDeps): void {
     const runs = listUnits(deps.db, 'run');
     const sessions = listUnits(deps.db, 'session');
     return c.json(spendView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions) }));
+  });
+
+  // Work page, task 3: the Changes view, the period's changes by goal.
+  app.get('/api/work', (c) => {
+    const query: WorkQuery = { ...periodQuery(c), goal: c.req.query('goal') || undefined };
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    return c.json(
+      workView({ runs, sessions, query, now: deps.now(), scope: scopeFor(runs, sessions), names: storedNames(runs) }),
+    );
+  });
+
+  // Work page, task 4: a change's and a goal's facts with their session graph; a change or goal Work doesn't list is a
+  // 404, as an unknown key.
+  app.get('/api/work/changes/:key', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    const scope = scopeFor(runs, sessions);
+    const view = changeView({ runs, sessions, key: c.req.param('key'), scope, names: storedNames(runs) });
+    return view ? c.json(view) : c.notFound();
+  });
+  app.get('/api/work/goals/:key', (c) => {
+    const runs = listUnits(deps.db, 'run');
+    const sessions = listUnits(deps.db, 'session');
+    const scope = scopeFor(runs, sessions);
+    const view = goalView({ runs, sessions, key: c.req.param('key'), scope, names: storedNames(runs) });
+    return view ? c.json(view) : c.notFound();
   });
 }

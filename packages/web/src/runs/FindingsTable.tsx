@@ -3,7 +3,7 @@ import type { FindingItem, FindingRow, StepKind } from '@cwd/shared';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
 import { Section, Term } from '../components/Panel.tsx';
-import { RunLink } from '../components/RunLink.tsx';
+import { RunLink, runName } from '../components/RunLink.tsx';
 import { Verdict } from './StepDetail.tsx';
 import {
   NONE,
@@ -17,8 +17,8 @@ import {
   verdictLabel,
 } from '../lib/format.ts';
 
-// A finding, and with `run` its run's key, project and branch, as the Findings page lists them.
-type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch'>>;
+// A finding, and with `run` its run's key, project, branch and headline, as the Findings page lists them.
+type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch' | 'headline'>>;
 
 /** The run column, on the Findings page only: it folds into the opened row while the list is narrow. */
 const RUN_COLUMN: ListColumn<Row> = {
@@ -26,8 +26,8 @@ const RUN_COLUMN: ListColumn<Row> = {
   header: 'Run',
   fold: true,
   names: true,
-  value: (f) => f.branch ?? null,
-  cell: (f) => <RunLink runKey={f.runKey ?? ''} branch={f.branch} />,
+  value: (f) => runName(f.headline, f.branch),
+  cell: (f) => <RunLink runKey={f.runKey ?? ''} branch={f.branch} title={f.headline ?? null} />,
 };
 
 /** The first glance: the finding's id (its toggle), summary, the app's call and the session's validity. */

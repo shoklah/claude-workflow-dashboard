@@ -6,6 +6,13 @@ import { formatWhole, NONE, type Pair } from '../lib/format.ts';
 /** A numeric column's alignment, for its header and its cells. */
 export const NUM = 'text-right tabular-nums';
 
+/** A title column's cells (a run's, a change's, a session's): the title wraps between 8.5 rem and 18 rem, never down to a
+ * word and never as wide as its longest title. */
+export const TITLE = 'min-w-34 max-w-72 whitespace-normal';
+
+/** A wide table's other text cells and headers: they wrap at their spaces and hyphens, so the table fits its panel. */
+export const WRAP = 'whitespace-normal';
+
 /** A group header over its sub-columns, in a table's two-row header. */
 export const GROUP = 'h-8 border-b text-center';
 
@@ -21,10 +28,11 @@ export function GroupHead({ span, className, children }: { span: number; classNa
 /** A sub-column's header, under its group. */
 export const SUB = 'h-8 font-medium text-muted-foreground';
 
-/** An unknown value: a muted dash, read out as "not known". */
-export function Unknown({ label = 'not known' }: { label?: string }) {
+/** An unknown value: a muted dash, read out as "not known"; with `backdrop`, in primary ink, since it sits on the
+ * backdrop (a goal section's totals). */
+export function Unknown({ label = 'not known', backdrop = false }: { label?: string; backdrop?: boolean }) {
   return (
-    <span className="text-muted-foreground">
+    <span className={cn(!backdrop && 'text-muted-foreground')}>
       <span aria-hidden>{NONE}</span>
       <span className="sr-only">{label}</span>
     </span>

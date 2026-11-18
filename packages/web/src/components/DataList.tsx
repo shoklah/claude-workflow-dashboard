@@ -59,8 +59,8 @@ const FOLD = 'hidden @3xl:table-cell';
 
 /**
  * One list of items: first-glance columns that sort by a header click, pages of `PAGE_SIZE`, and a row that opens in
- * place to its folded columns (while narrow), its `facts` and `extra`; with no rows, its `empty` line, or its headers
- * alone without one. `label` names the table's region, `className` adds to its container, and `rowKey` keeps a row open across sorts and pages (`index`: its place in `rows`).
+ * place to its folded columns (while narrow), its `facts` and `extra`, every row starting open with `open`; with no rows,
+ * its `empty` line, or its headers alone without one. `label` names the table's region, `className` adds to its container, and `rowKey` keeps a row open across sorts and pages (`index`: its place in `rows`).
  */
 export function DataList<T extends RowData>({
   rows,
@@ -71,6 +71,7 @@ export function DataList<T extends RowData>({
   extra,
   label,
   empty,
+  open = false,
   className,
 }: {
   rows: T[];
@@ -81,6 +82,7 @@ export function DataList<T extends RowData>({
   extra?: (row: T) => ReactNode;
   label: string;
   empty?: ReactNode;
+  open?: boolean;
   className?: string;
 }) {
   const defs = useMemo(() => {
@@ -121,9 +123,10 @@ export function DataList<T extends RowData>({
     autoResetPageIndex: false,
     enableMultiSort: false,
   });
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  // The rows toggled away from how they start, so a row new to the list starts as `open` says.
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
   const toggle = (key: string) =>
-    setOpen((was) => {
+    setToggled((was) => {
       const next = new Set(was);
       if (!next.delete(key)) next.add(key);
       return next;
@@ -156,7 +159,7 @@ export function DataList<T extends RowData>({
           {table.getRowModel().rows.map((row) => {
             const r = row.original;
             const key = rowKey(r, row.index);
-            const isOpen = open.has(key);
+            const isOpen = toggled.has(key) !== open;
             const toggleCell = (c: ListColumn<T>) => {
               const text = c.text?.(r) ?? null;
               if (text !== null) {

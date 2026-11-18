@@ -24,9 +24,18 @@ export function Term({ tip, className, children }: { tip: ReactNode; className?:
   );
 }
 
-/** A page's title, directly on the backdrop in primary ink. */
-export function PageTitle({ children }: { children: ReactNode }) {
-  return <h1 className="text-page-title">{children}</h1>;
+/**
+ * A page's title, directly on the backdrop in primary ink. It names the browser's tab too ("Sessions - edward"), so the
+ * two never disagree: React puts the `title` in the document's head, ahead of `index.html`'s "edward", which shows again
+ * once no page title is drawn (a run's page while it loads).
+ */
+export function PageTitle({ children }: { children: string }) {
+  return (
+    <>
+      <title>{`${children} - edward`}</title>
+      <h1 tabIndex={-1} className="text-page-title outline-none">{children}</h1>
+    </>
+  );
 }
 
 /** A section's title. */
@@ -66,27 +75,38 @@ export function Panel({ className, ...section }: SectionProps) {
  * `names`, a list of names with their detail (a skill's outcome, a model's cost): each name in primary ink on its own
  * row, its detail muted, so a long name keeps its line when another row's detail is long. With `inline`, one row of
  * facts that wraps: each term `beside` its value (a line of facts under a flow), or `over` it, the term small and the
- * value bold (a page's header facts). With `text`, prose values: the terms' column as wide as the widest term, each
- * value left-aligned beside its term and wrapping there (Compliance's information lines). */
+ * value bold (a page's header facts, its terms in primary ink with `backdrop`, on the backdrop), or in `columns` on the backdrop (a goal section's totals): each pair as wide as
+ * its `widths` class (from `sm`), its value at the column's end, so rows line up, and its term in primary ink. With
+ * `text`, prose values: the terms' column as wide as the widest term, each value left-aligned beside its term and
+ * wrapping there (Compliance's information lines). */
 export function Pairs({
   pairs,
   names = false,
   text = false,
   inline,
+  widths = [],
+  backdrop = false,
   className,
 }: {
   pairs: [ReactNode, ReactNode][];
   names?: boolean;
   text?: boolean;
-  inline?: 'beside' | 'over';
+  inline?: 'beside' | 'over' | 'columns';
+  widths?: string[];
+  backdrop?: boolean;
   className?: string;
 }) {
   if (inline) {
     return (
       <dl className={cn('flex flex-wrap gap-x-6 gap-y-1 text-sm', className)}>
         {pairs.map(([term, value], i) => (
-          <div key={i} className={cn(inline === 'beside' && 'flex gap-2')}>
-            <dt className={cn('text-muted-foreground', inline === 'over' && 'text-xs font-medium')}>{term}</dt>
+          <div
+            key={i}
+            className={cn(inline === 'beside' && 'flex gap-2', inline === 'columns' && ['flex justify-between gap-2', widths[i]])}
+          >
+            <dt className={cn(inline !== 'columns' && !backdrop && 'text-muted-foreground', inline === 'over' && 'text-xs font-medium')}>
+              {term}
+            </dt>
             <dd className={cn('tabular-nums', inline === 'over' && 'font-semibold')}>{value}</dd>
           </div>
         ))}

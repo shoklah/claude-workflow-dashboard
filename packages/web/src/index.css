@@ -301,6 +301,17 @@
   border-radius: var(--radius-control);
 }
 
+/* DESIGN.md's Motion: removed under prefers-reduced-motion. Every animation and transition ends at once, a dialog's
+   and a tooltip's included; the table's edge cue, an animation on its scroll timeline, still follows the scroll. */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @media (prefers-reduced-transparency: reduce) {
   :root, .dark {
     --panel: var(--panel-solid);

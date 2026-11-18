@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>edward</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- The browser's bar takes the backdrop's colour, which applySystemTheme (src/lib/theme.ts) fills from its token. -->
+    <meta name="theme-color" />
     <!-- The dark look before the first paint; applySystemTheme (src/lib/theme.ts) then keeps it in step. -->
     <script>
       if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');

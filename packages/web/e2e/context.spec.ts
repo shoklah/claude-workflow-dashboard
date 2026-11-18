@@ -17,13 +17,13 @@ test('the context page lists the units over the cap, links their runs and has no
   await expect(page.getByRole('heading', { name: 'Context', level: 1 })).toBeVisible();
   await expect(page.getByRole('img', { name: /: bars by week/ })).toHaveCount(5);
   const units = page.getByRole('region', { name: 'Runs and sessions', exact: true }).getByRole('row');
-  const first = units.nth(1).getByRole('link', { name: 'feature/offline-sync' });
+  const first = units.nth(1).getByRole('link', { name: 'Queue edits offline and replay them on reconnect' });
   await expect(first).toBeVisible();
   const overCap = await units.count();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await first.click();
-  await expect(page.getByRole('heading', { name: 'feature/offline-sync', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Queue edits offline and replay them on reconnect', level: 1 })).toBeVisible();
   // The run's context sits in its folded "Cost, context and skills".
   await page.getByText('Cost, context and skills').click();
   await expect(page.getByRole('region', { name: 'Context', exact: true })).toBeVisible();

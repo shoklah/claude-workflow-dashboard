@@ -1,18 +1,20 @@
-import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
 import { toStepKind, type StepKind } from '@cwd/shared';
 import { CompliancePage } from './compliance/CompliancePage.tsx';
 import { ContextPage } from './context/ContextPage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
 import { HomePage } from './home/HomePage.tsx';
+import { ErrorPage, NotFoundPage } from './layout/ErrorPages.tsx';
 import { Shell } from './layout/Shell.tsx';
 import { ModelsPage } from './models/ModelsPage.tsx';
 import { RunPage } from './runs/RunPage.tsx';
-import { RunsPage } from './runs/RunsPage.tsx';
-import { SessionsPage } from './sessions/SessionsPage.tsx';
 import { SkillsPage } from './skills/SkillsPage.tsx';
 import { SpendPage } from './spend/SpendPage.tsx';
 import { StepsPage } from './steps/StepsPage.tsx';
 import { WeeksPage } from './weeks/WeeksPage.tsx';
+import { ChangePage } from './work/ChangePage.tsx';
+import { GoalPage } from './work/GoalPage.tsx';
+import { WorkPage, type WorkView } from './work/WorkPage.tsx';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -28,10 +30,13 @@ const homeRoute = createRoute({
   component: HomePage,
 });
 
+// Runs and Sessions are views of the Work page: their old paths land there.
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/runs',
-  component: RunsPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/work', search: { view: 'runs' } });
+  },
 });
 
 const runRoute = createRoute({
@@ -51,7 +56,9 @@ const findingsRoute = createRoute({
 const sessionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sessions',
-  component: SessionsPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/work', search: { view: 'sessions' } });
+  },
 });
 
 const contextRoute = createRoute({
@@ -101,7 +108,39 @@ const weeksRoute = createRoute({
   component: WeeksPage,
 });
 
+const workRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/work',
+  validateSearch: (search: Record<string, unknown>): { view?: WorkView; session?: string } => ({
+    view: search.view === 'runs' || search.view === 'sessions' ? search.view : undefined,
+    session: typeof search.session === 'string' && search.session !== '' ? search.session : undefined,
+  }),
+  component: function Work() {
+    const { view, session } = workRoute.useSearch();
+    return <WorkPage view={view} session={session} />;
+  },
+});
+
+const goalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/work/goals/$key',
+  component: function Goal() {
+    return <GoalPage goalKey={goalRoute.useParams().key} />;
+  },
+});
+
+const changeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/work/changes/$key',
+  component: function Change() {
+    return <ChangePage changeKey={changeRoute.useParams().key} />;
+  },
+});
+
 export const router = createRouter({
+  // Inside the shell: an address no route answers, and a page that crashed while drawing.
+  defaultNotFoundComponent: NotFoundPage,
+  defaultErrorComponent: ErrorPage,
   routeTree: rootRoute.addChildren([
     homeRoute,
     runsRoute,
@@ -115,6 +154,9 @@ export const router = createRouter({
     modelsRoute,
     spendRoute,
     weeksRoute,
+    workRoute,
+    goalRoute,
+    changeRoute,
   ]),
 });
 

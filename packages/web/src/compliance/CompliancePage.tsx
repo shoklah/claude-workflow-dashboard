@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { X } from 'lucide-react';
 import type { ComplianceResponse, ComplianceWarning, FindingsQuery, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { DataList, type ListColumn } from '../components/DataList.tsx';
+import { FilterChip } from '../components/FilterChip.tsx';
 import { HeatmapTable, type HeatmapGroup, type HeatmapSelection } from '../components/HeatmapTable.tsx';
 import { Text, Unknown } from '../components/Num.tsx';
 import { Line, PageTitle, Pairs, Panel, Section, State } from '../components/Panel.tsx';
@@ -47,8 +46,8 @@ const WARNING_COLUMNS: ListColumn<ComplianceWarning>[] = [
     id: 'run',
     header: 'Run',
     names: true,
-    value: (w) => w.branch,
-    cell: (w) => (w.runKey === null ? <Unknown label="no run" /> : <RunLink runKey={w.runKey} branch={w.branch} />),
+    value: (w) => runName(w.headline, w.branch),
+    cell: (w) => (w.runKey === null ? <Unknown label="no run" /> : <RunLink runKey={w.runKey} branch={w.branch} title={w.headline} />),
   },
   {
     id: 'project',
@@ -128,12 +127,9 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           ))}
         </Options>
         {step && (
-          <span className="inline-flex items-center gap-1 rounded-control border border-input px-3 py-1">
+          <FilterChip to="/compliance" label="Clear the step filter">
             Step: {STEP_LABELS[step]}
-            <Link to="/compliance" aria-label="Clear the step filter" className="rounded-full hover:bg-accent">
-              <X className="size-3.5" aria-hidden />
-            </Link>
-          </span>
+          </FilterChip>
         )}
       </ListFilters>
       {compliance.isPending && <State>Loading the warnings…</State>}
@@ -169,7 +165,7 @@ export function CompliancePage({ step }: { step?: StepKind }) {
           <DataList
             rows={listed}
             rowKey={(w) => `${w.runKey} ${w.sessionId} ${w.text}`}
-            name={(w) => (w.runKey === null ? 'no run' : runName(w.branch))}
+            name={(w) => (w.runKey === null ? 'no run' : (runName(w.headline, w.branch) ?? 'no branch'))}
             columns={WARNING_COLUMNS}
             label="Warnings"
           />
