@@ -92,6 +92,11 @@ describe('platformDefaults', () => {
     }
   });
 
+  test('Linux ignores a relative XDG_DATA_HOME, as the XDG spec says', () => {
+    expect(platformDefaults('linux', { XDG_DATA_HOME: 'data' }, '/h').dataDir).toBe(
+      join('/h', '.local', 'share', 'claude-workflow-dashboard'),
+    );
+  });
   test('any other platform takes the Linux defaults', () => {
     expect(platformDefaults('freebsd', {}, '/h')).toEqual(platformDefaults('linux', {}, '/h'));
   });

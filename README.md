@@ -8,7 +8,7 @@ The screenshot is one of the screenshot-test baselines, on invented data. The re
 
 ## Requirements
 
-- macOS or Linux (the dashboard runs as a launchd agent or a systemd user unit); on Windows, through WSL.
+- macOS or Linux (the dashboard runs as a launchd agent or a systemd user unit); on Windows, through WSL with systemd turned on (`systemd=true` under `[boot]` in `/etc/wsl.conf`).
 - Node 22.18 or later (see `.nvmrc`): Node runs the server's TypeScript directly.
 - pnpm, the version in `package.json`'s `packageManager` (for example through `corepack enable`).
 - The workflow's reporter installed at `~/.claude/scripts/workflow-report.py`, printing JSON version 1 and accepting CR6's `--changed-since` (a reporter before CR6 rejects it, so every import fails). Without it, each import fails with a banner naming the missing command.
@@ -27,7 +27,7 @@ pnpm agent:install
 
 ## The data folder
 
-Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` on macOS and `$XDG_DATA_HOME/claude-workflow-dashboard/` on Linux (`~/.local/share/claude-workflow-dashboard/` when `XDG_DATA_HOME` is unset or empty), the project's first name, which the launchd agent and the systemd unit keep too, created with mode `0700`:
+Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` on macOS and `$XDG_DATA_HOME/claude-workflow-dashboard/` on Linux (`~/.local/share/claude-workflow-dashboard/` when `XDG_DATA_HOME` is unset, empty or relative), the project's first name, which the launchd agent and the systemd unit keep too, created with mode `0700`:
 
 - `dashboard.sqlite`: the imports and what was read from them.
 - `logs/`: the agent's `out.log` and `err.log`.
@@ -42,6 +42,8 @@ Everything the dashboard stores lives in `~/Library/Application Support/claude-w
 | `projectsDir` | `~/.claude/projects` (the session transcripts, checked every 15 minutes) |
 | `reporterTimeoutMs` | `120000` |
 | `aliases` | `{}`: showing mode's display names, by project root path, e.g. `{"/Users/me/Work/app": "Notes app"}` |
+
+On Linux, an install from before Linux had its own data folder kept it in `~/Library/Application Support/claude-workflow-dashboard/`; move that folder's contents into the new one before starting the agent, since the finding labels and `.env` can't be rebuilt from the imports.
 
 ## Checking your real data
 

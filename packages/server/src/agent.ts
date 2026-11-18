@@ -69,9 +69,12 @@ WantedBy=default.target
 `;
 }
 
-export type AgentSpec = { file: string; contents: string; start: string[][]; stop: string[][] };
+export type AgentSpec = { file: string; contents: string; start: string[][]; stop: string[][]; removed: string[][] };
 
-/** The platform's agent: its file, contents, and the commands that start and stop it; null where there is none. */
+/**
+ * The platform's agent: its file, contents, the commands that start and stop it, and those run once its file is
+ * deleted; null where there is none.
+ */
 export function agentSpec(
   platform: NodeJS.Platform,
   opts: {
@@ -92,18 +95,22 @@ export function agentSpec(
       contents: plist({ label: LABEL, node, entry, logDir }),
       start: [['launchctl', 'bootstrap', domain, file]],
       stop: [['launchctl', 'bootout', `${domain}/${LABEL}`]],
+      removed: [],
     };
   }
   if (platform === 'linux') {
+    // The install's data home, always: the user manager's environment may differ from the install shell's.
+    const dataHome = dirname(platformDefaults(platform, opts.env, opts.home).dataDir);
     return {
       file: join(opts.home, '.config', 'systemd', 'user', UNIT),
-      contents: systemdUnit({ node, entry, logDir, dataHome: opts.env.XDG_DATA_HOME }),
+      contents: systemdUnit({ node, entry, logDir, dataHome }),
       start: [
         ['systemctl', '--user', 'daemon-reload'],
         ['systemctl', '--user', 'enable', UNIT],
         ['systemctl', '--user', 'restart', UNIT],
       ],
       stop: [['systemctl', '--user', 'disable', '--now', UNIT]],
+      removed: [['systemctl', '--user', 'daemon-reload']],
     };
   }
   return null;
@@ -123,9 +130,17 @@ if (import.meta.main) {
     logDir,
   });
   const command = process.argv[2];
-  const run = ([cmd, ...args]: string[]) => spawnSync(cmd, args, { stdio: 'inherit' }).status ?? 1;
-  if (!spec) {
-    console.error('agent:install supports macOS and Linux (Windows: use WSL)');
+  const run = ([cmd, ...args]: string[]) => {
+    const { status, error } = spawnSync(cmd, args, { stdio: 'inherit' });
+    // A command that can't start (no systemctl) says so, rather than a bare exit 1.
+    if (error) console.error(`${cmd} could not run: ${error.message}`);
+    return status ?? 1;
+  };
+  if (command !== 'install' && command !== 'uninstall') {
+    console.error('usage: agent.ts install | uninstall');
+    process.exitCode = 1;
+  } else if (!spec) {
+    console.error(`agent:${command} supports macOS and Linux (Windows: use WSL)`);
     process.exitCode = 1;
   } else if (command === 'install') {
     const { file, contents, start } = spec;
@@ -138,12 +153,10 @@ if (import.meta.main) {
       if (status !== 0) break;
     }
     process.exitCode = status;
-  } else if (command === 'uninstall') {
+  } else {
     // Not loaded is fine: launchctl or systemctl says so, and the file goes either way.
     for (const step of spec.stop) run(step);
     rmSync(spec.file, { force: true });
-  } else {
-    console.error('usage: agent.ts install | uninstall');
-    process.exitCode = 1;
+    for (const step of spec.removed) run(step);
   }
 }

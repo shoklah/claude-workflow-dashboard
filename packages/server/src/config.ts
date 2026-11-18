@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 
 export type Config = {
   dataDir: string;
@@ -18,7 +18,7 @@ const DATA_FOLDER = 'claude-workflow-dashboard';
 
 /**
  * The platform's default data dir and reporter python: on macOS `~/Library/Application Support/<folder>` and
- * `/usr/bin/python3`, elsewhere `$XDG_DATA_HOME/<folder>` (`~/.local/share/<folder>` when unset or empty) and `python3`.
+ * `/usr/bin/python3`, elsewhere `$XDG_DATA_HOME/<folder>` (`~/.local/share/<folder>` when unset, empty or relative) and `python3`.
  */
 export function platformDefaults(
   platform: NodeJS.Platform,
@@ -28,7 +28,9 @@ export function platformDefaults(
   if (platform === 'darwin') {
     return { dataDir: join(home, 'Library', 'Application Support', DATA_FOLDER), python: '/usr/bin/python3' };
   }
-  return { dataDir: join(env.XDG_DATA_HOME || join(home, '.local', 'share'), DATA_FOLDER), python: 'python3' };
+  // The XDG spec ignores a relative (or empty) XDG_DATA_HOME.
+  const dataHome = env.XDG_DATA_HOME && isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : join(home, '.local', 'share');
+  return { dataDir: join(dataHome, DATA_FOLDER), python: 'python3' };
 }
 
 /**

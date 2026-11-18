@@ -79,18 +79,25 @@ describe('agentSpec', () => {
     expect(spec.contents).toBe(plist({ label: LABEL, node: '/n/node', entry: '/r/main.ts', logDir: '/d/logs' }));
     expect(spec.start).toEqual([['launchctl', 'bootstrap', 'gui/501', spec.file]]);
     expect(spec.stop).toEqual([['launchctl', 'bootout', `gui/501/${LABEL}`]]);
+    expect(spec.removed).toEqual([]);
   });
   test('Linux writes a user unit under ~/.config, then reloads, enables and restarts it', () => {
     const spec = agentSpec('linux', { ...opts, env: { XDG_DATA_HOME: '/x' } })!;
     expect(spec.file).toBe(join('/h', '.config', 'systemd', 'user', UNIT));
     expect(spec.contents).toBe(systemdUnit({ node: '/n/node', entry: '/r/main.ts', logDir: '/d/logs', dataHome: '/x' }));
-    expect(agentSpec('linux', { ...opts, env: { XDG_DATA_HOME: '' } })!.contents).not.toContain('Environment=');
+    // The unit always pins the data home the install used, so a different one in the user manager can't move it.
+    for (const XDG_DATA_HOME of [undefined, '', 'relative']) {
+      expect(agentSpec('linux', { ...opts, env: { XDG_DATA_HOME } })!.contents).toContain(
+        `Environment="XDG_DATA_HOME=${join('/h', '.local', 'share')}"\n`,
+      );
+    }
     expect(spec.start).toEqual([
       ['systemctl', '--user', 'daemon-reload'],
       ['systemctl', '--user', 'enable', UNIT],
       ['systemctl', '--user', 'restart', UNIT],
     ]);
     expect(spec.stop).toEqual([['systemctl', '--user', 'disable', '--now', UNIT]]);
+    expect(spec.removed).toEqual([['systemctl', '--user', 'daemon-reload']]);
   });
   test('any other platform has no agent', () => {
     expect(agentSpec('win32', opts)).toBeNull();
