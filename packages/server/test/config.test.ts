@@ -39,7 +39,23 @@ describe('loadConfig', () => {
       projectsDir: join(home, '.claude', 'projects'),
       reporterTimeoutMs: 120000,
       aliases: {},
+      mode: 'local',
+      server: null,
     });
+  });
+
+  test('another config file is read when named', () => {
+    const dataDir = join(tempDir(), 'data dir');
+    mkdirSync(dataDir);
+    writeFileSync(join(dataDir, 'config.json'), JSON.stringify({ port: 5000 }));
+    writeFileSync(
+      join(dataDir, 'collector.json'),
+      JSON.stringify({ mode: 'collector', server: 'https://edward.example.com' }),
+    );
+    const config = loadConfig(dataDir, 'collector.json');
+    expect(config.mode).toBe('collector');
+    expect(config.server).toBe('https://edward.example.com');
+    expect(config.port).toBe(4317);
   });
 
   test('config.json overrides a default', () => {

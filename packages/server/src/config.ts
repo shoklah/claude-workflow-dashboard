@@ -11,6 +11,9 @@ export type Config = {
   reporterTimeoutMs: number;
   // Showing mode's display names, by project root path.
   aliases: Record<string, string>;
+  // `local` serves the dashboard; `collector` sends the reporter's export to `server`; `hosted` serves accounts.
+  mode: 'local' | 'collector' | 'hosted';
+  server: string | null;
 };
 
 // The data folder's name keeps the project's first name, on every platform.
@@ -34,10 +37,10 @@ export function platformDefaults(
 }
 
 /**
- * The config: the defaults, overridden by `<dataDir>/config.json` when it exists, with aliases that aren't an object
+ * The config: the defaults, overridden by `<dataDir>/<file>` (`config.json` by default) when it exists, with aliases that aren't an object
  * read as none. The data dir (by default `platformDefaults`') is created with mode 0700, since the data is personal.
  */
-export function loadConfig(dataDir?: string): Config {
+export function loadConfig(dataDir?: string, file = 'config.json'): Config {
   const home = homedir();
   const fallback = platformDefaults(process.platform, process.env, home);
   dataDir ??= fallback.dataDir;
@@ -51,9 +54,11 @@ export function loadConfig(dataDir?: string): Config {
     projectsDir: join(claude, 'projects'),
     reporterTimeoutMs: 120_000,
     aliases: {},
+    mode: 'local',
+    server: null,
   };
-  const file = join(dataDir, 'config.json');
-  const overrides = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as Partial<Config>) : {};
+  const path = join(dataDir, file);
+  const overrides = existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as Partial<Config>) : {};
   const config = { ...defaults, ...overrides, dataDir };
   // Aliases that aren't an object would make every showing-mode view throw.
   if (typeof config.aliases !== 'object' || config.aliases === null) config.aliases = {};
