@@ -1,6 +1,7 @@
 // The agent that keeps the dashboard running: on macOS a launchd agent (its plist in ~/Library/LaunchAgents), on Linux
 // a systemd user unit (in ~/.config/systemd/user). `install` writes the file and starts it, `uninstall` stops it and
-// deletes the file. Usage: `pnpm agent:install` or `pnpm agent:uninstall`.
+// deletes the file. Usage: `pnpm agent:install` or `pnpm agent:uninstall`; with `--collector`, the collector's own agent,
+// beside the server's.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -10,13 +11,28 @@ import { platformDefaults } from './config.ts';
 
 export const LABEL = 'com.shoklah.claude-workflow-dashboard';
 export const UNIT = 'claude-workflow-dashboard.service';
+export const COLLECTOR_LABEL = 'com.shoklah.claude-workflow-dashboard.collector';
+export const COLLECTOR_UNIT = 'claude-workflow-dashboard-collector.service';
 
 const escape = (text: string) =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-/** The agent's plist: runs `node entry` at login and keeps it alive, logging into `logDir`. */
-export function plist(opts: { label: string; node: string; entry: string; logDir: string }): string {
+/** The agent's plist: runs `node entry` at login with `env` and keeps it alive, logging into `logDir`. */
+export function plist(opts: {
+  label: string;
+  node: string;
+  entry: string;
+  logDir: string;
+  env?: Record<string, string>;
+}): string {
   const string = (text: string) => `<string>${escape(text)}</string>`;
+  const env = Object.entries(opts.env ?? {});
+  const environment = env.length
+    ? `  <key>EnvironmentVariables</key>
+  <dict>
+${env.map(([name, value]) => `    <key>${escape(name)}</key>\n    ${string(value)}\n`).join('')}  </dict>
+`
+    : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -28,7 +44,7 @@ export function plist(opts: { label: string; node: string; entry: string; logDir
     ${string(opts.node)}
     ${string(opts.entry)}
   </array>
-  <key>RunAtLoad</key>
+${environment}  <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
@@ -48,9 +64,15 @@ const quoted = (text: string) => `"${percent(text).replace(/\\/g, '\\\\').replac
 /**
  * The user unit: runs `node entry` and restarts it always, every 10 s as launchd's throttle (systemd's 100 ms default
  * hits its start limit in half a second and leaves the unit failed), logging into `logDir`, with `dataHome` as
- * XDG_DATA_HOME.
+ * XDG_DATA_HOME and each of `env`.
  */
-export function systemdUnit(opts: { node: string; entry: string; logDir: string; dataHome: string }): string {
+export function systemdUnit(opts: {
+  node: string;
+  entry: string;
+  logDir: string;
+  dataHome: string;
+  env?: Record<string, string>;
+}): string {
   // In ExecStart, `$` starts a variable.
   const arg = (text: string) => quoted(text).replace(/\$/g, '$$$$');
   return `[Unit]
@@ -59,7 +81,9 @@ Description=edward
 [Service]
 ExecStart=${arg(opts.node)} ${arg(opts.entry)}
 Environment=${quoted(`XDG_DATA_HOME=${opts.dataHome}`)}
-Restart=always
+${Object.entries(opts.env ?? {})
+  .map(([name, value]) => `Environment=${quoted(`${name}=${value}`)}\n`)
+  .join('')}Restart=always
 RestartSec=10
 StandardOutput=append:${percent(join(opts.logDir, 'out.log'))}
 StandardError=append:${percent(join(opts.logDir, 'err.log'))}
@@ -73,7 +97,7 @@ export type AgentSpec = { file: string; contents: string; start: string[][]; sto
 
 /**
  * The platform's agent: its file, contents, the commands that start and stop it, and those run once its file is
- * deleted; null where there is none.
+ * deleted; null where there is none. The collector's agent has its own name and runs main.ts with `collector.json`.
  */
 export function agentSpec(
   platform: NodeJS.Platform,
@@ -84,17 +108,21 @@ export function agentSpec(
     node: string;
     entry: string;
     logDir: string;
+    collector?: boolean;
   },
 ): AgentSpec | null {
   const { node, entry, logDir } = opts;
+  const label = opts.collector ? COLLECTOR_LABEL : LABEL;
+  const unit = opts.collector ? COLLECTOR_UNIT : UNIT;
+  const env = opts.collector ? { EDWARD_CONFIG: 'collector.json' } : undefined;
   if (platform === 'darwin') {
-    const file = join(opts.home, 'Library', 'LaunchAgents', `${LABEL}.plist`);
+    const file = join(opts.home, 'Library', 'LaunchAgents', `${label}.plist`);
     const domain = `gui/${opts.uid}`;
     return {
       file,
-      contents: plist({ label: LABEL, node, entry, logDir }),
+      contents: plist({ label, node, entry, logDir, env }),
       start: [['launchctl', 'bootstrap', domain, file]],
-      stop: [['launchctl', 'bootout', `${domain}/${LABEL}`]],
+      stop: [['launchctl', 'bootout', `${domain}/${label}`]],
       removed: [],
     };
   }
@@ -102,14 +130,14 @@ export function agentSpec(
     // The install's data home, always: the user manager's environment may differ from the install shell's.
     const dataHome = dirname(platformDefaults(platform, opts.env, opts.home).dataDir);
     return {
-      file: join(opts.home, '.config', 'systemd', 'user', UNIT),
-      contents: systemdUnit({ node, entry, logDir, dataHome }),
+      file: join(opts.home, '.config', 'systemd', 'user', unit),
+      contents: systemdUnit({ node, entry, logDir, dataHome, env }),
       start: [
         ['systemctl', '--user', 'daemon-reload'],
-        ['systemctl', '--user', 'enable', UNIT],
-        ['systemctl', '--user', 'restart', UNIT],
+        ['systemctl', '--user', 'enable', unit],
+        ['systemctl', '--user', 'restart', unit],
       ],
-      stop: [['systemctl', '--user', 'disable', '--now', UNIT]],
+      stop: [['systemctl', '--user', 'disable', '--now', unit]],
       removed: [['systemctl', '--user', 'daemon-reload']],
     };
   }
@@ -120,7 +148,9 @@ if (import.meta.main) {
   // No server bundle: node runs main.ts with its type stripping, as check:real does, with the node running install.
   const entry = fileURLToPath(new URL('./main.ts', import.meta.url));
   // The data dir is always the platform's default (config.json can't move it), so no command reads the config.
-  const logDir = join(platformDefaults(process.platform, process.env, homedir()).dataDir, 'logs');
+  const collector = process.argv[3] === '--collector';
+  const logs = join(platformDefaults(process.platform, process.env, homedir()).dataDir, 'logs');
+  const logDir = collector ? join(logs, 'collector') : logs;
   const spec = agentSpec(process.platform, {
     home: homedir(),
     env: process.env,
@@ -128,6 +158,7 @@ if (import.meta.main) {
     node: process.execPath,
     entry,
     logDir,
+    collector,
   });
   const command = process.argv[2];
   const run = ([cmd, ...args]: string[]) => {
@@ -137,7 +168,7 @@ if (import.meta.main) {
     return status ?? 1;
   };
   if (command !== 'install' && command !== 'uninstall') {
-    console.error('usage: agent.ts install | uninstall');
+    console.error('usage: agent.ts install | uninstall [--collector]');
     process.exitCode = 1;
   } else if (!spec) {
     console.error(`agent:${command} supports macOS and Linux (Windows: use WSL)`);

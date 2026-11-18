@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { agentSpec, LABEL, plist, systemdUnit, UNIT } from '../src/agent.ts';
+import { agentSpec, COLLECTOR_LABEL, COLLECTOR_UNIT, LABEL, plist, systemdUnit, UNIT } from '../src/agent.ts';
 
 // Invented paths: plist(), systemdUnit() and agentSpec() are pure, so no test writes outside a temp folder or runs
 // launchctl or systemctl.
@@ -101,5 +101,30 @@ describe('agentSpec', () => {
   test('any other platform has no agent', () => {
     expect(agentSpec('win32', opts)).toBeNull();
     expect(agentSpec('freebsd', opts)).toBeNull();
+  });
+  test("macOS's collector agent has its own label and runs main.ts with collector.json", () => {
+    const spec = agentSpec('darwin', { ...opts, logDir: '/d/logs/collector', collector: true })!;
+    expect(COLLECTOR_LABEL).toBe('com.shoklah.claude-workflow-dashboard.collector');
+    expect(spec.file).toBe(join('/h', 'Library', 'LaunchAgents', 'com.shoklah.claude-workflow-dashboard.collector.plist'));
+    expect(valueOf(spec.contents, 'Label')).toBe(`<string>${COLLECTOR_LABEL}</string>`);
+    expect(spec.contents.replace(/>\s+</g, '><')).toContain(
+      '<key>EnvironmentVariables</key><dict><key>EDWARD_CONFIG</key><string>collector.json</string></dict>',
+    );
+    expect(valueOf(spec.contents, 'StandardOutPath')).toBe('<string>/d/logs/collector/out.log</string>');
+    expect(spec.start).toEqual([['launchctl', 'bootstrap', 'gui/501', spec.file]]);
+    expect(spec.stop).toEqual([['launchctl', 'bootout', `gui/501/${COLLECTOR_LABEL}`]]);
+  });
+  test("Linux's collector unit has its own name and runs main.ts with collector.json", () => {
+    const spec = agentSpec('linux', { ...opts, env: { XDG_DATA_HOME: '/x' }, logDir: '/d/logs/collector', collector: true })!;
+    expect(COLLECTOR_UNIT).toBe('claude-workflow-dashboard-collector.service');
+    expect(spec.file).toBe(join('/h', '.config', 'systemd', 'user', 'claude-workflow-dashboard-collector.service'));
+    expect(spec.contents).toContain('Environment="XDG_DATA_HOME=/x"\nEnvironment="EDWARD_CONFIG=collector.json"\n');
+    expect(spec.contents).toContain('StandardOutput=append:/d/logs/collector/out.log\n');
+    expect(spec.start).toEqual([
+      ['systemctl', '--user', 'daemon-reload'],
+      ['systemctl', '--user', 'enable', COLLECTOR_UNIT],
+      ['systemctl', '--user', 'restart', COLLECTOR_UNIT],
+    ]);
+    expect(spec.stop).toEqual([['systemctl', '--user', 'disable', '--now', COLLECTOR_UNIT]]);
   });
 });

@@ -25,6 +25,17 @@ pnpm agent:install
 
 `pnpm agent:uninstall` stops the agent and deletes its file. To reinstall (after moving the repo or changing Node), uninstall first.
 
+## Collector
+
+The collector runs the reporter on this machine and sends its export to a hosted edward, which shows it.
+
+1. Create a token on the hosted edward's Account page.
+2. Put it in the data folder's `.env` as `EDWARD_TOKEN=…`.
+3. Write `collector.json` in the data folder: `{ "mode": "collector", "server": "https://…" }`, the hosted edward's address.
+4. Run `pnpm agent:install --collector`.
+
+On macOS it writes a launchd agent to `~/Library/LaunchAgents/com.shoklah.claude-workflow-dashboard.collector.plist`, on Linux a systemd user unit to `~/.config/systemd/user/claude-workflow-dashboard-collector.service`; it logs into the data folder's `logs/collector/`. `pnpm agent:uninstall --collector` stops it and deletes its file. The local server's agent and the collector's can run side by side.
+
 ## The data folder
 
 Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` on macOS and `$XDG_DATA_HOME/claude-workflow-dashboard/` on Linux (`~/.local/share/claude-workflow-dashboard/` when `XDG_DATA_HOME` is unset, empty or relative), the project's first name, which the launchd agent and the systemd unit keep too, created with mode `0700`:
