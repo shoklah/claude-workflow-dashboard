@@ -50,9 +50,21 @@ A hosted edward serves several accounts, each signing in with GitHub (invite-onl
 
    The server refuses to start without them, naming the missing ones.
 
-   Then make the folder private and hand it to the container's `node` user (uid 1000), last, once both files are written: `chmod 700 data/claude-workflow-dashboard && chmod 600 data/claude-workflow-dashboard/.env && sudo chown -R 1000:1000 data`.
+   Then make the folder private and hand it to the container's `node` user (uid 1000), last, once both files are written: `chmod 700 data/claude-workflow-dashboard && chmod 600 data/claude-workflow-dashboard/.env && sudo chown -R 1000:1000 data`. Without sudo, a member of the `docker` group can run the chown in a one-off container once the image is built: `docker run --rm -u 0 -v "$PWD/data:/data" edward-hosted chown -R 1000:1000 /data`.
 4. Build and start it from `deploy/`: `docker compose -f compose.example.yml up -d --build`. It publishes `127.0.0.1:4317` only, for the reverse proxy.
-5. Point the reverse proxy at `127.0.0.1:4317`, passing the original `Host` header through, since the server refuses any other `Host`: Caddy does by default; nginx needs `proxy_set_header Host $host;`.
+5. Point the reverse proxy at `127.0.0.1:4317`, passing the original `Host` header through, since the server refuses any other `Host`: Caddy does by default; nginx needs `proxy_set_header Host $host;`. nginx also needs `client_max_body_size 32m;`, since a collector's export can be up to 32 MB gzipped and nginx refuses bodies over 1 MB by default.
+
+   A reverse proxy that runs in a container itself can't reach the host's `127.0.0.1`. Join edward to the proxy's Docker network instead, with an override file beside `compose.example.yml` (`compose.proxy.local.yml`, git-ignored), and proxy to `http://edward:4317`:
+   ```yaml
+   services:
+     edward:
+       networks: [default, proxy]
+   networks:
+     proxy:
+       external: true
+       name: <the proxy's network>
+   ```
+   Then pass both files to every `docker compose` command: `docker compose -f compose.example.yml -f compose.proxy.local.yml …`.
 
 The `/data` volume (`data/` on the server) holds the accounts database and every account's file, and is their only copy: put it in the server's backups.
 
@@ -60,8 +72,8 @@ The `/data` volume (`data/` on the server) holds the accounts database and every
 
 A local edward's `dashboard.sqlite` (its imports, finding labels, cursor and showing mode) can become an account's data, once that account has signed in and while it holds none:
 
-1. On the Mac, stop the local edward, so `dashboard.sqlite` isn't copied mid-write: `pnpm agent:uninstall`.
-2. Copy its `dashboard.sqlite` to the server's `deploy/data/import/` (readable by uid 1000).
+1. On the Mac, take a consistent copy of `dashboard.sqlite` with SQLite's backup, which works while the local edward runs: `sqlite3 dashboard.sqlite ".backup /tmp/dashboard.sqlite"` from the data folder. Or stop the local edward first (`pnpm agent:uninstall`) and copy the file.
+2. Copy it to the server's `deploy/data/import/dashboard.sqlite`, owned by uid 1000 (after the chown above, through a one-off container as in step 3 of Hosted, or with sudo).
 3. From `deploy/`, stop the hosted server, import, and start it again:
    ```sh
    docker compose -f compose.example.yml stop edward
@@ -69,7 +81,7 @@ A local edward's `dashboard.sqlite` (its imports, finding labels, cursor and sho
    docker compose -f compose.example.yml up -d
    ```
    It prints `imported into account <login>`, or why it refused (no such account, an account that already holds data, a file from a newer edward, or a file that isn't an edward database), changing nothing.
-4. On the Mac, run only the collector from then on (see Collector): `pnpm agent:install --collector`. The copied `dashboard.sqlite` stays there as the backup of the moment it was copied.
+4. On the Mac, install the collector (see Collector): `pnpm agent:install --collector`. The local edward can keep running beside it, for example to try changes locally; the hosted one is fed by the collector. The copied `dashboard.sqlite` stays on the server as the backup of the moment it was copied.
 
 ## The data folder
 
