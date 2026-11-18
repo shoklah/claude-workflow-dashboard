@@ -3,7 +3,7 @@ import { expect, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { HTML_TEXT } from '../test/runs.ts';
-import { cells, expectNoJoined, visibleTerms, visibleValues, width } from '../test/table.ts';
+import { cells, expectNoJoined, openedRow, visibleTerms, visibleValues, width } from '../test/table.ts';
 import { changeFull } from '../test/work.ts';
 import { SessionsByWork } from './SessionsByWork.tsx';
 
@@ -41,28 +41,21 @@ export const Full: Story = {
     await expect(canvasElement.querySelector('img')).toBeNull();
     await expectNoJoined(table);
 
-    // Started by you, no run: the run is left out.
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${first.title}` }));
-    let opened = within(table).getAllByRole('row')[2];
-    await expect(visibleTerms(opened)).toEqual(['Started by', 'Model']);
-    await expect(visibleValues(opened)).toEqual(['–started by you', 'Fable 5.2']);
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${first.title}` }));
-
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${second.title}` }));
-    opened = within(table).getAllByRole('row')[3];
-    await expect(visibleValues(opened)[0]).toBe(second.startedBy!.title);
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${second.title}` }));
-
+    // A row opens to its facts; started by you, no run: the run is left out.
+    const open = async (title: string | null) => {
+      const toggle = canvas.getByRole('button', { name: `Details of ${title}` });
+      await userEvent.click(toggle);
+      return openedRow(toggle);
+    };
+    const firstOpened = await open(first.title);
+    await expect(visibleTerms(firstOpened)).toEqual(['Started by', 'Model']);
+    await expect(visibleValues(firstOpened)).toEqual(['–started by you', 'Fable 5.2']);
+    await expect(visibleValues(await open(second.title))[0]).toBe(second.startedBy!.title);
     await expect(third.startedBy).toEqual({ key: null, title: null });
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${third.title}` }));
-    opened = within(table).getAllByRole('row')[4];
-    await expect(visibleValues(opened)[0]).toBe('Another session');
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${third.title}` }));
-
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${fourth.title}` }));
-    opened = within(table).getAllByRole('row')[5];
-    await expect(visibleTerms(opened)).toEqual(['Started by', 'Model', 'Run']);
-    await expect(within(opened).getByRole('link', { name: fourth.run!.title! })).toHaveAttribute('href', `/runs/${fourth.run!.key}`);
+    await expect(visibleValues(await open(third.title))[0]).toBe('Another session');
+    const fourthOpened = await open(fourth.title);
+    await expect(visibleTerms(fourthOpened)).toEqual(['Started by', 'Model', 'Run']);
+    await expect(within(fourthOpened).getByRole('link', { name: fourth.run!.title! })).toHaveAttribute('href', `/runs/${fourth.run!.key}`);
   },
 };
 
@@ -74,8 +67,9 @@ export const WithChange: Story = {
     const table = canvas.getByRole('region', { name: 'Sessions table' });
     await expect(within(table).getAllByRole('columnheader').map((th) => th.textContent).slice(0, 2)).toEqual(['Session', 'Step']);
     const first = changeFull.sessions[0];
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${first.title}` }));
-    const opened = within(table).getAllByRole('row')[2];
+    const toggle = canvas.getByRole('button', { name: `Details of ${first.title}` });
+    await userEvent.click(toggle);
+    const opened = openedRow(toggle);
     await expect(visibleTerms(opened)).toEqual(['Change', 'Started by', 'Model']);
     await expect(within(opened).getByRole('link', { name: changeFull.title })).toHaveAttribute('href', `/work/changes/${changeFull.key}`);
   },
@@ -90,8 +84,9 @@ export const Narrow: Story = {
     for (const name of ['Session', 'Step', 'Length']) await expect(within(head).getByRole('columnheader', { name })).toBeVisible();
     for (const name of ['Started', 'Est. cost ($)']) await expect(within(head).getByText(name).closest('th')).not.toBeVisible();
     const first = changeFull.sessions[0];
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${first.title}` }));
-    await expect(visibleTerms(canvas.getAllByRole('row')[2])).toEqual(['Started', 'Est. cost ($)', 'Change', 'Started by', 'Model']);
+    const toggle = canvas.getByRole('button', { name: `Details of ${first.title}` });
+    await userEvent.click(toggle);
+    await expect(visibleTerms(openedRow(toggle))).toEqual(['Started', 'Est. cost ($)', 'Change', 'Started by', 'Model']);
   },
 };
 

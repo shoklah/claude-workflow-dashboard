@@ -1,11 +1,12 @@
 import { parseTime, type WorkSessionRow } from '@cwd/shared';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
-import { Num, Text, Unknown } from '../components/Num.tsx';
+import { Num, Unknown } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionLink } from '../components/SessionLink.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STAGE_LABELS, formatDollars, formatLength, modelLabel, sessionName } from '../lib/format.ts';
-import { CHANGE_FACTS } from '../runs/RunsTable.tsx';
+import { STAGE_LABELS, formatDollars, formatLength, sessionName } from '../lib/format.ts';
+import { CHANGE_FACT } from '../runs/RunsTable.tsx';
+import { MODEL_FACT } from '../sessions/SessionsTable.tsx';
 
 /** Who started a session: the starter's title, "Another session" when showing mode hides it or it isn't stored, else the dash read
  * "started by you". */
@@ -42,24 +43,13 @@ const COLUMNS: ListColumn<WorkSessionRow>[] = [
   },
 ];
 
-/** Its change, linking to the change's page, as the Runs and Sessions lists show it. */
-const [CHANGE] = CHANGE_FACTS;
-
 const FACTS: ListFact<WorkSessionRow>[] = [
   ['Started by', (s) => <StartedBy by={s.startedBy} />],
-  [
-    'Model',
-    (s) =>
-      s.models.length === 0
-        ? null
-        : s.models.map(({ model }) => (
-            <span key={model} className="block">
-              <Text value={modelLabel(model)} />
-            </span>
-          )),
-  ],
+  MODEL_FACT,
   ['Run', (s) => (s.run ? <RunLink runKey={s.run.key} branch={s.run.branch} title={s.run.title} /> : null)],
 ];
+/** On a goal's page, its change first, linking to the change's page, as the Runs and Sessions lists show it. */
+const GOAL_FACTS: ListFact<WorkSessionRow>[] = [CHANGE_FACT, ...FACTS];
 
 /** A change's or goal's Sessions list, as the API orders them: each title linking to the session in the Sessions
  * view, its step, start, length and cost, a row opening to (with `change`) its change, its starter, models and held
@@ -71,7 +61,7 @@ export function SessionsByWork({ sessions, change }: { sessions: WorkSessionRow[
       rowKey={(s) => s.key}
       name={(s) => sessionName(s.title)}
       columns={COLUMNS}
-      facts={change ? [CHANGE, ...FACTS] : FACTS}
+      facts={change ? GOAL_FACTS : FACTS}
       label="Sessions table"
       empty="No sessions here yet. A session shows here once its transcript is imported."
     />

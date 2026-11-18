@@ -10,12 +10,14 @@ import { formatDollars, pathLabel } from '../lib/format.ts';
 /** A run as the Runs list takes it: a change's page gives its runs without their change and goal. */
 type ListedRun = RunFacts & Partial<Pick<RunRow, 'change' | 'goal'>>;
 
-/** A unit's Change and Goal facts, the Runs and Sessions lists' alike: its change linking to the change's page and its
- * goal's name, each left out without one. */
-export const CHANGE_FACTS: ListFact<Partial<Pick<RunRow, 'change' | 'goal'>>>[] = [
-  ['Change', (u) => (u.change ? <ChangeLink changeKey={u.change.key} title={u.change.title} /> : null)],
-  ['Goal', (u) => u.goal?.name ?? null],
+/** A unit's change, linking to the change's page, left out without one: the Runs and Sessions lists' and a goal's
+ * sessions' alike. */
+export const CHANGE_FACT: ListFact<Partial<Pick<RunRow, 'change'>>> = [
+  'Change',
+  (u) => (u.change ? <ChangeLink changeKey={u.change.key} title={u.change.title} /> : null),
 ];
+/** A unit's Change and Goal facts, the Runs and Sessions lists' alike, its goal's name left out without one. */
+export const CHANGE_FACTS: ListFact<Partial<Pick<RunRow, 'change' | 'goal'>>>[] = [CHANGE_FACT, ['Goal', (u) => u.goal?.name ?? null]];
 
 const COLUMNS: ListColumn<ListedRun>[] = [
   {

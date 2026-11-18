@@ -3,7 +3,7 @@ import { expect, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { formatDayTime } from '../lib/format.ts';
 import { HTML_TEXT } from '../test/runs.ts';
-import { cells, expectNoJoined, visibleTerms, visibleValues, width } from '../test/table.ts';
+import { cells, expectNoJoined, openedRow, visibleTerms, visibleValues, width } from '../test/table.ts';
 import { designChange, markupChange, syncChange } from '../test/work.ts';
 import { ChangesTable } from './ChangesTable.tsx';
 
@@ -63,8 +63,9 @@ export const Full: Story = {
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('tidepool-api, 1 other project');
 
     // A row opens to its runs and sessions, zero included.
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${designChange.title}` }));
-    const opened = canvas.getAllByRole('row').at(-1)!;
+    const toggle = canvas.getByRole('button', { name: `Details of ${designChange.title}` });
+    await userEvent.click(toggle);
+    const opened = openedRow(toggle);
     await expect(visibleTerms(opened)).toEqual(['Runs', 'Sessions']);
     await expect(visibleValues(opened)).toEqual(['0', '1']);
   },
@@ -90,8 +91,9 @@ export const Narrow: Story = {
     for (const name of ['Change', 'Stage', 'Findings']) await expect(within(head).getByRole('columnheader', { name })).toBeVisible();
     for (const name of ['Project', 'Path', 'Last activity', 'Est. cost ($)'])
       await expect(within(head).getByText(name).closest('th')).not.toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: `Details of ${syncChange.title}` }));
-    await expect(visibleTerms(canvas.getAllByRole('row')[2])).toEqual([
+    const toggle = canvas.getByRole('button', { name: `Details of ${syncChange.title}` });
+    await userEvent.click(toggle);
+    await expect(visibleTerms(openedRow(toggle))).toEqual([
       'Project',
       'Path',
       'Last activity',

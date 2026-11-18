@@ -21,8 +21,7 @@ const COLUMNS: ListColumn<ChangeRow>[] = [
     wide: true,
     names: true,
     value: (c) => c.title,
-    // A title of one long word (a branch) breaks inside it rather than widen a narrow list.
-    cell: (c) => <ChangeLink changeKey={c.key} title={c.title} className="wrap-anywhere" />,
+    cell: (c) => <ChangeLink changeKey={c.key} title={c.title} />,
   },
   {
     id: 'project',
