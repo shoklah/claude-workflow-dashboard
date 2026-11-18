@@ -90,6 +90,17 @@ describe('signInAccount', () => {
     expect(listInvites(db).map((invite) => invite.login)).toEqual(['mika-new']);
   });
 
+  test("a rename keeps the old login's invite while another account's stored login is it", () => {
+    const { db } = fresh();
+    addInvite(db, 'bob', AT);
+    signInAccount(db, { id: 12, login: 'bob' }, ADMIN, AT);
+    // 12 renamed to carol on GitHub without signing in; 99 took `bob` and signs in.
+    expect(signInAccount(db, { id: 99, login: 'Bob' }, ADMIN, AT)).toEqual({ id: 99, login: 'Bob' });
+    expect(signInAccount(db, { id: 12, login: 'carol' }, ADMIN, LATER)).toEqual({ id: 12, login: 'carol' });
+    expect(listInvites(db).map((invite) => invite.login)).toEqual(['bob', 'carol']);
+    expect(signInAccount(db, { id: 99, login: 'Bob' }, ADMIN, LATER)).toEqual({ id: 99, login: 'Bob' });
+  });
+
   test('refuses an existing account whose login is no longer invited; the admin needs none', () => {
     const { db } = fresh();
     addInvite(db, 'mika-ito', AT);

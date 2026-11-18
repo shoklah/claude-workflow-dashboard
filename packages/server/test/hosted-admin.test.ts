@@ -128,6 +128,16 @@ describe('invites', () => {
     expect(hosted.hosted.accounts.select().from(sessions).all()).toHaveLength(before);
   });
 
+  test("removing the admin's login is a 400, keeping the admin's session and token", async () => {
+    const adminToken = createToken(hosted.hosted.accounts, ADMIN.id, NOW);
+    expect((await post('/api/admin/invites/Admin/remove', adminCookie)).status).toBe(400);
+    expect((await get('/api/home', adminCookie)).status).toBe(200);
+    const cursor = await hosted.app.request('/api/collect/cursor', {
+      headers: { Host: PUBLIC_HOST, Authorization: `Bearer ${adminToken}` },
+    });
+    expect(cursor.status).toBe(200);
+  });
+
   test('the admin still signs in with no invite', async () => {
     const res = await signIn('code-admin');
     expect(res.headers.get('Location')).toBe('/');

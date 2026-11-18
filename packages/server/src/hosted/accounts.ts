@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { LABELLER_DEFAULTS } from '@cwd/shared';
 import { openSqlite } from '../db/open.ts';
 import type { AccountFiles } from './account-files.ts';
@@ -55,8 +55,8 @@ export function isAdmin(login: string, admin: string): boolean {
 
 /**
  * The account of a GitHub user: an existing one by id while its stored login is invited or is `admin`, its login
- * updated and its invite moved to the new login; a new one when the login is invited or is `admin` (case-insensitive);
- * else null.
+ * updated and its invite moved to the new login (the old one kept while another account's stored login is it); a new
+ * one when the login is invited or is `admin` (case-insensitive); else null.
  */
 export function signInAccount(db: AccountsDb, user: Account, admin: string, at: Date): Account | null {
   return db.transaction((tx) => {
@@ -67,7 +67,13 @@ export function signInAccount(db: AccountsDb, user: Account, admin: string, at: 
       const invite = tx.select().from(invites).where(eq(invites.login, stored)).get();
       if (!invite && !isAdmin(stored, admin)) return null;
       if (invite && stored !== login) {
-        tx.delete(invites).where(eq(invites.login, stored)).run();
+        // The old login's invite stays while another account's stored login is it (logins aren't unique).
+        const shared = tx
+          .select({ id: accounts.id })
+          .from(accounts)
+          .where(and(eq(sql`lower(${accounts.login})`, stored), ne(accounts.id, user.id)))
+          .get();
+        if (!shared) tx.delete(invites).where(eq(invites.login, stored)).run();
         tx.insert(invites).values({ login, addedAt: invite.addedAt }).onConflictDoNothing().run();
       }
       tx.update(accounts).set({ login: user.login }).where(eq(accounts.id, user.id)).run();

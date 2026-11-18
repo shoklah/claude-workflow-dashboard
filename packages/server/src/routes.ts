@@ -4,7 +4,6 @@ import type { Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { deleteCookie, getCookie } from 'hono/cookie';
 import {
-  type AdminResponse,
   toPath,
   toSpendUnits,
   toStepKind,
@@ -68,6 +67,7 @@ import {
 import { projectKey } from './keys.ts';
 import { importJson } from './reporter.ts';
 import { accountView } from './views/account.ts';
+import { adminView } from './views/admin.ts';
 import { complianceView } from './views/compliance.ts';
 import { contextView } from './views/context.ts';
 import { findingsView } from './views/findings.ts';
@@ -550,17 +550,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     app.all('/api/view', postOnly);
 
     // Slice 2b, task 5: admin settings, the invites and the accounts; the middleware answers 404 to anyone but the admin.
-    app.get('/api/admin', (c) => {
-      const body: AdminResponse = {
-        invites: listInvites(hosted.accounts).map((invite) => ({ ...invite, addedAt: invite.addedAt.toISOString() })),
-        accounts: listAccounts(hosted.accounts).map((account) => ({
-          ...account,
-          createdAt: account.createdAt.toISOString(),
-          lastCollectAt: account.lastCollectAt?.toISOString() ?? null,
-        })),
-      };
-      return c.json(body);
-    });
+    app.get('/api/admin', (c) => c.json(adminView(listInvites(hosted.accounts), listAccounts(hosted.accounts))));
     app.post('/api/admin/invites', async (c) => {
       const body = await c.req.json().catch(() => null);
       const login: unknown = body?.login;
@@ -570,6 +560,8 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     });
     app.all('/api/admin/invites', postOnly);
     app.post('/api/admin/invites/:login/remove', (c) => {
+      // The admin's login has no invite to remove; removing it would sign the admin out of every session and machine.
+      if (isAdmin(c.req.param('login'), hosted.admin)) return c.body(null, 400);
       removeInvite(hosted.accounts, c.req.param('login'));
       return c.body(null, 204);
     });
