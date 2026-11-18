@@ -269,10 +269,15 @@ export function runChange(levels: Levels, scope: Scope | null, runKey: string): 
   return change && !change.spec && change.runs.length === 1 ? null : listedChange(levels, scope, runKey);
 }
 
-/** Whether a unit passes a goal filter (a goal's key, none passing every unit): its goal (goalOf) has that key. */
-export function inGoal(levels: Levels, unitKey: string, goal: string | undefined): boolean {
+/**
+ * Whether a unit passes a goal filter (a goal's key, none passing every unit): its goal (goalOf) has that key. With a
+ * scope, a hidden goal's key (the scope's `goals`) matches nothing, as an unknown key does, so a guess confirms nothing.
+ */
+export function inGoal(levels: Levels, scope: Scope | null, unitKey: string, goal: string | undefined): boolean {
+  if (!goal) return true;
+  if (scope?.goals.some((name) => goalKey(name) === goal)) return false;
   const own = levels.goalOf(unitKey);
-  return !goal || (own !== null && goalKey(own) === goal);
+  return own !== null && goalKey(own) === goal;
 }
 
 /** The Goal select's options over the given units: each one's listedGoal, once each by key, by name. */
@@ -546,7 +551,7 @@ export function workView(input: {
   const { query, scope, names } = input;
   const all = levels(input.runs, input.sessions);
   const { changes, changeOf } = all;
-  const inPeriod = periodStoredUnits(input.runs, input.sessions, { weeks: query.weeks }, input.now);
+  const inPeriod = periodStoredUnits(input.runs, input.sessions, { weeks: query.weeks }, input.now, null);
   const thisWeek = inPeriod.weeks.at(-1);
   const periodKeys = new Set([...inPeriod.runs, ...inPeriod.sessions].map((unit) => unit.key));
   const periodChanges = changes.filter((change) =>
@@ -555,11 +560,11 @@ export function workView(input: {
   const isShown = (root: string) => showSession(scope, root);
   const byLatest = <T>(items: T[], at: (item: T) => string | null) => newestFirst(items, (item) => time(at(item)));
 
-  const { filters } = period({ weeks: query.weeks, project: query.project }, input.now);
+  const { filters } = period({ weeks: query.weeks, project: query.project }, input.now, scope);
   const listed = periodChanges.filter(
     (change) =>
       change.roots.some((root) => filters({ path: null, projectKey: projectKey(root) })) &&
-      inGoal(all, (change.runs[0] ?? change.sessions[0])!.key, query.goal),
+      inGoal(all, scope, (change.runs[0] ?? change.sessions[0])!.key, query.goal),
   );
   const sections = new Map<string | null, ChangeRow[]>();
   for (const change of listed.filter((c) => isShown(c.home))) {

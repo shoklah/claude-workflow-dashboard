@@ -31,15 +31,6 @@ export function labellerSettings(env: Record<string, string | undefined>): { mod
   return { model: env.LABELLER_MODEL || LABELLER_DEFAULTS.model, dailyMax };
 }
 
-/**
- * Labels the findings with no label from the model under `list` (the active list), in batches of one area each, up to
- * the daily max; only findings whose area has categories in the list are sent (labellable), so no request has no ids to
- * pick from. The daily max counts stored labels only, so a batch's reply can name only its area's ids. A result whose
- * category isn't one of the list's ids for its finding's area, or whose id wasn't sent or was answered already, is
- * dropped. A batch whose client throws stores nothing and is logged, as a LabelError's message or else the
- * error's name, since another error's text can quote the findings; the next batches still go, and the next import
- * retries it.
- */
 /** One label job's run over a database: its pending findings under the active list, read each time since an import can
  * change it; with no list, nothing is labelled. */
 export async function labelOnce(
@@ -52,6 +43,15 @@ export async function labelOnce(
   if (list) await labelPending(db, client, settings, now, list);
 }
 
+/**
+ * Labels the findings with no label from the model under `list` (the active list), in batches of one area each, up to
+ * the daily max; only findings whose area has categories in the list are sent (labellable), so no request has no ids to
+ * pick from. The daily max counts stored labels only, so a batch's reply can name only its area's ids. A result whose
+ * category isn't one of the list's ids for its finding's area, or whose id wasn't sent or was answered already, is
+ * dropped. A batch whose client throws stores nothing and is logged, as a LabelError's message or else the
+ * error's name, since another error's text can quote the findings; the next batches still go, and the next import
+ * retries it.
+ */
 export async function labelPending(
   db: Db,
   client: LabelClient,

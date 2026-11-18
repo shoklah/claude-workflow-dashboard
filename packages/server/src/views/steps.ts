@@ -209,7 +209,7 @@ export function stepsView(input: {
   now: Date;
   scope: Scope | null;
 }): StepsResponse {
-  const units = periodUnits(input.runs, input.sessions, input.query, input.now);
+  const units = periodUnits(input.runs, input.sessions, input.query, input.now, input.scope);
   const runs = units.runs.map((run) => ({
     ...run,
     offers: maskOffers(input.scope, run.offers),

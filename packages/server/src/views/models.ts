@@ -80,7 +80,13 @@ export function modelsView(input: {
   now: Date;
   scope: Scope | null;
 }): ModelsResponse {
-  const { weeks, runs: inPeriod, sessions } = periodUnits(input.runs, input.sessions, input.query, input.now);
+  const { weeks, runs: inPeriod, sessions } = periodUnits(
+    input.runs,
+    input.sessions,
+    input.query,
+    input.now,
+    input.scope,
+  );
   const runs = inPeriod.map((run) => maskModels(input.scope, run));
   const sums = modelSums(runs);
   const totals = reporterTotals(input.totals);

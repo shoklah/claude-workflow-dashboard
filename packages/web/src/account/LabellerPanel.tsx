@@ -101,6 +101,7 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
           <Input
             id={maxId}
             type="number"
+            required
             min={1}
             max={LABELLER_MAX_DAILY}
             step={1}

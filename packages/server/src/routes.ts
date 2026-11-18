@@ -276,9 +276,10 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   });
 
   // Slice 2b, task 2: the Weeks page.
-  app.get('/api/weeks', (c) =>
-    c.json(weeksView({ runs: listUnits(c.var.db, 'run'), query: periodQuery(c), now: deps.now() })),
-  );
+  app.get('/api/weeks', (c) => {
+    const runs = listUnits(c.var.db, 'run');
+    return c.json(weeksView({ runs, query: periodQuery(c), now: deps.now(), scope: scopeFor(c, runs) }));
+  });
 
   // Slice 2b, task 3: the Steps and rules page, its refusals, startup and advisor over runs and sessions (2c, task 4).
   app.get('/api/steps', (c) => {
@@ -562,7 +563,8 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     app.get('/api/admin', (c) => c.json(adminView(listInvites(hosted.accounts), listAccounts(hosted.accounts))));
     app.post('/api/admin/invites', async (c) => {
       const login = await loginBody(c);
-      if (!login) return c.body(null, 400);
+      // The admin's login needs no invite, and the remove route below refuses it, so it is never invited.
+      if (!login || isAdmin(login, hosted.admin)) return c.body(null, 400);
       addInvite(hosted.accounts, login, deps.now());
       return c.body(null, 204);
     });

@@ -168,3 +168,36 @@ export const ViewingLoading: Story = {
     await expect(canvas.queryByText('Read-only')).toBeNull();
   },
 };
+
+/** The picker starts ticked from the kept list, so ticking another project adds to it instead of replacing it. */
+export const PickerKeepsKeptList: Story = {
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      '/api/showing': { on: false, projects: [off.projects[0]!, { ...off.projects[1]!, picked: true }] },
+    });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('switch', { name: 'Showing mode' }));
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog');
+    await expect(within(dialog).getByRole('checkbox', { name: 'harbor' })).toBeChecked();
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'atlas' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Start showing' }));
+    await expect(fetch).toHaveBeenCalledWith('/api/showing', {
+      method: 'POST',
+      headers: { 'X-Dashboard-Refresh': '1', 'Content-Type': 'application/json' },
+      body: `{"projects":["2b3c4d5e6f708192","${ATLAS}"]}`,
+    });
+  },
+};
+
+/** Viewing an account whose kept list is empty: the bar says so in a word. */
+export const ViewingNone: Story = {
+  args: { viewing: 'mika-ito' },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, '/api/showing': { on: true, projects: [] } });
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("mika-ito's projects: none")).toBeVisible();
+  },
+};

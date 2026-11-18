@@ -139,6 +139,22 @@ export const BlankKey: Story = {
   },
 };
 
+/** An emptied daily max blocks Save, so nothing is posted and the typed key stays in its field. */
+export const EmptyDailyMax: Story = {
+  args: { account: accountEmpty },
+  beforeEach: () => {
+    mockApi({ '/api/account/labeller': 204 });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const panel = within(await canvas.findByRole('region', { name: 'Labeller' }));
+    await userEvent.type(panel.getByLabelText('Anthropic key'), KEY);
+    await userEvent.clear(panel.getByRole('spinbutton', { name: 'Daily max (findings)' }));
+    await userEvent.click(panel.getByRole('button', { name: 'Save' }));
+    await expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/account/labeller', expect.anything());
+    await expect(panel.getByLabelText('Anthropic key')).toHaveValue(KEY);
+  },
+};
+
 /** While the save runs, the panel's actions are disabled. */
 export const Pending: Story = {
   beforeEach: () => {

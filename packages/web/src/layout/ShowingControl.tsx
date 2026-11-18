@@ -55,7 +55,10 @@ export function ShowingControl({ stacked, viewing }: { stacked?: boolean; viewin
   const showing = useLiveQuery<ShowingResponse>('/api/showing');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [picked, setPicked] = useState<string[]>([]);
+  const [ticked, setTicked] = useState<string[] | null>(null);
+  // Ticked from the kept list until changed, since "Start showing" keeps the pick as the kept list too.
+  const kept = (showing.data?.projects ?? []).filter((project) => project.picked).map((project) => project.key);
+  const picked = ticked ?? kept;
 
   // The server filters every response by the mode, so every page's cached data is dropped and read again: no page
   // shows, even for a moment or on Back, what the new mode hides.
@@ -68,7 +71,7 @@ export function ShowingControl({ stacked, viewing }: { stacked?: boolean; viewin
   if (showing.isError) return <p className="text-sm">Couldn't read showing mode.</p>;
   if (viewing || showing.data?.on) {
     if (!showing.data) return null;
-    const names = showing.data.projects.map((project) => project.name).join(', ');
+    const names = showing.data.projects.map((project) => project.name).join(', ') || 'none';
     return (
       <div className={cn('flex px-3', stacked ? 'flex-col gap-2 py-2' : 'items-center gap-3 py-1', NOTICE)}>
         <b className={cn(stacked && 'break-words')}>{viewing ? `${viewing}'s projects: ${names}` : `Showing: ${names}`}</b>
@@ -97,7 +100,7 @@ export function ShowingControl({ stacked, viewing }: { stacked?: boolean; viewin
               counts only in totals and charts. Paths and session IDs are never sent while this is on.
             </DialogDescription>
           </DialogHeader>
-          <ProjectPicks projects={showing.data?.projects ?? []} picked={picked} onChange={setPicked} />
+          <ProjectPicks projects={showing.data?.projects ?? []} picked={picked} onChange={setTicked} />
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>

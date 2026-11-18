@@ -19,6 +19,8 @@ import {
   addViewer,
   createSession,
   createToken,
+  getAccount,
+  listInvites,
   listTokens,
   removeViewer,
   SESSION,
@@ -51,6 +53,7 @@ const RETRY_RUN = '4ff383286fce4ac9'; // fix/retry-backoff, in tidepool-api
 
 const OWNER = { id: 101, login: 'rowan-k' };
 const VIEWER = { id: 202, login: 'mika-ito' };
+const ADMIN = { id: 1, login: 'admin' };
 
 let dir: string;
 let hosted: ReturnType<typeof hostedApp>;
@@ -227,6 +230,7 @@ describe('a viewer of an account', () => {
       '/api/account/tokens',
       '/api/account/reset-collector',
       '/api/account/viewers',
+      '/api/account/labeller',
     ]) {
       expect((await post(path, { projects: [projectKey(LANTERN)], login: 'someone' })).status, path).toBe(403);
     }
@@ -236,8 +240,59 @@ describe('a viewer of an account', () => {
     expect(listTokens(hosted.hosted.accounts, VIEWER.id)).toHaveLength(1);
     expect((await view(null)).status).toBe(204);
     expect((await json<StatusResponse>('/api/status')).account?.viewing).toBeNull();
+    // The admin, viewing, can't use its admin POSTs either.
+    const { accounts } = hosted.hosted;
+    signInAccount(accounts, ADMIN, 'admin', NOW);
+    addViewer(accounts, OWNER.id, ADMIN.login);
+    const adminCookie = `${SESSION}=${createSession(accounts, ADMIN.id, NOW)}`;
+    expect((await post('/api/view', { login: 'rowan-k' }, adminCookie)).status).toBe(204);
+    for (const path of [
+      '/api/admin/invites',
+      `/api/admin/invites/${VIEWER.login}/remove`,
+      `/api/admin/accounts/${OWNER.id}/delete`,
+    ]) {
+      expect((await post(path, { login: 'someone' }, adminCookie)).status, path).toBe(403);
+    }
+    expect(listInvites(accounts).map((i) => i.login)).toEqual(['mika-ito', 'rowan-k']);
+    expect(getAccount(accounts, OWNER.id)).not.toBeNull();
     await view('rowan-k');
     expect((await post('/auth/signout')).status).toBe(204);
+  });
+
+  test("a hidden project's or goal's key filters as an invented one, so a guess confirms nothing", async () => {
+    await view('rowan-k');
+    const project = (key: string) => `weeks=52&project=${key}`;
+    const goal = (key: string) => `weeks=52&goal=${key}`;
+    const hiddenProject = project(projectKey(TIDEPOOL));
+    const inventedProject = project(projectKey('/Users/example/Work/invented'));
+    const hiddenGoal = goal(goalKey('Webhooks'));
+    const inventedGoal = goal(goalKey('Invented goal'));
+    const routes = [
+      '/api/weeks',
+      '/api/runs',
+      '/api/work',
+      '/api/findings',
+      '/api/sessions',
+      '/api/context',
+      '/api/spend',
+      '/api/compliance',
+      '/api/steps',
+      '/api/skills',
+      '/api/models',
+    ];
+    // The owner's own answers differ, so each guess has something to confirm.
+    expect(await json(`/api/weeks?${hiddenProject}`, ownerCookie)).not.toEqual(
+      await json(`/api/weeks?${inventedProject}`, ownerCookie),
+    );
+    expect(await json(`/api/runs?${hiddenGoal}`, ownerCookie)).not.toEqual(
+      await json(`/api/runs?${inventedGoal}`, ownerCookie),
+    );
+    for (const route of routes) {
+      expect(await json(`${route}?${hiddenProject}`), route).toEqual(await json(`${route}?${inventedProject}`));
+    }
+    for (const route of ['/api/runs', '/api/work', '/api/sessions']) {
+      expect(await json(`${route}?${hiddenGoal}`), route).toEqual(await json(`${route}?${inventedGoal}`));
+    }
   });
 
   test("its account page is its own", async () => {

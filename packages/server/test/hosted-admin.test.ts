@@ -111,6 +111,12 @@ describe('invites', () => {
     expect((await get('/api/admin/invites/mika-ito/remove', adminCookie)).status).toBe(405);
   });
 
+  test("inviting the admin's own login is a 400, storing nothing", async () => {
+    expect((await post('/api/admin/invites', adminCookie, { login: 'Admin' })).status).toBe(400);
+    const admin = (await (await get('/api/admin', adminCookie)).json()) as AdminResponse;
+    expect(admin.invites.map((invite) => invite.login)).toEqual(['mika-ito']);
+  });
+
   test("removing an invite locks that login out, keeping its file", async () => {
     expect((await post('/api/admin/invites/Mika-Ito/remove', adminCookie)).status).toBe(204);
     expect((await get('/api/home', mikaCookie)).status).toBe(401);

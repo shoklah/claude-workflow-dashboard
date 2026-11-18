@@ -76,7 +76,7 @@ export function findingsView(input: {
   labeller: FindingsResponse['labeller'];
 }): FindingsResponse {
   const { labels, list, query, scope } = input;
-  const { weeks, matches } = period(query, input.now);
+  const { weeks, matches } = period(query, input.now, scope);
   const names = storedNames(input.runs);
   // Stored runs always have a date: the import skips a run without one.
   const runs = input.runs.flatMap((unit) => {

@@ -14,9 +14,10 @@ export type AccountResponse = {
 /** The models an account's labeller may use. */
 export const LABELLER_MODELS = ['claude-haiku-5-5', 'claude-sonnet-5-5'] as const;
 
-/** The labeller's model and daily max when none is set, in local and hosted mode alike. */
+/** One of the models an account's labeller may use. */
 export type LabellerModel = (typeof LABELLER_MODELS)[number];
 
+/** The labeller's model and daily max when none is set, in local and hosted mode alike. */
 export const LABELLER_DEFAULTS = { model: LABELLER_MODELS[0], dailyMax: 500 };
 
 /** The labeller's highest daily max, for the route's check and the form's field. */

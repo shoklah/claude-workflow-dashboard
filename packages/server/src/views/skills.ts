@@ -60,7 +60,7 @@ export function skillsView(input: {
   now: Date;
   scope: Scope | null;
 }): SkillsResponse {
-  const { weeks, filters } = period(input.query, input.now);
+  const { weeks, filters } = period(input.query, input.now, input.scope);
   const names = storedNames(input.runs);
   const mask = (name: string | null | undefined) => maskText(input.scope, name ?? '');
   const inPeriod = (unit: SkillUnit): SkillUnit => ({
@@ -72,7 +72,7 @@ export function skillsView(input: {
     ...input.runs.filter((run) => filters(storedFacts(run, names))),
     ...input.sessions,
   ].map((unit) => inPeriod(unit.merged));
-  const units = periodUnits(input.runs, input.sessions, input.query, input.now);
+  const units = periodUnits(input.runs, input.sessions, input.query, input.now, input.scope);
   const inUnits: SkillUnit[] = [...units.runs, ...units.sessions];
   const missing = inUnits.map((unit) => ({
     missing_skills: unit.missing_skills?.map(mask),
