@@ -27,7 +27,7 @@ pnpm agent:install
 
 ## The data folder
 
-Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` on macOS and `$XDG_DATA_HOME/claude-workflow-dashboard/` on Linux (`~/.local/share/claude-workflow-dashboard/` when `XDG_DATA_HOME` is unset), the project's first name, which the launchd agent and the systemd unit keep too, created with mode `0700`:
+Everything the dashboard stores lives in `~/Library/Application Support/claude-workflow-dashboard/` on macOS and `$XDG_DATA_HOME/claude-workflow-dashboard/` on Linux (`~/.local/share/claude-workflow-dashboard/` when `XDG_DATA_HOME` is unset or empty), the project's first name, which the launchd agent and the systemd unit keep too, created with mode `0700`:
 
 - `dashboard.sqlite`: the imports and what was read from them.
 - `logs/`: the agent's `out.log` and `err.log`.

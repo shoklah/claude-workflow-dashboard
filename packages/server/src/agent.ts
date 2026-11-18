@@ -6,7 +6,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadConfig } from './config.ts';
+import { platformDefaults } from './config.ts';
 
 export const LABEL = 'com.shoklah.claude-workflow-dashboard';
 export const UNIT = 'claude-workflow-dashboard.service';
@@ -90,10 +90,9 @@ export function agentSpec(
     };
   }
   if (platform === 'linux') {
-    const dataHome = opts.env.XDG_DATA_HOME || undefined;
     return {
       file: join(opts.home, '.config', 'systemd', 'user', UNIT),
-      contents: systemdUnit({ node, entry, logDir, dataHome }),
+      contents: systemdUnit({ node, entry, logDir, dataHome: opts.env.XDG_DATA_HOME }),
       start: [
         ['systemctl', '--user', 'daemon-reload'],
         ['systemctl', '--user', 'enable', UNIT],
@@ -108,18 +107,23 @@ export function agentSpec(
 if (import.meta.main) {
   // No server bundle: node runs main.ts with its type stripping, as check:real does, with the node running install.
   const entry = fileURLToPath(new URL('./main.ts', import.meta.url));
-  const opts = { home: homedir(), env: process.env, uid: process.getuid?.(), node: process.execPath, entry };
-  const specWith = (logDir: string) => agentSpec(process.platform, { ...opts, logDir });
-  // Only install reads the config, for the log folder: uninstall needs only the file and the stop commands.
-  const spec = specWith('');
+  // The data dir is always the platform's default (config.json can't move it), so no command reads the config.
+  const logDir = join(platformDefaults(process.platform, process.env, homedir()).dataDir, 'logs');
+  const spec = agentSpec(process.platform, {
+    home: homedir(),
+    env: process.env,
+    uid: process.getuid?.(),
+    node: process.execPath,
+    entry,
+    logDir,
+  });
   const command = process.argv[2];
   const run = ([cmd, ...args]: string[]) => spawnSync(cmd, args, { stdio: 'inherit' }).status ?? 1;
   if (!spec) {
     console.error('agent:install supports macOS and Linux (Windows: use WSL)');
     process.exitCode = 1;
   } else if (command === 'install') {
-    const logDir = join(loadConfig().dataDir, 'logs');
-    const { file, contents, start } = specWith(logDir)!;
+    const { file, contents, start } = spec;
     mkdirSync(logDir, { recursive: true, mode: 0o700 });
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, contents);

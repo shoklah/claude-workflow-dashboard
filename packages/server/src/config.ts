@@ -33,19 +33,18 @@ export function platformDefaults(
 
 /**
  * The config: the defaults, overridden by `<dataDir>/config.json` when it exists, with aliases that aren't an object
- * read as none. The data dir (by default `platformDefaults`': `~/Library/Application Support/claude-workflow-dashboard`
- * on macOS, `$XDG_DATA_HOME/claude-workflow-dashboard` or `~/.local/share/claude-workflow-dashboard` elsewhere) is
- * created with mode 0700, since the data is personal.
+ * read as none. The data dir (by default `platformDefaults`') is created with mode 0700, since the data is personal.
  */
 export function loadConfig(dataDir?: string): Config {
-  const platform = platformDefaults(process.platform, process.env, homedir());
-  dataDir ??= platform.dataDir;
+  const home = homedir();
+  const fallback = platformDefaults(process.platform, process.env, home);
+  dataDir ??= fallback.dataDir;
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
-  const claude = join(homedir(), '.claude');
+  const claude = join(home, '.claude');
   const defaults: Config = {
     dataDir,
     port: 4317,
-    reporterCommand: [platform.python, '-I', join(claude, 'scripts', 'workflow-report.py'), '--json'],
+    reporterCommand: [fallback.python, '-I', join(claude, 'scripts', 'workflow-report.py'), '--json'],
     runLog: join(claude, 'workflow-log.jsonl'),
     projectsDir: join(claude, 'projects'),
     reporterTimeoutMs: 120_000,
