@@ -5,6 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
+    "db:generate-hosted": "drizzle-kit generate --config drizzle-hosted.config.ts",
     "check:real": "node src/check-real.ts",
     "start": "node src/main.ts",
     "dev:fixtures": "node src/dev-fixtures.ts"
