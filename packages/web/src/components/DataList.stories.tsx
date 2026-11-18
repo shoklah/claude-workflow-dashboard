@@ -52,6 +52,14 @@ export const Empty: Story = {
   },
 };
 
+/** No empty line: a list given none shows its headers alone. */
+export const NoEmptyLine: Story = {
+  args: { rows: [], empty: undefined },
+  play: async ({ canvasElement }) => {
+    await expect(bodyRows(canvasElement)).toHaveLength(0);
+  },
+};
+
 /** Short: ten rows, all shown, no pages. */
 export const Short: Story = {
   args: { rows: ROWS.slice(0, 10) },

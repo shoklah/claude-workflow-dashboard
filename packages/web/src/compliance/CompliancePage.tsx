@@ -174,7 +174,6 @@ export function CompliancePage({ step }: { step?: StepKind }) {
             name={(w) => (w.runKey === null ? 'no run' : runName(w.branch))}
             columns={WARNING_COLUMNS}
             label="Warnings"
-            empty="No warnings in this cell."
           />
         </Section>
       )}

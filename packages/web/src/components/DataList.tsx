@@ -56,8 +56,8 @@ const FOLD = 'hidden @3xl:table-cell';
 
 /**
  * One list of items: first-glance columns that sort by a header click, pages of `PAGE_SIZE`, and a row that opens in
- * place to its folded columns (while narrow), its `facts` and `extra`. `label` names the table's region, `className`
- * adds to its container, and `rowKey` keeps a row open across sorts and pages (`index`: its place in `rows`).
+ * place to its folded columns (while narrow), its `facts` and `extra`; with no rows, its `empty` line, or its headers
+ * alone without one. `label` names the table's region, `className` adds to its container, and `rowKey` keeps a row open across sorts and pages (`index`: its place in `rows`).
  */
 export function DataList<T extends RowData>({
   rows,
@@ -77,7 +77,7 @@ export function DataList<T extends RowData>({
   facts?: ListFact<T>[];
   extra?: (row: T) => ReactNode;
   label: string;
-  empty: ReactNode;
+  empty?: ReactNode;
   className?: string;
 }) {
   const defs = useMemo(() => {
@@ -148,7 +148,7 @@ export function DataList<T extends RowData>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.length === 0 && <EmptyRow columns={columns.length}>{empty}</EmptyRow>}
+          {rows.length === 0 && empty !== undefined && <EmptyRow columns={columns.length}>{empty}</EmptyRow>}
           {table.getRowModel().rows.map((row) => {
             const r = row.original;
             const key = rowKey(r, row.index);
