@@ -1,30 +1,21 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Database from 'better-sqlite3';
 import { and, eq, gte, lt } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { openSqlite } from '../db/open.ts';
 import * as schema from './schema.ts';
 import { accounts, collectorTokens, invites, sessions } from './schema.ts';
 
 // Two levels up from this file, as openDb's.
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url));
-export const SESSION_DAYS = 30;
-const DAY_MS = 24 * 60 * 60 * 1000;
+// A session's lifetime, for its stored expiry and its cookie alike.
+export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type AccountsDb = ReturnType<typeof openAccountsDb>;
 export type Account = { id: number; login: string };
 
 /** The accounts database in `file`, its folder created with mode 0700, foreign keys on, migrated to the latest schema. */
 export function openAccountsDb(file: string) {
-  mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
-  const client = new Database(file);
-  client.pragma('foreign_keys = ON');
-  const db = drizzle(client, { schema });
-  migrate(db, { migrationsFolder: MIGRATIONS });
-  return db;
+  return openSqlite(file, schema, MIGRATIONS, ['foreign_keys = ON']);
 }
 
 /** A secret's SHA-256 in hex: the only form a session ID or collector token is stored or looked up in. */
@@ -52,12 +43,12 @@ export function signInAccount(db: AccountsDb, user: Account, admin: string, at: 
     const existing = tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, user.id)).get();
     if (existing) {
       tx.update(accounts).set({ login: user.login }).where(eq(accounts.id, user.id)).run();
-      return { id: user.id, login: user.login };
+    } else {
+      const login = user.login.toLowerCase();
+      const invited = tx.select().from(invites).where(eq(invites.login, login)).get();
+      if (!invited && login !== admin.toLowerCase()) return null;
+      tx.insert(accounts).values({ id: user.id, login: user.login, createdAt: at }).run();
     }
-    const login = user.login.toLowerCase();
-    const invited = tx.select().from(invites).where(eq(invites.login, login)).get();
-    if (!invited && login !== admin.toLowerCase()) return null;
-    tx.insert(accounts).values({ id: user.id, login: user.login, createdAt: at }).run();
     return { id: user.id, login: user.login };
   });
 }
@@ -67,7 +58,7 @@ export function createSession(db: AccountsDb, accountId: number, at: Date): stri
   const raw = newSecret();
   db.delete(sessions).where(lt(sessions.expiresAt, at)).run();
   db.insert(sessions)
-    .values({ idHash: hashSecret(raw), accountId, expiresAt: new Date(at.getTime() + SESSION_DAYS * DAY_MS) })
+    .values({ idHash: hashSecret(raw), accountId, expiresAt: new Date(at.getTime() + SESSION_MS) })
     .run();
   return raw;
 }

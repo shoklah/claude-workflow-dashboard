@@ -1,5 +1,7 @@
 import type { Hono } from 'hono';
 import { createApp, type AppEnv, type HostedDeps } from '../src/app.ts';
+import { addInvite, createSession, createToken, signInAccount } from '../src/hosted/accounts.ts';
+import { SESSION } from '../src/hosted/auth.ts';
 import { githubClient, type GitHubClient } from '../src/hosted/github.ts';
 import { hostedDeps } from '../src/hosted/main.ts';
 
@@ -40,7 +42,7 @@ export function hostedApp(
     webDist: webDist ?? null,
     now: () => NOW,
   });
-  const hosted = deps.hosted!;
+  const hosted = deps.hosted;
   return {
     app: createApp(deps),
     hosted,
@@ -48,5 +50,24 @@ export function hostedApp(
       hosted.files.close();
       hosted.accounts.$client.close();
     },
+  };
+}
+
+/** Two invited, signed-in accounts. */
+export const A = { id: 101, login: 'Alice' };
+export const B = { id: 202, login: 'bob' };
+
+/** Signs A and B in on `hosted`, each with a collector token and a session; returns A's and B's tokens and A's cookie. */
+export function twoAccounts(hosted: HostedDeps): { tokenA: string; tokenB: string; cookieA: string } {
+  for (const user of [A, B]) {
+    addInvite(hosted.accounts, user.login, NOW);
+    signInAccount(hosted.accounts, user, 'admin', NOW);
+  }
+  const cookieA = `${SESSION}=${createSession(hosted.accounts, A.id, NOW)}`;
+  createSession(hosted.accounts, B.id, NOW);
+  return {
+    tokenA: createToken(hosted.accounts, A.id, NOW),
+    tokenB: createToken(hosted.accounts, B.id, NOW),
+    cookieA,
   };
 }

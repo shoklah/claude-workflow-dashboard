@@ -5,11 +5,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type { AccountResponse, TokenResponse } from '@cwd/shared';
 import { getCursor, setCursor } from '../src/db/read.ts';
 import { collectorTokens } from '../src/hosted/schema.ts';
-import { addInvite, createSession, createToken, listTokens, signInAccount } from '../src/hosted/accounts.ts';
-import { hostedApp, NOW, ORIGIN, PUBLIC_HOST } from './hosted-helpers.ts';
-
-const A = { id: 101, login: 'Alice' };
-const B = { id: 202, login: 'bob' };
+import { listTokens } from '../src/hosted/accounts.ts';
+import { A, B, hostedApp, NOW, ORIGIN, PUBLIC_HOST, twoAccounts } from './hosted-helpers.ts';
 
 let dir: string;
 let hosted: ReturnType<typeof hostedApp>;
@@ -37,13 +34,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'cwd account '));
   hosted = hostedApp(join(dir, 'data'));
   const { accounts } = hosted.hosted;
-  for (const user of [A, B]) {
-    addInvite(accounts, user.login, NOW);
-    signInAccount(accounts, user, 'admin', NOW);
-  }
-  tokenA = createToken(accounts, A.id, NOW);
-  tokenB = createToken(accounts, B.id, NOW);
-  cookieA = `edward_session=${createSession(accounts, A.id, NOW)}`;
+  ({ tokenA, tokenB, cookieA } = twoAccounts(hosted.hosted));
 });
 
 afterEach(() => {

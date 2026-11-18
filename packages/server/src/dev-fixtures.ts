@@ -47,7 +47,7 @@ const hosted =
         now: () => NOW,
       })
     : null;
-const db = hosted ? hosted.hosted!.files.db(1) : openDb(join(dataDir, 'dashboard.sqlite'));
+const db = hosted ? hosted.hosted.files.db(1) : openDb(join(dataDir, 'dashboard.sqlite'));
 
 for (const [i, file] of files.entries()) {
   const at = new Date(NOW.getTime() - (files.length - i) * HOUR);

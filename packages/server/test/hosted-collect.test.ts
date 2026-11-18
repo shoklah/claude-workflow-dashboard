@@ -7,20 +7,9 @@ import type { StatusResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { imports } from '../src/db/schema.ts';
 import { clearCursor, getCursor, lastImport, listUnits } from '../src/db/read.ts';
-import {
-  addInvite,
-  createSession,
-  createToken,
-  getAccount,
-  listTokens,
-  revokeToken,
-  signInAccount,
-} from '../src/hosted/accounts.ts';
+import { getAccount, listTokens, revokeToken } from '../src/hosted/accounts.ts';
 import { runKey } from '../src/keys.ts';
-import { hostedApp, NOW, PUBLIC_HOST } from './hosted-helpers.ts';
-
-const A = { id: 101, login: 'Alice' };
-const B = { id: 202, login: 'bob' };
+import { A, B, hostedApp, NOW, PUBLIC_HOST, twoAccounts } from './hosted-helpers.ts';
 
 let dir: string;
 let hosted: ReturnType<typeof hostedApp>;
@@ -59,13 +48,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'cwd collect '));
   hosted = hostedApp(join(dir, 'data'));
   const { accounts } = hosted.hosted;
-  for (const user of [A, B]) {
-    addInvite(accounts, user.login, NOW);
-    signInAccount(accounts, user, 'admin', NOW);
-  }
-  tokenA = createToken(accounts, A.id, NOW);
-  tokenB = createToken(accounts, B.id, NOW);
-  cookieA = `edward_session=${createSession(accounts, A.id, NOW)}`;
+  ({ tokenA, tokenB, cookieA } = twoAccounts(hosted.hosted));
 });
 
 afterEach(() => {

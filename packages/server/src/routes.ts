@@ -1,4 +1,5 @@
-import { gunzipSync } from 'node:zlib';
+import { promisify } from 'node:util';
+import { gunzip } from 'node:zlib';
 import type { Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import {
@@ -6,7 +7,6 @@ import {
   toSpendUnits,
   toStepKind,
   weekStart,
-  type AccountResponse,
   type ComplianceQuery,
   type ContextQuery,
   type FindingsQuery,
@@ -40,6 +40,7 @@ import {
 import { createToken, getAccount, listTokens, revokeToken, setLastCollect, type Account } from './hosted/accounts.ts';
 import { projectKey } from './keys.ts';
 import { importJson } from './reporter.ts';
+import { accountView } from './views/account.ts';
 import { complianceView } from './views/compliance.ts';
 import { contextView } from './views/context.ts';
 import { findingsView } from './views/findings.ts';
@@ -65,6 +66,7 @@ export function postOnly(c: Context): Response {
 // The collect endpoint's limits: the gzipped body, and the export it unzips to.
 const COLLECT_MAX_BODY = 32 * 1024 * 1024;
 const COLLECT_MAX_JSON = 64 * 1024 * 1024;
+const unzip = promisify(gunzip);
 
 // The most weeks a list covers: the Runs page's longest period, so a huge `weeks` can't build a huge response.
 const MAX_WEEKS = 52;
@@ -362,9 +364,9 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   // stored, an export with another state id or none is refused before anything is stored: one machine feeds an account.
   const { hosted } = deps;
   if (hosted) {
-    // The middleware sets the token's account on every /api/collect* request.
-    const collected = (c: Context<AppEnv>) =>
-      setLastCollect(hosted.accounts, (c.var.account as Account).id, deps.now());
+    // The middleware sets the caller on every hosted /api/collect* (a token) and /api/account* (a session) request.
+    const caller = (c: Context<AppEnv>) => c.var.account as Account;
+    const collected = (c: Context<AppEnv>) => setLastCollect(hosted.accounts, caller(c).id, deps.now());
     app.get('/api/collect/cursor', (c) => c.json({ cursor: getCursor(c.var.db) }));
     app.post(
       '/api/collect',
@@ -373,7 +375,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
         const at = deps.now();
         let json: unknown;
         try {
-          const body = gunzipSync(Buffer.from(await c.req.arrayBuffer()), { maxOutputLength: COLLECT_MAX_JSON });
+          const body = await unzip(Buffer.from(await c.req.arrayBuffer()), { maxOutputLength: COLLECT_MAX_JSON });
           json = JSON.parse(body.toString('utf8'));
         } catch (error) {
           if (error instanceof RangeError) return c.body(null, 413);
@@ -404,23 +406,11 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
 
     // Hosted, task 9: the caller's account, its collector tokens and the collector reset. A session caller only (a
     // token resolves only on /api/collect*); each reads the caller's own file, never `c.var.db`.
-    const caller = (c: Context<AppEnv>) => c.var.account as Account;
     app.get('/api/account', (c) => {
       const { id } = caller(c);
       const account = getAccount(hosted.accounts, id);
       if (!account) return c.notFound();
-      const body: AccountResponse = {
-        login: account.login,
-        createdAt: account.createdAt.toISOString(),
-        lastCollectAt: account.lastCollectAt?.toISOString() ?? null,
-        machine: getCursor(hosted.files.db(id)) !== null,
-        tokens: listTokens(hosted.accounts, id).map((token) => ({
-          id: token.id,
-          createdAt: token.createdAt.toISOString(),
-          lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
-        })),
-      };
-      return c.json(body);
+      return c.json(accountView(account, listTokens(hosted.accounts, id), getCursor(hosted.files.db(id)) !== null));
     });
     app.post('/api/account/tokens', (c) => {
       const body: TokenResponse = { token: createToken(hosted.accounts, caller(c).id, deps.now()) };

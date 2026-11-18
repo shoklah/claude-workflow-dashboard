@@ -12,15 +12,18 @@ export function AccountPage() {
   const account = useLiveQuery<AccountResponse>('/api/account');
   const data = account.data;
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   // Ends the session, then loads the sign-in page afresh, so no cached data of the account stays in the page; a failure
   // shows in fixed words.
   async function leave() {
     setSignOutFailed(false);
+    setLeaving(true);
     try {
       await signOut();
     } catch {
       setSignOutFailed(true);
+      setLeaving(false);
       return;
     }
     window.location.assign('/signin');
@@ -45,7 +48,7 @@ export function AccountPage() {
               ]}
             />
             <div>
-              <Button variant="outline" onClick={leave}>
+              <Button variant="outline" onClick={leave} disabled={leaving}>
                 <LogOut aria-hidden />
                 Sign out
               </Button>

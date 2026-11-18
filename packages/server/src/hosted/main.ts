@@ -1,7 +1,7 @@
 // Hosted mode: the settings from the data folder's `.env`, the hosted app's deps, and the server on every interface
 // (inside its container, behind a reverse proxy).
 import { join } from 'node:path';
-import { builtWebDist, serveApp, type AppDeps } from '../app.ts';
+import { builtWebDist, serveApp, type AppDeps, type HostedDeps } from '../app.ts';
 import type { Config } from '../config.ts';
 import { openAccountsDb } from './accounts.ts';
 import { accountFiles } from './account-files.ts';
@@ -16,14 +16,15 @@ export function hostedSettings(env: Record<string, string | undefined>): {
   clientSecret: string;
   admin: string;
 } {
+  const settings = {
+    publicHost: env.EDWARD_PUBLIC_HOST ?? '',
+    clientId: env.GITHUB_CLIENT_ID ?? '',
+    clientSecret: env.GITHUB_CLIENT_SECRET ?? '',
+    admin: env.EDWARD_ADMIN ?? '',
+  };
   const missing = NAMES.filter((name) => !env[name]);
   if (missing.length) throw new Error(`hosted mode needs ${missing.join(', ')} in the data folder's .env`);
-  return {
-    publicHost: env.EDWARD_PUBLIC_HOST!,
-    clientId: env.GITHUB_CLIENT_ID!,
-    clientSecret: env.GITHUB_CLIENT_SECRET!,
-    admin: env.EDWARD_ADMIN!,
-  };
+  return settings;
 }
 
 /** The hosted app's deps over `dataDir`: its `accounts.sqlite` and account files, no local database, no refresh, no
@@ -37,7 +38,7 @@ export function hostedDeps(opts: {
   github: GitHubClient;
   webDist: string | null;
   now: () => Date;
-}): AppDeps {
+}): AppDeps & { hosted: HostedDeps } {
   const { dataDir, port, publicHost, origin, admin, github, webDist, now } = opts;
   return {
     db: null,

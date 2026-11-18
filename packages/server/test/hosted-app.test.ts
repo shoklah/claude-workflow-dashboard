@@ -7,12 +7,9 @@ import { fixture } from '../../shared/test/fixture.ts';
 import type { Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
 import { getSeenAt } from '../src/db/read.ts';
-import { addInvite, createSession, createToken, signInAccount } from '../src/hosted/accounts.ts';
 import { runKey, sessionKey } from '../src/keys.ts';
-import { hostedApp, NOW, ORIGIN, PUBLIC_HOST } from './hosted-helpers.ts';
+import { A, B, hostedApp, NOW, ORIGIN, PUBLIC_HOST, twoAccounts } from './hosted-helpers.ts';
 
-const A = { id: 101, login: 'Alice' };
-const B = { id: 202, login: 'bob' };
 // The imports' time, which the first import also sets as each file's seen time.
 const IMPORTED = new Date('2026-11-11T12:00:00Z');
 const PAGES = [
@@ -55,13 +52,7 @@ beforeEach(() => {
   writeFileSync(join(webDist, 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
   hosted = hostedApp(join(dir, 'data'), { webDist });
   const { accounts, files } = hosted.hosted;
-  for (const user of [A, B]) {
-    addInvite(accounts, user.login, NOW);
-    signInAccount(accounts, user, 'admin', NOW);
-  }
-  cookieA = `edward_session=${createSession(accounts, A.id, NOW)}`;
-  createSession(accounts, B.id, NOW);
-  tokenA = createToken(accounts, A.id, NOW);
+  ({ tokenA, cookieA } = twoAccounts(hosted.hosted));
 
   load(files.db(A.id), fixture('report-work'));
   // B's own variant: every branch and transcript file suffixed, so its run and session keys are B's own.

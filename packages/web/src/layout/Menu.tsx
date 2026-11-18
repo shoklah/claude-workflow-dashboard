@@ -9,7 +9,6 @@ import type { LucideIcon } from 'lucide-react';
 import { cn } from 'cn';
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
-import { useStatus } from '../api.ts';
 import { CURRENT, ENTRY } from '../lib/format.ts';
 import { AccountLinks } from './AccountLinks.tsx';
 import { Brand } from './Brand.tsx';
@@ -84,7 +83,6 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
  * a link to the page already shown) it returns the focus to the button. */
 export function MenuButton() {
   const [open, setOpen] = useState(false);
-  const account = useStatus().data?.account;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -104,11 +102,7 @@ export function MenuButton() {
           <DialogDescription className="sr-only">Go to a page of the dashboard.</DialogDescription>
         </DialogHeader>
         <Menu onNavigate={() => setOpen(false)} />
-        {account && (
-          <div className="border-t pt-3 text-sm">
-            <AccountLinks onNavigate={() => setOpen(false)} />
-          </div>
-        )}
+        <AccountLinks className="border-t pt-3 text-sm" onNavigate={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

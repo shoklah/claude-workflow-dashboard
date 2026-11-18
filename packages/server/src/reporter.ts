@@ -59,6 +59,12 @@ export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterR
   });
 }
 
+/** The reporter's command with `--changed-since` the cursor, `0` when none; throws with no command. */
+export function reporterCommand(config: Config, cursor: string | null): string[] {
+  if (config.reporterCommand.length === 0) throw new Error('no reporter command');
+  return [...config.reporterCommand, '--changed-since', cursor ?? '0'];
+}
+
 /**
  * Runs the reporter once and imports its report, or records the failure with its error text, a throw included (an
  * empty command, a locked database). The import is timed before the reporter runs, so a transcript that changes
@@ -69,10 +75,8 @@ export function runReporter(cmd: string[], timeoutMs: number): Promise<ReporterR
 export async function importOnce(db: Db, config: Config, now: () => Date): Promise<void> {
   const at = now();
   try {
-    if (config.reporterCommand.length === 0) throw new Error('no reporter command');
     const sent = getCursor(db);
-    const command = [...config.reporterCommand, '--changed-since', sent ?? '0'];
-    const result = await runReporter(command, config.reporterTimeoutMs);
+    const result = await runReporter(reporterCommand(config, sent), config.reporterTimeoutMs);
     if (!result.ok) return recordImportFailure(db, result.error, at);
     importJson(db, result.json, sent, at);
   } catch (error) {

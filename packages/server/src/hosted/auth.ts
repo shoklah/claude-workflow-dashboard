@@ -3,10 +3,11 @@ import type { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppDeps, AppEnv, HostedDeps } from '../app.ts';
 import { postOnly } from '../routes.ts';
-import { createSession, deleteSession, newSecret, SESSION_DAYS, signInAccount } from './accounts.ts';
+import { createSession, deleteSession, newSecret, SESSION_MS, signInAccount } from './accounts.ts';
 
 const OAUTH = 'edward_oauth';
-const SESSION = 'edward_session';
+/** The session cookie's name, which createApp's middleware reads. */
+export const SESSION = 'edward_session';
 const OAUTH_COOKIE = { httpOnly: true, secure: true, sameSite: 'Lax', path: '/auth' } as const;
 const SESSION_COOKIE = { httpOnly: true, secure: true, sameSite: 'Lax', path: '/' } as const;
 
@@ -48,7 +49,7 @@ export function registerAuth(app: Hono<AppEnv>, deps: AppDeps & { hosted: Hosted
     const account = signInAccount(hosted.accounts, user, hosted.admin, deps.now());
     if (!account) return c.redirect('/signin?error=refused', 302);
     const session = createSession(hosted.accounts, account.id, deps.now());
-    setCookie(c, SESSION, session, { ...SESSION_COOKIE, maxAge: SESSION_DAYS * 24 * 60 * 60 });
+    setCookie(c, SESSION, session, { ...SESSION_COOKIE, maxAge: SESSION_MS / 1000 });
     return c.redirect('/', 302);
   });
 

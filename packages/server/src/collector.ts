@@ -4,7 +4,7 @@
 import { gzipSync } from 'node:zlib';
 import type { Config } from './config.ts';
 import { createQueue } from './queue.ts';
-import { runReporter } from './reporter.ts';
+import { reporterCommand, runReporter } from './reporter.ts';
 import { startTriggers } from './triggers.ts';
 
 // The longest error text a collector may record: the collector cuts to it and `/api/collect/failure` refuses past it.
@@ -59,7 +59,12 @@ export async function collectOnce(opts: {
   } catch (error) {
     return logFailed('cursor', error);
   }
-  const command = [...config.reporterCommand, '--changed-since', cursor ?? '0'];
+  let command;
+  try {
+    command = reporterCommand(config, cursor);
+  } catch (error) {
+    return logFailed('reporter', error);
+  }
   const result = await runReporter(command, config.reporterTimeoutMs);
   if (!result.ok) {
     await send(fetch, 'failure', new URL('/api/collect/failure', server), {
@@ -93,18 +98,13 @@ function safeServer(server: string): boolean {
  */
 export function runCollector(config: Config, env: Record<string, string | undefined>): void {
   const token = env.EDWARD_TOKEN;
-  const problem = !config.server
-    ? 'collector: server is not set in the config'
-    : !token
-      ? "collector: EDWARD_TOKEN is not set in the data folder's .env"
-      : !safeServer(config.server)
-        ? 'collector: server must be an https:// URL (http:// only to localhost)'
-        : null;
-  if (problem || !token) {
-    console.error(problem);
+  const refuse = (line: string) => {
+    console.error(line);
     process.exitCode = 1;
-    return;
-  }
+  };
+  if (!config.server) return refuse('collector: server is not set in the config');
+  if (!token) return refuse("collector: EDWARD_TOKEN is not set in the data folder's .env");
+  if (!safeServer(config.server)) return refuse('collector: server must be an https:// URL (http:// only to localhost)');
   const now = () => new Date();
   let lastSent: Date | null = null;
   const queue = createQueue(async () => {

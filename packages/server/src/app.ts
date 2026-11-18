@@ -5,8 +5,9 @@ import { getCookie } from 'hono/cookie';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { Db } from './db/open.ts';
+import type { AccountFiles } from './hosted/account-files.ts';
 import { sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
-import { registerAuth } from './hosted/auth.ts';
+import { registerAuth, SESSION } from './hosted/auth.ts';
 import type { GitHubClient } from './hosted/github.ts';
 import { registerRoutes } from './routes.ts';
 
@@ -16,7 +17,7 @@ export type HostedDeps = {
   publicHost: string;
   origin: string;
   accounts: AccountsDb;
-  files: { db(id: number): Db; close(): void };
+  files: AccountFiles;
   admin: string;
   github: GitHubClient;
 };
@@ -92,7 +93,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
       if (writes && (c.req.header('X-Dashboard-Refresh') !== '1' || c.req.header('Origin') !== hosted.origin)) {
         return c.text('Forbidden', 403);
       }
-      const raw = getCookie(c, 'edward_session');
+      const raw = getCookie(c, SESSION);
       account = raw ? sessionAccount(hosted.accounts, raw, deps.now()) : null;
       if (!account && !OPEN.includes(path) && !OPEN_PREFIXES.some((prefix) => path.startsWith(prefix))) {
         return path === '/api' || path.startsWith('/api/') ? c.body(null, 401) : c.redirect('/signin', 302);

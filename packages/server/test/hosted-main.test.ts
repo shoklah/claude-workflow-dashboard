@@ -40,7 +40,7 @@ describe('hostedSettings', () => {
 
 describe('hostedDeps', () => {
   let dir: string;
-  let deps: AppDeps;
+  let deps: ReturnType<typeof hostedDeps>;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'cwd hosted main '));
@@ -60,8 +60,8 @@ describe('hostedDeps', () => {
   });
 
   afterEach(() => {
-    deps.hosted?.files.close();
-    deps.hosted?.accounts.$client.close();
+    deps.hosted.files.close();
+    deps.hosted.accounts.$client.close();
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -81,7 +81,7 @@ describe('hostedDeps', () => {
     expect((await get('/api/home')).status).toBe(401);
     expect((await get('/signin')).status).toBe(200);
     expect((await get('/signin', { Host: 'localhost:4317' })).status).toBe(403);
-    const accounts = deps.hosted!.accounts;
+    const accounts = deps.hosted.accounts;
     addInvite(accounts, 'alice', NOW);
     signInAccount(accounts, { id: 101, login: 'alice' }, SET.EDWARD_ADMIN, NOW);
     const cookie = `edward_session=${createSession(accounts, 101, NOW)}`;

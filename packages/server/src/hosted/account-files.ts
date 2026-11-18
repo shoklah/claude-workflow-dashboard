@@ -6,7 +6,9 @@ import { rebuildDerived } from '../db/import.ts';
  * Each account's database, `<dataDir>/accounts/<id>.sqlite`, opened, migrated and rebuilt once per process on its first
  * use, then kept open. A path is built only from a positive safe integer id; any other id throws.
  */
-export function accountFiles(dataDir: string): { db(id: number): Db; close(): void } {
+export type AccountFiles = { db(id: number): Db; close(): void };
+
+export function accountFiles(dataDir: string): AccountFiles {
   const open = new Map<number, Db>();
   return {
     db(id) {
