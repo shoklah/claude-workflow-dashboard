@@ -40,18 +40,15 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
   return groups;
 }
 
-/** The listed warnings' columns: the run (a session's has none), its project, folding while narrow, the warning and
- * whether it is new. */
+/** The listed warnings' columns: the run (a session's has none), its project, the warning and whether it is new, the
+ * project and whether it is new folding while narrow. */
 const WARNING_COLUMNS: ListColumn<ComplianceWarning>[] = [
   {
     id: 'run',
     header: 'Run',
+    names: true,
     value: (w) => w.branch,
-    cell: (w) => (
-      <span className="font-medium">
-        {w.runKey === null ? <Unknown label="no run" /> : <RunLink runKey={w.runKey} branch={w.branch} />}
-      </span>
-    ),
+    cell: (w) => (w.runKey === null ? <Unknown label="no run" /> : <RunLink runKey={w.runKey} branch={w.branch} />),
   },
   {
     id: 'project',
@@ -78,6 +75,7 @@ const WARNING_COLUMNS: ListColumn<ComplianceWarning>[] = [
   {
     id: 'seen',
     header: 'Since you last looked',
+    fold: true,
     value: (w) => (w.isNew ? 'New' : 'Seen'),
     cell: (w) => <span className={w.isNew ? WARNING_INK : 'text-muted-foreground'}>{w.isNew ? 'New' : 'Seen'}</span>,
   },

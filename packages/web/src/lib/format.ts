@@ -401,6 +401,8 @@ const ZERO_SHADE = 'bg-shade-zero text-on-shade-zero';
 // the panels in both modes (DESIGN.md's Status).
 export const WARNING_BORDER = 'border-warning-edge';
 export const WARNING_INK = 'text-warning-ink';
+// An untitled session's "no title" as a list's row name (its toggle, `ListColumn.textClass`): regular and muted.
+export const UNNAMED = 'font-normal text-muted-foreground';
 // The import notice's and showing mode's amber glass bar (DESIGN.md's Notice bars).
 export const NOTICE = 'rounded-panel border border-notice-edge bg-notice text-sm text-notice-ink';
 // The run page's two findings tables: each one's 4 px left side (its container's own border, so it follows the rounded

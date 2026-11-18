@@ -150,7 +150,8 @@ export const Full: Story = {
   },
 };
 
-/** Narrow: under 768 px the list's Project folds, and each row opens to it alone. */
+/** Narrow: under 768 px the list's Project and whether it is new fold, and each row opens to them alone, so the list
+ * never scrolls sideways. */
 export const Narrow: Story = {
   decorators: [width(375)],
   beforeEach: () => {
@@ -161,10 +162,11 @@ export const Narrow: Story = {
     const table = within(canvas.getByRole('region', { name: 'Warnings' }));
     await expect(table.getByRole('columnheader', { name: 'Run' })).toBeVisible();
     await expect(table.getByText('Project').closest('th')).not.toBeVisible();
+    await expect(table.getByText('Since you last looked').closest('th')).not.toBeVisible();
     await userEvent.click(table.getByRole('button', { name: 'Details of feat/search' }));
     const opened = table.getAllByRole('row').at(-1)!;
-    await expect(visibleTerms(opened)).toEqual(['Project']);
-    await expect(visibleValues(opened)).toEqual(['atlas']);
+    await expect(visibleTerms(opened)).toEqual(['Project', 'Since you last looked']);
+    await expect(visibleValues(opened)).toEqual(['atlas', 'New']);
   },
 };
 

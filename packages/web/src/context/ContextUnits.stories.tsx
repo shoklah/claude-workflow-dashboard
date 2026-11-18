@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { contextFull, contextHidden } from '../test/context.ts';
+import { contextFull, contextHidden, planSession, searchRun } from '../test/context.ts';
 import { ContextUnits } from './ContextUnits.tsx';
-import { expectNoJoined, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
+import { expectNoJoined, visibleFact, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 
 const meta = {
   component: ContextUnits,
@@ -99,6 +99,25 @@ export const Narrow: Story = {
     await userEvent.click(region.getByRole('button', { name: 'Refactor the sync queue' }));
     const opened = region.getAllByRole('row')[2];
     await expect(visibleTerms(opened).slice(0, 5)).toEqual(['Kind', 'When', 'Largest', 'Read share', 'Project']);
+  },
+};
+
+/** Untitled: a unit's name is medium, a session's "no title" regular and muted, in its row and as the session it
+ * handed off to. */
+export const Untitled: Story = {
+  args: {
+    units: [
+      searchRun,
+      { ...planSession, session: { ...planSession.session!, title: null }, handedOffTo: { ...planSession.handedOffTo!, title: null } },
+    ],
+  },
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.getByRole('link', { name: 'feat/search' }).closest('td')).toHaveClass('font-medium');
+    const toggle = canvas.getByRole('button', { name: 'no title' });
+    await expect(toggle.closest('td')).toHaveClass('font-medium');
+    await expect(toggle.lastElementChild).toHaveClass('font-normal', 'text-muted-foreground');
+    await userEvent.click(toggle);
+    await expect(visibleFact(openedRow(toggle), 'To session').firstElementChild).toHaveClass('text-muted-foreground');
   },
 };
 

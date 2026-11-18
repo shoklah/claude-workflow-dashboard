@@ -9,6 +9,7 @@ import { SessionChip } from '../components/SessionChip.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
+  UNNAMED,
   WARNING_INK,
   capitalize,
   formatCompactFixed,
@@ -26,9 +27,11 @@ const COLUMNS: ListColumn<ContextUnit>[] = [
     id: 'name',
     header: 'Name',
     wide: true,
+    names: true,
     value: (u) => (u.run ? u.run.branch : (u.session?.title ?? null)),
     cell: (u) => (u.run ? <RunLink runKey={u.run.key} branch={u.run.branch} /> : sessionText(u)),
     text: sessionText,
+    textClass: (u) => !u.session?.title && UNNAMED,
   },
   { id: 'kind', header: 'Kind', fold: true, value: (u) => u.kind, cell: (u) => capitalize(u.kind) },
   {
@@ -66,7 +69,13 @@ const FACTS: ListFact<ContextUnit>[] = [
   ['Calls', (u) => <Num value={u.calls} />],
   ['Median tokens per call', (u) => (u.medianTokens === null ? null : <Num value={u.medianTokens} format={formatCompactFixed} />)],
   ['Handed off', (u) => (u.handoff === null ? null : <Time iso={u.handoff} />)],
-  ['To session', (u) => (u.handedOffTo === null ? null : sessionName(u.handedOffTo.title))],
+  [
+    'To session',
+    (u) =>
+      u.handedOffTo === null ? null : (
+        <span className={cn(!u.handedOffTo.title && 'text-muted-foreground')}>{sessionName(u.handedOffTo.title)}</span>
+      ),
+  ],
   ['Its ID', (u) => (u.handedOffTo?.sessionId ? <SessionChip id={u.handedOffTo.sessionId} /> : null)],
   ['Sweeps inline', (u) => <Num value={u.sweeps.inline} />],
   ['Sweeps delegated', (u) => <Num value={u.sweeps.delegated} />],

@@ -7,6 +7,7 @@ import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
+  UNNAMED,
   WARNING_INK,
   formatDayTime,
   formatDollars,
@@ -87,7 +88,16 @@ const count = (s: SessionRow, kind: string) => new Set(s.timeline.filter((t) => 
 const neverLoaded = (s: SessionRow) => new Set(s.timeline.filter((t) => t.neverLoaded).map((t) => t.name)).size;
 
 const COLUMNS: ListColumn<SessionRow>[] = [
-  { id: 'session', header: 'Session', wide: true, value: (s) => s.title, cell: (s) => sessionName(s.title), text: (s) => sessionName(s.title) },
+  {
+    id: 'session',
+    header: 'Session',
+    wide: true,
+    names: true,
+    value: (s) => s.title,
+    cell: (s) => sessionName(s.title),
+    text: (s) => sessionName(s.title),
+    textClass: (s) => !s.title && UNNAMED,
+  },
   { id: 'project', header: 'Project', fold: true, value: (s) => projectLabel(s.project), cell: (s) => projectLabel(s.project) },
   {
     id: 'started',

@@ -21,8 +21,6 @@ function cells(table: Element): string[][] {
   );
 }
 
-/** The opened row under a toggle. */
-
 export const Empty: Story = {
   args: { sessions: [] },
   play: async ({ canvas }) => {
@@ -119,6 +117,10 @@ export const Full: Story = {
 
     // Missing startup is orange, a zero Never loaded isn't.
     const otherToggle = canvas.getByRole('button', { name: 'no title' });
+    // A session's name is medium, an untitled one's "no title" regular and muted.
+    await expect(otherToggle.closest('td')).toHaveClass('font-medium');
+    await expect(otherToggle.lastElementChild).toHaveClass('font-normal', 'text-muted-foreground');
+    await expect(canvas.getByRole('button', { name: 'Sketch the retry backoff' }).lastElementChild).not.toHaveClass('text-muted-foreground');
     await userEvent.click(otherToggle);
     const otherOpened = openedRow(otherToggle);
     await expect(visibleFact(otherOpened, 'Startup').firstElementChild).toHaveClass('text-warning-ink');

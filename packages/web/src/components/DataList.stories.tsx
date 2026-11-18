@@ -114,6 +114,39 @@ export const Sorts: Story = {
   },
 };
 
+/** One sort at a time: a shift-click on a second header sorts by it alone. */
+export const OneSort: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const name = canvas.getByRole('columnheader', { name: 'Name' });
+    const count = canvas.getByRole('columnheader', { name: 'Count' });
+    await userEvent.click(within(name).getByRole('button', { name: 'Name' }));
+    await userEvent.keyboard('{Shift>}');
+    await userEvent.click(within(count).getByRole('button', { name: 'Count' }));
+    await userEvent.keyboard('{/Shift}');
+    await expect(count).toHaveAttribute('aria-sort', 'ascending');
+    await expect(name).not.toHaveAttribute('aria-sort');
+  },
+};
+
+/** The column that names the row (`names`) is medium, and a row's name takes its own class (`textClass`): an unnamed
+ * one regular and muted. */
+export const Names: Story = {
+  args: {
+    columns: [
+      { ...NAME, names: true, textClass: (r) => r.count === null && 'font-normal text-muted-foreground' },
+      COUNT,
+      WHEN,
+    ],
+  },
+  play: async ({ canvas }) => {
+    const named = canvas.getByRole('button', { name: 'Item 1' });
+    await expect(named.closest('td')).toHaveClass('font-medium');
+    await expect(named.lastElementChild).not.toHaveClass('text-muted-foreground');
+    await expect(canvas.getByRole('button', { name: 'Item 4' }).lastElementChild).toHaveClass('font-normal', 'text-muted-foreground');
+    await expect(named.closest('tr')!.querySelectorAll('td')[1]).not.toHaveClass('font-medium');
+  },
+};
+
 /** Opens in place: a row opens to its facts, a null one left out; rows open independently and stay open by key. */
 export const OpensInPlace: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {

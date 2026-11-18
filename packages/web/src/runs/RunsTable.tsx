@@ -10,12 +10,13 @@ const COLUMNS: ListColumn<RunRow>[] = [
     id: 'branch',
     header: 'Branch',
     wide: true,
+    names: true,
     value: (r) => r.branch,
     cell: (r) => (
-      <span className="font-medium">
+      <>
         <RunLink runKey={r.key} branch={r.branch} />
         {r.beforeSteps && <span className="ml-2 text-xs font-normal text-muted-foreground">before steps</span>}
-      </span>
+      </>
     ),
   },
   { id: 'project', header: 'Project', fold: true, value: (r) => r.project, cell: (r) => <Text value={r.project} /> },

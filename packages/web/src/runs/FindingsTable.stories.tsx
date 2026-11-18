@@ -36,13 +36,26 @@ async function fact(
   for (const toggle of canvasElement.querySelectorAll('tbody button[aria-expanded="false"]')) await userEvent.click(toggle);
   return [...canvasElement.querySelectorAll<HTMLElement>('tbody tr')]
     .filter((tr) => tr.querySelector('dl'))
-    .map((tr) => {
-      const i = visibleTerms(tr).indexOf(term);
-      return i < 0 ? null : visibleValues(tr)[i];
-    });
+    .map((tr) => (visibleTerms(tr).includes(term) ? visibleFact(tr, term).textContent : null));
 }
 
-/** The opened row under a toggle. */
+/** A finding with no id keeps its open state when a filter changes the rows above it. */
+export const NoIdKeepsOpen: Story = {
+  args: {
+    findings: [
+      { ...runFull.findings[0], id: null, summary: 'First' },
+      { ...runFull.findings[3], id: null, step: 'final_review', summary: 'Second' },
+    ],
+    categoryLabels: runFull.categoryLabels,
+  },
+  play: async ({ canvas, userEvent }) => {
+    const [first] = canvas.getAllByRole('button', { name: NONE });
+    await userEvent.click(first);
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Step' }), 'final_review');
+    await expect(canvas.getByText('Second')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: NONE })).toHaveAttribute('aria-expanded', 'false');
+  },
+};
 
 export const Empty: Story = {
   args: { findings: [], categoryLabels: {} },

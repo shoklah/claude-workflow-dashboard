@@ -25,8 +25,9 @@ const RUN_COLUMN: ListColumn<Row> = {
   id: 'run',
   header: 'Run',
   fold: true,
+  names: true,
   value: (f) => f.branch ?? null,
-  cell: (f) => <RunLink runKey={f.runKey ?? ''} branch={f.branch} className="font-medium" />,
+  cell: (f) => <RunLink runKey={f.runKey ?? ''} branch={f.branch} />,
 };
 
 /** The first glance: the finding's id (its toggle), summary, the app's call and the session's validity. */
@@ -133,7 +134,7 @@ export function FindingsTable({
     <Section title={heading} aside={filters}>
       <DataList
         rows={rows}
-        rowKey={(f, i) => `${f.runKey ?? ''}:${f.id ?? i}`}
+        rowKey={(f) => `${f.runKey ?? ''}:${f.id ?? findings.indexOf(f)}`}
         name={(f) => f.id ?? NONE}
         columns={columns}
         facts={factsOf(categoryLabels, rounds)}

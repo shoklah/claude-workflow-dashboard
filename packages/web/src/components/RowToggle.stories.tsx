@@ -26,3 +26,17 @@ export const Open: Story = {
     await expect(button).toContainElement(canvas.getByTestId('mark'));
   },
 };
+
+/** A name that wraps keeps its chevron on its first line, as the chevron-only form sits. */
+export const Wraps: Story = {
+  args: { children: 'A long name that wraps onto a second line' },
+  decorators: [(Story) => <div style={{ width: 120 }}><Story /></div>],
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole('button');
+    const name = button.lastElementChild!.getBoundingClientRect();
+    const chevron = button.querySelector('svg')!.getBoundingClientRect();
+    const line = parseFloat(getComputedStyle(button).lineHeight);
+    await expect(name.height).toBeGreaterThan(line * 1.5);
+    await expect(chevron.bottom).toBeLessThanOrEqual(name.top + line + 1);
+  },
+};

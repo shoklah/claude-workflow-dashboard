@@ -4,8 +4,9 @@ import { cn } from 'cn';
 import { LINK } from './Panel.tsx';
 
 /** A table row's toggle for its detail rows: a button with `aria-expanded`, its chevron, an optional mark `before`
- * the name (a swatch), and the name underlined as a link, with `className` on it. Without a name (`children`), it is
- * the chevron alone, named by `label`, with `className` on the button: the toggle before a cell that is a link. */
+ * the name (a swatch), both kept on the name's first line when it wraps, and the name underlined as a link, with
+ * `className` on it. Without a name (`children`), it is the chevron alone, named by `label`, with `className` on the
+ * button: the toggle before a cell that is a link. */
 export function RowToggle({
   open,
   onToggle,
@@ -30,9 +31,11 @@ export function RowToggle({
       </button>
     );
   return (
-    <button type="button" aria-expanded={open} onClick={onToggle} className="flex items-center gap-2 rounded-sm text-left">
-      {chevron}
-      {before}
+    <button type="button" aria-expanded={open} onClick={onToggle} className="flex items-start gap-2 rounded-sm text-left">
+      <span className="flex h-5 flex-none items-center gap-2">
+        {chevron}
+        {before}
+      </span>
       <span className={cn(LINK, className)}>{children}</span>
     </button>
   );
