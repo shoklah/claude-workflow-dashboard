@@ -41,13 +41,15 @@ On macOS it writes a launchd agent to `~/Library/LaunchAgents/com.shoklah.claude
 A hosted edward serves several accounts, each signing in with GitHub (invite-only) and fed by its own collector. It runs as a Docker container behind a reverse proxy that serves HTTPS.
 
 1. Create a GitHub OAuth app whose callback URL is `https://<host>/auth/github/callback`.
-2. On the server, in the repo's `deploy/` folder, create `data/` owned by the container's `node` user: `mkdir data && sudo chown 1000:1000 data`.
+2. On the server, in the repo's `deploy/` folder, create the data folder: `mkdir -p data/claude-workflow-dashboard`.
 3. In `data/claude-workflow-dashboard/`, write `config.json` as `{ "mode": "hosted" }` and a `.env` with:
    - `EDWARD_PUBLIC_HOST`: the public hostname, `<host>`;
    - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`: the OAuth app's;
    - `EDWARD_ADMIN`: the admin's GitHub login, the one account that signs in without an invite.
 
    The server refuses to start without them, naming the missing ones.
+
+   Then make the folder private and hand it to the container's `node` user (uid 1000), last, once both files are written: `chmod 700 data/claude-workflow-dashboard && chmod 600 data/claude-workflow-dashboard/.env && sudo chown -R 1000:1000 data`.
 4. Build and start it from `deploy/`: `docker compose -f compose.example.yml up -d --build`. It publishes `127.0.0.1:4317` only, for the reverse proxy.
 5. Point the reverse proxy at `127.0.0.1:4317`, passing the original `Host` header through, since the server refuses any other `Host`: Caddy does by default; nginx needs `proxy_set_header Host $host;`.
 
