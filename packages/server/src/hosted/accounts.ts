@@ -193,10 +193,14 @@ export function viewableAccounts(db: AccountsDb, account: Account, admin: string
     .all();
 }
 
-/** Deletes the account: its row, with its sessions, tokens, labeller settings and grants by cascade, then its file. */
+/**
+ * Deletes the account: its file first, so a failed removal leaves a live account its owner can delete again, then its
+ * row, with its sessions, tokens, labeller settings and the grants it gave and received by cascade (a received grant
+ * isn't unbound, since its login may since belong to someone else).
+ */
 export function deleteAccount(db: AccountsDb, files: AccountFiles, id: number): void {
-  db.delete(accounts).where(eq(accounts.id, id)).run();
   files.remove(id);
+  db.delete(accounts).where(eq(accounts.id, id)).run();
 }
 
 export function deleteSession(db: AccountsDb, raw: string): void {

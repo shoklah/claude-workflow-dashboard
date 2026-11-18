@@ -132,6 +132,37 @@ describe('POST /api/account/delete', () => {
   });
 });
 
+describe('deleteAccount', () => {
+  test('takes the grants the account received too: signing in again, it views nothing until granted again', () => {
+    const { accounts, files } = hosted.hosted;
+    const owner = { id: 303, login: 'carol' };
+    addInvite(accounts, owner.login, NOW);
+    signInAccount(accounts, owner, 'admin', NOW);
+    addViewer(accounts, owner.id, A.login);
+    expect(viewableAccounts(accounts, A, 'admin')).toEqual([owner]);
+
+    deleteAccount(accounts, files, A.id);
+    expect(listViewers(accounts, owner.id)).toEqual([]);
+    expect(signInAccount(accounts, A, 'admin', NOW)).toEqual(A);
+    expect(viewableAccounts(accounts, A, 'admin')).toEqual([]);
+    addViewer(accounts, owner.id, A.login);
+    expect(viewableAccounts(accounts, A, 'admin')).toEqual([owner]);
+  });
+
+  test("keeps the account's row when its file's removal throws", () => {
+    const { accounts, files } = hosted.hosted;
+    const failing = {
+      ...files,
+      remove() {
+        throw new Error('EBUSY');
+      },
+    };
+    expect(() => deleteAccount(accounts, failing, A.id)).toThrow('EBUSY');
+    expect(getAccount(accounts, A.id)).toMatchObject(A);
+    expect(tokenAccount(accounts, tokenA, NOW)).toMatchObject(A);
+  });
+});
+
 describe('labelAccounts, an account deleted after its snapshot', () => {
   test('is skipped, and its file does not reappear', async () => {
     const { accounts, files } = hosted.hosted;
