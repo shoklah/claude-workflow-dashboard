@@ -1,9 +1,10 @@
 // `pnpm account:import <login> <file>`: a local dashboard.sqlite copied into an existing, empty hosted account's file,
 // run on the server with the hosted server stopped.
-import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, renameSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { platformDefaults } from '../config.ts';
 import { MIGRATIONS } from '../db/open.ts';
 import { accountByLogin, openAccountsDb } from './accounts.ts';
@@ -11,12 +12,9 @@ import { accountFiles } from './account-files.ts';
 
 export type AccountImport = { ok: true; accountId: number } | { ok: false; reason: string };
 
-/** The newest migration this server knows: its journal's last `when`. */
+/** The newest migration this server knows, as drizzle's migrator reads it and writes it to `created_at`. */
 function newestMigration(): number {
-  const journal = JSON.parse(readFileSync(join(MIGRATIONS, 'meta', '_journal.json'), 'utf8')) as {
-    entries: { when: number }[];
-  };
-  return Math.max(...journal.entries.map((entry) => entry.when));
+  return Math.max(...readMigrationFiles({ migrationsFolder: MIGRATIONS }).map((migration) => migration.folderMillis));
 }
 
 /** Why `source` can't be imported, or null: not an edward database (unreadable, or no migrations or `units` table), or

@@ -1,5 +1,11 @@
 import { useId, useState } from 'react';
-import { LABELLER_MODELS, type AccountResponse, type LabellerRequest } from '@cwd/shared';
+import {
+  LABELLER_MAX_DAILY,
+  LABELLER_MODELS,
+  type AccountResponse,
+  type LabellerModel,
+  type LabellerRequest,
+} from '@cwd/shared';
 import { saveLabeller } from '../api.ts';
 import { Line, Panel, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
@@ -19,7 +25,7 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
   const { labeller } = account;
   const [key, setKey] = useState('');
   const [replacing, setReplacing] = useState(false);
-  const [model, setModel] = useState(labeller.model as LabellerRequest['model']);
+  const [model, setModel] = useState(labeller.model);
   const [dailyMax, setDailyMax] = useState(String(labeller.dailyMax));
   const { pending, failed, send } = useSend();
   const keyId = useId();
@@ -56,7 +62,7 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
                   size="xs"
                   disabled={pending}
                   onClick={() =>
-                    save({ key: null, model: labeller.model as LabellerRequest['model'], dailyMax: labeller.dailyMax })
+                    save({ key: null, model: labeller.model, dailyMax: labeller.dailyMax })
                   }
                 >
                   Remove
@@ -82,7 +88,7 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
           <label htmlFor={modelId} className={LABEL}>
             Model
           </label>
-          <select id={modelId} value={model} onChange={(e) => setModel(e.target.value as LabellerRequest['model'])}>
+          <select id={modelId} value={model} onChange={(e) => setModel(e.target.value as LabellerModel)}>
             {LABELLER_MODELS.map((id) => (
               <option key={id} value={id}>
                 {modelLabel(id)}
@@ -96,7 +102,7 @@ export function LabellerPanel({ account }: { account: AccountResponse }) {
             id={maxId}
             type="number"
             min={1}
-            max={10000}
+            max={LABELLER_MAX_DAILY}
             step={1}
             className="w-28 text-right tabular-nums"
             value={dailyMax}

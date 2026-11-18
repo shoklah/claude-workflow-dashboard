@@ -101,11 +101,12 @@ export function getShownProjects(db: Db): string[] {
   return row ? (JSON.parse(row.value) as string[]) : (getShowing(db) ?? []);
 }
 
-/** Replaces the kept project list, and the shown projects too while showing mode is on. */
+/** Replaces the kept project list, and the shown projects too while showing mode is on, an empty list turning it off. */
 export function setShownProjects(db: Db, projects: string[]): void {
   const on = getShowing(db) !== null;
   writeState(db, SHOWN_PROJECTS, projects);
-  if (on) writeState(db, SHOWING, projects);
+  if (on && projects.length > 0) writeState(db, SHOWING, projects);
+  else if (on) db.delete(state).where(eq(state.name, SHOWING)).run();
 }
 
 /** Turns showing mode on with the given project keys, kept as its list, or off with null, keeping its list. */

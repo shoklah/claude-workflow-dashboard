@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import type { AccountResponse } from '@cwd/shared';
 import { addViewer, removeViewer } from '../api.ts';
 import { EmptyRow } from '../components/Num.tsx';
 import { ColumnHead, Line, Panel, ScrollTable, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
-import { Input } from '../components/ui/input.tsx';
+import { LoginForm } from './AccountForms.tsx';
 import { useSend } from './send.ts';
 
 const COLUMN_COUNT = 2;
@@ -14,12 +13,7 @@ const COLUMN_COUNT = 2;
  * "Add viewer". While a call runs every action is disabled, and a failed one says so in fixed words.
  */
 export function ViewersPanel({ account }: { account: AccountResponse }) {
-  const [login, setLogin] = useState('');
   const { pending, failed, send } = useSend();
-
-  async function add() {
-    if (await send(() => addViewer(login.trim()), "Couldn't add the viewer. Check the login and try again.")) setLogin('');
-  }
 
   return (
     <Panel title="Viewers">
@@ -55,26 +49,11 @@ export function ViewersPanel({ account }: { account: AccountResponse }) {
           )}
         </tbody>
       </ScrollTable>
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          add();
-        }}
-      >
-        <Input
-          aria-label="GitHub login"
-          placeholder="GitHub login"
-          autoComplete="off"
-          required
-          className="w-48"
-          value={login}
-          onChange={(e) => setLogin(e.target.value)}
-        />
-        <Button type="submit" disabled={pending}>
-          Add viewer
-        </Button>
-      </form>
+      <LoginForm
+        action="Add viewer"
+        pending={pending}
+        onAdd={(login) => send(() => addViewer(login), "Couldn't add the viewer. Check the login and try again.")}
+      />
       {failed && <State error>{failed}</State>}
     </Panel>
   );

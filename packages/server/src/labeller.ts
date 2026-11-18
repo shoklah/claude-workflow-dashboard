@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import { AREAS, LABELLER_DEFAULTS, RELEVANCE, type Area, type Relevance } from '@cwd/shared';
-import { inArea, labellable, type ActiveList } from './categories.ts';
+import { activeList, inArea, labellable, type ActiveList } from './categories.ts';
 import { labelInputs, labelledOn, pendingInputs, saveBatch, type StoredLabel } from './db/labels.ts';
 import type { Db } from './db/open.ts';
 import { listUnits } from './db/read.ts';
@@ -40,6 +40,18 @@ export function labellerSettings(env: Record<string, string | undefined>): { mod
  * error's name, since another error's text can quote the findings; the next batches still go, and the next import
  * retries it.
  */
+/** One label job's run over a database: its pending findings under the active list, read each time since an import can
+ * change it; with no list, nothing is labelled. */
+export async function labelOnce(
+  db: Db,
+  client: LabelClient,
+  settings: { model: string; dailyMax: number },
+  now: Date,
+): Promise<void> {
+  const list = activeList(db);
+  if (list) await labelPending(db, client, settings, now, list);
+}
+
 export async function labelPending(
   db: Db,
   client: LabelClient,

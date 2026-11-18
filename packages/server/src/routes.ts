@@ -11,6 +11,7 @@ import {
   type ComplianceQuery,
   type ContextQuery,
   type FindingsQuery,
+  LABELLER_MAX_DAILY,
   LABELLER_MODELS,
   type RunEntry,
   type SessionEntry,
@@ -98,6 +99,13 @@ const unzip = promisify(gunzip);
 // A GitHub login's syntax.
 const GITHUB_LOGIN = /^[A-Za-z0-9-]{1,39}$/;
 
+/** A request body's `login`, when it is a GitHub login (viewers and invites), else null. */
+async function loginBody(c: Context<AppEnv>): Promise<string | null> {
+  const body = await c.req.json().catch(() => null);
+  const login: unknown = body?.login;
+  return typeof login === 'string' && GITHUB_LOGIN.test(login) ? login : null;
+}
+
 // The most weeks a list covers: the Runs page's longest period, so a huge `weeks` can't build a huge response.
 const MAX_WEEKS = 52;
 
@@ -138,12 +146,14 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   // Task 4: the import's status, the refresh and "mark all seen"; hosted, the caller's login and the accounts it views.
   app.get('/api/status', (c) => {
     const { account, viewing } = c.var;
+    const last = lastImport(c.var.db);
     return c.json(
       statusView(
-        lastImport(c.var.db),
+        last,
         lastGoodImport(c.var.db),
         deps.importing(),
-        scopeFor(c),
+        // The scope only masks the last import's error, so it is built only when there is one.
+        last?.error ? scopeFor(c) : null,
         account && deps.hosted
           ? {
               login: account.login,
@@ -240,7 +250,6 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     const projects = await showingBody(c);
     if (!projects) return c.body(null, 400);
     setShownProjects(c.var.db, projects);
-    if (projects.length === 0) setShowing(c.var.db, null);
     return c.body(null, 204);
   });
   app.all('/api/showing/projects', postOnly);
@@ -511,7 +520,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
       const { model, dailyMax } = body ?? {};
       const key = typeof body?.key === 'string' ? body.key.trim() : body?.key;
       const keyOk = key === undefined || key === null || (typeof key === 'string' && key.length > 0);
-      const maxOk = Number.isInteger(dailyMax) && dailyMax >= 1 && dailyMax <= 10000;
+      const maxOk = Number.isInteger(dailyMax) && dailyMax >= 1 && dailyMax <= LABELLER_MAX_DAILY;
       if (!keyOk || !LABELLER_MODELS.includes(model) || !maxOk) return c.body(null, 400);
       setLabeller(hosted.accounts, caller(c).id, { key, model, dailyMax }, hosted.secret);
       return c.body(null, 204);
@@ -521,9 +530,8 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     // Slice 2b, task 2: viewers. An owner grants GitHub logins a read-only view of its account; a caller picks an
     // account it may view (viewableAccounts) by login, or null for its own, for its session.
     app.post('/api/account/viewers', async (c) => {
-      const body = await c.req.json().catch(() => null);
-      const login: unknown = body?.login;
-      if (typeof login !== 'string' || !GITHUB_LOGIN.test(login)) return c.body(null, 400);
+      const login = await loginBody(c);
+      if (!login) return c.body(null, 400);
       addViewer(hosted.accounts, caller(c).id, login);
       return c.body(null, 204);
     });
@@ -553,9 +561,8 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     // Slice 2b, task 5: admin settings, the invites and the accounts; the middleware answers 404 to anyone but the admin.
     app.get('/api/admin', (c) => c.json(adminView(listInvites(hosted.accounts), listAccounts(hosted.accounts))));
     app.post('/api/admin/invites', async (c) => {
-      const body = await c.req.json().catch(() => null);
-      const login: unknown = body?.login;
-      if (typeof login !== 'string' || !GITHUB_LOGIN.test(login)) return c.body(null, 400);
+      const login = await loginBody(c);
+      if (!login) return c.body(null, 400);
       addInvite(hosted.accounts, login, deps.now());
       return c.body(null, 204);
     });

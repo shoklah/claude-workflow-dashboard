@@ -4,16 +4,8 @@ import { parseTime, type AccountResponse } from '@cwd/shared';
 import { deleteAccount, signOut, useLiveQuery, useStatus } from '../api.ts';
 import { Pairs, PageTitle, Section, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../components/ui/dialog.tsx';
 import { formatDay } from '../lib/format.ts';
+import { ConfirmDelete } from './AccountForms.tsx';
 import { CollectorPanel } from './CollectorPanel.tsx';
 import { LabellerPanel } from './LabellerPanel.tsx';
 import { ShownProjectsPanel } from './ShownProjectsPanel.tsx';
@@ -84,27 +76,13 @@ export function AccountPage() {
               )}
             </div>
             {failed && <State error>{failed}</State>}
-            <Dialog open={confirming} onOpenChange={setConfirming}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete your account?</DialogTitle>
-                  <DialogDescription>
-                    Your dashboard's data, collector tokens, viewers and Anthropic key are deleted. It can't be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button
-                    variant="destructive"
-                    onClick={() => leave(deleteAccount, "Couldn't delete your account. Try again.")}
-                  >
-                    Delete account
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <ConfirmDelete
+              open={confirming}
+              onOpenChange={setConfirming}
+              title="Delete your account?"
+              whose="Your"
+              onConfirm={() => leave(deleteAccount, "Couldn't delete your account. Try again.")}
+            />
           </Section>
         </>
       )}

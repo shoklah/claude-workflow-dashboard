@@ -8,18 +8,23 @@ export type AccountResponse = {
   machine: boolean;
   tokens: { id: number; createdAt: string; lastUsedAt: string | null }[];
   viewers: string[];
-  labeller: { keySet: boolean; model: string; dailyMax: number };
+  labeller: { keySet: boolean; model: LabellerModel; dailyMax: number };
 };
 
 /** The models an account's labeller may use. */
 export const LABELLER_MODELS = ['claude-haiku-5-5', 'claude-sonnet-5-5'] as const;
 
 /** The labeller's model and daily max when none is set, in local and hosted mode alike. */
+export type LabellerModel = (typeof LABELLER_MODELS)[number];
+
 export const LABELLER_DEFAULTS = { model: LABELLER_MODELS[0], dailyMax: 500 };
+
+/** The labeller's highest daily max, for the route's check and the form's field. */
+export const LABELLER_MAX_DAILY = 10000;
 
 /** `POST /api/account/labeller` (hosted): the labeller's model and daily max (1 to 10000), and its key: absent keeps the
  * stored one, null removes it. */
-export type LabellerRequest = { key?: string | null; model: (typeof LABELLER_MODELS)[number]; dailyMax: number };
+export type LabellerRequest = { key?: string | null; model: LabellerModel; dailyMax: number };
 
 /** `POST /api/account/tokens` (hosted): the new collector token, raw, shown this once. */
 export type TokenResponse = { token: string };

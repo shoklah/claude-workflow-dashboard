@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
-import { LABELLER_DEFAULTS } from '@cwd/shared';
+import { LABELLER_DEFAULTS, type AccountResponse, type LabellerModel } from '@cwd/shared';
 import { openSqlite } from '../db/open.ts';
 import type { AccountFiles } from './account-files.ts';
 import * as schema from './schema.ts';
@@ -14,6 +14,9 @@ import {
   viewerGrants,
 } from './schema.ts';
 import { sealKey } from './secret.ts';
+
+/** An account's login lower-cased: logins match case-insensitively, invites and grants stored lower-case. */
+const lowerLogin = sql`lower(${accounts.login})`;
 
 // Two levels up from this file, as openDb's.
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url));
@@ -71,7 +74,7 @@ export function signInAccount(db: AccountsDb, user: Account, admin: string, at: 
         const shared = tx
           .select({ id: accounts.id })
           .from(accounts)
-          .where(and(eq(sql`lower(${accounts.login})`, stored), ne(accounts.id, user.id)))
+          .where(and(eq(lowerLogin, stored), ne(accounts.id, user.id)))
           .get();
         if (!shared) tx.delete(invites).where(eq(invites.login, stored)).run();
         tx.insert(invites).values({ login, addedAt: invite.addedAt }).onConflictDoNothing().run();
@@ -112,7 +115,7 @@ export function removeInvite(db: AccountsDb, login: string): void {
   const held = db
     .select({ id: accounts.id })
     .from(accounts)
-    .where(eq(sql`lower(${accounts.login})`, lower));
+    .where(eq(lowerLogin, lower));
   db.transaction((tx) => {
     tx.delete(invites).where(eq(invites.login, lower)).run();
     tx.delete(sessions).where(inArray(sessions.accountId, held)).run();
@@ -137,7 +140,7 @@ export function accountByLogin(db: AccountsDb, login: string): Account | null {
     db
       .select(accountColumns)
       .from(accounts)
-      .where(eq(sql`lower(${accounts.login})`, login.toLowerCase()))
+      .where(eq(lowerLogin, login.toLowerCase()))
       .orderBy(desc(accounts.createdAt), desc(accounts.id))
       .get() ?? null
   );
@@ -237,7 +240,7 @@ function grantsOf(db: AccountsDb, ownerId: number): { viewerLogin: string; shown
   return db
     .select({
       viewerLogin: viewerGrants.viewerLogin,
-      shown: sql<string>`coalesce(lower(${accounts.login}), ${viewerGrants.viewerLogin})`,
+      shown: sql<string>`coalesce(${lowerLogin}, ${viewerGrants.viewerLogin})`,
     })
     .from(viewerGrants)
     .leftJoin(accounts, eq(accounts.id, viewerGrants.viewerId))
@@ -248,13 +251,12 @@ function grantsOf(db: AccountsDb, ownerId: number): { viewerLogin: string; shown
 /** The owners the account may view, each once: those that granted it (grantedTo), and whose own login is invited or
  * `admin`. */
 export function viewableAccounts(db: AccountsDb, account: Account, admin: string): Account[] {
-  const ownerLogin = sql`lower(${accounts.login})`;
   return db
     .selectDistinct(accountColumns)
     .from(viewerGrants)
     .innerJoin(accounts, eq(accounts.id, viewerGrants.ownerId))
-    .leftJoin(invites, eq(invites.login, ownerLogin))
-    .where(and(grantedTo(account), or(isNotNull(invites.login), eq(ownerLogin, admin.toLowerCase()))))
+    .leftJoin(invites, eq(invites.login, lowerLogin))
+    .where(and(grantedTo(account), or(isNotNull(invites.login), eq(lowerLogin, admin.toLowerCase()))))
     .orderBy(accounts.id)
     .all();
 }
@@ -327,11 +329,11 @@ export function getAccount(
 }
 
 /** The account's labeller: whether a key is set, never the key, its model and its daily max (the defaults with none). */
-export function getLabeller(db: AccountsDb, accountId: number): { keySet: boolean; model: string; dailyMax: number } {
+export function getLabeller(db: AccountsDb, accountId: number): AccountResponse['labeller'] {
   const row = db.select().from(labellerSettings).where(eq(labellerSettings.accountId, accountId)).get();
   return {
     keySet: !!row?.sealedKey,
-    model: row?.model ?? LABELLER_DEFAULTS.model,
+    model: (row?.model as LabellerModel | undefined) ?? LABELLER_DEFAULTS.model,
     dailyMax: row?.dailyMax ?? LABELLER_DEFAULTS.dailyMax,
   };
 }

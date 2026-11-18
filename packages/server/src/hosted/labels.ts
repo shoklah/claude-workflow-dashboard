@@ -1,6 +1,5 @@
-import { activeList } from '../categories.ts';
 import type { Db } from '../db/open.ts';
-import { labelPending, type LabelClient } from '../labeller.ts';
+import { labelOnce, type LabelClient } from '../labeller.ts';
 import { getAccount, labellerAccounts, type AccountsDb } from './accounts.ts';
 import { openKey } from './secret.ts';
 
@@ -28,9 +27,7 @@ export async function labelAccounts(opts: {
     }
     if (!getAccount(accounts, accountId)) continue;
     try {
-      const db = files.db(accountId);
-      const list = activeList(db);
-      if (list) await labelPending(db, clientFor(model, key), { model, dailyMax }, now(), list);
+      await labelOnce(files.db(accountId), clientFor(model, key), { model, dailyMax }, now());
     } catch {
       console.error(`label: account ${accountId} failed`);
     }

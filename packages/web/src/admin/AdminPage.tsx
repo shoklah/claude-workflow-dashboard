@@ -1,21 +1,12 @@
 import { useState } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { parseTime, type AdminResponse } from '@cwd/shared';
+import { ConfirmDelete, LoginForm } from '../account/AccountForms.tsx';
 import { useSend } from '../account/send.ts';
 import { ApiError, deleteAccountAsAdmin, invite, removeInvite, useLiveQuery, useStatus } from '../api.ts';
 import { EmptyRow } from '../components/Num.tsx';
 import { ColumnHead, PageTitle, Panel, ScrollTable, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../components/ui/dialog.tsx';
-import { Input } from '../components/ui/input.tsx';
 import { NotFoundPage } from '../layout/ErrorPages.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatDay } from '../lib/format.ts';
@@ -52,12 +43,7 @@ export function AdminPage() {
 /** The invited logins, when each was added and whether it has signed in, with a Remove each, and a login field with
  * "Invite". While a call runs every action is disabled, and a failed one says so in fixed words. */
 function InvitesPanel({ invites, viewing }: { invites: AdminResponse['invites']; viewing: boolean }) {
-  const [login, setLogin] = useState('');
   const { pending, failed, send } = useSend(reloadAdmin);
-
-  async function add() {
-    if (await send(() => invite(login.trim()), "Couldn't invite the login. Check it and try again.")) setLogin('');
-  }
 
   return (
     <Panel title="Invites">
@@ -103,26 +89,11 @@ function InvitesPanel({ invites, viewing }: { invites: AdminResponse['invites'];
         </tbody>
       </ScrollTable>
       {!viewing && (
-        <form
-          className="flex flex-wrap gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            add();
-          }}
-        >
-          <Input
-            aria-label="GitHub login"
-            placeholder="GitHub login"
-            autoComplete="off"
-            required
-            className="w-48"
-            value={login}
-            onChange={(e) => setLogin(e.target.value)}
-          />
-          <Button type="submit" disabled={pending}>
-            Invite
-          </Button>
-        </form>
+        <LoginForm
+          action="Invite"
+          pending={pending}
+          onAdd={(login) => send(() => invite(login), "Couldn't invite the login. Check it and try again.")}
+        />
       )}
       {failed && <State error>{failed}</State>}
     </Panel>
@@ -201,24 +172,13 @@ function AccountsPanel({
         </tbody>
       </ScrollTable>
       {failed && <State error>{failed}</State>}
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {target?.login}'s account?</DialogTitle>
-            <DialogDescription>
-              Its dashboard's data, collector tokens, viewers and Anthropic key are deleted. It can't be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button variant="destructive" onClick={() => target && remove(target.id)}>
-              Delete account
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDelete
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={`Delete ${target?.login}'s account?`}
+        whose="Its"
+        onConfirm={() => target && remove(target.id)}
+      />
     </Panel>
   );
 }
