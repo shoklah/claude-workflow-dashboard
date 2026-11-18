@@ -6,8 +6,8 @@ import { openKey } from './secret.ts';
 
 /**
  * Hosted mode's label job: each account with a key labels its own file under its active list (none, nothing), with its
- * own client, model and daily max. A key that doesn't open is skipped with a fixed line naming the account, never the
- * key, and the other accounts still go.
+ * own client, model and daily max. A key that doesn't open, or an account whose labelling fails, is skipped with a
+ * fixed line naming the account's id, never the key or the error's text, and the other accounts still go.
  */
 export async function labelAccounts(opts: {
   accounts: AccountsDb;
@@ -20,13 +20,17 @@ export async function labelAccounts(opts: {
   for (const { accountId, sealedKey, model, dailyMax } of labellerAccounts(accounts)) {
     let key: string;
     try {
-      key = openKey(secret, sealedKey);
+      key = openKey(secret, sealedKey, accountId);
     } catch {
       console.error(`label: account ${accountId} key does not open`);
       continue;
     }
-    const db = files.db(accountId);
-    const list = activeList(db);
-    if (list) await labelPending(db, clientFor(model, key), { model, dailyMax }, now(), list);
+    try {
+      const db = files.db(accountId);
+      const list = activeList(db);
+      if (list) await labelPending(db, clientFor(model, key), { model, dailyMax }, now(), list);
+    } catch {
+      console.error(`label: account ${accountId} failed`);
+    }
   }
 }

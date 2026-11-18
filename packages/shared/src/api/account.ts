@@ -14,6 +14,9 @@ export type AccountResponse = {
 /** The models an account's labeller may use. */
 export const LABELLER_MODELS = ['claude-haiku-5-5', 'claude-sonnet-5-5'] as const;
 
+/** The labeller's model and daily max when none is set, in local and hosted mode alike. */
+export const LABELLER_DEFAULTS = { model: LABELLER_MODELS[0], dailyMax: 500 };
+
 /** `POST /api/account/labeller` (hosted): the labeller's model and daily max (1 to 10000), and its key: absent keeps the
  * stored one, null removes it. */
 export type LabellerRequest = { key?: string | null; model: (typeof LABELLER_MODELS)[number]; dailyMax: number };

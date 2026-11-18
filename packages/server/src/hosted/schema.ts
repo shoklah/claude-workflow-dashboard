@@ -1,4 +1,5 @@
 import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { LABELLER_DEFAULTS } from '@cwd/shared';
 
 // The hosted accounts database. Sessions and collector tokens are stored only as their SHA-256 (hashSecret).
 
@@ -53,9 +54,6 @@ export const viewerGrants = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.ownerId, table.viewerLogin] })],
 );
-
-/** An account's labeller, its defaults with no row. */
-export const LABELLER_DEFAULTS = { model: 'claude-haiku-5-5', dailyMax: 500 };
 
 /** An account's labeller: its Anthropic key sealed under EDWARD_SECRET (hosted/secret.ts), null for none, never in
  * clear; its model and daily max. */

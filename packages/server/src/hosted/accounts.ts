@@ -1,13 +1,13 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { and, desc, eq, gte, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { LABELLER_DEFAULTS } from '@cwd/shared';
 import { openSqlite } from '../db/open.ts';
 import * as schema from './schema.ts';
 import {
   accounts,
   collectorTokens,
   invites,
-  LABELLER_DEFAULTS,
   labellerSettings,
   sessions,
   viewerGrants,
@@ -269,7 +269,7 @@ export function setLabeller(
   const values = {
     model,
     dailyMax,
-    ...(key === undefined ? {} : { sealedKey: key === null ? null : sealKey(secret, key) }),
+    ...(key === undefined ? {} : { sealedKey: key === null ? null : sealKey(secret, key, accountId) }),
   };
   db.insert(labellerSettings)
     .values({ accountId, ...values })

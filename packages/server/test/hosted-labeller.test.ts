@@ -30,23 +30,28 @@ const MODEL = 'claude-haiku-5-5';
 
 describe('sealKey and openKey', () => {
   test('open what they seal, and two seals of one key differ', () => {
-    const sealed = sealKey(SECRET, KEY);
-    expect(openKey(SECRET, sealed)).toBe(KEY);
+    const sealed = sealKey(SECRET, KEY, A.id);
+    expect(openKey(SECRET, sealed, A.id)).toBe(KEY);
     expect(sealed).not.toContain(KEY);
-    expect(sealKey(SECRET, KEY)).not.toBe(sealed);
+    expect(sealKey(SECRET, KEY, A.id)).not.toBe(sealed);
   });
 
   test('a flipped byte, a short value or another secret throws the fixed message', () => {
-    const bytes = Buffer.from(sealKey(SECRET, KEY), 'base64');
+    const bytes = Buffer.from(sealKey(SECRET, KEY, A.id), 'base64');
     for (const at of [0, 12, bytes.length - 1]) {
       const flipped = Buffer.from(bytes);
       flipped[at]! ^= 1;
-      expect(() => openKey(SECRET, flipped.toString('base64'))).toThrow(new Error('stored key does not open'));
+      expect(() => openKey(SECRET, flipped.toString('base64'), A.id)).toThrow(new Error('stored key does not open'));
     }
-    expect(() => openKey(SECRET, bytes.subarray(0, 20).toString('base64'))).toThrow(
+    expect(() => openKey(SECRET, bytes.subarray(0, 20).toString('base64'), A.id)).toThrow(
       new Error('stored key does not open'),
     );
-    expect(() => openKey(Buffer.alloc(32, 7), bytes.toString('base64'))).toThrow(new Error('stored key does not open'));
+    expect(() => openKey(Buffer.alloc(32, 7), bytes.toString('base64'), A.id)).toThrow(new Error('stored key does not open'));
+  });
+
+  test("a key sealed for one account doesn't open for another", () => {
+    const sealed = sealKey(SECRET, KEY, A.id);
+    expect(() => openKey(SECRET, sealed, B.id)).toThrow(new Error('stored key does not open'));
   });
 });
 
@@ -131,7 +136,7 @@ describe('POST /api/account/labeller', () => {
     }
     const [entry] = labellerAccounts(hosted.hosted.accounts);
     expect(entry).toMatchObject({ accountId: A.id, model: 'claude-sonnet-5-5', dailyMax: 40 });
-    expect(openKey(SECRET, entry!.sealedKey)).toBe(KEY);
+    expect(openKey(SECRET, entry!.sealedKey, A.id)).toBe(KEY);
   });
 
   test('no key keeps the stored one, null removes it', async () => {
@@ -186,7 +191,7 @@ describe('labelAccounts', () => {
     // A's key sealed under another secret: it doesn't open under this one.
     hosted.hosted.accounts.$client
       .prepare('update labeller_settings set sealed_key = ? where account_id = ?')
-      .run(sealKey(Buffer.alloc(32, 9), KEY), A.id);
+      .run(sealKey(Buffer.alloc(32, 9), KEY, A.id), A.id);
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { asked, clientFor } = stubFactory();
     await labelAccounts({ ...hosted.hosted, clientFor, now: () => NOW });
@@ -195,6 +200,29 @@ describe('labelAccounts', () => {
     expect(labelled(a)).toBe(0);
     expect(labelled(c)).toBeGreaterThan(0);
     expect(asked).toEqual([[MODEL, 'sk-ant-third']]);
+  });
+});
+
+describe('labelAccounts, an account that fails', () => {
+  test('is logged by its id only, and the later accounts are still labelled', async () => {
+    const third = { id: 303, login: 'carol' };
+    addInvite(hosted.hosted.accounts, third.login, NOW);
+    signInAccount(hosted.hosted.accounts, third, 'admin', NOW);
+    const c = imported(third.id);
+    setLabeller(hosted.hosted.accounts, A.id, { key: KEY, model: MODEL, dailyMax: 500 }, SECRET);
+    setLabeller(hosted.hosted.accounts, third.id, { key: 'sk-ant-third', model: MODEL, dailyMax: 500 }, SECRET);
+    const files = {
+      db(id: number) {
+        if (id === A.id) throw new Error(`invented failure quoting ${KEY}`);
+        return hosted.hosted.files.db(id);
+      },
+    };
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { clientFor } = stubFactory();
+    await labelAccounts({ ...hosted.hosted, files, clientFor, now: () => NOW });
+    expect(error.mock.calls).toEqual([[`label: account ${A.id} failed`]]);
+    error.mockRestore();
+    expect(labelled(c)).toBeGreaterThan(0);
   });
 });
 

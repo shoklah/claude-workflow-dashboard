@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
-import { AREAS, RELEVANCE, type Area, type Relevance } from '@cwd/shared';
+import { AREAS, LABELLER_DEFAULTS, RELEVANCE, type Area, type Relevance } from '@cwd/shared';
 import { inArea, labellable, type ActiveList } from './categories.ts';
 import { labelInputs, labelledOn, pendingInputs, saveBatch, type StoredLabel } from './db/labels.ts';
 import type { Db } from './db/open.ts';
@@ -16,7 +16,6 @@ export type LabelClient = (batch: { id: string; area: Area; text: string }[], li
 }>;
 
 const BATCH = 25;
-const DAILY_MAX = 500;
 
 /** A label client's failure whose message is fixed, with no finding text and no key, so labelPending logs it. */
 export class LabelError extends Error {}
@@ -28,8 +27,8 @@ export class LabelError extends Error {}
 export function labellerSettings(env: Record<string, string | undefined>): { model: string; dailyMax: number } | null {
   if (!env.ANTHROPIC_API_KEY) return null;
   const max = Number(env.LABELLER_DAILY_MAX);
-  const dailyMax = Number.isInteger(max) && max > 0 ? max : DAILY_MAX;
-  return { model: env.LABELLER_MODEL || 'claude-haiku-5-5', dailyMax };
+  const dailyMax = Number.isInteger(max) && max > 0 ? max : LABELLER_DEFAULTS.dailyMax;
+  return { model: env.LABELLER_MODEL || LABELLER_DEFAULTS.model, dailyMax };
 }
 
 /**
