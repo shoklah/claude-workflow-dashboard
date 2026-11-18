@@ -6,6 +6,8 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { Db } from './db/open.ts';
 import { sessionAccount, tokenAccount, type Account, type AccountsDb } from './hosted/accounts.ts';
+import { registerAuth } from './hosted/auth.ts';
+import type { GitHubClient } from './hosted/github.ts';
 import { registerRoutes } from './routes.ts';
 
 /** Hosted mode's deps: its public host and origin (`https://<publicHost>`), the accounts database, each account's file
@@ -16,6 +18,7 @@ export type HostedDeps = {
   accounts: AccountsDb;
   files: { db(id: number): Db };
   admin: string;
+  github: GitHubClient;
 };
 
 export type AppDeps = {
@@ -100,6 +103,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     return next();
   });
   registerRoutes(app, deps);
+  if (hosted) registerAuth(app, { ...deps, hosted });
   if (deps.webDist) {
     app.get('/api/*', (c) => c.notFound());
     app.get('*', serveStatic({ root: deps.webDist }), serveStatic({ root: deps.webDist, path: 'index.html' }));

@@ -11,7 +11,7 @@ import { accounts, collectorTokens, invites, sessions } from './schema.ts';
 
 // Two levels up from this file, as openDb's.
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle-hosted', import.meta.url));
-const SESSION_DAYS = 30;
+export const SESSION_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type AccountsDb = ReturnType<typeof openAccountsDb>;
