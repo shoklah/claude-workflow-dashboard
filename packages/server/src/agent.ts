@@ -45,7 +45,11 @@ export function plist(opts: { label: string; node: string; entry: string; logDir
 const percent = (text: string) => text.replace(/%/g, '%%');
 const quoted = (text: string) => `"${percent(text).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
-/** The user unit: runs `node entry` and restarts it always, logging into `logDir`, with `dataHome` as XDG_DATA_HOME. */
+/**
+ * The user unit: runs `node entry` and restarts it always, every 10 s as launchd's throttle (systemd's 100 ms default
+ * hits its start limit in half a second and leaves the unit failed), logging into `logDir`, with `dataHome` as
+ * XDG_DATA_HOME.
+ */
 export function systemdUnit(opts: { node: string; entry: string; logDir: string; dataHome?: string }): string {
   // In ExecStart, `$` starts a variable.
   const arg = (text: string) => quoted(text).replace(/\$/g, '$$$$');
@@ -56,6 +60,7 @@ Description=edward
 [Service]
 ExecStart=${arg(opts.node)} ${arg(opts.entry)}
 ${environment}Restart=always
+RestartSec=10
 StandardOutput=append:${percent(join(opts.logDir, 'out.log'))}
 StandardError=append:${percent(join(opts.logDir, 'err.log'))}
 

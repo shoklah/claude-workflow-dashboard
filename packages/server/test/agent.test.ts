@@ -54,7 +54,7 @@ describe('systemdUnit', () => {
   test('runs node on the entry, restarts always, and logs into the data dir', () => {
     const unit = systemdUnit({ node: '/opt/node/bin/node', entry: '/repo/src/main.ts', logDir: '/data/logs' });
     expect(unit).toContain('ExecStart="/opt/node/bin/node" "/repo/src/main.ts"\n');
-    expect(unit).toContain('Restart=always\n');
+    expect(unit).toContain('Restart=always\nRestartSec=10\n');
     expect(unit).toContain('StandardOutput=append:/data/logs/out.log\n');
     expect(unit).toContain('StandardError=append:/data/logs/err.log\n');
     expect(unit).toContain('[Install]\nWantedBy=default.target\n');
